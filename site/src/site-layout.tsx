@@ -1,11 +1,12 @@
-import type { Child } from "hono/jsx";
+import { useContext, type Child } from "hono/jsx";
 import { raw } from "hono/html";
+import { AppStoreBadgePlacement } from "./app-store-badge-placement";
 import { siteOrigin } from "./site-origin";
 import type { SitePage } from "./site-page";
 
 // 全ページで共通の外枠（<head>、ヘッダー、足）。ページを足すチケットが、そのページへのリンクを footerLinks に足す
 export const SiteLayout = ({ page, children }: { page: SitePage; children: Child }) => (
-  <>
+  <AppStoreBadgePlacement.Provider value={{ placed: false }}>
     {raw("<!doctype html>")}
     <html lang="ja">
       <head>
@@ -39,10 +40,20 @@ export const SiteLayout = ({ page, children }: { page: SitePage; children: Child
           </nav>
           <p>医療の助言ではありません。持病のある方は、医師に相談してください。</p>
           <p>nu-tori for iPhone</p>
+          <AppleTrademarkNotice />
         </footer>
       </body>
     </html>
-  </>
+  </AppStoreBadgePlacement.Provider>
 );
+
+// Apple のバッジの決まりで、商標の行はバッジを置いたページの足にだけ1回置く
+const AppleTrademarkNotice = () =>
+  useContext(AppStoreBadgePlacement)?.placed === true ? (
+    <p>
+      Apple および Apple ロゴは、米国その他の国で登録された Apple Inc. の商標です。App Store は
+      Apple Inc. のサービスマークです。
+    </p>
+  ) : null;
 
 const footerLinks = [{ href: "/privacy", label: "プライバシーポリシー" }];

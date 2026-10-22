@@ -513,6 +513,10 @@ check_site() {
     step "ページの書き出し（vite build）"
     (cd "$site" && pnpm exec vite build)
 
+    # LP の版の振り分けは、テストだけの版を足した書き出しで確かめる（site/vitest.config.ts）
+    step "テストの版を足したページの書き出し（vite build --mode test）"
+    (cd "$site" && pnpm exec vite build --mode test)
+
     step "Worker の束ね（wrangler deploy --dry-run）"
     (cd "$site" && pnpm exec wrangler deploy --dry-run --outdir .wrangler/test-worker > /dev/null)
 

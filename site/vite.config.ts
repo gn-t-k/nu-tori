@@ -12,7 +12,11 @@ const writeHeadersFile = (): Plugin => ({
   },
 });
 
-export default defineConfig({
-  build: { outDir: "dist", emptyOutDir: true },
-  plugins: [ssg({ entry: "./src/site-app.tsx" }), writeHeadersFile()],
-});
+// --mode test は、本番のページにテストだけの LP の版を足して、本番の dist と別の場所に書き出す（vitest.config.ts の、版を2つにした Worker が読む）
+export default defineConfig(({ mode }) => ({
+  build: { outDir: mode === "test" ? ".wrangler/test-dist" : "dist", emptyOutDir: true },
+  plugins: [
+    ssg({ entry: mode === "test" ? "./src/testing/test-site-app.tsx" : "./src/site-app.tsx" }),
+    writeHeadersFile(),
+  ],
+}));
