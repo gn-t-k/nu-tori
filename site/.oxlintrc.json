@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "vitest"],
+  "jsPlugins": ["../server/oxlint-plugin.js"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "options": {
+    "typeAware": true,
+    "denyWarnings": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "rules": {
+    "func-style": ["error", "expression"],
+    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
+    "typescript/consistent-return": "off",
+    "nu-tori/no-switch-statement": "error",
+    "nu-tori/no-setup-in-describe": "error",
+    "nu-tori/no-mock-in-test": "error",
+    "nu-tori/no-object-in-test": "error",
+    "nu-tori/test-title-ends-with-koto": "error",
+    "nu-tori/japanese-describe-title": "error",
+    "nu-tori/filename-matches-export": "error",
+    "vitest/require-top-level-describe": "error",
+    "vitest/no-duplicate-hooks": "error"
+  },
+  "ignorePatterns": ["worker-configuration.d.ts", "dist"]
+}
