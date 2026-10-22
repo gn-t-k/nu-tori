@@ -113,6 +113,53 @@ describe("nu-tori.app の配信", () => {
     });
   });
 
+  describe("特定商取引法に基づく表記", () => {
+    let body: string;
+    let status: number;
+    beforeEach(async () => {
+      const response = await fetchSite("/legal");
+      status = response.status;
+      body = await response.text();
+    });
+
+    test("/legal が 200 で返ること（課金画面が開く URL）", () => {
+      expect(status).toBe(200);
+    });
+
+    test("#593 の事項が全部あること", () => {
+      const items = [...body.matchAll(/<th scope="row">(.+?)<\/th>/g)].map((match) => match[1]);
+      expect(items).toEqual([
+        "販売事業者",
+        "運営責任者",
+        "住所・電話番号",
+        "メールアドレス",
+        "販売価格",
+        "価格のほかにかかる費用",
+        "支払いの時期",
+        "支払いの方法",
+        "提供の時期",
+        "自動更新",
+        "解約と返金",
+        "無料体験",
+        "動作環境",
+      ]);
+    });
+
+    test("税込の月額と年額と、月額を1年続けたときの額を書くこと", () => {
+      expect(body).toContain("月額 980円（税込）");
+      expect(body).toContain("年額 8,800円（税込）");
+      expect(body).toContain("11,760円");
+    });
+
+    test("住所・電話番号の請求の窓口として、メールの窓口へリンクすること", () => {
+      expect(body).toContain('<a href="mailto:support@nu-tori.app">');
+    });
+
+    test("動作環境を、アプリの最低の版と同じ iOS 26 以降にすること", () => {
+      expect(body).toContain("iOS 26 以降");
+    });
+  });
+
   describe("出し方のページ", () => {
     test("/daily-guide が 200 で返ること（目標の設定と目標の画面が開く URL）", async () => {
       expect((await fetchSite("/daily-guide")).status).toBe(200);
@@ -272,8 +319,9 @@ describe("nu-tori.app の配信", () => {
       expect(sitemap).toContain("<loc>https://nu-tori.app/daily-guide</loc>");
     });
 
-    test("利用規約の正規の URL が並ぶこと", () => {
+    test("利用規約と特定商取引法に基づく表記の正規の URL が並ぶこと", () => {
       expect(sitemap).toContain("<loc>https://nu-tori.app/terms</loc>");
+      expect(sitemap).toContain("<loc>https://nu-tori.app/legal</loc>");
     });
 
     test("LP の版の中のパスが無いこと", () => {

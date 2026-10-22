@@ -129,6 +129,11 @@ table {
   width: 100%;
 }
 
+.legal-table th {
+  width: 30%;
+  font-weight: 600;
+}
+
 th,
 td {
   border: 1px solid var(--separator);
