@@ -1,6 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { account } from "./authentication-tables";
+import { authenticationTables } from "./authentication-tables";
+
+const { account } = authenticationTables;
 
 // アカウントの Apple の sub（Better Auth の account の accountId）。
 // 確かめのジョブのサインインの口で作ったアカウントは Apple を通さないので無い
