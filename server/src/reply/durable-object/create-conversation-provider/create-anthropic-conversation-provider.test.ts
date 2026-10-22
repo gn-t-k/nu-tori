@@ -33,7 +33,10 @@ describe("Anthropic の読み分けと返事の提供元", () => {
         const result = await provider.classifySentText(request);
 
         expect(result).toBeSuccess((reply) => {
-          expect(reply).toEqual({ label: "meal", usage: { inputTokens: 420, outputTokens: 6 } });
+          expect(reply).toEqual({
+            label: "meal",
+            usage: { type: "uncached", inputTokens: 420, outputTokens: 6 },
+          });
         });
       });
 
@@ -314,7 +317,12 @@ describe("Anthropic の読み分けと返事の提供元", () => {
             {
               type: "stop",
               stopReason: "end_turn",
-              usage: { input_tokens: 2400, output_tokens: 180 },
+              usage: {
+                input_tokens: 2400,
+                output_tokens: 180,
+                cache_creation_input_tokens: 2000,
+                cache_read_input_tokens: 300,
+              },
             },
             signal,
           ),
@@ -330,7 +338,13 @@ describe("Anthropic の読み分けと返事の提供元", () => {
           expect(reply).toEqual({
             body: "お昼の親子丼、いいですね。",
             mealIds: [mealId],
-            usage: { inputTokens: 2400, outputTokens: 180 },
+            usage: {
+              type: "cached",
+              inputTokens: 2400,
+              outputTokens: 180,
+              cacheCreationInputTokens: 2000,
+              cacheReadInputTokens: 300,
+            },
           });
         });
       });
@@ -455,7 +469,12 @@ describe("Anthropic の読み分けと返事の提供元", () => {
             {
               type: "stop",
               stopReason: "max_tokens",
-              usage: { input_tokens: 2400, output_tokens: 4096 },
+              usage: {
+                input_tokens: 2400,
+                output_tokens: 4096,
+                cache_creation_input_tokens: 2000,
+                cache_read_input_tokens: 300,
+              },
             },
             signal,
           ),
@@ -469,7 +488,13 @@ describe("Anthropic の読み分けと返事の提供元", () => {
         expect(result).toBeFailure((error) => {
           expect(error).toMatchObject({
             name: "LlmCallInvalidResponseError",
-            usage: { inputTokens: 2400, outputTokens: 4096 },
+            usage: {
+              type: "cached",
+              inputTokens: 2400,
+              outputTokens: 4096,
+              cacheCreationInputTokens: 2000,
+              cacheReadInputTokens: 300,
+            },
           });
         });
       });
@@ -484,7 +509,12 @@ describe("Anthropic の読み分けと返事の提供元", () => {
             {
               type: "stop",
               stopReason: "refusal",
-              usage: { input_tokens: 2400, output_tokens: 4096 },
+              usage: {
+                input_tokens: 2400,
+                output_tokens: 4096,
+                cache_creation_input_tokens: 2000,
+                cache_read_input_tokens: 300,
+              },
             },
             signal,
           ),
@@ -498,7 +528,13 @@ describe("Anthropic の読み分けと返事の提供元", () => {
         expect(result).toBeFailure((error) => {
           expect(error).toMatchObject({
             name: "LlmCallInvalidResponseError",
-            usage: { inputTokens: 2400, outputTokens: 4096 },
+            usage: {
+              type: "cached",
+              inputTokens: 2400,
+              outputTokens: 4096,
+              cacheCreationInputTokens: 2000,
+              cacheReadInputTokens: 300,
+            },
           });
         });
       });
@@ -513,7 +549,12 @@ describe("Anthropic の読み分けと返事の提供元", () => {
             {
               type: "stop",
               stopReason: "end_turn",
-              usage: { input_tokens: 2400, output_tokens: 4096 },
+              usage: {
+                input_tokens: 2400,
+                output_tokens: 4096,
+                cache_creation_input_tokens: 2000,
+                cache_read_input_tokens: 300,
+              },
             },
             signal,
           ),
@@ -527,7 +568,13 @@ describe("Anthropic の読み分けと返事の提供元", () => {
         expect(result).toBeFailure((error) => {
           expect(error).toMatchObject({
             name: "LlmCallInvalidResponseError",
-            usage: { inputTokens: 2400, outputTokens: 4096 },
+            usage: {
+              type: "cached",
+              inputTokens: 2400,
+              outputTokens: 4096,
+              cacheCreationInputTokens: 2000,
+              cacheReadInputTokens: 300,
+            },
           });
         });
       });
@@ -716,7 +763,12 @@ type ClassificationRequest = Parameters<ConversationProvider["classifySentText"]
 const endTurn = {
   type: "stop",
   stopReason: "end_turn",
-  usage: { input_tokens: 2400, output_tokens: 180 },
+  usage: {
+    input_tokens: 2400,
+    output_tokens: 180,
+    cache_creation_input_tokens: 2000,
+    cache_read_input_tokens: 300,
+  },
 } as const;
 
 const neverEnds = () => new AbortController().signal;

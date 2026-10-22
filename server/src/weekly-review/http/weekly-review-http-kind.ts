@@ -21,7 +21,7 @@ const weeklyReviewRecordSchema = z
       .object({
         reason: z.enum(weeklyReviewDeferralReasons).openapi({
           description:
-            "見送りの理由。使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）",
+            "見送りの理由。サブスクリプション切れ（subscription_expired）、使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）",
         }),
         goalId: z.string().openapi({
           description: "その週に当てた目標の ID。目標の変更より先に届くことがある",

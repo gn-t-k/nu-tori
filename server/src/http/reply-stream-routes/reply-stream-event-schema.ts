@@ -23,9 +23,15 @@ export const replyStreamEventSchema = z
     z
       .object({ type: z.literal("classified_as_meal") })
       .openapi("ClassifiedAsMealEvent", { description: "食事と読み分けた。送ったあと閉じる" }),
-    z.object({ type: z.literal("reply_halted") }).openapi("ReplyHaltedEvent", {
-      description: "その日の返事の回数を使い切っていて、回数切れにした。送ったあと閉じる",
-    }),
+    z
+      .object({
+        type: z.literal("reply_halted"),
+        reason: z.enum(["daily_limit", "subscription_expired"]),
+      })
+      .openapi("ReplyHaltedEvent", {
+        description:
+          "返事を作らずに止めた。その日の返事の回数を使い切っていた（daily_limit）か、サブスクリプション切れ（subscription_expired）。送ったあと閉じる",
+      }),
     z
       .object({
         type: z.literal("reply_failed"),

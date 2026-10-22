@@ -56,7 +56,7 @@ struct HealthDishChanges {
     /// 推定し直しを待つあいだは、前に書いた栄養を残して書き直さない
     private static func awaitsEstimation(_ status: DishEstimationStatus?) -> Bool {
         switch status {
-        case .estimating, .deferredToNextDay: true
+        case .estimating, .deferredToNextDay, .awaitingSubscription: true
         case .estimated, .noDishes, .failed, nil: false
         }
     }

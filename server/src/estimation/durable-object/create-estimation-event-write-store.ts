@@ -10,6 +10,7 @@ const {
   estimationSchedules,
   mealEstimationSchedules,
   estimationDeferrals,
+  estimationHolds,
   estimations,
   estimationAttempts,
   estimationAttemptResults,
@@ -33,6 +34,9 @@ export const createEstimationEventWriteStore = (
   },
   insertDeferral: ({ scheduleId, deferredAt }) => {
     db.insert(estimationDeferrals).values({ estimationScheduleId: scheduleId, deferredAt }).run();
+  },
+  insertHold: ({ scheduleId, heldAt }) => {
+    db.insert(estimationHolds).values({ estimationScheduleId: scheduleId, heldAt }).run();
   },
   insertEstimation: ({ id, scheduleId, startedAt }) => {
     db.insert(estimations).values({ id, estimationScheduleId: scheduleId, startedAt }).run();

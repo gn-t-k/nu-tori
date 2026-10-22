@@ -5,5 +5,7 @@ public enum MealEstimationStatus: Hashable, Sendable {
     case estimated
     case noDishes
     case deferredToNextDay
+    /// サブスクリプション切れのあいだに届いたので、推定を保留している。買ったら、その日の回数の範囲で推定する
+    case awaitingSubscription
     case failed
 }

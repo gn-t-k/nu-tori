@@ -6,6 +6,7 @@ public enum DishProgress: Hashable, Sendable {
     case notSent
     case estimating
     case deferredToNextDay
+    case awaitingSubscription
     /// 推定し直しが通らなかった（料理なし・推定できなかった）。名前と前の量を残し、0 kcal にする
     case unestimable
 
@@ -25,6 +26,7 @@ public enum DishProgress: Hashable, Sendable {
         case .estimated: self = .settled
         case .estimating: self = .estimating
         case .deferredToNextDay: self = .deferredToNextDay
+        case .awaitingSubscription: self = .awaitingSubscription
         case .noDishes, .failed: self = .unestimable
         }
     }
@@ -32,7 +34,7 @@ public enum DishProgress: Hashable, Sendable {
     /// 量と材料が届くのを待っているか。待っている料理は、合計に足さず「以上」を付ける
     public var isWaiting: Bool {
         switch self {
-        case .notSent, .estimating, .deferredToNextDay: true
+        case .notSent, .estimating, .deferredToNextDay, .awaitingSubscription: true
         case .settled, .unestimable: false
         }
     }

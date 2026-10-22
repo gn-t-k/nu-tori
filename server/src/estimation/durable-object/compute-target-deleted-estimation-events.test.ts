@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { generateRecordId } from "../../domain/record-id";
 import type { UsageEvent } from "../../domain/usage-event";
 import { createRecordKindStores } from "../../durable-object/create-record-kind-stores";
+import { regularSubscriptionAccount } from "../../durable-object/testing/regular-subscription-account";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
 import { computeTargetDeletedEstimationEvents } from "../domain/compute-target-deleted-estimation-events";
@@ -21,7 +22,7 @@ const computeInAccount = (seed: Seed): Promise<UsageEvent[]> =>
   runInDurableObject(env.ACCOUNT.get(env.ACCOUNT.newUniqueId()), async (_, state) => {
     await seed(durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables })));
     return computeTargetDeletedEstimationEvents(
-      createRecordKindStores(state.storage),
+      createRecordKindStores(state.storage, regularSubscriptionAccount),
       { type: "meal", mealId },
       "meal_deleted",
       deletedAt,

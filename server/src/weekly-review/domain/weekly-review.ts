@@ -29,9 +29,10 @@ export type WeeklyReviewResult = {
   mainReason: DailyGuideMainReason;
 };
 
-// 見送りの理由。使い始めて1週に満たない、体重が無い、食事の記録が少ない。
+// 見送りの理由。サブスクリプション切れ、使い始めて1週に満たない、体重が無い、食事の記録が少ない。
 // 2つ以上当たる週は、この順で先のものを1つ残す
 export const weeklyReviewDeferralReasons = [
+  "subscription_expired",
   "within_first_week",
   "no_weight",
   "few_meal_records",

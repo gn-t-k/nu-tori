@@ -393,7 +393,7 @@ struct FakeSyncServerTests {
             let error = await #expect(throws: ClientError.self) {
                 try await client.startSession(
                     idToken: "id-token", nonce: "nonce", authorizationCode: "code",
-                    timeZone: .current)
+                    timeZone: .current, agreedTermsVersion: "1")
             }
             // 生成したクライアントは、トランスポートが投げたエラーを ClientError に包む
             #expect((error?.underlyingError as? URLError)?.code == .notConnectedToInternet)

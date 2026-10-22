@@ -61,7 +61,7 @@ describe("推定の回数の上限", () => {
       );
   });
 
-  describe("その日の推定が 29 回で、同じ日の予定が3つ待っているとき", () => {
+  describe("その日の推定が 14 回で、同じ日の予定が3つ待っているとき", () => {
     let countedOn: string;
     let captureSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
     beforeEach(async () => {
@@ -71,13 +71,13 @@ describe("推定の回数の上限", () => {
       await recordPhotographedMeal(sessionToken);
       await recordPhotographedMeal(sessionToken);
       countedOn = await readEarliestCountedOn(accountId);
-      await insertCountedEstimations(accountId, countedOn, 29);
+      await insertCountedEstimations(accountId, countedOn, 14);
       captureSpy = mockPostHogCaptureEndpointOk();
       await runEstimationAlarm(accountId);
     });
 
-    test("その日の推定を 30 回で止めること", async () => {
-      expect(await countEstimations(countedOn)).toBe(30);
+    test("その日の推定を 15 回で止めること", async () => {
+      expect(await countEstimations(countedOn)).toBe(15);
     });
 
     test("始めた食事は推定できたに、始められなかった食事は翌日に推定にすること", async () => {
@@ -104,12 +104,12 @@ describe("推定の回数の上限", () => {
         {
           event: "estimation_deferred",
           distinct_id: accountId,
-          properties: { $geoip_disable: true },
+          properties: { reason: "daily_limit", $geoip_disable: true },
         },
         {
           event: "estimation_deferred",
           distinct_id: accountId,
-          properties: { $geoip_disable: true },
+          properties: { reason: "daily_limit", $geoip_disable: true },
         },
       ]);
     });
@@ -123,14 +123,14 @@ describe("推定の回数の上限", () => {
       mockCreateEstimationProviderOk();
       mealId = await recordPhotographedMeal(sessionToken);
       countedOn = await readEarliestCountedOn(accountId);
-      await insertCountedEstimations(accountId, countedOn, 30);
+      await insertCountedEstimations(accountId, countedOn, 15);
       await runEstimationAlarm(accountId);
       advanceToNextDay = () => {
         clock.advance(startOfDay(nextDayOf(countedOn)) - Date.now() + 60_000);
       };
     });
 
-    describe("次の日の推定が 30 回に満たないとき", () => {
+    describe("次の日の推定が 15 回に満たないとき", () => {
       let sequenceBeforeStart: number;
       beforeEach(async () => {
         mockCreateEstimationProviderOk({ replyAfter: new Promise(() => undefined) });
@@ -150,13 +150,13 @@ describe("推定の回数の上限", () => {
         expect({
           countedDay: await countEstimations(countedOn),
           nextDay: await countEstimations(nextDayOf(countedOn)),
-        }).toEqual({ countedDay: 30, nextDay: 1 });
+        }).toEqual({ countedDay: 15, nextDay: 1 });
       });
     });
 
-    describe("次の日の推定も 30 回に達しているとき", () => {
+    describe("次の日の推定も 15 回に達しているとき", () => {
       beforeEach(async () => {
-        await insertCountedEstimations(accountId, nextDayOf(countedOn), 30);
+        await insertCountedEstimations(accountId, nextDayOf(countedOn), 15);
         advanceToNextDay();
         await runEstimationAlarm(accountId);
       });
@@ -181,7 +181,7 @@ describe("推定の回数の上限", () => {
     beforeEach(async () => {
       mockCreateEstimationProviderOk();
       const startedMealId = await recordPhotographedMeal(sessionToken);
-      await insertCountedEstimations(accountId, await readEarliestCountedOn(accountId), 29);
+      await insertCountedEstimations(accountId, await readEarliestCountedOn(accountId), 14);
       await runEstimationAlarm(accountId);
       await pushSyncWrites(sessionToken, { writes: [deleteMealWrite(startedMealId)] });
       mealId = await recordPhotographedMeal(sessionToken);

@@ -6,6 +6,7 @@ import type { AccountDeletionRetryFailedError } from "../domain/delete-account";
 import { getAccountDurableObject } from "../durable-object/get-account-durable-object";
 import { deleteMealPhotoFilesOfAccount } from "../meal/durable-object/delete-meal-photo-files-of-account";
 import { deletePostHogPerson } from "../observability/delete-posthog-person";
+import { createFreeTrialUsageStore } from "../subscription/d1/create-free-trial-usage-store";
 
 export const createAccountDeletionSteps = (
   env: Env,
@@ -13,6 +14,8 @@ export const createAccountDeletionSteps = (
 ) => {
   const appleRefreshTokens = createAppleRefreshTokenStore(env.DB, env.APPLE_REFRESH_TOKEN_KEYS);
   return {
+    recordFreeTrialUsage: (accountId: string) =>
+      createFreeTrialUsageStore(env.DB, env.APPLE_SUB_HASH_KEYS).record(accountId),
     revokeAppleAuthorization: async (accountId: string) => {
       const refreshToken = await appleRefreshTokens.find(accountId);
       if (refreshToken !== undefined) {

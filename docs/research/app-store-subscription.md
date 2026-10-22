@@ -204,6 +204,22 @@
 - 見つけた側から「同じ内容なのに人によって値段が違う」と受け取られると、5.6 の「manipulative practices」や 3.1.2(a) の bait-and-switch の議論になりうる。商品ごとに表示名と説明を分け、どの商品も課金画面に出したときに価格・期間・内容が正しく書かれているようにしておくのが無難。審査に出す商品のうち審査の人に見えないものは、2.1(b) に従って理由を審査メモに書く。
 - Apple 自身の価格の A/B テストの機能（App Store Connect の中のもの）は、今回読んだ App Store Connect ヘルプのサブスクのページの目次には見当たらなかった（商品ページの A/B テスト「Product Page Optimization」はある）。
 
+## 追記: App Store の署名つきの値（2026-10-21）
+
+仕様 #647 の「App Store の署名」を実装するときに読んだ（#668）。読み方は冒頭の「確認の方法と限界」と同じ。
+
+**使う項目**（本文で確認【AP16】【AP17】。時刻はどれも UNIX 時刻のミリ秒）:
+- 通知の本文: `notificationUUID`（重複を見分けて捨てるための ID）、`notificationType`、`subtype`（特定の種類にだけある）、`signedDate`（App Store が署名した時刻。「This timestamp remains the same if the system resends the notification during a retry.」）、`data`（`bundleId`・`environment`・`signedTransactionInfo`・`signedRenewalInfo` を持つ。`data`・`appData`・`summary`・`externalPurchaseToken` はどれか1つだけ）
+- 取引: `transactionId`・`originalTransactionId`・`productId`・`purchaseDate`・`expiresDate`・`appAccountToken`・`revocationDate`・`environment`・`transactionReason`（`PURCHASE` か `RENEWAL`）・`bundleId`。`appAccountToken` は、アプリが購入のときに渡したときだけ返る（「you can optionally generate an app account token」）
+- 更新の情報: `gracePeriodExpiresDate`
+- 署名の鎖: どの値も JWS で、ヘッダの `x5c` に鎖が載る【AP17】。Apple のサーバーのライブラリは、`x5c` が3つであること、中間の証明書が差し込んだ根で署名されていること、署名の証明書が中間で署名されていること、中間が CA であること、中間の印（OID 1.2.840.113635.100.6.2.1）と署名の証明書の印（OID 1.2.840.113635.100.6.11.1）を確かめ、オンラインの確かめをしないときは値の `signedDate` の時点で3つの証明書の有効期限を見る【AP19】。根は Apple Root CA - G3 で、SHA-256 の指紋は `63 34 3A BF B8 9A 6A 03 EB B5 7E 9B 3F 5F A7 BE 7C 4F 5C 75 6F 30 17 B3 A8 C4 88 C3 65 3E 91 79`【AP20】
+
+**送り直しの決まり**（本文で確認【AP15】）: 「Send HTTP 200, or any HTTP code between 200 and 206, if the post was successful.」。成功を受け取れなければ、V2 の通知は「at 1, 12, 24, 48, and 72 hours after the previous attempt」に5回送り直す。「Retry notifications are available only in the production environment. In the sandbox environment, the App Store server attempts to send the notification one time.」
+
+**環境の値**: 文書の `environment` は `Sandbox` と `Production` だけを挙げる（本文で確認【AP16】【AP17】）。Xcode の StoreKit のテストの取引は、StoreKit の文書に `xcode` の環境としてある【AP18】。Apple のサーバーのライブラリは `Xcode` と `LocalTesting` も環境の値に持ち、この2つは App Store が署名しないので鎖を確かめないと書く【AP19】（文書の本文には `LocalTesting` の記述なし）。
+
+**`REFUND_REVERSED` の取引の `revocationDate`**: 本文を探したが記述なし。`notificationType` の `REFUND_REVERSED` は「If your app revoked content or services as a result of the related refund, it needs to reinstate them.」と書くだけで、`revocationDate` は「The UNIX time, in milliseconds, that the App Store refunded the transaction or revoked it from Family Sharing.」とだけある【AP10】【AP17】。戻したあとの取引に `revocationDate` が残るかは分からない。
+
 ## 関連して見つけたこと
 
 - **日本の消費税**: 日本に住む開発者の日本向けの販売では、消費税の申告と納付は開発者の責任で、iTunes KK の手数料には消費税が含まれる（DPLA Exhibit B 6(A)、本文で確認【AP2】）。
@@ -254,3 +270,9 @@
 - AP12: Testing at all stages of development with Xcode and the sandbox — https://developer.apple.com/documentation/storekit/testing-at-all-stages-of-development-with-xcode-and-the-sandbox
 - AP13: Validating receipts with the App Store（`verifyReceipt` は非推奨） — https://developer.apple.com/documentation/storekit/validating-receipts-with-the-app-store
 - AP14: showManageSubscriptions(in:) — https://developer.apple.com/documentation/storekit/appstore/showmanagesubscriptions(in:)
+- AP15: Responding to App Store Server Notifications — https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications
+- AP16: 通知の本文の項目 — responseBodyV2DecodedPayload https://developer.apple.com/documentation/appstoreservernotifications/responsebodyv2decodedpayload 、notificationUUID https://developer.apple.com/documentation/appstoreservernotifications/notificationuuid 、signedDate https://developer.apple.com/documentation/appstoreservernotifications/signeddate
+- AP17: 取引と更新の情報の項目 — JWSTransactionDecodedPayload https://developer.apple.com/documentation/appstoreserverapi/jwstransactiondecodedpayload 、JWSRenewalInfoDecodedPayload https://developer.apple.com/documentation/appstoreserverapi/jwsrenewalinfodecodedpayload 、appAccountToken https://developer.apple.com/documentation/appstoreserverapi/appaccounttoken 、revocationDate https://developer.apple.com/documentation/appstoreserverapi/revocationdate 、transactionReason https://developer.apple.com/documentation/appstoreserverapi/transactionreason 、gracePeriodExpiresDate https://developer.apple.com/documentation/appstoreserverapi/graceperiodexpiresdate 、environment https://developer.apple.com/documentation/appstoreserverapi/environment 、JWSDecodedHeader https://developer.apple.com/documentation/appstoreserverapi/jwsdecodedheader
+- AP18: StoreKit の AppStore.Environment.xcode — https://developer.apple.com/documentation/storekit/appstore/environment/xcode
+- AP19: Apple の app-store-server-library（Node）の `models/Environment.ts` と `jws_verification.ts` — https://github.com/apple/app-store-server-library-node
+- AP20: Apple PKI（Apple Root CA - G3 の証明書と指紋） — https://www.apple.com/certificateauthority/

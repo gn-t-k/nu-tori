@@ -9,7 +9,7 @@ import Synchronization
 ///
 /// 作り方は、答え方ごとに `ok`（どの要求にも同じ答え）、`sync`（同期の書き込みと取得）、
 /// `account`（サインインと削除）、`mealPhotos`（縮小版を取りに行く）、`goalSetup`（目標の設定の要求に、テストが決めた答えを返す）、
-/// `error`（投げる）の6つ
+/// `termsAgreement`（規約の同意が要るかと同意）、`subscription`（購入者のトークンと取引の知らせ）、`error`（投げる）の8つ
 public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     /// 目標の設定の要求は、答えを待つあいだに次の要求が重なるので、鍵で守る
     public var requests: [(request: HTTPRequest, body: String?)] {
@@ -201,6 +201,59 @@ public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
             let answer = try await respond(endpoint, body ?? "")
             guard let json = answer.json else { return (HTTPResponse(status: answer.status), nil) }
             return jsonResponse(status: answer.status, json: json)
+        }
+    }
+
+    /// 規約の同意が要るかを問う要求に `agreementRequired` と `termsVersion` で、同意する要求に `agreeStatus` で答える。
+    /// `reachable` が false を返すあいだは、電波が無いときのエラーを投げる
+    public static func termsAgreement(
+        agreementRequired: Bool,
+        termsVersion: String,
+        agreeStatus: HTTPResponse.Status = .noContent,
+        reachable: @escaping @Sendable () -> Bool = { true }
+    ) -> ClientTransportMock {
+        ClientTransportMock { request, _ in
+            guard reachable() else { throw URLError(.notConnectedToInternet) }
+            switch request.path ?? "" {
+            case "/v1/terms-agreement":
+                return jsonResponse(
+                    status: .ok,
+                    json:
+                        #"{"agreementRequired":\#(agreementRequired),"termsVersion":"\#(termsVersion)"}"#
+                )
+            case "/v1/terms-agreements":
+                return (HTTPResponse(status: agreeStatus), nil)
+            // swiftlint:disable:next no_default_in_switch - パスは文字列で、差し替えが持たない経路が来る
+            default:
+                return (HTTPResponse(status: .notFound), nil)
+            }
+        }
+    }
+
+    /// 購入者のトークンを求める要求に `appAccountToken` で、取引を知らせる要求に `report` が返す状態コードと本文の JSON で答える。
+    /// `report` は送った本文を受け取る。投げれば、つながらなかったことにする
+    public static func subscription(
+        appAccountToken: String = "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b",
+        report:
+            @escaping @Sendable (_ body: String) async throws -> (
+                status: HTTPResponse.Status, json: String?
+            )
+    ) -> ClientTransportMock {
+        ClientTransportMock { request, body in
+            switch request.path ?? "" {
+            case "/v1/app-account-token":
+                return jsonResponse(
+                    status: .ok, json: #"{"appAccountToken":"\#(appAccountToken)"}"#)
+            case "/v1/subscription-transactions":
+                let answer = try await report(body ?? "")
+                guard let json = answer.json else {
+                    return (HTTPResponse(status: answer.status), nil)
+                }
+                return jsonResponse(status: answer.status, json: json)
+            // swiftlint:disable:next no_default_in_switch - パスは文字列で、差し替えが持たない経路が来る
+            default:
+                return (HTTPResponse(status: .notFound), nil)
+            }
         }
     }
 

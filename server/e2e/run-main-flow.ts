@@ -16,36 +16,103 @@ import { replyStreamEventSchema } from "../src/http/reply-stream-routes/reply-st
 const conversationTextBody = "今日はよく歩いたので、少し脚が疲れた";
 
 // 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから目標を決めて1日の目安が届くこと、週の見直し、写真と文章の食事の推定、会話の文章への返事、アカウントの削除までを通す。
+// そのあと、無料体験の終わったアカウントで、写真の食事の推定がサブスクリプションを待っているになることを確かめる。
 // 失敗したら、どの段で何が起きたかを書いて投げる。サインインしたあとは、失敗してもアカウントを消してから投げる
 export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
   const session = await signIn(options);
   options.log("サインインした");
+  await withAccountDeletion(options, session, () => runFreeTrialFlow(options, session));
+  options.log("アカウントを削除した");
+  await requireSessionRevoked(options, session);
+
+  // 課金を入れた日（開発用の BILLING_STARTED_ON）が30日より前なら、使い始めた日を30日より前にすると無料体験が終わる
+  const expiredSession = await signIn(
+    options,
+    new Date(Date.now() - expiredAccountAgeDays * millisecondsPerDay),
+  );
+  options.log(`${expiredAccountAgeDays}日前に使い始めたことにしてサインインした`);
+  await withAccountDeletion(options, expiredSession, () =>
+    runExpiredFreeTrialFlow(options, expiredSession),
+  );
+  options.log("無料体験の終わったアカウントを削除した");
+};
+
+const expiredAccountAgeDays = 60;
+
+const runFreeTrialFlow = async (options: MainFlowOptions, session: Session): Promise<void> => {
+  const freeTrialLastDay = await readFreeTrialLastDay(options, session);
+  if (freeTrialLastDay === undefined || freeTrialLastDay < computeTodayOfStartedOn()) {
+    throw new Error(
+      `作ったばかりのアカウントが無料体験中でない（最後の日: ${freeTrialLastDay ?? "なし"}）`,
+    );
+  }
+  options.log("無料体験中のアカウントだった");
   // 新しいアカウントは前の週を持たないので、体重を量って目標を決めたのを 7 日前にする。
   // 開始の日が前の週に入り、今週の月曜の週がまだ見直していない週になる
   const goalDecidedAt = new Date(Date.now() - 7 * millisecondsPerDay);
-  try {
-    await recordWeight(options, session, new Date(goalDecidedAt.getTime() - 60_000));
-    options.log("7日前の体重を記録した");
-    const goalId = await decideGoal(options, session, goalDecidedAt);
-    await requirePulledWeeklyReview(options, session, goalId);
-    const mealId = await sendPhotographedMeal(options, session);
-    options.log("写真の食事を送った");
-    const { dishIds, ingredientCount } = await waitForEstimation(options, session, mealId);
-    options.log(`推定できた（料理 ${dishIds.length}、材料 ${ingredientCount}）`);
-    await renameEstimatedDish(options, session, dishIds[0]);
-    options.log("推定でできた料理の名前を直した");
-    const mealTextId = await sendText(options, session, mealTextBody);
-    options.log("食事の文章を送った");
-    const writtenMeal = await waitForWrittenMealEstimation(options, session, mealTextId);
-    options.log(
-      `文章の食事が推定できた（料理 ${writtenMeal.dishIds.length}、材料 ${writtenMeal.ingredientCount}）`,
+  await recordWeight(options, session, new Date(goalDecidedAt.getTime() - 60_000));
+  options.log("7日前の体重を記録した");
+  const goalId = await decideGoal(options, session, goalDecidedAt);
+  await requirePulledWeeklyReview(options, session, goalId);
+  const mealId = await sendPhotographedMeal(options, session);
+  options.log("写真の食事を送った");
+  const { dishIds, ingredientCount } = await waitForEstimation(options, session, mealId);
+  options.log(`推定できた（料理 ${dishIds.length}、材料 ${ingredientCount}）`);
+  await renameEstimatedDish(options, session, dishIds[0]);
+  options.log("推定でできた料理の名前を直した");
+  const mealTextId = await sendText(options, session, mealTextBody);
+  options.log("食事の文章を送った");
+  const writtenMeal = await waitForWrittenMealEstimation(options, session, mealTextId);
+  options.log(
+    `文章の食事が推定できた（料理 ${writtenMeal.dishIds.length}、材料 ${writtenMeal.ingredientCount}）`,
+  );
+  const conversationTextId = await sendText(options, session, conversationTextBody);
+  options.log("会話の文章を送った");
+  const streamedReply = await watchReply(options, session, conversationTextId);
+  options.log(`見守る要求で返事が届いた（流れた分 ${streamedReply.textDeltaCount}）`);
+  await requirePulledReply(options, session, conversationTextId, streamedReply);
+  options.log("取りに行くで返事が届いた");
+};
+
+// 無料体験の終わったアカウントで撮った食事は、推定を始めず、推定の状態がサブスクリプションを待っているになる
+const runExpiredFreeTrialFlow = async (
+  options: MainFlowOptions,
+  session: Session,
+): Promise<void> => {
+  const freeTrialLastDay = await readFreeTrialLastDay(options, session);
+  if (freeTrialLastDay === undefined || freeTrialLastDay >= computeTodayOfStartedOn()) {
+    throw new Error(
+      `${expiredAccountAgeDays}日前に使い始めたことにしても、無料体験が終わっていない（開発用の BILLING_STARTED_ON を30日より前の日にする。最後の日: ${freeTrialLastDay ?? "なし"}）`,
     );
-    const conversationTextId = await sendText(options, session, conversationTextBody);
-    options.log("会話の文章を送った");
-    const streamedReply = await watchReply(options, session, conversationTextId);
-    options.log(`見守る要求で返事が届いた（流れた分 ${streamedReply.textDeltaCount}）`);
-    await requirePulledReply(options, session, conversationTextId, streamedReply);
-    options.log("取りに行くで返事が届いた");
+  }
+  options.log("無料体験の終わったアカウントだった");
+  const mealId = await sendPhotographedMeal(options, session);
+  options.log("無料体験の終わったアカウントで写真の食事を送った");
+  await waitForChanges(options, session, {
+    goal: "サブスクリプションを待っている",
+    timeoutMs: options.estimationTimeoutMs,
+    inspect: (changes): Inspection<undefined> => {
+      const status = findEstimationStatus(changes, mealId) ?? "未取得";
+      if (status === "awaiting_subscription") {
+        return { done: undefined };
+      }
+      if (status !== "awaiting_photos" && status !== "estimating") {
+        throw new Error(`サブスクリプションを待っているにならず、${status} で終わった`);
+      }
+      return { waiting: status };
+    },
+  });
+  options.log("推定がサブスクリプションを待っているになった");
+};
+
+// サインインしたあとの流れが失敗しても、アカウントを消してから投げる
+const withAccountDeletion = async (
+  options: MainFlowOptions,
+  session: Session,
+  flow: () => Promise<void>,
+): Promise<void> => {
+  try {
+    await flow();
   } catch (error) {
     await deleteAccount(options, session).catch((deletionError: unknown) => {
       options.log(`アカウントの削除にも失敗した: ${describeError(deletionError)}`);
@@ -53,7 +120,9 @@ export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
     throw error;
   }
   await deleteAccount(options, session);
-  options.log("アカウントを削除した");
+};
+
+const requireSessionRevoked = async (options: MainFlowOptions, session: Session) => {
   const afterDeletion = await callApi(options, session, "GET", syncChangesPath(0));
   if (afterDeletion.status !== 401) {
     throw new Error(
@@ -62,10 +131,46 @@ export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
   }
 };
 
-const signIn = async (options: MainFlowOptions): Promise<Session> => {
+// サブスクリプションの状態の記録から、無料体験の最後の日を読む。無料体験が無ければ undefined。
+// テストユーザーは無料体験によらず使えるので、確かめに使えない
+const readFreeTrialLastDay = async (
+  options: MainFlowOptions,
+  session: Session,
+): Promise<string | undefined> => {
+  const record = (await pullAllChanges(options, session))
+    .filter(({ kind }) => kind === "subscription_status")
+    .at(-1)?.record;
+  if (record === undefined) {
+    throw new Error("サブスクリプションの状態の記録が、取りに行く応答に無い");
+  }
+  const status = z
+    .discriminatedUnion("type", [
+      z.object({ type: z.literal("test_user") }),
+      z.object({
+        type: z.literal("regular"),
+        freeTrial: z.object({ type: z.string(), lastDay: z.string().optional() }),
+      }),
+    ])
+    .parse(record);
+  if (status.type === "test_user") {
+    throw new Error("サインインしたアカウントがテストユーザーになっている");
+  }
+  return status.freeTrial.lastDay;
+};
+
+// 確かめのサインインはタイムゾーンを送らないので、使い始めた日と無料体験の最後の日は UTC の日付で数えられる
+const computeTodayOfStartedOn = (): string => computeCalendarDayInTimeZone(new Date(), "UTC");
+
+// signedInAt を渡すと、その時刻にサインインしたことにする（使い始めた日がその日になる）
+const signIn = async (options: MainFlowOptions, signedInAt?: Date): Promise<Session> => {
   const response = await options.send(`${options.baseUrl}/v1/e2e/sessions`, {
     method: "POST",
-    headers: { "x-e2e-sign-in-secret": options.signInSecret },
+    headers: {
+      [e2eRequestHeaders.signInSecret]: options.signInSecret,
+      ...(signedInAt === undefined
+        ? {}
+        : { [e2eRequestHeaders.requestedAt]: signedInAt.toISOString() }),
+    },
   });
   if (response.status === 404) {
     throw new Error("サインインの口が閉じている（開発用の Worker に E2E_SIGN_IN_SECRET を置く）");

@@ -18,6 +18,7 @@ enum RecordKindWireCodings {
         case .notice: NoticeWireCoding()
         case .sentText: SentTextWireCoding()
         case .sentTextStatus: SentTextStatusWireCoding()
+        case .subscriptionStatus: SubscriptionStatusWireCoding()
         case .usualWeighingTime: UsualWeighingTimeWireCoding()
         case .weeklyReview: WeeklyReviewWireCoding()
         case .weightRecord: WeightRecordWireCoding()

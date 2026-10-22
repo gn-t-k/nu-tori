@@ -8,6 +8,7 @@ export type EstimationEvents = {
   // 料理が対象の予定（名前を直した・料理を足したときの推定し直し）
   dishSchedule: { id: string; dishId: RecordId; dueAt: Date; countedOn: string };
   deferral: { scheduleId: string; deferredAt: Date };
+  hold: { scheduleId: string; heldAt: Date };
   estimation: { id: string; scheduleId: string; startedAt: Date };
   attempt: { id: string; estimationId: string; attemptedAt: Date };
   // conclusion は、試みの結果のうち書いて残す分（結果と、提供元のエラーと 400 のときのエラーの種類）

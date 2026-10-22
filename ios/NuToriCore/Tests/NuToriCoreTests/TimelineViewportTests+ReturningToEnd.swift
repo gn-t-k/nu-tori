@@ -24,7 +24,8 @@ extension TimelineViewportTests {
                             rejectedLines: [], meals: Array(meals.prefix(added)), notices: [],
                             undelivered: .none,
                             conversation: Timeline.Conversation(
-                                sentTexts: [], statuses: [:], replies: [], streams: [:])),
+                                sentTexts: [], statuses: [:], replies: [], streams: [:]),
+                            subscriptionNotices: []),
                         firstDay: TimelineViewportTests.today, today: TimelineViewportTests.today
                     ).days
                 }
@@ -223,7 +224,8 @@ extension TimelineViewportTests {
                 let timeline = Timeline(
                     input: Timeline.Input(
                         goalRecords: .fixture(), rejectedLines: [], meals: [],
-                        notices: [notice], undelivered: .none, conversation: .none),
+                        notices: [notice], undelivered: .none, conversation: .none,
+                        subscriptionNotices: []),
                     firstDay: TimelineViewportTests.yesterday, today: TimelineViewportTests.today)
                 card = .notice(NoticeCard(notice: notice, form: .awaitingAnswer))
                 viewport = TimelineViewportTests.scrolledAway()
@@ -251,7 +253,8 @@ extension TimelineViewportTests {
                 let timeline = Timeline(
                     input: Timeline.Input(
                         goalRecords: .fixture(), rejectedLines: [], meals: [],
-                        notices: [], undelivered: .none, conversation: .none),
+                        notices: [], undelivered: .none, conversation: .none,
+                        subscriptionNotices: []),
                     firstDay: TimelineViewportTests.yesterday, today: TimelineViewportTests.today)
                 viewport = TimelineViewportTests.scrolledAway()
                 instructions = viewport.reminderOpened(.timelineEnd, in: timeline)

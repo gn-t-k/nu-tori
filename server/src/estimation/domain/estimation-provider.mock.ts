@@ -161,7 +161,7 @@ const identifyDefaultWrittenMeals = (
 
 const defaultReplies: FakeReplies = {
   identifiedDishes: identifyDefaultDishes,
-  identifyDishesUsage: { inputTokens: 1500, outputTokens: 400 },
+  identifyDishesUsage: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
   identifiedWrittenMeals: identifyDefaultWrittenMeals,
   // 候補があれば1つ目を選び、無ければ主な栄養を推定する
   matchIngredients: (request) => ({
@@ -182,6 +182,6 @@ const defaultReplies: FakeReplies = {
         : { source: "food_composition", foodNumber: first.foodNumber };
     }),
   }),
-  matchIngredientsUsage: { inputTokens: 800, outputTokens: 200 },
+  matchIngredientsUsage: { type: "uncached", inputTokens: 800, outputTokens: 200 },
   replyAfter: Promise.resolve(),
 };

@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/durable-sqlite";
 import type { RecordId } from "../../../domain/record-id";
 import { createRecordChangeWriter } from "../../../durable-object/create-record-change-writer";
 import { createRecordKindStores } from "../../../durable-object/create-record-kind-stores";
+import { regularSubscriptionAccount } from "../../../durable-object/testing/regular-subscription-account";
 import { durableObjectTables } from "../../../durable-object/durable-object-tables";
 import { durableObjectFactory } from "../../../durable-object/testing/durable-object-factory";
 import { writeGoalAchievement } from "../../domain/write-goal-achievement";
@@ -23,7 +24,7 @@ export const writeGoalProgressInAccount = (
     const goalId = await seed(
       durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables })),
     );
-    const { goal } = createRecordKindStores(state.storage);
+    const { goal } = createRecordKindStores(state.storage, regularSubscriptionAccount);
     const errors = writes.map((write) => {
       try {
         createRecordChangeWriter(state.storage)(({ addChange }) =>

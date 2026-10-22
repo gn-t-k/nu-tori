@@ -13,6 +13,7 @@
                 capture: { _ in },
                 actions: sample.holdsPhotos ? .noop : .noopWithoutPhotos,
                 returnToTimeline: {},
+                openPaywall: {},
                 rejectedLines: sample.rejectedLines(in: card),
                 confirmsDeletion: sample.confirmsDeletion,
                 confirmsLastDishDeletion: sample.confirmsLastDishDeletion,
@@ -41,6 +42,8 @@
             case noDishes
             /// その日の回数を使い切ったので、明日推定する
             case deferredToNextDay
+            /// サブスクリプション切れのあいだに届いた。理由の下に「サブスクリプションを見る」
+            case awaitingSubscription
             /// 推定できなかった。0 kcal。理由の下に料理を足せることを添える
             case failed
             /// 推定できなかった食事に料理を足し、推定し直している。理由の文に代えて料理の行を出す
@@ -80,6 +83,10 @@
                 case .deferredToNextDay:
                     MealCard(
                         meal: lunch(photoCount: 3), status: .deferredToNextDay,
+                        recordedOnThisDevice: true)
+                case .awaitingSubscription:
+                    MealCard(
+                        meal: lunch(photoCount: 1), status: .awaitingSubscription,
                         recordedOnThisDevice: true)
                 case .failed:
                     MealCard(
@@ -121,7 +128,9 @@
                 switch self {
                 case .awaitingPhotosOnAnotherDevice: false
                 case .notSent, .estimating, .estimated, .estimatedWithoutFoodComposition,
-                    .estimatedBeforeDishesArrive, .noDishes, .deferredToNextDay, .failed,
+                    .estimatedBeforeDishesArrive, .noDishes, .deferredToNextDay,
+                    .awaitingSubscription,
+                    .failed,
                     .failedWithAddedDish, .confirmingDeletion, .confirmingLastDishDeletion,
                     .addingDish, .rejectedDishName:
                     true

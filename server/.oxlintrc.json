@@ -33,10 +33,25 @@
     "nu-tori/japanese-describe-title": "error",
     "nu-tori/filename-matches-export": "error",
     "vitest/require-top-level-describe": "error",
-    "vitest/no-duplicate-hooks": "error"
+    "vitest/no-duplicate-hooks": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@peculiar/x509",
+            "message": "@peculiar/x509 は src/app-store/peculiar-x509.ts から import する。先に reflect-metadata を読み込まないと、読み込んだときに投げる"
+          }
+        ]
+      }
+    ]
   },
   "ignorePatterns": ["worker-configuration.d.ts"],
   "overrides": [
+    {
+      "files": ["src/app-store/peculiar-x509.ts"],
+      "rules": { "no-restricted-imports": "off" }
+    },
     {
       "files": ["**/*.mock.ts"],
       "rules": { "nu-tori/filename-matches-export": "off" }

@@ -91,7 +91,7 @@ describe("Anthropic の推定の提供元", () => {
         );
 
         expect(result).toBeSuccess((reply) => {
-          expect(reply.usage).toEqual({ inputTokens: 1500, outputTokens: 400 });
+          expect(reply.usage).toEqual({ type: "uncached", inputTokens: 1500, outputTokens: 400 });
           expect(reply.output).toEqual({
             dishes: [
               {
@@ -208,7 +208,9 @@ describe("Anthropic の推定の提供元", () => {
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("LlmCallInvalidResponseError");
-          expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
+          expect(error).toMatchObject({
+            usage: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
+          });
         });
       });
     });
@@ -230,7 +232,9 @@ describe("Anthropic の推定の提供元", () => {
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("LlmCallInvalidResponseError");
-          expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
+          expect(error).toMatchObject({
+            usage: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
+          });
         });
       });
     });
@@ -292,7 +296,9 @@ describe("Anthropic の推定の提供元", () => {
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("LlmCallInvalidResponseError");
-          expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
+          expect(error).toMatchObject({
+            usage: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
+          });
         });
       });
     });
@@ -312,7 +318,9 @@ describe("Anthropic の推定の提供元", () => {
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("LlmCallInvalidResponseError");
-          expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
+          expect(error).toMatchObject({
+            usage: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
+          });
         });
       });
     });
@@ -464,7 +472,7 @@ describe("Anthropic の推定の提供元", () => {
         const result = await provider.identifyWrittenMeals(request, neverEnds());
 
         expect(result).toBeSuccess((reply) => {
-          expect(reply.usage).toEqual({ inputTokens: 900, outputTokens: 300 });
+          expect(reply.usage).toEqual({ type: "uncached", inputTokens: 900, outputTokens: 300 });
           expect(
             reply.output.meals.map(({ eatenAt, dishes }) => ({
               eatenAt,
@@ -538,7 +546,9 @@ describe("Anthropic の推定の提供元", () => {
 
         expect(result).toBeFailure((error) => {
           expect(error.name).toBe("LlmCallInvalidResponseError");
-          expect(error).toMatchObject({ usage: { inputTokens: 1500, outputTokens: 400 } });
+          expect(error).toMatchObject({
+            usage: { type: "uncached", inputTokens: 1500, outputTokens: 400 },
+          });
         });
       });
     });
@@ -596,7 +606,7 @@ describe("Anthropic の推定の提供元", () => {
         const result = await provider.matchIngredients(matchRequest, neverEnds());
 
         expect(result).toBeSuccess((reply) => {
-          expect(reply.usage).toEqual({ inputTokens: 800, outputTokens: 200 });
+          expect(reply.usage).toEqual({ type: "uncached", inputTokens: 800, outputTokens: 200 });
           expect(reply.output).toEqual({
             ingredients: [
               { source: "food_composition", foodNumber: "11225" },

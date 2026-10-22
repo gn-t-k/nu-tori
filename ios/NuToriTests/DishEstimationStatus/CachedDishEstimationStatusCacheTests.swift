@@ -20,6 +20,7 @@ struct CachedDishEstimationStatusCacheTests {
         let estimating = Status(dishId: UUID(), status: .estimating)
         let others: Set<Status> = [
             Status(dishId: UUID(), status: .deferredToNextDay),
+            Status(dishId: UUID(), status: .awaitingSubscription),
             Status(dishId: UUID(), status: .estimated),
             Status(dishId: UUID(), status: .noDishes),
             Status(dishId: UUID(), status: .failed),
@@ -71,7 +72,7 @@ struct CachedDishEstimationStatusCacheTests {
                 try cache.upsert(estimated)
 
                 let saved = try cache.savedRecords()
-                #expect(saved.count == 5)
+                #expect(saved.count == others.count + 1)
                 #expect(Set(saved) == others.union([estimated]))
             }
         }

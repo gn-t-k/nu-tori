@@ -9,6 +9,7 @@ const { dishEstimationSchedules } = dishTables;
 const {
   estimationSchedules,
   estimationDeferrals,
+  estimationHolds,
   estimations,
   estimationCompletions,
   estimationAbandonments,
@@ -25,6 +26,7 @@ export const createDishEstimationStatusStore = (
         dueAt: estimationSchedules.dueAt,
         cancellation: estimationScheduleCancellations.estimationScheduleId,
         deferral: estimationDeferrals.estimationScheduleId,
+        hold: estimationHolds.estimationScheduleId,
         estimation: estimations.id,
         completion: estimationCompletions.result,
         abandonment: estimationAbandonments.estimationId,
@@ -42,6 +44,7 @@ export const createDishEstimationStatusStore = (
         estimationDeferrals,
         eq(estimationDeferrals.estimationScheduleId, estimationSchedules.id),
       )
+      .leftJoin(estimationHolds, eq(estimationHolds.estimationScheduleId, estimationSchedules.id))
       .leftJoin(estimations, eq(estimations.estimationScheduleId, estimationSchedules.id))
       .leftJoin(estimationCompletions, eq(estimationCompletions.estimationId, estimations.id))
       .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
@@ -55,6 +58,7 @@ const toSchedule = ({
   dueAt,
   cancellation,
   deferral,
+  hold,
   estimation,
   completion,
   abandonment,
@@ -63,6 +67,7 @@ const toSchedule = ({
   dueAt: Date;
   cancellation: string | null;
   deferral: string | null;
+  hold: string | null;
   estimation: string | null;
   completion: "estimated" | "no_dishes" | null;
   abandonment: string | null;
@@ -73,6 +78,9 @@ const toSchedule = ({
   }
   if (deferral !== null) {
     return { ...schedule, progress: "deferred" };
+  }
+  if (hold !== null) {
+    return { ...schedule, progress: "held" };
   }
   if (estimation === null) {
     return { ...schedule, progress: "waiting" };

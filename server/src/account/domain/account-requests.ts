@@ -15,6 +15,19 @@ import { judgeGoalProgress } from "../../goal/domain/judge-goal-progress";
 import { previewGoalSetup } from "../../goal/domain/preview-goal-setup";
 import { proposeGoals } from "../../goal/domain/propose-goals";
 import { readKeptMealPhoto } from "../../meal/domain/read-kept-meal-photo";
+import {
+  type ReportedRecord,
+  reportSubscriptionTransaction,
+  type SubscriptionTransactionReport,
+} from "../../subscription/domain/report-subscription-transaction";
+import {
+  type AppStoreServerNotificationReceipt,
+  type AppStoreServerNotificationResult,
+  receiveAppStoreServerNotification,
+} from "../../subscription/domain/receive-app-store-server-notification";
+import { agreeToTerms } from "../../terms-agreement/domain/agree-to-terms";
+import { findTermsAgreementRequirement } from "../../terms-agreement/domain/find-terms-agreement-requirement";
+import { recordSignInTermsAgreement } from "../../terms-agreement/domain/record-sign-in-terms-agreement";
 import { reviewUnreviewedWeeks } from "../../weekly-review/domain/review-unreviewed-weeks";
 import type { AccountResponse, LoggedAccountResponse } from "./account-response";
 import type { AccountStores } from "./account-stores";
@@ -22,12 +35,14 @@ import type { AccountStores } from "./account-stores";
 // アカウントの Durable Object の受け口とアラームの、要求ごとの処理。
 // どれも、張り直すアラームの時刻と、起きた利用状況の出来事を一緒に返す（送るかどうかは Durable Object が送る前に決める）
 export const accountRequests = {
+  // サインインのたびに呼ぶ。サインインの画面で見せた規約の版への同意も、ここで残す
   recordFirstSignIn: (
-    stores: Pick<AccountStores, "firstSignIn">,
-    signIn: { signedInAt: Date; timeZone: string | undefined },
+    stores: Pick<AccountStores, "firstSignIn" | "writeRecordChanges" | "termsAgreement">,
+    signIn: Parameters<typeof recordFirstSignIn>[2] & { agreedTermsVersion: string | undefined },
   ): AccountResponse<void> => {
-    recordFirstSignIn(stores.firstSignIn, signIn);
-    return respond(undefined);
+    const usageEvents = recordFirstSignIn(stores.writeRecordChanges, stores.firstSignIn, signIn);
+    recordSignInTermsAgreement(stores.termsAgreement, signIn);
+    return { ...respond(undefined), usageEvents };
   },
 
   // 送り待ちを送り切った印のある要求だけ、送った記録を当ててから、目標の経過とまだ見直していない週を見る
@@ -146,6 +161,50 @@ export const accountRequests = {
       ],
       requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
     } satisfies LoggedAccountResponse<unknown>;
+  },
+
+  // 規約への同意は同期の外の要求で、同期の記録は変えない
+  findTermsAgreementRequirement: (stores: Pick<AccountStores, "termsAgreement">) =>
+    respond(findTermsAgreementRequirement(stores.termsAgreement)),
+
+  agreeToTerms: (
+    stores: Pick<AccountStores, "termsAgreement">,
+    request: Parameters<typeof agreeToTerms>[1],
+    now: Date,
+  ) => respond(agreeToTerms(stores.termsAgreement, request, now)),
+
+  // 端末からの取引の知らせ。書いたらサブスクリプションの終わりと再開した推定の時刻が変わるので、アラームを張り直す
+  reportSubscriptionTransaction: (
+    stores: Pick<AccountStores, "writeRecordChanges" | "records" | "subscriptionTransaction">,
+    report: SubscriptionTransactionReport,
+    now: Date,
+  ): AccountResponse<ReportedRecord[]> => {
+    const { records, usageEvents } = reportSubscriptionTransaction(
+      stores.writeRecordChanges,
+      stores,
+      report,
+      now,
+    );
+    return {
+      result: records,
+      nextAlarmAt: computeNextAlarmAt(stores.records, now),
+      usageEvents,
+    };
+  },
+
+  // App Store のサーバー通知。案内は受け口が D1 で決めてから呼ぶ
+  receiveAppStoreServerNotification: (
+    stores: Pick<AccountStores, "writeRecordChanges" | "records" | "subscriptionTransaction">,
+    notification: AppStoreServerNotificationReceipt,
+    now: Date,
+  ): AccountResponse<AppStoreServerNotificationResult> => {
+    const { result, usageEvents } = receiveAppStoreServerNotification(
+      stores.writeRecordChanges,
+      stores,
+      notification,
+      now,
+    );
+    return { result, nextAlarmAt: computeNextAlarmAt(stores.records, now), usageEvents };
   },
 
   deleteRecords: async (

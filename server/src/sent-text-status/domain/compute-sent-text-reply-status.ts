@@ -24,7 +24,7 @@ export const computeSentTextReplyStatus = (
   }
   return match(lastEnded)
     .returnType<SentTextReplyStatus>()
-    .with({ progress: "halted" }, () => ({ type: "halted" }))
+    .with({ progress: "halted" }, ({ reason }) => ({ type: "halted", reason }))
     .with({ progress: "abandoned" }, ({ lastAttemptResult }) => ({
       type: "failed",
       reason: computeReplyFailureReason(lastAttemptResult),

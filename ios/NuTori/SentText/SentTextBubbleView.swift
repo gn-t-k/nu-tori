@@ -10,9 +10,8 @@ struct SentTextBubbleView: View {
     let bubble: SentTextBubble
     /// まだ届いていない文章。吹き出しを薄く描く
     let isUndelivered: Bool
-    let resend: (ClientUsageEvent.ReplyRegenerateReason) -> Void
-    /// 押しても確かめず、その文章の食事がすべて消える
-    let resendAsConversation: () -> Void
+    /// 「送り直す」と「会話として送り直す」
+    let regeneration: Regeneration
     /// つないだ食事のうち、まだ届いていないもの。その行を薄く描く
     let isMealUndelivered: (MealCard) -> Bool
     /// つないだ食事の行を押した。その食事の画面へ潜る
@@ -35,12 +34,14 @@ struct SentTextBubbleView: View {
                 .modifier(BubbleWidth())
             } else {
                 joinedMeals
-                Button("会話として送り直す", action: resendAsConversation)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-                    .accessibilityIdentifier("resend-as-conversation")
+                if case .available(_, let resendAsConversation) = regeneration {
+                    Button("会話として送り直す", action: resendAsConversation)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                        .accessibilityIdentifier("resend-as-conversation")
+                }
             }
             if let rejected = bubble.rejectedLine {
                 RejectedLineText(text: rejected.text, subject: .sentText)
@@ -49,6 +50,16 @@ struct SentTextBubbleView: View {
                 replyLine(line)
             }
         }
+    }
+
+    /// 返事を作り直す操作を出すか
+    enum Regeneration {
+        /// resendAsConversation は、押しても確かめず、その文章の食事がすべて消える
+        case available(
+            resend: (ClientUsageEvent.ReplyRegenerateReason) -> Void,
+            resendAsConversation: () -> Void)
+        /// サブスクリプション切れのあいだ。送り直しても返事を作らずに止まり、会話として送り直すと食事だけが消えるので出さない
+        case unavailable
     }
 
     /// 長押しのメニューで「テキストを選択」を選んでから、選び終えるまで
@@ -135,31 +146,34 @@ struct SentTextBubbleView: View {
             .accessibilityIdentifier("reply-reading")
         case .halted, .failed:
             // 添える理由は Core の resendReason の1か所で決める（この2つの場合はいつもある）
-            if let reason = line.resendReason {
-                resendLine(line.text, reason: reason)
+            if let reason = line.resendReason, case .available(let resend, _) = regeneration {
+                resendLine(line.text) { resend(reason) }
+            } else {
+                failedLineText(line.text)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
     }
 
-    private func resendLine(_ text: String, reason: ClientUsageEvent.ReplyRegenerateReason)
-        -> some View
-    {
+    private func resendLine(_ text: String, resend: @escaping () -> Void) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(text)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.trailing)
-                .accessibilityIdentifier("reply-failed-line")
-            Button("送り直す") {
-                resend(reason)
-            }
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-            .accessibilityIdentifier("reply-resend")
+            failedLineText(text)
+            Button("送り直す", action: resend)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+                .accessibilityIdentifier("reply-resend")
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
+    private func failedLineText(_ text: String) -> some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.trailing)
+            .accessibilityIdentifier("reply-failed-line")
     }
 }
 

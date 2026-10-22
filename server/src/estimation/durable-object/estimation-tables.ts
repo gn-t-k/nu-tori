@@ -43,6 +43,14 @@ const estimationDeferrals = sqliteTable("estimation_deferrals", {
   deferredAt: integer("deferred_at", { mode: "timestamp_ms" }).notNull(),
 });
 
+// 推定の保留。推定を始めるときにサブスクリプション切れだった予定（#647）。買ったら、同じ対象の新しい予定を足して再開する
+const estimationHolds = sqliteTable("estimation_holds", {
+  estimationScheduleId: text("estimation_schedule_id")
+    .primaryKey()
+    .references(() => estimationSchedules.id),
+  heldAt: integer("held_at", { mode: "timestamp_ms" }).notNull(),
+});
+
 const estimations = sqliteTable(
   "estimations",
   {
@@ -113,11 +121,12 @@ const estimationScheduleCancellations = sqliteTable("estimation_schedule_cancell
     .references(() => syncLedgerTables.syncWriteReceipts.id),
 });
 
-// 推定の出来事の表（予定・推定・見送り・試み・結果・完了・断念・取り消し）。INSERT だけで持つ。宣言は durable-object-migrations/ の SQL に合わせる
+// 推定の出来事の表（予定・推定・見送り・保留・試み・結果・完了・断念・取り消し）。INSERT だけで持つ。宣言は durable-object-migrations/ の SQL に合わせる
 export const estimationTables = {
   estimationSchedules,
   mealEstimationSchedules,
   estimationDeferrals,
+  estimationHolds,
   estimations,
   estimationAttempts,
   estimationAttemptResults,

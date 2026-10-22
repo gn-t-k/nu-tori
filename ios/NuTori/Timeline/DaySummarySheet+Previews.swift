@@ -123,7 +123,8 @@
                             .sampleEstimated(.sample(on: yesterday, at: 12, 10)),
                             .sampleEstimated(.sample(on: yesterday, at: 19, 30)),
                             .sampleEstimated(.sample(on: .sampleToday, at: 7, 40)),
-                        ], notices: [], undelivered: .none, conversation: .none),
+                        ], notices: [], undelivered: .none, conversation: .none,
+                        subscriptionNotices: []),
                     firstDay: startedDay,
                     today: .sampleToday)
             }
@@ -161,7 +162,8 @@
                             meal: .sample(on: Self.day(of: .foodUnavailableWithPending), at: 19, 0),
                             status: .deferredToNextDay, recordedOnThisDevice: true),
                         .sampleBlackCoffee(.sample(on: Self.day(of: .foodWithoutMacros), at: 9, 0)),
-                    ], notices: [], undelivered: .none, conversation: .none),
+                    ], notices: [], undelivered: .none, conversation: .none, subscriptionNotices: []
+                ),
                 firstDay: startedDay,
                 today: .sampleToday
             )

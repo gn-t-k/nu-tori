@@ -41,7 +41,7 @@ public struct DishContents: Hashable, Sendable {
     /// 食事の合計に足す分。待っている料理は nil。材料の無い料理（通らなかった料理）は、すべての栄養が分かる 0
     var knownTotals: NutrientTotals? {
         switch progress {
-        case .notSent, .estimating, .deferredToNextDay: nil
+        case .notSent, .estimating, .deferredToNextDay, .awaitingSubscription: nil
         case .unestimable: .knownZero
         case .settled: ingredients.isEmpty ? .knownZero : totals
         }

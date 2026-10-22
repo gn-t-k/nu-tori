@@ -14,12 +14,17 @@ import { createReplyStore } from "../reply/durable-object/create-reply-store";
 import { createEventWriteStores } from "./create-event-write-stores";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
 import { createLatestTimeZoneStore } from "./create-latest-time-zone-store";
+import { createSubscriptionStatusStore } from "../subscription-status/durable-object/create-subscription-status-store";
 import { createUsualWeighingTimeStore } from "../usual-weighing-time/durable-object/create-usual-weighing-time-store";
 import { createWeeklyReviewStore } from "../weekly-review/durable-object/create-weekly-review-store";
 import { createWeightRecordStore } from "../weight-record/durable-object/create-weight-record-store";
 
-// 登録簿の種類の置き場を作る。種類のまとまりの durable-object/ にある実装を、名前の順に1行ずつ足す
-export const createRecordKindStores = (storage: DurableObjectStorage): RecordKindStores => {
+// 登録簿の種類の置き場を作る。種類のまとまりの durable-object/ にある実装を、名前の順に1行ずつ足す。
+// サブスクリプションの状態は、Durable Object の外の事実（D1 のテストユーザーの旗、環境ごとの課金を入れた日）も読むので、呼ぶ側が渡す
+export const createRecordKindStores = (
+  storage: DurableObjectStorage,
+  account: Parameters<typeof createSubscriptionStatusStore>[1],
+): RecordKindStores => {
   const db = drizzle(storage);
   const {
     meal,
@@ -47,6 +52,7 @@ export const createRecordKindStores = (storage: DurableObjectStorage): RecordKin
     notice: createNoticeStore(db),
     sentText,
     sentTextStatus,
+    subscriptionStatus: createSubscriptionStatusStore(db, account),
     usualWeighingTime: createUsualWeighingTimeStore(db),
     weeklyReview: createWeeklyReviewStore(db),
     weightRecord: createWeightRecordStore(db),

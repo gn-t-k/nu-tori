@@ -7,6 +7,7 @@
             Spacer()
             TimelineComposer(
                 weightRecordedToday: sample.weightRecordedToday,
+                requiresSubscription: sample.requiresSubscription,
                 expandsGoalSetup: sample.expandsGoalSetup,
                 preparingWeightEntry: sample.preparingWeightEntry,
                 showsCameraNotice: sample.showsCameraNotice,
@@ -15,7 +16,8 @@
                 onPickPhotos: {},
                 onWeight: {},
                 onPresetTapped: { _ in },
-                onSendText: { _ in }
+                onSendText: { _ in },
+                onOpenPaywall: {}
             )
         }
         .background(Color(.systemGroupedBackground))
@@ -43,11 +45,25 @@
             case overLimit
             /// 今日の体重がまだで、目標を立てる知らせのカードを広げている。体重は灰色の丸
             case goalSetupExpanded
+            /// サブスクリプション切れ。撮る・写真・書く欄を押せず、上にチップ。体重はいつもどおり
+            case subscriptionExpired
+            /// 書いている途中で日が変わり、サブスクリプションが切れた。下書きは残るが「送る」も押せない
+            case subscriptionExpiredWhileWriting
+
+            var requiresSubscription: Bool {
+                switch self {
+                case .subscriptionExpired, .subscriptionExpiredWhileWriting: true
+                case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
+                    .cameraNotPermitted, .writing, .presetInserted, .onlyWhitespace, .nearLimit,
+                    .overLimit, .goalSetupExpanded:
+                    false
+                }
+            }
 
             var weightRecordedToday: Bool {
                 switch self {
                 case .weightUnrecorded, .preparingWeightEntry, .writing, .overLimit,
-                    .goalSetupExpanded:
+                    .goalSetupExpanded, .subscriptionExpired, .subscriptionExpiredWhileWriting:
                     false
                 case .weightRecorded, .cameraNotPermitted, .presetInserted, .onlyWhitespace,
                     .nearLimit:
@@ -59,7 +75,8 @@
                 switch self {
                 case .preparingWeightEntry: true
                 case .weightUnrecorded, .weightRecorded, .cameraNotPermitted, .writing,
-                    .presetInserted, .onlyWhitespace, .nearLimit, .overLimit, .goalSetupExpanded:
+                    .presetInserted, .onlyWhitespace, .nearLimit, .overLimit, .goalSetupExpanded,
+                    .subscriptionExpired, .subscriptionExpiredWhileWriting:
                     false
                 }
             }
@@ -69,7 +86,7 @@
                 case .goalSetupExpanded: true
                 case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
                     .cameraNotPermitted, .writing, .presetInserted, .onlyWhitespace, .nearLimit,
-                    .overLimit:
+                    .overLimit, .subscriptionExpired, .subscriptionExpiredWhileWriting:
                     false
                 }
             }
@@ -78,7 +95,8 @@
                 switch self {
                 case .cameraNotPermitted: true
                 case .weightUnrecorded, .weightRecorded, .preparingWeightEntry, .writing,
-                    .presetInserted, .onlyWhitespace, .nearLimit, .overLimit, .goalSetupExpanded:
+                    .presetInserted, .onlyWhitespace, .nearLimit, .overLimit, .goalSetupExpanded,
+                    .subscriptionExpired, .subscriptionExpiredWhileWriting:
                     false
                 }
             }
@@ -86,9 +104,9 @@
             var draft: TextDraft {
                 switch self {
                 case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
-                    .cameraNotPermitted, .goalSetupExpanded:
+                    .cameraNotPermitted, .goalSetupExpanded, .subscriptionExpired:
                     TextDraft.empty
-                case .writing:
+                case .writing, .subscriptionExpiredWhileWriting:
                     TextDraft(text: "夜は定食屋で生姜焼き定食。ご飯は半分残して、味噌汁は全部飲んだ")
                 case .presetInserted:
                     TextDraft(text: TextPreset.mealFeedbackSoFar.text)

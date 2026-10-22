@@ -4,9 +4,11 @@ import type { EstimationTarget } from "./estimation-target";
 // 推定の予定と、食事・料理とのつなぎを読む置き場。書くのは推定の書き込みの口（writeEstimationEvents）だけ
 export type EstimationScheduleStore = {
   hasScheduleOfMeal: (mealId: RecordId) => boolean;
-  // 待っている予定（推定も見送りも取り消しも無く、食事か料理につながっている）のうち、時刻が dueBy までのもの（早い順）。
+  // 待っている予定（推定も見送りも保留も取り消しも無く、食事か料理につながっている）のうち、時刻が dueBy までのもの（早い順）。
   // dueBy が undefined ならすべて
   findWaitingSchedules: (dueBy: Date | undefined) => WaitingSchedule[];
+  // いちばん新しい予定（取り消したものを除く）が保留の食事・料理（早い順）
+  findHeldTargets: () => EstimationTarget[];
   // 食事を受け取った（写真がそろって予定に入れた）時刻。見送りで足した予定より前の、いちばん早い予定の時刻
   findEarliestDueAtOfMeal: (mealId: RecordId) => Date | undefined;
 };

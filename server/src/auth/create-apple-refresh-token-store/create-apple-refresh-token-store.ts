@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { appleRefreshTokenTables } from "../apple-refresh-token-tables";
+import { parseVersionedKeys } from "../parse-versioned-keys";
 
 const { appleRefreshTokens } = appleRefreshTokenTables;
 
@@ -40,27 +41,14 @@ export const createAppleRefreshTokenStore = (d1: D1Database, encryptionKeys: str
 };
 
 const parseEncryptionKeys = (encryptionKeys: string) => {
-  const rawKeys = new Map(
-    encryptionKeys.split(",").map((entry) => {
-      const [version, base64] = entry.trim().split(":");
-      if (version === undefined || base64 === undefined) {
-        throw new Error("APPLE_REFRESH_TOKEN_KEYS は「版:base64 の鍵」をカンマで並べる");
-      }
-      return [Number(version), decodeBase64(base64)];
-    }),
+  const { currentVersion, rawKeyOf } = parseVersionedKeys(
+    "APPLE_REFRESH_TOKEN_KEYS",
+    encryptionKeys,
   );
-  const importKey = (version: number) => {
-    const rawKey = rawKeys.get(version);
-    if (rawKey === undefined) {
-      throw new Error(`APPLE_REFRESH_TOKEN_KEYS に版 ${version} の鍵が無い`);
-    }
-    return crypto.subtle.importKey("raw", rawKey, "AES-GCM", false, ["encrypt", "decrypt"]);
-  };
+  const importKey = (version: number) =>
+    crypto.subtle.importKey("raw", rawKeyOf(version), "AES-GCM", false, ["encrypt", "decrypt"]);
   return {
-    current: async () => {
-      const version = Math.max(...rawKeys.keys());
-      return { version, key: await importKey(version) };
-    },
+    current: async () => ({ version: currentVersion, key: await importKey(currentVersion) }),
     of: importKey,
   };
 };

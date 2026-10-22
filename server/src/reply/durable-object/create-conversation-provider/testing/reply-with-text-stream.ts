@@ -23,6 +23,10 @@ export const replyWithTextStream = (
         usage: {
           input_tokens: ending.type === "stop" ? ending.usage.input_tokens : 2400,
           output_tokens: 1,
+          cache_creation_input_tokens:
+            ending.type === "stop" ? ending.usage.cache_creation_input_tokens : 0,
+          cache_read_input_tokens:
+            ending.type === "stop" ? ending.usage.cache_read_input_tokens : 0,
         },
       },
     }),
@@ -61,7 +65,12 @@ export type TextStreamEnding =
   | {
       type: "stop";
       stopReason: "end_turn" | "max_tokens" | "refusal";
-      usage: { input_tokens: number; output_tokens: number };
+      usage: {
+        input_tokens: number;
+        output_tokens: number;
+        cache_creation_input_tokens: number;
+        cache_read_input_tokens: number;
+      };
     }
   | { type: "error"; errorType: string }
   | { type: "cut" }

@@ -15,6 +15,8 @@ export type EstimationWrites = {
       nextSchedule: { id: string; dueAt: Date; countedOn: string };
     },
   ) => void;
+  // サブスクリプション切れで推定を始めない。再開は同じ対象の新しい予定を足して行う（resumeHeldEstimations）
+  hold: (hold: EstimationEvents["hold"] & { target: EstimationTarget }) => void;
   beginEstimation: (
     estimation: EstimationEvents["estimation"] & { target: EstimationTarget },
   ) => void;

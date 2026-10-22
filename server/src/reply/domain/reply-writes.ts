@@ -1,5 +1,6 @@
 import type { RecordId } from "../../domain/record-id";
 import type { ReplyAttemptConclusion } from "./reply-attempt";
+import type { ReplyHaltReason } from "../../sent-text-status/domain/sent-text-status";
 import type { ReplyRequest } from "./reply-request";
 
 // 返事の流れの書き込み。返事の書き込みの口（writeReplyEvents）が、書く関数にだけ渡す。
@@ -7,9 +8,9 @@ import type { ReplyRequest } from "./reply-request";
 export type ReplyWrites = {
   // 依頼ときっかけのサブセットを一緒に書く。会話と読み分けた文章にだけ書ける
   request: (request: ReplyRequest) => void;
-  // 回数切れ。生成を始めた依頼には書けない
-  halt: (halt: { requestId: RecordId; haltedAt: Date }) => void;
-  // 生成を始める。回数切れの依頼には書けない。ID は返事の ID を兼ねる
+  // 止め（回数切れか、サブスクリプション切れ）。生成を始めた依頼には書けない。どちらも翌日や買ったあとに再開しない
+  halt: (halt: { requestId: RecordId; haltedAt: Date; reason: ReplyHaltReason }) => void;
+  // 生成を始める。止めた依頼には書けない。ID は返事の ID を兼ねる
   beginGeneration: (generation: { id: RecordId; requestId: RecordId; startedAt: Date }) => void;
   // 提供元を呼ぶ前に書く
   beginAttempt: (attempt: { id: RecordId; generationId: RecordId; attemptedAt: Date }) => void;
