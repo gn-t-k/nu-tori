@@ -73,7 +73,8 @@ extension SentTextStatus.Reply {
             case .notRequested: .notRequested
             case .awaiting: .awaiting
             case .replied: .replied
-            case .halted: .halted
+            case .halted(.dailyLimit): .halted(.dailyLimit)
+            case .halted(.subscriptionExpired): .halted(.subscriptionExpired)
             case .failed(.retriesExhausted): .failed(.retriesExhausted)
             case .failed(.badRequest): .failed(.badRequest)
             }
@@ -98,7 +99,8 @@ extension SyncedSentTextStatus.Reply {
             case .notRequested: .notRequested
             case .awaiting: .awaiting
             case .replied: .replied
-            case .halted: .halted
+            case .halted(.dailyLimit): .halted(.dailyLimit)
+            case .halted(.subscriptionExpired): .halted(.subscriptionExpired)
             case .failed(.retriesExhausted): .failed(.retriesExhausted)
             case .failed(.badRequest): .failed(.badRequest)
             }

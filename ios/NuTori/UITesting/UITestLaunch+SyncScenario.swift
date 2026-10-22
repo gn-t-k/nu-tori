@@ -75,11 +75,31 @@
                 return weeklyReview(.achieved)
             case .goalSwitchedAfterAchieved:
                 return weeklyReview(.switchedAfterAchieved)
+            case .subscriptionExpired:
+                return subscriptionExpired()
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             case .accountDeletionUnauthorized:
                 return .init(records: [], startedOn: today, accountDeletion: .sessionExpired)
             }
+        }
+
+        /// 無料体験の最後の日を昨日にし、サブスクリプションは無い。取引を知らせると、今日から30日の月額に結びつく
+        private func subscriptionExpired() -> FakeSyncServer.Scenario {
+            // 結びついた月額の期限までの長さ。月の長さは問わないので、30日にする
+            let monthlyPeriodSeconds: TimeInterval = 30 * 24 * 60 * 60
+            let freeTrial = SyncedSubscriptionStatus.FreeTrial.available(
+                lastDay: TimelineDayText.startedOn(for: clock.today().advanced(by: -1)))
+            return .init(
+                records: [.subscriptionStatus(.regular(freeTrial: freeTrial, subscription: .none))],
+                startedOn: TimelineDayText.startedOn(for: clock.today().advanced(by: -30)),
+                subscription: .init(
+                    statusAfterLinking: .regular(
+                        freeTrial: freeTrial,
+                        subscription: .subscribed(
+                            plan: .monthly,
+                            periodEndsAt: clock.now().addingTimeInterval(monthlyPeriodSeconds),
+                            billingGrace: .none))))
         }
 
         private static let manualId = fixedId("11111111-1111-4111-8111-111111111111")

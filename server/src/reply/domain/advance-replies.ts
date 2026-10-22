@@ -63,7 +63,7 @@ export const advanceReplies = async (
 };
 
 // 試みを書くときに読む置き場と、文脈を読む置き場と、見守る要求に送る状態を読む置き場
-type ReplyAdvanceStores = Pick<RecordKindStores, "reply"> &
+type ReplyAdvanceStores = Pick<RecordKindStores, "reply" | "subscriptionStatus"> &
   Parameters<typeof runReplyAttempt>[1] &
   Parameters<ReplyWatchers["refresh"]>[0];
 

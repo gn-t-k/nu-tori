@@ -85,7 +85,8 @@ struct WeeklyReviewScene {
                         + extraGuides,
                     expenditureEstimates: [initialEstimate, reviewedEstimate] + extraEstimates,
                     weeklyReviews: reviews, weightTrend: weightTrend, weightRecords: weightRecords),
-                rejectedLines: [], meals: [], notices: [], undelivered: .none, conversation: .none),
+                rejectedLines: [], meals: [], notices: [], undelivered: .none, conversation: .none,
+                subscriptionNotices: []),
             firstDay: CalendarDay(year: 2026, month: 10, day: 1), today: today)
     }
 

@@ -71,6 +71,10 @@
             case Operations.PreviewGoalSetup.id, Operations.ProposeGoals.id,
                 Operations.AssessCustomTargetWeight.id, Operations.DecideGoal.id:
                 return try await respondToGoalSetup(operationID: operationID, body: body)
+            case Operations.IssueAppAccountToken.id:
+                return try issueAppAccountToken()
+            case Operations.ReportSubscriptionTransaction.id:
+                return try linkSubscriptionTransaction()
             // swiftlint:disable:next no_default_in_switch - 操作の ID は文字列で、偽のサーバーが持たない操作が来る
             default:
                 return (HTTPResponse(status: .notFound), nil)
@@ -100,6 +104,8 @@
             public let sentTextAnswerPulls: Int
             /// 目標の設定の4つの要求への答え方。nil なら 404 を返す
             public let goalSetup: GoalSetupAnswers?
+            /// 取引の知らせへの答え方。nil なら 404 を返す
+            public let subscription: SubscriptionAnswers?
 
             public init(
                 records: [SyncChange],
@@ -116,7 +122,8 @@
                 answerSentText: @escaping @Sendable (_ body: String) -> SentTextAnswer? = { _ in nil
                 },
                 sentTextAnswerPulls: Int = 1,
-                goalSetup: GoalSetupAnswers? = nil
+                goalSetup: GoalSetupAnswers? = nil,
+                subscription: SubscriptionAnswers? = nil
             ) {
                 if case .afterPulls(let pulls) = mealEstimation {
                     precondition(pulls >= 1, "推定を終えるまでの取得は1回以上")
@@ -134,6 +141,7 @@
                 self.answerSentText = answerSentText
                 self.sentTextAnswerPulls = sentTextAnswerPulls
                 self.goalSetup = goalSetup
+                self.subscription = subscription
             }
         }
 

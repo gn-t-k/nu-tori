@@ -29,7 +29,11 @@ struct CachedSentTextStatusCacheTests {
             Status(
                 sentTextId: UUID(), status: .init(classification: .conversation, reply: .replied)),
             Status(
-                sentTextId: UUID(), status: .init(classification: .conversation, reply: .halted)),
+                sentTextId: UUID(),
+                status: .init(classification: .conversation, reply: .halted(.dailyLimit))),
+            Status(
+                sentTextId: UUID(),
+                status: .init(classification: .conversation, reply: .halted(.subscriptionExpired))),
             Status(
                 sentTextId: UUID(),
                 status: .init(classification: .conversation, reply: .failed(.badRequest))),
@@ -82,7 +86,7 @@ struct CachedSentTextStatusCacheTests {
                 try cache.upsert(replied)
 
                 let saved = try cache.savedRecords()
-                #expect(saved.count == 7)
+                #expect(saved.count == others.count + 1)
                 #expect(Set(saved) == others.union([replied]))
             }
         }

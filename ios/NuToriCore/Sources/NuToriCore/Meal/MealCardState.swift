@@ -8,6 +8,7 @@ public enum MealCardState: Hashable, Sendable {
     case estimated
     case noDishes
     case deferredToNextDay
+    case awaitingSubscription
     case failed
 
     init(status: MealEstimationStatus?, recordedOnThisDevice: Bool) {
@@ -19,16 +20,18 @@ public enum MealCardState: Hashable, Sendable {
         case .estimated: self = .estimated
         case .noDishes: self = .noDishes
         case .deferredToNextDay: self = .deferredToNextDay
+        case .awaitingSubscription: self = .awaitingSubscription
         case .failed: self = .failed
         }
     }
 }
 
 extension MealCardState {
-    /// 写真の推定が済んでいない（まだ送れていない・写真を待っている・推定中・翌日に推定）か
+    /// 写真の推定が済んでいない（まだ送れていない・写真を待っている・推定中・翌日に推定・サブスクリプションを待っている）か
     public var awaitsPhotoEstimation: Bool {
         switch self {
-        case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay: true
+        case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay, .awaitingSubscription:
+            true
         case .estimated, .noDishes, .failed: false
         }
     }
@@ -40,6 +43,7 @@ extension MealCardState {
         case .estimating: "推定しています…"
         case .noDishes: "写真に料理が見つかりませんでした"
         case .deferredToNextDay: "今日はもう推定できないため、明日推定します"
+        case .awaitingSubscription: "サブスクリプションを始めると推定します"
         case .failed: "推定できませんでした"
         }
     }

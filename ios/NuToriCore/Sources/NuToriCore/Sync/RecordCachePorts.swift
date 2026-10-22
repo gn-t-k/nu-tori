@@ -30,6 +30,8 @@ public protocol RecordCachePorts<Cache>: Sendable {
 
     func sentTextStatus(in cache: Cache) -> SentTextStatusSyncing.Cache
 
+    func subscriptionStatus(in cache: Cache) -> SubscriptionStatusSyncing.Cache
+
     func usualWeighingTime(in cache: Cache) -> UsualWeighingTimeSyncing.Cache
 
     func weeklyReview(in cache: Cache) -> WeeklyReviewSyncing.Cache
@@ -56,6 +58,7 @@ extension RecordKindRegistry {
             PortedRecordKind(NoticeSyncing()) { ports.notice(in: $0) },
             PortedRecordKind(SentTextSyncing()) { ports.sentText(in: $0) },
             PortedRecordKind(SentTextStatusSyncing()) { ports.sentTextStatus(in: $0) },
+            PortedRecordKind(SubscriptionStatusSyncing()) { ports.subscriptionStatus(in: $0) },
             PortedRecordKind(UsualWeighingTimeSyncing()) { ports.usualWeighingTime(in: $0) },
             PortedRecordKind(WeeklyReviewSyncing()) { ports.weeklyReview(in: $0) },
             PortedRecordKind(WeightRecordSyncing()) { ports.weightRecord(in: $0) },

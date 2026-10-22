@@ -33,6 +33,14 @@ struct RootView: View {
 
     @Environment(\.scenePhase) private var scenePhase
 
+    private var isShowingTermsAgreementSheet: Binding<Bool> {
+        Binding(
+            get: { model.termsAgreementSheet != nil },
+            // 下へ送って閉じることはできないので、閉じたことを受け取らない
+            set: { _ in }
+        )
+    }
+
     /// UI テストは、標準の選ぶ画面を開かずに、決まった写真を選んだことにする
     private var photoSelection: MealPhotoSelection {
         #if DEBUG
@@ -44,6 +52,16 @@ struct RootView: View {
             }
         #endif
         return .picker
+    }
+
+    /// UI テストは、本物の StoreKit で買う `SubscriptionStoreView` を出さず、StoreKit の口の偽物で月額を買う
+    private var paywallStorefront: PaywallStorefront {
+        #if DEBUG
+            if let store = UITestLaunch.current?.subscriptionStore {
+                return .fixed(purchase: { store.purchaseMonthly(appAccountToken: $0) })
+            }
+        #endif
+        return .storeKit
     }
 
     @ViewBuilder private var content: some View {
@@ -92,7 +110,21 @@ struct RootView: View {
                     notificationPermission: { await model.notificationPermission() },
                     openedNotificationSettings: {
                         await model.capture(.notificationSettingsOpened)
+                    },
+                    autoRenewal: { await model.subscriptionPurchases.autoRenewal() },
+                    accountDeletionGuide: { await model.accountDeletionGuide() },
+                    rereadAccountDeletionGuide: { await model.rereadAccountDeletionGuide($0) },
+                    openedAccountDeletionGuide: {
+                        await model.capture(.accountDeletionGuideOpened)
+                    },
+                    openedManageSubscriptions: {
+                        await model.capture(.manageSubscriptionsOpened)
                     }
+                ),
+                paywallActions: PaywallActions(
+                    purchases: model.subscriptionPurchases,
+                    capture: { await model.capture($0) },
+                    storefront: paywallStorefront
                 ),
                 mealActions: MealActions(
                     prepareCamera: { await CameraReadiness.prepare() },
@@ -140,6 +172,11 @@ struct RootView: View {
                 ),
                 holdsMealOriginals: { await model.holdsMealOriginals($0) }
             )
+            // 閉じられないシート。同意を受け付けられたら、モデルが消して閉じる
+            .sheet(isPresented: isShowingTermsAgreementSheet) {
+                TermsAgreementSheetView(progress: .ready) { await model.agreeToTerms() }
+                    .task { await model.termsAgreementSheetPresented() }
+            }
         }
     }
 }

@@ -56,6 +56,7 @@
 | `CLOUDFLARE_API_TOKEN` | GitHub の Environment `development` と `production` | Cloudflare の API Tokens | 大きい。Worker を書き換えられ、本番の記録を読める | 同じ権限（`server/AGENTS.md` の「デプロイ」）で作り直す。入れ替えたら Cloudflare の監査ログで、漏れていたあいだの操作を見る |
 | `APPLE_PRIVATE_KEY`・`APPLE_KEY_ID` | Worker（両方の環境） | Apple Developer の Keys（Sign in with Apple） | このアプリの名前で Apple の認可を交換・取り消す要求を作れる | 新しい鍵を作る → 両方の環境で2つを同時に替える → 開発用でサインインとアカウントの削除を確かめる → 古い鍵を失効させる。古い鍵を先に失効させると、サインインとアカウントの削除が 500 になる。保存済みの Apple の認可が新しい鍵で取り消せるかは確かめていないので、入れ替えたあとに本番のアカウントの削除が Sentry に失敗を出さないか見る |
 | `APPLE_REFRESH_TOKEN_KEYS` | Worker（両方の環境） | 自分で作る 32 バイトの乱数 | D1 と一緒に漏れると、Apple の認可を読める | `版:鍵` の並びの末尾に新しい版を足す。保存とサインインのたびに新しい版で書き直されるが、古い行を暗号化し直す仕組みは無い。古い版を消すと、その版の行のアカウントの削除が止まるので、消すときは暗号化し直すスクリプトを書いてから |
+| `APPLE_SUB_HASH_KEYS` | Worker（両方の環境） | 自分で作る 32 バイトの乱数 | D1 と一緒に漏れると、Apple の sub を試して、無料体験を使った Apple ID か（退会した人か）を確かめられる | `版:鍵` の並びの末尾に新しい版を足す。退会のときに新しい版で書き、サインインのときは残っている版の全部で引く。古い行は元の sub が無く書き直せないので、古い版は消さない。消すと、その版で残した人が退会して作り直したアカウントで、また無料体験を受けられる |
 | `ANTHROPIC_API_KEY` | Worker（環境ごとのワークスペースのキー） | Anthropic の Console | 費用を使われる | 新しいキーを置いてから古いキーを無効にする |
 | `POSTHOG_PERSONAL_API_KEY` | Worker（本番だけ） | PostHog の個人の API キー（`person:write`） | 利用の数の人を消せる・読める | 新しいキーを置いてから古いキーを消す。無効なキーのあいだは、アカウントの削除が 500 になる |
 | `BETTER_AUTH_SECRET` | Worker（両方の環境） | 自分で作る乱数 | 小さい。今の設定では、セッションも保存したデータも、この値では守っていない | 替えるだけ。セッションは切れない |
@@ -117,3 +118,13 @@ App Store Server API の鍵（課金で足す）のように新しい秘密の�
 4. 解くときは `banned` を戻す
 
 止めてもサブスクリプションは止まらない。解約は本人が行い、返金は Apple の手続きに任せる。
+
+## テストユーザーを足す・外す
+
+開発者と手伝いの人が払わずに使うアカウントは、D1 の `test_users` に行を足して、いつもサブスクリプション中と同じに扱う。管理画面は無いので、`wrangler d1 execute` で書く（開発用は `nu-tori-development` で `--env production` を付けない）。
+
+1. アカウント ID（`user` の `id`）を、その人のサインインした時刻などから `user` の表で確かめる
+2. 足す: `wrangler d1 execute nu-tori-production --remote --env production --command "INSERT INTO test_users (account_id) VALUES ('<アカウント ID>')"`
+3. 外す: `wrangler d1 execute nu-tori-production --remote --env production --command "DELETE FROM test_users WHERE account_id = '<アカウント ID>'"`
+
+旗の変化は、サブスクリプションの状態の変更を足す時機に端末へ届く: 無料体験とサブスクリプションの区切りの時刻のアラーム（無料体験中に立てたら、あと3日の日の始まりまでに届く）と、取引・取り消しを書いたとき。切れているアカウントに立てたときは、保留した推定があれば、次の送る要求で張るアラームで届き、保留した推定も再開する。保留した推定が無い切れたアカウントには、次に変更を足す時機（取引を書くなど）まで届かない。退会すると行は消える（CASCADE）。

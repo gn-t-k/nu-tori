@@ -76,7 +76,7 @@ extension NuToriAPIClientTests {
             func readsOutcomes() async throws {
                 let transport = ClientTransportMock.replyStream(data: [
                     #"{"type":"classified_as_meal"}"#,
-                    #"{"type":"reply_halted"}"#,
+                    #"{"type":"reply_halted","reason":"daily_limit"}"#,
                     #"{"type":"reply_failed","failureReason":"bad_request"}"#,
                 ])
                 let events = try await WatchReply.events(

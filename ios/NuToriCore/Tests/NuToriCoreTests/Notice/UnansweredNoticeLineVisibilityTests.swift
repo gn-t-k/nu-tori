@@ -15,7 +15,7 @@ struct UnansweredNoticeLineVisibilityTests {
                 input: Timeline.Input(
                     goalRecords: .fixture(), rejectedLines: [], meals: [],
                     notices: [try .missedWeightRecord(issuedAt: "2026-09-22T08:15:00+09:00")],
-                    undelivered: .none, conversation: .none),
+                    undelivered: .none, conversation: .none, subscriptionNotices: []),
                 firstDay: today, today: today)
             line = try #require(timeline.unansweredNoticeLines.first)
             listedDays = timeline.days[...]

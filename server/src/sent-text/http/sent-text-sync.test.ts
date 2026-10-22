@@ -3,6 +3,7 @@ import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { generateRecordId } from "../../domain/record-id";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
+import { withoutSignInChanges } from "../../http/sync-routes/testing/without-sign-in-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { signInTestAccount } from "../../http/testing";
 import { createSentTextWrite } from "./testing/create-sent-text-write";
@@ -43,7 +44,7 @@ describe("送った文章の同期", () => {
     test("取りに行くと、送った文章と、読み分けを待っている状態が届くこと", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
       const sentTextId = write.sentText["id"];
-      expect(pulled.changes).toEqual([
+      expect(withoutSignInChanges(pulled.changes)).toEqual([
         {
           sequence: expect.any(Number),
           kind: "sent_text",

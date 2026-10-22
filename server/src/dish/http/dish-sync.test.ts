@@ -11,6 +11,7 @@ import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { requireLastSequence } from "../../http/sync-routes/testing/require-last-sequence";
 import { requireRecordId } from "../../http/sync-routes/testing/require-record-id";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
+import { withoutSignInChanges } from "../../http/sync-routes/testing/without-sign-in-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { signInTestAccount } from "../../http/testing";
 import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
@@ -40,7 +41,9 @@ describe("料理の同期", () => {
     // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
     useFakeClock(Date.now() + 86_400_000);
     pullChangesAfter = async (afterSequence) =>
-      (await (await pullSyncChanges(sessionToken, { afterSequence })).json<PullResult>()).changes;
+      withoutSignInChanges(
+        (await (await pullSyncChanges(sessionToken, { afterSequence })).json<PullResult>()).changes,
+      );
   });
 
   describe("推定できた食事の料理を消す書き込みを送ったとき", () => {

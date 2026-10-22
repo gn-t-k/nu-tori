@@ -175,6 +175,7 @@ const renderWeeklyReview = (review: ReplyContextWeeklyReview): string[] => {
   return match(review)
     .with({ type: "deferred" }, ({ reason }) => [
       `${heading}見送った（${match(reason)
+        .with("subscription_expired", () => "サブスクリプション切れ")
         .with("within_first_week", () => "使い始めて1週に満たない")
         .with("no_weight", () => "体重の記録が無い")
         .with("few_meal_records", () => "食事の記録が少ない")

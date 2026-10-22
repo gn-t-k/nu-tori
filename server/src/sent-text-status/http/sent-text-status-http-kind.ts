@@ -14,8 +14,13 @@ const sentTextStatusRecordSchema = z
     }),
     replyStatus: z.string().openapi({
       description:
-        "応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）",
+        "応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（止めた。理由は replyHaltReason）・failed（作れなかった）",
       example: "awaiting",
+    }),
+    replyHaltReason: z.string().optional().openapi({
+      description:
+        "replyStatus が halted のときだけある、止めた理由。daily_limit（その日の回数切れ）・subscription_expired（サブスクリプション切れ）。買っても再開しない",
+      example: "daily_limit",
     }),
     replyFailureReason: z.string().optional().openapi({
       description:
@@ -39,20 +44,18 @@ export const sentTextStatusHttpKind: HttpRecordKind<
     sentTextId,
     classification: value.classification,
     ...match(value.reply)
-      .returnType<{ replyStatus: string; replyFailureReason?: string }>()
+      .returnType<{ replyStatus: string; replyHaltReason?: string; replyFailureReason?: string }>()
       .with({ type: "failed" }, ({ type, reason }) => ({
         replyStatus: type,
         replyFailureReason: reason,
       }))
-      .with(
-        { type: "none" },
-        { type: "awaiting" },
-        { type: "replied" },
-        { type: "halted" },
-        ({ type }) => ({
-          replyStatus: type,
-        }),
-      )
+      .with({ type: "halted" }, ({ type, reason }) => ({
+        replyStatus: type,
+        replyHaltReason: reason,
+      }))
+      .with({ type: "none" }, { type: "awaiting" }, { type: "replied" }, ({ type }) => ({
+        replyStatus: type,
+      }))
       .exhaustive(),
   }),
 };

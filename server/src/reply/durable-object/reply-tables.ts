@@ -60,6 +60,15 @@ const replyRequestHalts = sqliteTable("reply_request_halts", {
   haltedAt: integer("halted_at", { mode: "timestamp_ms" }).notNull(),
 });
 
+// サブスクリプション切れの止め（#647）。回数切れの止め（reply_request_halts）と並ぶ別の表で、買っても再開しない
+const replyRequestSubscriptionHalts = sqliteTable("reply_request_subscription_halts", {
+  replyRequestId: text("reply_request_id")
+    .$type<RecordId>()
+    .primaryKey()
+    .references(() => replyRequests.id),
+  haltedAt: integer("halted_at", { mode: "timestamp_ms" }).notNull(),
+});
+
 // 返事の生成。1日の回数はこれを数える。ID は返事（ai_utterances）の ID を兼ねる
 const replyGenerations = sqliteTable("reply_generations", {
   id: text("id").$type<RecordId>().primaryKey(),
@@ -118,7 +127,7 @@ const replyGenerationAbandonments = sqliteTable("reply_generation_abandonments",
   abandonedAt: integer("abandoned_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-// 返事の流れの出来事の表（依頼・きっかけ・回数切れ・生成・試み・結果・作れなかった）。INSERT だけで持つ。
+// 返事の流れの出来事の表（依頼・きっかけ・回数切れ・サブスクリプション切れ・生成・試み・結果・作れなかった）。INSERT だけで持つ。
 // 宣言は durable-object-migrations/ の SQL に合わせる
 export const replyTables = {
   replyRequests,
@@ -126,6 +135,7 @@ export const replyTables = {
   resendReplyRequests,
   conversationResendReplyRequests,
   replyRequestHalts,
+  replyRequestSubscriptionHalts,
   replyGenerations,
   replyGenerationAttempts,
   replyGenerationAttemptResults,

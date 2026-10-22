@@ -28,6 +28,7 @@
           "notice",
           "sent_text",
           "sent_text_status",
+          "subscription_status",
           "usual_weighing_time",
           "weekly_review",
           "weight_record",
@@ -191,7 +192,7 @@
           },
           "status": {
             "type": "string",
-            "description": "推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）",
+            "description": "推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）",
             "example": "estimating"
           }
         },
@@ -559,6 +560,7 @@
           },
           "status": {
             "type": "string",
+            "description": "写真を待っている（awaiting_photos）、推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）",
             "example": "estimating"
           }
         },
@@ -656,8 +658,13 @@
           },
           "replyStatus": {
             "type": "string",
-            "description": "応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）",
+            "description": "応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（止めた。理由は replyHaltReason）・failed（作れなかった）",
             "example": "awaiting"
+          },
+          "replyHaltReason": {
+            "type": "string",
+            "description": "replyStatus が halted のときだけある、止めた理由。daily_limit（その日の回数切れ）・subscription_expired（サブスクリプション切れ）。買っても再開しない",
+            "example": "daily_limit"
           },
           "replyFailureReason": {
             "type": "string",
@@ -671,6 +678,178 @@
           "replyStatus"
         ],
         "description": "kind が sent_text_status の変更の record。recordId は送った文章の ID"
+      },
+      "SubscriptionStatusRecord": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "test_user"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "description": "テストユーザー。いつもサブスクリプション中と同じに扱う"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "regular"
+                ]
+              },
+              "freeTrial": {
+                "$ref": "#/components/schemas/SubscriptionStatusFreeTrial"
+              },
+              "subscription": {
+                "$ref": "#/components/schemas/SubscriptionStatusSubscription"
+              }
+            },
+            "required": [
+              "type",
+              "freeTrial",
+              "subscription"
+            ]
+          }
+        ],
+        "description": "kind が subscription_status の変更の record。recordId は最初のサインインの ID の1つだけで、消えない。日付と時刻は事実が変わったときだけ変わるので、端末は今日と比べて描く"
+      },
+      "SubscriptionStatusFreeTrial": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "available"
+                ]
+              },
+              "lastDay": {
+                "type": "string",
+                "description": "無料体験の最後の日（YYYY-MM-DD）。その日の終わりまでが無料体験中",
+                "example": "2026-11-30"
+              }
+            },
+            "required": [
+              "type",
+              "lastDay"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "used_by_earlier_account"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "description": "作り直したアカウント。無料体験が無い"
+          }
+        ]
+      },
+      "SubscriptionStatusSubscription": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "none"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "description": "取り消されていない取引が無い（買っていない、またはすべて取り消された）"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "subscribed"
+                ]
+              },
+              "plan": {
+                "type": "string",
+                "enum": [
+                  "monthly",
+                  "yearly"
+                ],
+                "description": "期限がいちばん遅い取り消されていない取引の商品。月額（monthly）か年額（yearly）"
+              },
+              "periodEndsAt": {
+                "type": "string",
+                "description": "期限がいちばん遅い取り消されていない取引の期限（ISO 8601 の時刻）。更新日に使う",
+                "example": "2026-12-01T00:00:00.000Z"
+              },
+              "billingGrace": {
+                "$ref": "#/components/schemas/SubscriptionStatusBillingGrace"
+              }
+            },
+            "required": [
+              "type",
+              "plan",
+              "periodEndsAt",
+              "billingGrace"
+            ]
+          }
+        ]
+      },
+      "SubscriptionStatusBillingGrace": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "none"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "granted"
+                ]
+              },
+              "endsAt": {
+                "type": "string",
+                "description": "請求の猶予の終わり（ISO 8601 の時刻）。期限より遅いときだけ届く",
+                "example": "2026-12-17T00:00:00.000Z"
+              }
+            },
+            "required": [
+              "type",
+              "endsAt"
+            ]
+          }
+        ],
+        "description": "端末はサブスクリプションの終わりを、granted ならその endsAt、none なら periodEndsAt として選ぶ（比べるのはサーバー）"
       },
       "UsualWeighingTimeRecord": {
         "type": "object",
@@ -714,11 +893,12 @@
               "reason": {
                 "type": "string",
                 "enum": [
+                  "subscription_expired",
                   "within_first_week",
                   "no_weight",
                   "few_meal_records"
                 ],
-                "description": "見送りの理由。使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）"
+                "description": "見送りの理由。サブスクリプション切れ（subscription_expired）、使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）"
               },
               "goalId": {
                 "type": "string",
@@ -2755,12 +2935,20 @@
             "enum": [
               "reply_halted"
             ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "daily_limit",
+              "subscription_expired"
+            ]
           }
         },
         "required": [
-          "type"
+          "type",
+          "reason"
         ],
-        "description": "その日の返事の回数を使い切っていて、回数切れにした。送ったあと閉じる"
+        "description": "返事を作らずに止めた。その日の返事の回数を使い切っていた（daily_limit）か、サブスクリプション切れ（subscription_expired）。送ったあと閉じる"
       },
       "ReplyFailedEvent": {
         "type": "object",
@@ -2784,6 +2972,145 @@
           "failureReason"
         ],
         "description": "返事を作れなかった（やり直しを使い切った・提供元の 400）。送ったあと閉じる"
+      },
+      "TermsAgreementRequirement": {
+        "type": "object",
+        "properties": {
+          "agreementRequired": {
+            "type": "boolean"
+          },
+          "termsVersion": {
+            "type": "string",
+            "description": "今の規約の版。同意が要るとき、同意する要求でこの版を送る",
+            "example": "1"
+          }
+        },
+        "required": [
+          "agreementRequired",
+          "termsVersion"
+        ]
+      },
+      "TermsAgreementRejection": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "terms_version_unknown"
+            ]
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "AppAccountToken": {
+        "type": "object",
+        "properties": {
+          "appAccountToken": {
+            "type": "string",
+            "description": "UUID（小文字）",
+            "example": "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
+          }
+        },
+        "required": [
+          "appAccountToken"
+        ]
+      },
+      "SubscriptionTransactionReport": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/LinkedSubscriptionTransactionReport"
+          },
+          {
+            "$ref": "#/components/schemas/OwnedByOtherAccountSubscriptionTransactionReport"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "result",
+          "mapping": {
+            "linked": "#/components/schemas/LinkedSubscriptionTransactionReport",
+            "owned_by_other_account": "#/components/schemas/OwnedByOtherAccountSubscriptionTransactionReport"
+          }
+        }
+      },
+      "LinkedSubscriptionTransactionReport": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "enum": [
+              "linked"
+            ]
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionTransactionReportChange"
+            },
+            "description": "端末はキャッシュに書く（同じ記録は同期でも届く）。並びは、サブスクリプションの状態、再開した食事・料理の推定の状態"
+          }
+        },
+        "required": [
+          "result",
+          "changes"
+        ],
+        "description": "このアカウントに結びつけた。同じ要求の ID の再送を含む"
+      },
+      "SubscriptionTransactionReportChange": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "subscription_status・meal_estimation_status・dish_estimation_status",
+            "example": "subscription_status"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "record": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "kind",
+          "recordId",
+          "record"
+        ],
+        "description": "取りに行く変更（SyncChange）から通し番号を除いた形で、record は種類ごとの SubscriptionStatusRecord・MealEstimationStatusRecord・DishEstimationStatusRecord"
+      },
+      "OwnedByOtherAccountSubscriptionTransactionReport": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "enum": [
+              "owned_by_other_account"
+            ]
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "description": "ほかの nu-tori のアカウントのサブスクリプション。何も書いていない"
+      },
+      "SubscriptionTransactionRejection": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "transaction_unverified",
+              "environment_unsupported",
+              "product_unknown",
+              "expires_date_missing"
+            ]
+          }
+        },
+        "required": [
+          "code"
+        ]
       }
     },
     "parameters": {}
@@ -2814,6 +3141,11 @@
                     "type": "string",
                     "description": "端末の IANA のタイムゾーン名。最初のサインインで、使い始めた日をこの土地の日付にする",
                     "example": "Asia/Tokyo"
+                  },
+                  "agreedTermsVersion": {
+                    "type": "string",
+                    "description": "サインインの画面で見せた規約の版。続けると同意したことになるので、この版への同意を残す。送らない前の版のアプリでは残さず、同意のシートで取る",
+                    "example": "1"
                   }
                 },
                 "required": [
@@ -3737,6 +4069,208 @@
           },
           "404": {
             "description": "まだ受け取っていない送った文章"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/terms-agreement": {
+      "get": {
+        "operationId": "getTermsAgreementRequirement",
+        "summary": "規約の同意が要るか",
+        "description": "同意を取り直す版より後の版のどれにも同意していなければ、同意が要る。端末は、開いたとき（前面に来たとき）に問い、要れば同意のシートを出す",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "同意が要るかと、同意を求める版",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermsAgreementRequirement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/terms-agreements": {
+      "post": {
+        "operationId": "agreeToTerms",
+        "summary": "規約に同意する",
+        "description": "同意のシートでの同意。送り待ちの箱を通さず、その場で送る。同じ要求の ID の再送は、書かずに受け付ける",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+                    "description": "端末が振った要求の ID（UUID v4）。同意の ID にし、冪等の鍵にする"
+                  },
+                  "termsVersion": {
+                    "type": "string",
+                    "description": "同意のシートで見せた規約の版（同意が要るかの答えの termsVersion）",
+                    "example": "1"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "termsVersion"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "同意を受け付けた"
+          },
+          "400": {
+            "description": "要求の形が違う"
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "422": {
+            "description": "知らない規約の版。不具合のときだけ起きる",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermsAgreementRejection"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/app-account-token": {
+      "post": {
+        "operationId": "issueAppAccountToken",
+        "summary": "購入者のトークンを出す",
+        "description": "StoreKit で買うときに渡す購入者のトークン（appAccountToken）。まだ無ければ出し、2度目からは同じ値を返す",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "購入者のトークン",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppAccountToken"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "429": {
+            "description": "回数の歯止めにかかった"
+          }
+        }
+      }
+    },
+    "/v1/subscription-transactions": {
+      "post": {
+        "operationId": "reportSubscriptionTransaction",
+        "summary": "取引を知らせる",
+        "description": "端末が StoreKit から受け取った取引を知らせる。署名を確かめ、このアカウントに結びつけて書き、保留した推定を再開する。端末は応答を受け取ってから Transaction.finish() を呼ぶ。同じ要求の ID の再送は、書かずに今の値を返す",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^[\\da-f]{8}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{4}-[\\da-f]{12}$",
+                    "description": "端末が振った要求の ID（UUID v4）。冪等の鍵にする"
+                  },
+                  "signedTransaction": {
+                    "type": "string",
+                    "description": "StoreKit の Transaction の jwsRepresentation"
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "enum": [
+                      "purchase",
+                      "restore",
+                      "transaction_updates"
+                    ],
+                    "description": "purchase（買った直後）・restore（購入を復元）・transaction_updates（Transaction.updates と、終えていない取引）"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "signedTransaction",
+                  "trigger"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "結びつけたか、ほかのアカウントのものだった",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionTransactionReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "要求の形が違う"
+          },
+          "401": {
+            "description": "セッションが無いか、切れている"
+          },
+          "422": {
+            "description": "受け付けない取引。transaction_unverified（署名を確かめられない、ほかのアプリの取引）・environment_unsupported（環境が Production・Sandbox でない）・product_unknown（知らない商品）・expires_date_missing（期限が無い）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionTransactionRejection"
+                }
+              }
+            }
           },
           "429": {
             "description": "回数の歯止めにかかった"

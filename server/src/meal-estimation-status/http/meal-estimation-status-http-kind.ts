@@ -6,7 +6,11 @@ import type { MealEstimationStatus } from "../domain/meal-estimation-status";
 const mealEstimationStatusRecordSchema = z
   .object({
     mealId: z.string(),
-    status: z.string().openapi({ example: "estimating" }),
+    status: z.string().openapi({
+      description:
+        "写真を待っている（awaiting_photos）、推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）",
+      example: "estimating",
+    }),
   })
   .openapi({
     description:

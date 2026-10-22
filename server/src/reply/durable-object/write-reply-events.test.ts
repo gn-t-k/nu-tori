@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
 import { createRecordKindStores } from "../../durable-object/create-record-kind-stores";
+import { regularSubscriptionAccount } from "../../durable-object/testing/regular-subscription-account";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
 import type { ReplyWrites } from "../domain/reply-writes";
@@ -28,9 +29,12 @@ const writeInAccount = (seed: Seed, run: Run): Promise<Written> =>
     let error: string | undefined;
     try {
       state.storage.transactionSync(() => {
-        createRecordKindStores(state.storage).writeReplyEvents((change) => {
-          changes.push(change);
-        }, run);
+        createRecordKindStores(state.storage, regularSubscriptionAccount).writeReplyEvents(
+          (change) => {
+            changes.push(change);
+          },
+          run,
+        );
       });
     } catch (thrown) {
       error = thrown instanceof Error ? thrown.message : String(thrown);
@@ -201,14 +205,14 @@ describe("返事の書き込みの口", () => {
           await seedGeneration(factory);
         },
         (writes) => {
-          writes.halt({ requestId, haltedAt: requestedAt });
+          writes.halt({ requestId, haltedAt: requestedAt, reason: "daily_limit" });
         },
       );
     });
 
     test("投げて、回数切れを書かないこと", () => {
       expect({ error: written.error, halts: written.rows["halts"] }).toEqual({
-        error: expect.stringContaining("生成を始めた依頼を回数切れに"),
+        error: expect.stringContaining("生成を始めた依頼を止め"),
         halts: [],
       });
     });
@@ -234,7 +238,7 @@ describe("返事の書き込みの口", () => {
 
     test("投げて、生成を書かないこと", () => {
       expect({ error: written.error, generations: written.rows["generations"] }).toEqual({
-        error: expect.stringContaining("回数切れの依頼の生成を始め"),
+        error: expect.stringContaining("止めた依頼の生成を始め"),
         generations: [],
       });
     });

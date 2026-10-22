@@ -22,6 +22,7 @@ struct TimelineScreenContainer: View {
     let goalSetup: GoalSetupSession
     let conversationActions: ConversationActions
     let accountActions: AccountActions
+    let paywallActions: PaywallActions
     let mealActions: MealActions
     /// この端末で記録した（元の大きさの写真を持っている）食事か
     let holdsMealOriginals: (_ mealId: UUID) async -> Bool
@@ -46,6 +47,7 @@ struct TimelineScreenContainer: View {
             expenditureEstimates: cachedExpenditureEstimates.compactMap {
                 $0.expenditureEstimate()
             },
+            subscriptionStatus: cachedSubscriptionStatuses.first?.subscriptionStatus(),
             undeliveredRecords: pendingAppearance.undelivered,
             capture: capture,
             reminderLanding: reminderLanding,
@@ -55,6 +57,7 @@ struct TimelineScreenContainer: View {
             saveWeight: saveWeight,
             sendText: sendText,
             accountActions: accountActions,
+            paywallActions: paywallActions,
             mealActions: mealActions,
             conversation: timeline.conversation(streams: replyStreams),
             conversationActions: conversationActions,
@@ -85,6 +88,7 @@ struct TimelineScreenContainer: View {
     @Query private var cachedSentTexts: [CachedSentText]
     @Query private var cachedSentTextStatuses: [CachedSentTextStatus]
     @Query private var cachedAiUtterances: [CachedAiUtterance]
+    @Query private var cachedSubscriptionStatuses: [CachedSubscriptionStatus]
     /// 写真の置き場を読み終えるまでは、ほかの端末の食事として見せる
     @State private var mealsRecordedHere: Set<UUID> = []
 

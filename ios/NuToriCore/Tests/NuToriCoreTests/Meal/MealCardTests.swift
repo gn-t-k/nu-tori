@@ -25,13 +25,18 @@ struct MealCardTests {
                     == .notSent)
         }
 
-        @Test("推定中・推定できた・料理なし・翌日に推定・推定できなかったは、そのまま見せること")
+        @Test("推定中・推定できた・料理なし・翌日に推定・サブスクリプションを待っている・推定できなかったは、そのまま見せること")
         func laterStatusesAsIs() {
             let states = [
-                MealEstimationStatus.estimating, .estimated, .noDishes, .deferredToNextDay, .failed,
+                MealEstimationStatus.estimating, .estimated, .noDishes, .deferredToNextDay,
+                .awaitingSubscription, .failed,
             ].map { MealCard(meal: meal, status: $0, recordedOnThisDevice: true).state }
 
-            #expect(states == [.estimating, .estimated, .noDishes, .deferredToNextDay, .failed])
+            #expect(
+                states == [
+                    .estimating, .estimated, .noDishes, .deferredToNextDay, .awaitingSubscription,
+                    .failed,
+                ])
         }
     }
 

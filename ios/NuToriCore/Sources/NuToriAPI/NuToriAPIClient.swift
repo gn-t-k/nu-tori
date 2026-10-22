@@ -40,12 +40,15 @@ public struct NuToriAPIClient: Sendable {
     }
 
     /// Sign in with Apple で得た値でサインインし、セッションを始める
-    /// - Parameter timeZone: 端末のタイムゾーン。最初のサインインで、使い始めた日をこの土地の日付にする
+    /// - Parameters:
+    ///   - timeZone: 端末のタイムゾーン。最初のサインインで、使い始めた日をこの土地の日付にする
+    ///   - agreedTermsVersion: サインインの画面で見せた規約の版。続けると同意したことになるので送る
     public func startSession(
         idToken: String,
         nonce: String,
         authorizationCode: String,
-        timeZone: TimeZone
+        timeZone: TimeZone,
+        agreedTermsVersion: String
     ) async throws -> StartSessionResult {
         let output = try await client.createSession(
             body: .json(
@@ -53,7 +56,8 @@ public struct NuToriAPIClient: Sendable {
                     idToken: idToken,
                     nonce: nonce,
                     authorizationCode: authorizationCode,
-                    timeZone: timeZone.identifier
+                    timeZone: timeZone.identifier,
+                    agreedTermsVersion: agreedTermsVersion
                 )
             )
         )

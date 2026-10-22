@@ -142,6 +142,15 @@ public actor RecordSync {
 
     /// 目標を決める要求の応答の記録を、取りに行った変更と同じ道でキャッシュに当てる。同じ記録があとで同期でも届く
     public func applyGoalDecision(_ changes: [SyncChange]) async throws {
+        try await applyOutOfSyncResponse(changes)
+    }
+
+    /// サブスクリプションの取引を知らせた要求の応答の記録を、取りに行った変更と同じ道でキャッシュに当てる。同じ記録があとで同期でも届く
+    public func applySubscriptionTransactionReport(_ changes: [SyncChange]) async throws {
+        try await applyOutOfSyncResponse(changes)
+    }
+
+    private func applyOutOfSyncResponse(_ changes: [SyncChange]) async throws {
         try await store.apply(
             SyncBoxResult(
                 kindChanges: changes.compactMap { change in
@@ -153,6 +162,11 @@ public actor RecordSync {
     public func hasNotice(id noticeId: UUID) async -> Bool {
         let notices = (try? await store.notices()) ?? []
         return notices.contains { $0.id == noticeId }
+    }
+
+    /// キャッシュのサブスクリプションの状態。まだ届いていない、読めないときは nil
+    public func subscriptionStatus() async -> SubscriptionStatus? {
+        try? await store.subscriptionStatus()
     }
 
     /// 1回の撮る・選ぶでできた食事を記録する。`originals` は写真の ID ごとの元の写真で、どの食事の写真もそろっている。

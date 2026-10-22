@@ -114,7 +114,11 @@ describe("古いビルドの締め出し", () => {
         expect({
           requests: await readRows(accountId, "SELECT * FROM sync_request_logs"),
           receipts: await readRows(accountId, "SELECT * FROM sync_write_receipts"),
-          changes: await readRows(accountId, "SELECT * FROM record_changes"),
+          // 最初のサインインが足すサブスクリプションの状態の変更は除く
+          changes: await readRows(
+            accountId,
+            "SELECT * FROM record_changes WHERE record_type <> 'subscription_status'",
+          ),
         }).toEqual({ requests: [], receipts: [], changes: [] });
       });
     });
@@ -153,7 +157,7 @@ describe("古いビルドの締め出し", () => {
       });
     });
 
-    describe("Apple のサーバー間通知がビルド番号のヘッダーなしで届いたとき", () => {
+    describe("Sign in with Apple のサーバー間通知がビルド番号のヘッダーなしで届いたとき", () => {
       let response: Response;
       beforeEach(async () => {
         response = await app.request(
@@ -162,6 +166,25 @@ describe("古いビルドの締め出し", () => {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ payload: "not-a-jws" }),
+          },
+          env,
+        );
+      });
+
+      test("締め出しの判定にかけないこと", () => {
+        expect(response.status).not.toBe(426);
+      });
+    });
+
+    describe("App Store のサーバー通知がビルド番号のヘッダーなしで届いたとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await app.request(
+          "/v1/app-store-server-notifications",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ signedPayload: "not-a-jws" }),
           },
           env,
         );

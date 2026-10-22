@@ -1,4 +1,5 @@
 import type { EstimationAttemptOutcome } from "../estimation/domain/estimation-attempt-outcome";
+import type { EstimationDeferralReason } from "../estimation/domain/estimation-deferral-reason";
 import type { TokenUsage } from "./token-usage";
 import type { IngredientNutrientSource } from "../ingredient/domain/ingredient";
 import type { MealEntryMethod } from "../meal/domain/meal-entry-method";
@@ -11,7 +12,10 @@ import type { ClassificationLabel } from "../reply/domain/conversation-provider"
 import type { ReplyAttemptOutcome } from "../reply/domain/reply-attempt-outcome";
 import type { SentTextClassification } from "../sent-text/domain/sent-text-classification";
 import type { WeeklyReviewDeferralReason } from "../weekly-review/domain/weekly-review";
-import type { ReplyFailureReason } from "../sent-text-status/domain/sent-text-status";
+import type {
+  ReplyFailureReason,
+  ReplyHaltReason,
+} from "../sent-text-status/domain/sent-text-status";
 import type { RecordType } from "./record-type";
 import type { RejectionReason } from "./rejection-reason";
 import type { WriteKind } from "./sync-ledger/write-kind";
@@ -79,8 +83,8 @@ export type UsageEvent =
       // 返事の試みの結果を書いたとき（呼び出しごと）。本文は含めない
       name: "reply_attempt_ended";
       result: ReplyAttemptOutcome["result"];
-      // 呼び出しで使ったトークン。分からなければ undefined
-      usage: TokenUsage | undefined;
+      // 呼び出しで使ったトークン（キャッシュに書いた・読んだ分も）。分からなければ undefined
+      usage: ReplyAttemptOutcome["usage"];
       // 提供元のエラーと 400 のときの、提供元のエラーの種類
       providerErrorType: string | undefined;
     }
@@ -100,12 +104,37 @@ export type UsageEvent =
       providerErrorTypes: string[];
     }
   | {
-      // 1日の返事の回数の上限に達していて、提供元を呼ばずに依頼を回数切れにしたとき。1日 20 回を調整するのに見る
+      // 提供元を呼ばずに返事の依頼を止めたとき。1日の回数の上限（1日 10 回を調整するのに見る）か、サブスクリプション切れ
       name: "reply_request_halted";
+      reason: ReplyHaltReason;
     }
   | {
-      // 1日の回数の上限に達していて、予定を次の日に回したとき
+      // 推定を始めなかったとき
       name: "estimation_deferred";
+      reason: EstimationDeferralReason;
+    }
+  | {
+      // 理由が purchase の取引を初めて書いたとき（#647 の「観測」）。Production の環境の取引だけ。
+      // 商品の ID・価格・取引の ID・購入者のトークンは含めない
+      name: "subscription_started";
+      // 買った日（取引の買った時刻の、ユーザーの日付）が無料体験の最後の日までか
+      purchasedDuringFreeTrial: boolean;
+      // 前に無料体験を使った Apple ID で作り直したアカウントか
+      rebuiltAccount: boolean;
+    }
+  | {
+      // 理由が renewal の取引を初めて書いたとき。Production の環境の取引だけ
+      name: "subscription_renewed";
+    }
+  | {
+      // サブスクリプション切れになったとき。課金の仕事のアラームが区切りのあとに動いたとき、
+      // 取り消しを書いたとき、作り直したアカウントの最初のサインインのとき。アラームのやり直しなどでまれに2度送る
+      name: "subscription_expired";
+      // サブスクリプションを買ったことがあるか（取り消した取引も数える）
+      hasPurchased: boolean;
+      // 取り消しを書いて切れたか
+      byRevocation: boolean;
+      rebuiltAccount: boolean;
     }
   | {
       // 目標を決めたとき（初めてと立て直し）。同じ要求の ID の再送では送らない。体重・目標体重・kcal の値は含めない

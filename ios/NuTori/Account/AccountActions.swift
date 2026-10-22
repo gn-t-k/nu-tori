@@ -11,4 +11,13 @@ struct AccountActions {
     let notificationPermission: () async -> NotificationPermission
     /// 通知の行から iPhone の設定を開いた
     let openedNotificationSettings: () async -> Void
+    /// 今使えるサブスクリプションの自動更新を読む。iPhone の設定で解約して戻るたびに読み直す
+    let autoRenewal: () async -> SubscriptionPurchases.AutoRenewal
+    /// サブスクリプション中で自動更新がオンのときだけ、確かめの前に出す退会の案内を返す
+    let accountDeletionGuide: () async -> AccountDeletionGuide?
+    /// 解約の画面から戻ったときに、退会の案内の自動更新を読み直す
+    let rereadAccountDeletionGuide: (AccountDeletionGuide) async -> AccountDeletionGuide
+    let openedAccountDeletionGuide: () async -> Void
+    /// 退会の案内から解約の画面を開いた
+    let openedManageSubscriptions: () async -> Void
 }

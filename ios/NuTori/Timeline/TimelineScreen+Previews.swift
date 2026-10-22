@@ -18,6 +18,7 @@
             dailyGuides: sample.dailyGuides,
             weeklyReviews: sample.weeklyReviews,
             expenditureEstimates: sample.expenditureEstimates,
+            subscriptionStatus: sample.subscriptionStatus,
             undeliveredRecords: sample.undeliveredRecords,
             capture: { _ in },
             reminderLanding: nil,
@@ -27,6 +28,7 @@
             saveWeight: { _ in },
             sendText: { _ in },
             accountActions: .noop,
+            paywallActions: .noop,
             mealActions: .noop,
             conversation: sample.conversation,
             conversationActions: .noop,
@@ -64,6 +66,22 @@
             case writtenMeals
             /// 9月14日（月）に立てた目標の1週目を、今日（木）に見直した。振り返りのカードと変更の知らせ、左上の目標の入口
             case weeklyReviewed
+            /// 昨日で無料体験が終わった。今日の先頭に知らせのカード、入力欄は押せず上にチップ。昨日の夜に撮った食事はサブスクリプションを待っている
+            case subscriptionExpired
+
+            /// 無料体験の最後の日を今日より前にして、プレビューの時計（本物の今）でも切れにする
+            var subscriptionStatus: SubscriptionStatus? {
+                switch self {
+                case .subscriptionExpired:
+                    .regular(
+                        freeTrial: .available(lastDay: CalendarDay.sampleToday.advanced(by: -1)),
+                        subscription: .none)
+                case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
+                    .rejected, .meals, .goalDecided, .awaitingNotice, .answeredNotice,
+                    .undelivered, .writtenMeals, .weeklyReviewed:
+                    nil
+                }
+            }
 
             var weightTrend: WeightTrend? {
                 self == .weeklyReviewed ? WeightTrend.sampleWeeklyReviewed : nil
@@ -86,7 +104,7 @@
                 case .firstDay: .completed(startedDay: .sampleToday)
                 case .unrecordedToday, .recordedToday, .rejected, .meals, .goalDecided,
                     .awaitingNotice,
-                    .answeredNotice, .undelivered, .writtenMeals:
+                    .answeredNotice, .undelivered, .writtenMeals, .subscriptionExpired:
                     .completed(startedDay: Self.startedDay)
                 case .startedDayUndecided: .completed(startedDay: nil)
                 case .weeklyReviewed:
@@ -97,7 +115,8 @@
             var records: [WeightRecord] {
                 switch self {
                 case .loading, .firstDay: []
-                case .unrecordedToday, .startedDayUndecided, .awaitingNotice: Self.pastRecords
+                case .unrecordedToday, .startedDayUndecided, .awaitingNotice, .subscriptionExpired:
+                    Self.pastRecords
                 case .recordedToday, .meals, .goalDecided, .writtenMeals:
                     Self.pastRecords + [.sample(71.8, on: .sampleToday, at: 7, 5, from: .manual)]
                 case .answeredNotice:
@@ -112,7 +131,7 @@
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .meals, .goalDecided, .awaitingNotice, .answeredNotice, .undelivered,
-                    .writtenMeals, .weeklyReviewed:
+                    .writtenMeals, .weeklyReviewed, .subscriptionExpired:
                     []
                 case .rejected:
                     [
@@ -142,6 +161,13 @@
                     .rejected, .awaitingNotice, .answeredNotice:
                     []
                 case .weeklyReviewed: MealCard.sampleWeeklyReviewedWeek
+                case .subscriptionExpired:
+                    [
+                        MealCard(
+                            meal: .sample(
+                                on: CalendarDay.sampleToday.advanced(by: -1), at: 21, 40),
+                            status: .awaitingSubscription, recordedOnThisDevice: true)
+                    ]
                 case .undelivered:
                     [MealCard(meal: Self.undeliveredMeal, status: nil, recordedOnThisDevice: true)]
                 case .meals, .goalDecided:
@@ -181,7 +207,7 @@
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .meals, .goalDecided, .awaitingNotice, .answeredNotice, .undelivered,
-                    .weeklyReviewed:
+                    .weeklyReviewed, .subscriptionExpired:
                     .none
                 case .writtenMeals:
                     Timeline.Conversation(
@@ -199,7 +225,8 @@
             var notices: [Notice] {
                 switch self {
                 case .loading, .unrecordedToday, .recordedToday, .startedDayUndecided,
-                    .rejected, .meals, .undelivered, .writtenMeals, .weeklyReviewed:
+                    .rejected, .meals, .undelivered, .writtenMeals, .weeklyReviewed,
+                    .subscriptionExpired:
                     []
                 case .firstDay:
                     [.sampleGoalSetup(on: .sampleToday, answered: false)]
@@ -225,7 +252,7 @@
                 case .weeklyReviewed: [Goal.sampleWeeklyReviewed]
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .meals, .awaitingNotice, .answeredNotice, .undelivered,
-                    .writtenMeals:
+                    .writtenMeals, .subscriptionExpired:
                     []
                 }
             }
@@ -237,7 +264,7 @@
                     [DailyGuide.sampleFirst, DailyGuide.sampleReviewed]
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .meals, .awaitingNotice, .answeredNotice, .undelivered,
-                    .writtenMeals:
+                    .writtenMeals, .subscriptionExpired:
                     []
                 }
             }
@@ -248,7 +275,7 @@
                 switch self {
                 case .loading, .firstDay, .unrecordedToday, .recordedToday, .startedDayUndecided,
                     .rejected, .meals, .goalDecided, .awaitingNotice, .answeredNotice,
-                    .writtenMeals, .weeklyReviewed:
+                    .writtenMeals, .weeklyReviewed, .subscriptionExpired:
                     .none
                 case .undelivered:
                     UndeliveredRecords(records: [

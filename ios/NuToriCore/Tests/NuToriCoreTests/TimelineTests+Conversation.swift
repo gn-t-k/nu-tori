@@ -16,7 +16,8 @@ extension TimelineTests {
             Timeline(
                 input: Timeline.Input(
                     goalRecords: .fixture(weightRecords: weightRecords), rejectedLines: [],
-                    meals: meals, notices: [], undelivered: .none, conversation: conversation),
+                    meals: meals, notices: [], undelivered: .none, conversation: conversation,
+                    subscriptionNotices: []),
                 firstDay: firstDay, today: day)
         }
 
@@ -175,7 +176,7 @@ extension TimelineTests {
                             sentText.id: SentTextStatus(
                                 classification: .conversation, reply: .replied),
                             next.id: SentTextStatus(
-                                classification: .conversation, reply: .halted),
+                                classification: .conversation, reply: .halted(.dailyLimit)),
                         ],
                         replies: [reply], streams: [:]))
             }

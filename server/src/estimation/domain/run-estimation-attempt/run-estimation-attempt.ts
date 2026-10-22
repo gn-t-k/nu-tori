@@ -346,8 +346,15 @@ const toAttemptFailed = (
   });
 
 // 読めなかった応答でも、使ったトークンは分かる
-const usageOf = (error: ProviderFailure) =>
-  error.name === "LlmCallInvalidResponseError" ? error.usage : undefined;
+// 読めない応答の失敗の型は返事と同じ1組で、キャッシュのトークン数も持てるが、推定の呼び出しはキャッシュの印を付けないので数えない
+const usageOf = (error: ProviderFailure): TokenUsage | undefined =>
+  error.name === "LlmCallInvalidResponseError"
+    ? {
+        type: "uncached",
+        inputTokens: error.usage.inputTokens,
+        outputTokens: error.usage.outputTokens,
+      }
+    : undefined;
 
 // Claude の構造化出力は数値の範囲を使えないので、量が 0 より大きいことなどをここで確かめる。
 // 推定し直しは、その料理1つか、材料を出せない（0 件）の答えだけを通す

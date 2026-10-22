@@ -45,6 +45,17 @@ describe("確かめのジョブのためのサインインの口", () => {
       });
     });
 
+    describe("正しい秘密の値と時刻を送ったとき", () => {
+      test("その時刻にサインインしたことにして、使い始めた日をその日（UTC）にすること", async () => {
+        const response = await signInForE2e(developmentEnv, secret, "2026-01-05T23:00:00.000Z");
+        const { sessionToken } = await response.json<{ sessionToken: string }>();
+        const pulled = await (
+          await pullSyncChanges(sessionToken)
+        ).json<{ startedOn: string | null }>();
+        expect(pulled.startedOn).toBe("2026-01-05");
+      });
+    });
+
     describe("違う秘密の値を送ったとき", () => {
       test("401 を返すこと", async () => {
         const response = await signInForE2e(developmentEnv, `${secret}x`);
@@ -99,12 +110,15 @@ describe("確かめのジョブのためのサインインの口", () => {
   });
 });
 
-const signInForE2e = (testEnv: Env, sentSecret: string | undefined) =>
+const signInForE2e = (testEnv: Env, sentSecret: string | undefined, requestedAt?: string) =>
   app.request(
     "/v1/e2e/sessions",
     {
       method: "POST",
-      headers: sentSecret === undefined ? {} : { "x-e2e-sign-in-secret": sentSecret },
+      headers: {
+        ...(sentSecret === undefined ? {} : { "x-e2e-sign-in-secret": sentSecret }),
+        ...(requestedAt === undefined ? {} : { "x-e2e-requested-at": requestedAt }),
+      },
     },
     testEnv,
   );

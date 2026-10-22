@@ -27,7 +27,7 @@ extension TimelineTests {
                     conversation: Timeline.Conversation(
                         sentTexts: [sentText],
                         statuses: status.map { [sentText.id: $0] } ?? [:],
-                        replies: replies, streams: [:])),
+                        replies: replies, streams: [:]), subscriptionNotices: []),
                 firstDay: day, today: day)
             return timeline.days.flatMap(\.items).lazy.compactMap { item in
                 if case .sentText(let bubble) = item { bubble } else { nil }
@@ -107,9 +107,15 @@ extension TimelineTests {
 
             @Test("回数切れは、今日はもう返事を作れませんの1行に送り直すを添えること")
             func showsHalted() throws {
-                let line = try Self.line(.halted)
+                let line = try Self.line(.halted(.dailyLimit))
                 #expect(line?.text == "今日はもう返事を作れません")
                 #expect(line?.resendReason == .halted)
+            }
+
+            @Test("サブスクリプション切れで止めたら、返事をしなかったわけの1行にすること")
+            func showsSubscriptionExpired() throws {
+                let line = try Self.line(.halted(.subscriptionExpired))
+                #expect(line?.text == "サブスクリプション切れのため、返事をしませんでした")
             }
 
             @Test("やり直しを使い切ったら、返事を作れませんでしたの1行に送り直すを添えること")

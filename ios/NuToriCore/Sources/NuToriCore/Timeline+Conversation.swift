@@ -56,7 +56,7 @@ extension Timeline {
                 case (.meal, _): self = .arrived(nil)
                 // 返事ありの状態が返事の記録より先に届いた一瞬
                 case (.conversation, .replied): self = .arrived(.reading)
-                case (.conversation, .halted): self = .arrived(.halted)
+                case (.conversation, .halted(let reason)): self = .arrived(.halted(reason))
                 case (.conversation, .failed(let reason)): self = .arrived(.failed(reason))
                 }
             }

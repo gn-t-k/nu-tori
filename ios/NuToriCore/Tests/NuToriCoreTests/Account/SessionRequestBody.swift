@@ -3,4 +3,5 @@ struct SessionRequestBody: Decodable {
     let nonce: String
     let authorizationCode: String
     let timeZone: String?
+    let agreedTermsVersion: String?
 }

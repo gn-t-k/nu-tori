@@ -510,6 +510,141 @@ const reviewedDailyGuides = defineFactory({
   }),
 });
 
+const subscriptionReceipts = defineFactory({
+  schema,
+  table: "subscriptionReceipts",
+  resolver: () => ({
+    id: generateRecordId(),
+    receivedAt: new Date("2026-10-01T00:00:00Z"),
+  }),
+});
+
+const subscriptions = defineFactory({
+  schema,
+  table: "subscriptions",
+  resolver: () => ({ id: generateRecordId() }),
+});
+
+const appStoreSubscriptions = defineFactory({
+  schema,
+  table: "appStoreSubscriptions",
+  resolver: ({ use }) => ({
+    subscriptionId: () =>
+      use(subscriptions)
+        .create()
+        .then((subscription) => subscription.id),
+    environment: "production" as const,
+    // 環境と組で一意なので、行ごとに別の値にする
+    appStoreOriginalTransactionId: generateRecordId(),
+  }),
+});
+
+const subscriptionTransactions = defineFactory({
+  schema,
+  table: "subscriptionTransactions",
+  resolver: ({ use }) => ({
+    id: generateRecordId(),
+    subscriptionId: () =>
+      use(appStoreSubscriptions)
+        .create()
+        .then((subscription) => subscription.subscriptionId),
+    subscriptionReceiptId: () =>
+      use(subscriptionReceipts)
+        .create()
+        .then((receipt) => receipt.id),
+    transactionReason: "purchase" as const,
+    purchasedAt: new Date("2026-10-01T00:00:00Z"),
+    expiresAt: new Date("2026-11-01T00:00:00Z"),
+  }),
+});
+
+const appStoreSubscriptionTransactions = defineFactory({
+  schema,
+  table: "appStoreSubscriptionTransactions",
+  resolver: ({ use }) => ({
+    subscriptionTransactionId: () =>
+      use(subscriptionTransactions)
+        .create()
+        .then((transaction) => transaction.id),
+    // 一意なので、行ごとに別の値にする
+    appStoreTransactionId: generateRecordId(),
+    appStoreProductId: "app.nu-tori.subscription.monthly",
+  }),
+});
+
+const subscriptionTransactionRevocations = defineFactory({
+  schema,
+  table: "subscriptionTransactionRevocations",
+  resolver: ({ use }) => ({
+    id: generateRecordId(),
+    subscriptionTransactionId: () =>
+      use(subscriptionTransactions)
+        .create()
+        .then((transaction) => transaction.id),
+    subscriptionReceiptId: () =>
+      use(subscriptionReceipts)
+        .create()
+        .then((receipt) => receipt.id),
+    revokedAt: new Date("2026-10-10T00:00:00Z"),
+  }),
+});
+
+const subscriptionTransactionRevocationReversals = defineFactory({
+  schema,
+  table: "subscriptionTransactionRevocationReversals",
+  resolver: ({ use }) => ({
+    subscriptionTransactionRevocationId: () =>
+      use(subscriptionTransactionRevocations)
+        .create()
+        .then((revocation) => revocation.id),
+    subscriptionReceiptId: () =>
+      use(subscriptionReceipts)
+        .create()
+        .then((receipt) => receipt.id),
+    reversedAt: new Date("2026-10-11T00:00:00Z"),
+  }),
+});
+
+const subscriptionBillingFailures = defineFactory({
+  schema,
+  table: "subscriptionBillingFailures",
+  resolver: ({ use }) => ({
+    id: generateRecordId(),
+    subscriptionTransactionId: () =>
+      use(subscriptionTransactions)
+        .create()
+        .then((transaction) => transaction.id),
+    subscriptionReceiptId: () =>
+      use(subscriptionReceipts)
+        .create()
+        .then((receipt) => receipt.id),
+    failedAt: new Date("2026-11-01T00:00:00Z"),
+  }),
+});
+
+const subscriptionGracePeriods = defineFactory({
+  schema,
+  table: "subscriptionGracePeriods",
+  resolver: ({ use }) => ({
+    subscriptionBillingFailureId: () =>
+      use(subscriptionBillingFailures)
+        .create()
+        .then((failure) => failure.id),
+    gracePeriodExpiresAt: new Date("2026-11-17T00:00:00Z"),
+  }),
+});
+
+const freeTrialExclusions = defineFactory({
+  schema,
+  table: "freeTrialExclusions",
+  resolver: ({ use }) => ({
+    firstSignInId: () =>
+      use(firstSignIns)
+        .create()
+        .then((firstSignIn) => firstSignIn.id),
+  }),
+});
+
 // 置き場のテストで行を作る。create() は Promise を返すので、テストで await する。transactionSync の中では使わない
 export const durableObjectFactory = composeFactory({
   firstSignIns,
@@ -551,4 +686,14 @@ export const durableObjectFactory = composeFactory({
   deferredWeeklyReviews,
   reviewedExpenditureEstimates,
   reviewedDailyGuides,
+  subscriptionReceipts,
+  subscriptions,
+  appStoreSubscriptions,
+  subscriptionTransactions,
+  appStoreSubscriptionTransactions,
+  subscriptionTransactionRevocations,
+  subscriptionTransactionRevocationReversals,
+  subscriptionBillingFailures,
+  subscriptionGracePeriods,
+  freeTrialExclusions,
 });

@@ -8,6 +8,8 @@ import type { EstimationProvider } from "../../estimation/domain/estimation-prov
 import type { MealPhotoArchive } from "../../meal/domain/meal-photo-archive";
 import type { ConversationProvider } from "../../reply/domain/conversation-provider";
 import type { ReplyWatchers } from "../../reply/domain/create-reply-watchers";
+import type { SubscriptionTransactionStore } from "../../subscription/domain/subscription-transaction-store";
+import type { TermsAgreementStore } from "../../terms-agreement/domain/terms-agreement-store";
 
 // アカウントの口が使う置き場と外への呼び出し。基盤に固有の層（Durable Object）が実装し、要求ごとに要るものだけを渡す
 export type AccountStores = {
@@ -15,6 +17,8 @@ export type AccountStores = {
   records: RecordKindStores;
   writeRecordChanges: RecordChangeWriter;
   firstSignIn: FirstSignInStore;
+  termsAgreement: TermsAgreementStore;
+  subscriptionTransaction: SubscriptionTransactionStore;
   mealPhotoArchive: MealPhotoArchive;
   estimationProvider: EstimationProvider;
   conversationProvider: ConversationProvider;

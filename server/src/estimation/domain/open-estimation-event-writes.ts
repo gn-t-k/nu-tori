@@ -102,6 +102,10 @@ export const openEstimationEventWrites = (
       }
       store.insertDishSchedule({ ...nextSchedule, dishId: target.dishId });
     },
+    hold: ({ target, ...hold }) => {
+      rememberTarget(target);
+      store.insertHold(hold);
+    },
     beginEstimation: ({ target, ...estimation }) => {
       if (target.type === "meal") {
         rememberMeal(target.mealId);

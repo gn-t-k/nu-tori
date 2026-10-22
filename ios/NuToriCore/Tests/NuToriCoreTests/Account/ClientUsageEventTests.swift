@@ -118,6 +118,48 @@ struct ClientUsageEventTests {
         }
     }
 
+    @Suite("規約への同意のシート")
+    struct TermsAgreement {
+        @Test("シートを出したことを、中身を持たない出来事にすること")
+        func sheetShownHasNoFields() {
+            let event = ClientUsageEvent.termsAgreementSheetShown
+
+            #expect(event.name == "terms_agreement_sheet_shown")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+
+        @Test("同意したことを、中身を持たない出来事にすること")
+        func agreedHasNoFields() {
+            let event = ClientUsageEvent.termsAgreed
+
+            #expect(event.name == "terms_agreed")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
+    @Suite("退会の案内のシート")
+    struct AccountDeletionGuide {
+        @Test("シートを出したことを、中身を持たない出来事にすること")
+        func guideOpenedHasNoFields() {
+            let event = ClientUsageEvent.accountDeletionGuideOpened
+
+            #expect(event.name == "account_deletion_guide_opened")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+
+        @Test("解約の画面を開いたことを、中身を持たない出来事にすること")
+        func manageSubscriptionsOpenedHasNoFields() {
+            let event = ClientUsageEvent.manageSubscriptionsOpened
+
+            #expect(event.name == "manage_subscriptions_opened")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
     @Suite("答えていない知らせの1行を押したとき")
     struct UnansweredNoticeLineTapped {
         @Test("中身を持たない出来事にすること")

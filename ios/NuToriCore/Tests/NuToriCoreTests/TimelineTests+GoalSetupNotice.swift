@@ -13,7 +13,8 @@ extension TimelineTests {
             Timeline(
                 input: Timeline.Input(
                     goalRecords: .fixture(), rejectedLines: [], meals: meals,
-                    notices: notices, undelivered: .none, conversation: .none),
+                    notices: notices, undelivered: .none, conversation: .none,
+                    subscriptionNotices: []),
                 firstDay: CalendarDay(year: 2026, month: 9, day: 20), today: today)
         }
 

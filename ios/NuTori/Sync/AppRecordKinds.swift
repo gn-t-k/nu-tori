@@ -63,6 +63,10 @@ nonisolated enum AppRecordKinds {
             SwiftDataKeyedRecordCache<CachedSentTextStatus>(context: context)
         }
 
+        func subscriptionStatus(in context: ModelContext) -> SubscriptionStatusSyncing.Cache {
+            SwiftDataSingleRecordCache<CachedSubscriptionStatus>(context: context)
+        }
+
         func usualWeighingTime(in context: ModelContext) -> UsualWeighingTimeSyncing.Cache {
             SwiftDataSingleRecordCache<CachedUsualWeighingTime>(context: context)
         }

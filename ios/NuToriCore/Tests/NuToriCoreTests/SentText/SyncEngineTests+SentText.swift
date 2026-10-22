@@ -322,18 +322,25 @@ extension SyncEngineTests {
             }
         }
 
-        @Suite("作れなかった・回数切れ・知らない応答の状態が届いたとき")
+        @Suite("作れなかった・止めた・知らない応答の状態が届いたとき")
         struct ReceivingReplyStatuses {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let failedId: UUID
             let haltedId: UUID
             let unknownId: UUID
+            let expiredId: UUID
+            let limitedId: UUID
+            let unknownHaltId: UUID
 
             init() throws {
                 failedId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b1"))
                 haltedId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b2"))
                 unknownId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b3"))
+                expiredId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b4"))
+                limitedId = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b5"))
+                unknownHaltId = try #require(
+                    UUID(uuidString: "00000000-0000-4000-8000-0000000000b6"))
                 store = try .ok()
                 engine = .fixture(
                     store: store,
@@ -348,20 +355,33 @@ extension SyncEngineTests {
                              "replyStatus":"halted"}},
                           {"sequence":3,"kind":"sent_text_status","recordId":"\(unknownId.uuidString)",
                            "record":{"sentTextId":"\(unknownId.uuidString)","classification":"conversation",
-                             "replyStatus":"thinking"}}
-                        ],"hasMore":false,"nextAfterSequence":3,"startedOn":null}
+                             "replyStatus":"thinking"}},
+                          {"sequence":4,"kind":"sent_text_status","recordId":"\(expiredId.uuidString)",
+                           "record":{"sentTextId":"\(expiredId.uuidString)","classification":"conversation",
+                             "replyStatus":"halted","replyHaltReason":"subscription_expired"}},
+                          {"sequence":5,"kind":"sent_text_status","recordId":"\(limitedId.uuidString)",
+                           "record":{"sentTextId":"\(limitedId.uuidString)","classification":"conversation",
+                             "replyStatus":"halted","replyHaltReason":"daily_limit"}},
+                          {"sequence":6,"kind":"sent_text_status","recordId":"\(unknownHaltId.uuidString)",
+                           "record":{"sentTextId":"\(unknownHaltId.uuidString)","classification":"conversation",
+                             "replyStatus":"halted","replyHaltReason":"maintenance"}}
+                        ],"hasMore":false,"nextAfterSequence":6,"startedOn":null}
                         """
                     ]))
             }
 
-            @Test("作れなかった理由と回数切れを読み、知らない応答の状態は読み飛ばすこと")
+            @Test("作れなかった理由と止めた理由を読み、理由の無い止めは回数切れとし、知らない応答の状態と止めた理由は読み飛ばすこと")
             func readsReplyStatuses() async throws {
                 _ = try await engine.sync()
 
                 #expect(
                     store.cache.sentTextStatuses == [
                         failedId: .init(classification: .conversation, reply: .failed(.badRequest)),
-                        haltedId: .init(classification: .conversation, reply: .halted),
+                        haltedId: .init(classification: .conversation, reply: .halted(.dailyLimit)),
+                        expiredId: .init(
+                            classification: .conversation, reply: .halted(.subscriptionExpired)),
+                        limitedId: .init(
+                            classification: .conversation, reply: .halted(.dailyLimit)),
                     ])
             }
         }

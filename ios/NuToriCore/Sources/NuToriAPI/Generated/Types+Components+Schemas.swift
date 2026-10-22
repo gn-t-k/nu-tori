@@ -24,6 +24,7 @@ extension Components {
             case notice = "notice"
             case sentText = "sent_text"
             case sentTextStatus = "sent_text_status"
+            case subscriptionStatus = "subscription_status"
             case usualWeighingTime = "usual_weighing_time"
             case weeklyReview = "weekly_review"
             case weightRecord = "weight_record"
@@ -264,7 +265,7 @@ extension Components {
         internal struct DishEstimationStatusRecord: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/DishEstimationStatusRecord/dishId`.
             internal var dishId: Swift.String
-            /// 推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
+            /// 推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
             ///
             /// - Remark: Generated from `#/components/schemas/DishEstimationStatusRecord/status`.
             internal var status: Swift.String
@@ -272,7 +273,7 @@ extension Components {
             ///
             /// - Parameters:
             ///   - dishId:
-            ///   - status: 推定中（estimating）、翌日に推定（deferred_to_next_day）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
+            ///   - status: 推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
             internal init(
                 dishId: Swift.String,
                 status: Swift.String
@@ -920,13 +921,15 @@ extension Components {
         internal struct MealEstimationStatusRecord: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/MealEstimationStatusRecord/mealId`.
             internal var mealId: Swift.String
+            /// 写真を待っている（awaiting_photos）、推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
+            ///
             /// - Remark: Generated from `#/components/schemas/MealEstimationStatusRecord/status`.
             internal var status: Swift.String
             /// Creates a new `MealEstimationStatusRecord`.
             ///
             /// - Parameters:
             ///   - mealId:
-            ///   - status:
+            ///   - status: 写真を待っている（awaiting_photos）、推定中（estimating）、翌日に推定（deferred_to_next_day）、サブスクリプションを待っている（awaiting_subscription）、推定できた（estimated）、料理なし（no_dishes）、推定できなかった（failed）
             internal init(
                 mealId: Swift.String,
                 status: Swift.String
@@ -1070,10 +1073,14 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/classification`.
             internal var classification: Swift.String
-            /// 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）
+            /// 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（止めた。理由は replyHaltReason）・failed（作れなかった）
             ///
             /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/replyStatus`.
             internal var replyStatus: Swift.String
+            /// replyStatus が halted のときだけある、止めた理由。daily_limit（その日の回数切れ）・subscription_expired（サブスクリプション切れ）。買っても再開しない
+            ///
+            /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/replyHaltReason`.
+            internal var replyHaltReason: Swift.String?
             /// replyStatus が failed のときだけある、作れなかった理由。retries_exhausted（やり直しを使い切った）・bad_request（提供元の 400）
             ///
             /// - Remark: Generated from `#/components/schemas/SentTextStatusRecord/replyFailureReason`.
@@ -1083,24 +1090,401 @@ extension Components {
             /// - Parameters:
             ///   - sentTextId:
             ///   - classification: 読み分けの今の結果。pending（読み分けを待っている）・meal・conversation
-            ///   - replyStatus: 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（その日の回数切れ）・failed（作れなかった）
+            ///   - replyStatus: 応答の状態。none（返事の依頼が無い）・awaiting（応答待ち）・replied（返事あり）・halted（止めた。理由は replyHaltReason）・failed（作れなかった）
+            ///   - replyHaltReason: replyStatus が halted のときだけある、止めた理由。daily_limit（その日の回数切れ）・subscription_expired（サブスクリプション切れ）。買っても再開しない
             ///   - replyFailureReason: replyStatus が failed のときだけある、作れなかった理由。retries_exhausted（やり直しを使い切った）・bad_request（提供元の 400）
             internal init(
                 sentTextId: Swift.String,
                 classification: Swift.String,
                 replyStatus: Swift.String,
+                replyHaltReason: Swift.String? = nil,
                 replyFailureReason: Swift.String? = nil
             ) {
                 self.sentTextId = sentTextId
                 self.classification = classification
                 self.replyStatus = replyStatus
+                self.replyHaltReason = replyHaltReason
                 self.replyFailureReason = replyFailureReason
             }
             internal enum CodingKeys: String, CodingKey {
                 case sentTextId
                 case classification
                 case replyStatus
+                case replyHaltReason
                 case replyFailureReason
+            }
+        }
+        /// kind が subscription_status の変更の record。recordId は最初のサインインの ID の1つだけで、消えない。日付と時刻は事実が変わったときだけ変わるので、端末は今日と比べて描く
+        ///
+        /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord`.
+        internal enum SubscriptionStatusRecord: Codable, Hashable, Sendable {
+            /// テストユーザー。いつもサブスクリプション中と同じに扱う
+            ///
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord/case1`.
+            internal struct Case1Payload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord/case1/type`.
+                internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case testUser = "test_user"
+                }
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord/case1/type`.
+                internal var _type: Components.Schemas.SubscriptionStatusRecord.Case1Payload._TypePayload
+                /// Creates a new `Case1Payload`.
+                ///
+                /// - Parameters:
+                ///   - _type:
+                internal init(_type: Components.Schemas.SubscriptionStatusRecord.Case1Payload._TypePayload) {
+                    self._type = _type
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case _type = "type"
+                }
+            }
+            /// テストユーザー。いつもサブスクリプション中と同じに扱う
+            ///
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord/case1`.
+            case case1(Components.Schemas.SubscriptionStatusRecord.Case1Payload)
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord/case2`.
+            internal struct Case2Payload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord/case2/type`.
+                internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case regular = "regular"
+                }
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord/case2/type`.
+                internal var _type: Components.Schemas.SubscriptionStatusRecord.Case2Payload._TypePayload
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord/case2/freeTrial`.
+                internal var freeTrial: Components.Schemas.SubscriptionStatusFreeTrial
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord/case2/subscription`.
+                internal var subscription: Components.Schemas.SubscriptionStatusSubscription
+                /// Creates a new `Case2Payload`.
+                ///
+                /// - Parameters:
+                ///   - _type:
+                ///   - freeTrial:
+                ///   - subscription:
+                internal init(
+                    _type: Components.Schemas.SubscriptionStatusRecord.Case2Payload._TypePayload,
+                    freeTrial: Components.Schemas.SubscriptionStatusFreeTrial,
+                    subscription: Components.Schemas.SubscriptionStatusSubscription
+                ) {
+                    self._type = _type
+                    self.freeTrial = freeTrial
+                    self.subscription = subscription
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case _type = "type"
+                    case freeTrial
+                    case subscription
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusRecord/case2`.
+            case case2(Components.Schemas.SubscriptionStatusRecord.Case2Payload)
+            internal init(from decoder: any Swift.Decoder) throws {
+                var errors: [any Swift.Error] = []
+                do {
+                    self = .case1(try .init(from: decoder))
+                    return
+                } catch {
+                    errors.append(error)
+                }
+                do {
+                    self = .case2(try .init(from: decoder))
+                    return
+                } catch {
+                    errors.append(error)
+                }
+                throw Swift.DecodingError.failedToDecodeOneOfSchema(
+                    type: Self.self,
+                    codingPath: decoder.codingPath,
+                    errors: errors
+                )
+            }
+            internal func encode(to encoder: any Swift.Encoder) throws {
+                switch self {
+                case let .case1(value):
+                    try value.encode(to: encoder)
+                case let .case2(value):
+                    try value.encode(to: encoder)
+                }
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/SubscriptionStatusFreeTrial`.
+        internal enum SubscriptionStatusFreeTrial: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusFreeTrial/case1`.
+            internal struct Case1Payload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusFreeTrial/case1/type`.
+                internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case available = "available"
+                }
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusFreeTrial/case1/type`.
+                internal var _type: Components.Schemas.SubscriptionStatusFreeTrial.Case1Payload._TypePayload
+                /// 無料体験の最後の日（YYYY-MM-DD）。その日の終わりまでが無料体験中
+                ///
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusFreeTrial/case1/lastDay`.
+                internal var lastDay: Swift.String
+                /// Creates a new `Case1Payload`.
+                ///
+                /// - Parameters:
+                ///   - _type:
+                ///   - lastDay: 無料体験の最後の日（YYYY-MM-DD）。その日の終わりまでが無料体験中
+                internal init(
+                    _type: Components.Schemas.SubscriptionStatusFreeTrial.Case1Payload._TypePayload,
+                    lastDay: Swift.String
+                ) {
+                    self._type = _type
+                    self.lastDay = lastDay
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case _type = "type"
+                    case lastDay
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusFreeTrial/case1`.
+            case case1(Components.Schemas.SubscriptionStatusFreeTrial.Case1Payload)
+            /// 作り直したアカウント。無料体験が無い
+            ///
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusFreeTrial/case2`.
+            internal struct Case2Payload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusFreeTrial/case2/type`.
+                internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case usedByEarlierAccount = "used_by_earlier_account"
+                }
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusFreeTrial/case2/type`.
+                internal var _type: Components.Schemas.SubscriptionStatusFreeTrial.Case2Payload._TypePayload
+                /// Creates a new `Case2Payload`.
+                ///
+                /// - Parameters:
+                ///   - _type:
+                internal init(_type: Components.Schemas.SubscriptionStatusFreeTrial.Case2Payload._TypePayload) {
+                    self._type = _type
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case _type = "type"
+                }
+            }
+            /// 作り直したアカウント。無料体験が無い
+            ///
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusFreeTrial/case2`.
+            case case2(Components.Schemas.SubscriptionStatusFreeTrial.Case2Payload)
+            internal init(from decoder: any Swift.Decoder) throws {
+                var errors: [any Swift.Error] = []
+                do {
+                    self = .case1(try .init(from: decoder))
+                    return
+                } catch {
+                    errors.append(error)
+                }
+                do {
+                    self = .case2(try .init(from: decoder))
+                    return
+                } catch {
+                    errors.append(error)
+                }
+                throw Swift.DecodingError.failedToDecodeOneOfSchema(
+                    type: Self.self,
+                    codingPath: decoder.codingPath,
+                    errors: errors
+                )
+            }
+            internal func encode(to encoder: any Swift.Encoder) throws {
+                switch self {
+                case let .case1(value):
+                    try value.encode(to: encoder)
+                case let .case2(value):
+                    try value.encode(to: encoder)
+                }
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription`.
+        internal enum SubscriptionStatusSubscription: Codable, Hashable, Sendable {
+            /// 取り消されていない取引が無い（買っていない、またはすべて取り消された）
+            ///
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case1`.
+            internal struct Case1Payload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case1/type`.
+                internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case none = "none"
+                }
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case1/type`.
+                internal var _type: Components.Schemas.SubscriptionStatusSubscription.Case1Payload._TypePayload
+                /// Creates a new `Case1Payload`.
+                ///
+                /// - Parameters:
+                ///   - _type:
+                internal init(_type: Components.Schemas.SubscriptionStatusSubscription.Case1Payload._TypePayload) {
+                    self._type = _type
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case _type = "type"
+                }
+            }
+            /// 取り消されていない取引が無い（買っていない、またはすべて取り消された）
+            ///
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case1`.
+            case case1(Components.Schemas.SubscriptionStatusSubscription.Case1Payload)
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case2`.
+            internal struct Case2Payload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case2/type`.
+                internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case subscribed = "subscribed"
+                }
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case2/type`.
+                internal var _type: Components.Schemas.SubscriptionStatusSubscription.Case2Payload._TypePayload
+                /// 期限がいちばん遅い取り消されていない取引の商品。月額（monthly）か年額（yearly）
+                ///
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case2/plan`.
+                internal enum PlanPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case monthly = "monthly"
+                    case yearly = "yearly"
+                }
+                /// 期限がいちばん遅い取り消されていない取引の商品。月額（monthly）か年額（yearly）
+                ///
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case2/plan`.
+                internal var plan: Components.Schemas.SubscriptionStatusSubscription.Case2Payload.PlanPayload
+                /// 期限がいちばん遅い取り消されていない取引の期限（ISO 8601 の時刻）。更新日に使う
+                ///
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case2/periodEndsAt`.
+                internal var periodEndsAt: Swift.String
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case2/billingGrace`.
+                internal var billingGrace: Components.Schemas.SubscriptionStatusBillingGrace
+                /// Creates a new `Case2Payload`.
+                ///
+                /// - Parameters:
+                ///   - _type:
+                ///   - plan: 期限がいちばん遅い取り消されていない取引の商品。月額（monthly）か年額（yearly）
+                ///   - periodEndsAt: 期限がいちばん遅い取り消されていない取引の期限（ISO 8601 の時刻）。更新日に使う
+                ///   - billingGrace:
+                internal init(
+                    _type: Components.Schemas.SubscriptionStatusSubscription.Case2Payload._TypePayload,
+                    plan: Components.Schemas.SubscriptionStatusSubscription.Case2Payload.PlanPayload,
+                    periodEndsAt: Swift.String,
+                    billingGrace: Components.Schemas.SubscriptionStatusBillingGrace
+                ) {
+                    self._type = _type
+                    self.plan = plan
+                    self.periodEndsAt = periodEndsAt
+                    self.billingGrace = billingGrace
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case _type = "type"
+                    case plan
+                    case periodEndsAt
+                    case billingGrace
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusSubscription/case2`.
+            case case2(Components.Schemas.SubscriptionStatusSubscription.Case2Payload)
+            internal init(from decoder: any Swift.Decoder) throws {
+                var errors: [any Swift.Error] = []
+                do {
+                    self = .case1(try .init(from: decoder))
+                    return
+                } catch {
+                    errors.append(error)
+                }
+                do {
+                    self = .case2(try .init(from: decoder))
+                    return
+                } catch {
+                    errors.append(error)
+                }
+                throw Swift.DecodingError.failedToDecodeOneOfSchema(
+                    type: Self.self,
+                    codingPath: decoder.codingPath,
+                    errors: errors
+                )
+            }
+            internal func encode(to encoder: any Swift.Encoder) throws {
+                switch self {
+                case let .case1(value):
+                    try value.encode(to: encoder)
+                case let .case2(value):
+                    try value.encode(to: encoder)
+                }
+            }
+        }
+        /// 端末はサブスクリプションの終わりを、granted ならその endsAt、none なら periodEndsAt として選ぶ（比べるのはサーバー）
+        ///
+        /// - Remark: Generated from `#/components/schemas/SubscriptionStatusBillingGrace`.
+        internal enum SubscriptionStatusBillingGrace: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusBillingGrace/case1`.
+            internal struct Case1Payload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusBillingGrace/case1/type`.
+                internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case none = "none"
+                }
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusBillingGrace/case1/type`.
+                internal var _type: Components.Schemas.SubscriptionStatusBillingGrace.Case1Payload._TypePayload
+                /// Creates a new `Case1Payload`.
+                ///
+                /// - Parameters:
+                ///   - _type:
+                internal init(_type: Components.Schemas.SubscriptionStatusBillingGrace.Case1Payload._TypePayload) {
+                    self._type = _type
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case _type = "type"
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusBillingGrace/case1`.
+            case case1(Components.Schemas.SubscriptionStatusBillingGrace.Case1Payload)
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusBillingGrace/case2`.
+            internal struct Case2Payload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusBillingGrace/case2/type`.
+                internal enum _TypePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case granted = "granted"
+                }
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusBillingGrace/case2/type`.
+                internal var _type: Components.Schemas.SubscriptionStatusBillingGrace.Case2Payload._TypePayload
+                /// 請求の猶予の終わり（ISO 8601 の時刻）。期限より遅いときだけ届く
+                ///
+                /// - Remark: Generated from `#/components/schemas/SubscriptionStatusBillingGrace/case2/endsAt`.
+                internal var endsAt: Swift.String
+                /// Creates a new `Case2Payload`.
+                ///
+                /// - Parameters:
+                ///   - _type:
+                ///   - endsAt: 請求の猶予の終わり（ISO 8601 の時刻）。期限より遅いときだけ届く
+                internal init(
+                    _type: Components.Schemas.SubscriptionStatusBillingGrace.Case2Payload._TypePayload,
+                    endsAt: Swift.String
+                ) {
+                    self._type = _type
+                    self.endsAt = endsAt
+                }
+                internal enum CodingKeys: String, CodingKey {
+                    case _type = "type"
+                    case endsAt
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/SubscriptionStatusBillingGrace/case2`.
+            case case2(Components.Schemas.SubscriptionStatusBillingGrace.Case2Payload)
+            internal init(from decoder: any Swift.Decoder) throws {
+                var errors: [any Swift.Error] = []
+                do {
+                    self = .case1(try .init(from: decoder))
+                    return
+                } catch {
+                    errors.append(error)
+                }
+                do {
+                    self = .case2(try .init(from: decoder))
+                    return
+                } catch {
+                    errors.append(error)
+                }
+                throw Swift.DecodingError.failedToDecodeOneOfSchema(
+                    type: Self.self,
+                    codingPath: decoder.codingPath,
+                    errors: errors
+                )
+            }
+            internal func encode(to encoder: any Swift.Encoder) throws {
+                switch self {
+                case let .case1(value):
+                    try value.encode(to: encoder)
+                case let .case2(value):
+                    try value.encode(to: encoder)
+                }
             }
         }
         /// kind が usual_weighing_time の変更の record。アカウントに1つで、サーバーが初めて学んだときに recordId を振る。学ぶまでは変更が届かない（端末は朝7時を使う）。一度届いたら消えない
@@ -1144,15 +1528,16 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/deferral`.
             internal struct DeferralPayload: Codable, Hashable, Sendable {
-                /// 見送りの理由。使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）
+                /// 見送りの理由。サブスクリプション切れ（subscription_expired）、使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）
                 ///
                 /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/deferral/reason`.
                 internal enum ReasonPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                    case subscriptionExpired = "subscription_expired"
                     case withinFirstWeek = "within_first_week"
                     case noWeight = "no_weight"
                     case fewMealRecords = "few_meal_records"
                 }
-                /// 見送りの理由。使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）
+                /// 見送りの理由。サブスクリプション切れ（subscription_expired）、使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）
                 ///
                 /// - Remark: Generated from `#/components/schemas/WeeklyReviewRecord/deferral/reason`.
                 internal var reason: Components.Schemas.WeeklyReviewRecord.DeferralPayload.ReasonPayload
@@ -1163,7 +1548,7 @@ extension Components {
                 /// Creates a new `DeferralPayload`.
                 ///
                 /// - Parameters:
-                ///   - reason: 見送りの理由。使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）
+                ///   - reason: 見送りの理由。サブスクリプション切れ（subscription_expired）、使い始めて1週に満たない（within_first_week）、体重が無い（no_weight）、食事の記録が少ない（few_meal_records）
                 ///   - goalId: その週に当てた目標の ID。目標の変更より先に届くことがある
                 internal init(
                     reason: Components.Schemas.WeeklyReviewRecord.DeferralPayload.ReasonPayload,
@@ -4341,7 +4726,7 @@ extension Components {
                 case _type = "type"
             }
         }
-        /// その日の返事の回数を使い切っていて、回数切れにした。送ったあと閉じる
+        /// 返事を作らずに止めた。その日の返事の回数を使い切っていた（daily_limit）か、サブスクリプション切れ（subscription_expired）。送ったあと閉じる
         ///
         /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent`.
         internal struct ReplyHaltedEvent: Codable, Hashable, Sendable {
@@ -4351,15 +4736,28 @@ extension Components {
             }
             /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent/type`.
             internal var _type: Components.Schemas.ReplyHaltedEvent._TypePayload
+            /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent/reason`.
+            internal enum ReasonPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case dailyLimit = "daily_limit"
+                case subscriptionExpired = "subscription_expired"
+            }
+            /// - Remark: Generated from `#/components/schemas/ReplyHaltedEvent/reason`.
+            internal var reason: Components.Schemas.ReplyHaltedEvent.ReasonPayload
             /// Creates a new `ReplyHaltedEvent`.
             ///
             /// - Parameters:
             ///   - _type:
-            internal init(_type: Components.Schemas.ReplyHaltedEvent._TypePayload) {
+            ///   - reason:
+            internal init(
+                _type: Components.Schemas.ReplyHaltedEvent._TypePayload,
+                reason: Components.Schemas.ReplyHaltedEvent.ReasonPayload
+            ) {
                 self._type = _type
+                self.reason = reason
             }
             internal enum CodingKeys: String, CodingKey {
                 case _type = "type"
+                case reason
             }
         }
         /// 返事を作れなかった（やり直しを使い切った・提供元の 400）。送ったあと閉じる
@@ -4394,6 +4792,229 @@ extension Components {
             internal enum CodingKeys: String, CodingKey {
                 case _type = "type"
                 case failureReason
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/TermsAgreementRequirement`.
+        internal struct TermsAgreementRequirement: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/TermsAgreementRequirement/agreementRequired`.
+            internal var agreementRequired: Swift.Bool
+            /// 今の規約の版。同意が要るとき、同意する要求でこの版を送る
+            ///
+            /// - Remark: Generated from `#/components/schemas/TermsAgreementRequirement/termsVersion`.
+            internal var termsVersion: Swift.String
+            /// Creates a new `TermsAgreementRequirement`.
+            ///
+            /// - Parameters:
+            ///   - agreementRequired:
+            ///   - termsVersion: 今の規約の版。同意が要るとき、同意する要求でこの版を送る
+            internal init(
+                agreementRequired: Swift.Bool,
+                termsVersion: Swift.String
+            ) {
+                self.agreementRequired = agreementRequired
+                self.termsVersion = termsVersion
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case agreementRequired
+                case termsVersion
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/TermsAgreementRejection`.
+        internal struct TermsAgreementRejection: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/TermsAgreementRejection/code`.
+            internal enum CodePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case termsVersionUnknown = "terms_version_unknown"
+            }
+            /// - Remark: Generated from `#/components/schemas/TermsAgreementRejection/code`.
+            internal var code: Components.Schemas.TermsAgreementRejection.CodePayload
+            /// Creates a new `TermsAgreementRejection`.
+            ///
+            /// - Parameters:
+            ///   - code:
+            internal init(code: Components.Schemas.TermsAgreementRejection.CodePayload) {
+                self.code = code
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case code
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/AppAccountToken`.
+        internal struct AppAccountToken: Codable, Hashable, Sendable {
+            /// UUID（小文字）
+            ///
+            /// - Remark: Generated from `#/components/schemas/AppAccountToken/appAccountToken`.
+            internal var appAccountToken: Swift.String
+            /// Creates a new `AppAccountToken`.
+            ///
+            /// - Parameters:
+            ///   - appAccountToken: UUID（小文字）
+            internal init(appAccountToken: Swift.String) {
+                self.appAccountToken = appAccountToken
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case appAccountToken
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReport`.
+        internal enum SubscriptionTransactionReport: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReport/LinkedSubscriptionTransactionReport`.
+            case linked(Components.Schemas.LinkedSubscriptionTransactionReport)
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReport/OwnedByOtherAccountSubscriptionTransactionReport`.
+            case ownedByOtherAccount(Components.Schemas.OwnedByOtherAccountSubscriptionTransactionReport)
+            internal enum CodingKeys: String, CodingKey {
+                case result
+            }
+            internal init(from decoder: any Swift.Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                let discriminator = try container.decode(
+                    Swift.String.self,
+                    forKey: .result
+                )
+                switch discriminator {
+                case "linked":
+                    self = .linked(try .init(from: decoder))
+                case "owned_by_other_account":
+                    self = .ownedByOtherAccount(try .init(from: decoder))
+                default:
+                    throw Swift.DecodingError.unknownOneOfDiscriminator(
+                        discriminatorKey: CodingKeys.result,
+                        discriminatorValue: discriminator,
+                        codingPath: decoder.codingPath
+                    )
+                }
+            }
+            internal func encode(to encoder: any Swift.Encoder) throws {
+                switch self {
+                case let .linked(value):
+                    try value.encode(to: encoder)
+                case let .ownedByOtherAccount(value):
+                    try value.encode(to: encoder)
+                }
+            }
+        }
+        /// このアカウントに結びつけた。同じ要求の ID の再送を含む
+        ///
+        /// - Remark: Generated from `#/components/schemas/LinkedSubscriptionTransactionReport`.
+        internal struct LinkedSubscriptionTransactionReport: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/LinkedSubscriptionTransactionReport/result`.
+            internal enum ResultPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case linked = "linked"
+            }
+            /// - Remark: Generated from `#/components/schemas/LinkedSubscriptionTransactionReport/result`.
+            internal var result: Components.Schemas.LinkedSubscriptionTransactionReport.ResultPayload
+            /// 端末はキャッシュに書く（同じ記録は同期でも届く）。並びは、サブスクリプションの状態、再開した食事・料理の推定の状態
+            ///
+            /// - Remark: Generated from `#/components/schemas/LinkedSubscriptionTransactionReport/changes`.
+            internal var changes: [Components.Schemas.SubscriptionTransactionReportChange]
+            /// Creates a new `LinkedSubscriptionTransactionReport`.
+            ///
+            /// - Parameters:
+            ///   - result:
+            ///   - changes: 端末はキャッシュに書く（同じ記録は同期でも届く）。並びは、サブスクリプションの状態、再開した食事・料理の推定の状態
+            internal init(
+                result: Components.Schemas.LinkedSubscriptionTransactionReport.ResultPayload,
+                changes: [Components.Schemas.SubscriptionTransactionReportChange]
+            ) {
+                self.result = result
+                self.changes = changes
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case result
+                case changes
+            }
+        }
+        /// 取りに行く変更（SyncChange）から通し番号を除いた形で、record は種類ごとの SubscriptionStatusRecord・MealEstimationStatusRecord・DishEstimationStatusRecord
+        ///
+        /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReportChange`.
+        internal struct SubscriptionTransactionReportChange: Codable, Hashable, Sendable {
+            /// subscription_status・meal_estimation_status・dish_estimation_status
+            ///
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReportChange/kind`.
+            internal var kind: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReportChange/recordId`.
+            internal var recordId: Swift.String
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReportChange/record`.
+            internal struct RecordPayload: Codable, Hashable, Sendable {
+                /// A container of undocumented properties.
+                internal var additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer]
+                /// Creates a new `RecordPayload`.
+                ///
+                /// - Parameters:
+                ///   - additionalProperties: A container of undocumented properties.
+                internal init(additionalProperties: [String: OpenAPIRuntime.OpenAPIValueContainer] = .init()) {
+                    self.additionalProperties = additionalProperties
+                }
+                internal init(from decoder: any Swift.Decoder) throws {
+                    additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
+                }
+                internal func encode(to encoder: any Swift.Encoder) throws {
+                    try encoder.encodeAdditionalProperties(additionalProperties)
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionReportChange/record`.
+            internal var record: Components.Schemas.SubscriptionTransactionReportChange.RecordPayload
+            /// Creates a new `SubscriptionTransactionReportChange`.
+            ///
+            /// - Parameters:
+            ///   - kind: subscription_status・meal_estimation_status・dish_estimation_status
+            ///   - recordId:
+            ///   - record:
+            internal init(
+                kind: Swift.String,
+                recordId: Swift.String,
+                record: Components.Schemas.SubscriptionTransactionReportChange.RecordPayload
+            ) {
+                self.kind = kind
+                self.recordId = recordId
+                self.record = record
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case kind
+                case recordId
+                case record
+            }
+        }
+        /// ほかの nu-tori のアカウントのサブスクリプション。何も書いていない
+        ///
+        /// - Remark: Generated from `#/components/schemas/OwnedByOtherAccountSubscriptionTransactionReport`.
+        internal struct OwnedByOtherAccountSubscriptionTransactionReport: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/OwnedByOtherAccountSubscriptionTransactionReport/result`.
+            internal enum ResultPayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case ownedByOtherAccount = "owned_by_other_account"
+            }
+            /// - Remark: Generated from `#/components/schemas/OwnedByOtherAccountSubscriptionTransactionReport/result`.
+            internal var result: Components.Schemas.OwnedByOtherAccountSubscriptionTransactionReport.ResultPayload
+            /// Creates a new `OwnedByOtherAccountSubscriptionTransactionReport`.
+            ///
+            /// - Parameters:
+            ///   - result:
+            internal init(result: Components.Schemas.OwnedByOtherAccountSubscriptionTransactionReport.ResultPayload) {
+                self.result = result
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case result
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionRejection`.
+        internal struct SubscriptionTransactionRejection: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionRejection/code`.
+            internal enum CodePayload: String, Codable, Hashable, Sendable, CaseIterable {
+                case transactionUnverified = "transaction_unverified"
+                case environmentUnsupported = "environment_unsupported"
+                case productUnknown = "product_unknown"
+                case expiresDateMissing = "expires_date_missing"
+            }
+            /// - Remark: Generated from `#/components/schemas/SubscriptionTransactionRejection/code`.
+            internal var code: Components.Schemas.SubscriptionTransactionRejection.CodePayload
+            /// Creates a new `SubscriptionTransactionRejection`.
+            ///
+            /// - Parameters:
+            ///   - code:
+            internal init(code: Components.Schemas.SubscriptionTransactionRejection.CodePayload) {
+                self.code = code
+            }
+            internal enum CodingKeys: String, CodingKey {
+                case code
             }
         }
     }

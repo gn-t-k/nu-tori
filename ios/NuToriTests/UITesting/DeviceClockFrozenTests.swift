@@ -33,7 +33,8 @@
                         weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
                     notices: [], undelivered: .none,
                     conversation: Timeline.Conversation(
-                        sentTexts: [second, first], statuses: [:], replies: [], streams: [:]))
+                        sentTexts: [second, first], statuses: [:], replies: [], streams: [:]),
+                    subscriptionNotices: [])
             }
 
             @Test("サーバーがミリ秒に丸めても、送った順に並ぶこと")

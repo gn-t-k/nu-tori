@@ -11,6 +11,7 @@ import { durableObjectTables } from "../../durable-object/durable-object-tables"
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
+import { withoutSignInChanges } from "../../http/sync-routes/testing/without-sign-in-changes";
 import { signInTestAccount } from "../../http/testing";
 
 type Factory = ReturnType<typeof durableObjectFactory>;
@@ -39,9 +40,9 @@ describe("目標・1日の目安・推定消費カロリーの同期", () => {
         });
       });
     pullChanges = async () =>
-      (await (await pullSyncChanges(sessionToken)).json<PullResult>()).changes.map(
-        ({ kind, recordId, record }) => ({ kind, recordId, record }),
-      );
+      withoutSignInChanges(
+        (await (await pullSyncChanges(sessionToken)).json<PullResult>()).changes,
+      ).map(({ kind, recordId, record }) => ({ kind, recordId, record }));
   });
 
   describe("維持の目標があるとき", () => {

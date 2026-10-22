@@ -30,6 +30,7 @@ public final class RecordCacheMock: Sendable {
     /// 送った文章の ID で引く
     public let sentTextStatusCache = MemoryKeyedRecordCache<SentTextStatusSyncing.Status, UUID>(
         id: \.sentTextId)
+    public let subscriptionStatusCache = MemorySingleRecordCache<SubscriptionStatus>()
     public let usualWeighingTimeCache = MemorySingleRecordCache<UsualWeighingTime>()
     public let weeklyReviewCache = MemoryKeyedRecordCache<WeeklyReview, UUID>(id: \.id)
     public let weightRecordCache = MemoryKeyedRecordCache<WeightRecord, UUID>(id: \.id)
@@ -70,6 +71,8 @@ public final class RecordCacheMock: Sendable {
     public var expenditureEstimates: [UUID: ExpenditureEstimate] {
         Self.byId(expenditureEstimateCache.all(), \.id)
     }
+
+    public var subscriptionStatus: SubscriptionStatus? { subscriptionStatusCache.read() }
 
     public var usualWeighingTime: UsualWeighingTime? { usualWeighingTimeCache.read() }
 

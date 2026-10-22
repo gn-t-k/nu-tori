@@ -50,7 +50,7 @@ public struct MealCard: Hashable, Sendable {
     /// 写真の推定が作った料理が食事の推定の状態より先に届いた一瞬だけ
     public var namePlace: NamePlace {
         switch state {
-        case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay:
+        case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay, .awaitingSubscription:
             return NamePlace(dishNames: nil, statusLine: state.statusLine)
         case .estimated, .noDishes, .failed:
             guard let names = contents.name else {
@@ -67,6 +67,7 @@ public struct MealCard: Hashable, Sendable {
         case .notSent, .awaitingPhotos, .estimated: nil
         case .estimating: .estimating
         case .deferredToNextDay: .deferredToNextDay
+        case .awaitingSubscription: .awaitingSubscription
         case .noDishes: contents.dishes.isEmpty ? .noDishes : nil
         case .failed: contents.dishes.isEmpty ? .failed : nil
         }
@@ -84,6 +85,8 @@ public struct MealCard: Hashable, Sendable {
         /// 回る印と「推定しています…」
         case estimating
         case deferredToNextDay
+        /// 「サブスクリプションを見る」は画面が添える
+        case awaitingSubscription
         case noDishes
         case failed
 
@@ -92,6 +95,7 @@ public struct MealCard: Hashable, Sendable {
             switch self {
             case .estimating: "推定しています…"
             case .deferredToNextDay: "今日はもう推定できません"
+            case .awaitingSubscription: "サブスクリプションを待っている"
             case .noDishes: "写真に料理が見つかりませんでした"
             case .failed: "料理を推定できませんでした"
             }
@@ -101,6 +105,8 @@ public struct MealCard: Hashable, Sendable {
             switch self {
             case .estimating, .failed: nil
             case .deferredToNextDay: "明日、この写真を推定します。"
+            case .awaitingSubscription:
+                "サブスクリプション切れのあいだに届いたので、まだ推定していません。サブスクリプションを始めると、その日の回数の範囲で推定します。"
             case .noDishes: "写っていないか、見分けられませんでした。"
             }
         }
@@ -108,7 +114,7 @@ public struct MealCard: Hashable, Sendable {
         /// 理由の下に添え、続けて「料理を足す」を置く1行（料理なし・推定できなかったの食事に料理が無いあいだ）
         public var addDishHint: String? {
             switch self {
-            case .estimating, .deferredToNextDay: nil
+            case .estimating, .deferredToNextDay, .awaitingSubscription: nil
             case .noDishes, .failed: "料理の名前を入れると、量と材料を推定します。"
             }
         }
@@ -148,7 +154,7 @@ public struct MealCard: Hashable, Sendable {
 extension MealNutrition {
     fileprivate init(state: MealCardState, contents: MealContents) {
         switch state {
-        case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay:
+        case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay, .awaitingSubscription:
             self = .pending
         case .estimated:
             // 推定できた食事には、料理が1つ以上ある。無いのは、料理がまだ届いていないとき

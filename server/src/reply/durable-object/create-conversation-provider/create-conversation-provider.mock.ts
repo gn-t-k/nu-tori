@@ -1,7 +1,7 @@
 import { R } from "@praha/byethrow";
 import { vi } from "vitest";
 import type { RecordId } from "../../../domain/record-id";
-import type { TokenUsage } from "../../../domain/token-usage";
+import type { CachedTokenUsage, TokenUsage } from "../../../domain/token-usage";
 import type { ClassificationLabel, ConversationProvider } from "../../domain/conversation-provider";
 import type { LlmCallError } from "../../../domain/llm-call-error";
 import type { ReplyContext } from "../../domain/reply-context";
@@ -16,7 +16,7 @@ type FakeReplies = {
   classificationUsage: TokenUsage;
   // 文脈から返事を作るときは関数で渡す（文脈で ID を付けた食事を指し示させるのに使う）
   reply: FakeReply | ((context: ReplyContext) => FakeReply);
-  replyUsage: TokenUsage;
+  replyUsage: CachedTokenUsage;
 };
 
 // 答える偽の提供元。読み分けの既定は食事、返事の既定は食事を指し示さない返事。
@@ -82,7 +82,13 @@ const defaultReply: FakeReply = {
 
 const defaultReplies: FakeReplies = {
   classification: "meal",
-  classificationUsage: { inputTokens: 120, outputTokens: 4 },
+  classificationUsage: { type: "uncached", inputTokens: 120, outputTokens: 4 },
   reply: defaultReply,
-  replyUsage: { inputTokens: 2400, outputTokens: 180 },
+  replyUsage: {
+    type: "cached",
+    inputTokens: 2400,
+    outputTokens: 180,
+    cacheCreationInputTokens: 2000,
+    cacheReadInputTokens: 300,
+  },
 };

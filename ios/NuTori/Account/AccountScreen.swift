@@ -4,6 +4,9 @@ import SwiftUI
 import UIKit
 
 struct AccountScreen: View {
+    /// 一番上の「サブスクリプション」の行。サブスクリプションの状態がまだ届いていなければ nil で、行を出さない
+    let subscription: AccountSubscriptionRow?
+    let openPaywall: () -> Void
     /// 保存してある「利用状況を送る」
     let sendsUsageData: Bool
     let cameraAccess: CameraAccess
@@ -17,6 +20,9 @@ struct AccountScreen: View {
 
     var body: some View {
         List {
+            if let subscription {
+                subscriptionSection(subscription)
+            }
             Section {
                 NavigationLink {
                     HealthAccessScreen()
@@ -47,12 +53,12 @@ struct AccountScreen: View {
                 Text("オフにすると、これから先は送りません。送った分は1年で消えます。")
             }
             Section {
-                externalLink("プライバシーポリシー", url: Self.privacyPolicyURL)
+                externalLink("プライバシーポリシー", url: PublicPages.privacyPolicy)
                 externalLink("問い合わせ", url: inquiryURL)
             }
             Section {
                 Button(role: .destructive) {
-                    confirmingDeletion = true
+                    Task { await requestDeletion() }
                 } label: {
                     HStack {
                         Text("アカウントを削除")
@@ -93,6 +99,29 @@ struct AccountScreen: View {
         }
         // 消している途中で閉じると、消せなかったときの1行を出す先が無くなる
         .interactiveDismissDisabled(isDeleting)
+        .sheet(
+            item: $presentedDeletionGuide,
+            onDismiss: {
+                // シートを閉じ終えてから出さないと、確かめのダイアログが出ない
+                if proceedsAfterDeletionGuide {
+                    proceedsAfterDeletionGuide = false
+                    confirmingDeletion = true
+                }
+            }
+        ) { presented in
+            AccountDeletionGuideSheet(
+                guide: presented.guide,
+                actions: AccountDeletionGuideSheet.Actions(
+                    reread: actions.rereadAccountDeletionGuide,
+                    openedManageSubscriptions: actions.openedManageSubscriptions,
+                    proceedToDeletion: {
+                        proceedsAfterDeletionGuide = true
+                        presentedDeletionGuide = nil
+                    },
+                    cancel: { presentedDeletionGuide = nil }
+                )
+            )
+        }
         .alert("アカウントを削除しますか？", isPresented: $confirmingDeletion) {
             Button("アカウントを削除", role: .destructive) {
                 Task { await deleteAccount() }
@@ -108,6 +137,8 @@ struct AccountScreen: View {
 
     /// deletion は開いたときの状態。削除は画面の中で進むので、あとから渡し直しても変わらない
     init(
+        subscription: AccountSubscriptionRow?,
+        openPaywall: @escaping () -> Void,
         sendsUsageData: Bool,
         cameraAccess: CameraAccess,
         notificationPermission: NotificationPermission?,
@@ -117,6 +148,8 @@ struct AccountScreen: View {
         actions: AccountActions,
         onClose: @escaping () -> Void
     ) {
+        self.subscription = subscription
+        self.openPaywall = openPaywall
         self.sendsUsageData = sendsUsageData
         self.cameraAccess = cameraAccess
         self.notificationPermission = notificationPermission
@@ -133,14 +166,24 @@ struct AccountScreen: View {
         case failed(AccountDeletionFailure)
     }
 
+    /// シートの `item` に渡すため。開くたびに別のシートとして出す
+    private struct PresentedDeletionGuide: Identifiable {
+        let id = UUID()
+        let guide: AccountDeletionGuide
+    }
+
     @Environment(\.openURL) private var openURL
     /// 切り替えてから保存し終えるまで、スイッチを押した側に置いておく
     @State private var requestedSendsUsageData: Bool?
     @State private var accountId: String?
     @State private var deletion: Deletion
     @State private var confirmingDeletion = false
+    @State private var presentedDeletionGuide: PresentedDeletionGuide?
+    /// 「アカウントを削除」を押して、退会の案内を出すかを読んでいる
+    @State private var preparingDeletion = false
+    /// 退会の案内の「アカウントを削除」で閉じた。閉じ終えたら確かめのダイアログを出す
+    @State private var proceedsAfterDeletionGuide = false
 
-    private static let privacyPolicyURL = URL(string: "https://nu-tori.app/privacy")!
     /// このアプリの iPhone の設定
     private static let appSettingsURL = URL(string: UIApplication.openSettingsURLString)!
     /// iPhone の設定の、このアプリの通知の設定
@@ -191,6 +234,36 @@ struct AccountScreen: View {
         return components.url!
     }
 
+    private func subscriptionSection(_ row: AccountSubscriptionRow) -> some View {
+        Section {
+            if row.opensPaywall {
+                Button(action: openPaywall) {
+                    HStack {
+                        // ボタンに付けた .primary が値にも及ぶので、ほかの行の値と同じ secondary に戻す
+                        LabeledContent("サブスクリプション") {
+                            Text(row.value)
+                                .foregroundStyle(.secondary)
+                        }
+                        // 大きな文字では見出しと値を縦に積んで幅が縮むので、印をほかの行と同じ右端に寄せる
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .foregroundStyle(.primary)
+                .accessibilityIdentifier("subscription-row")
+            } else {
+                LabeledContent("サブスクリプション", value: row.value)
+                    .accessibilityIdentifier("subscription-row")
+            }
+        } footer: {
+            if let note = row.note {
+                Text(note)
+            }
+        }
+    }
+
     private func externalLink(_ title: String, url: URL) -> some View {
         Button {
             openURL(url)
@@ -207,6 +280,20 @@ struct AccountScreen: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    /// サブスクリプション中で自動更新がオンなら、確かめの前に退会の案内を出す
+    private func requestDeletion() async {
+        // 自動更新を読むあいだに続けて押されても、案内を2つ作らない
+        guard !preparingDeletion else { return }
+        preparingDeletion = true
+        defer { preparingDeletion = false }
+        guard let guide = await actions.accountDeletionGuide() else {
+            confirmingDeletion = true
+            return
+        }
+        presentedDeletionGuide = PresentedDeletionGuide(guide: guide)
+        await actions.openedAccountDeletionGuide()
     }
 
     private func deleteAccount() async {

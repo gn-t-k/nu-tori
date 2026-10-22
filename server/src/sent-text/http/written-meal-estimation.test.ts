@@ -110,12 +110,12 @@ describe("文章の食事の推定", () => {
     });
   });
 
-  describe("その日の推定が 30 回に達していて、翌日に推定するとき", () => {
+  describe("その日の推定が 15 回に達していて、翌日に推定するとき", () => {
     let provider: ReturnType<typeof mockCreateEstimationProviderOk>;
     beforeEach(async () => {
       provider = mockCreateEstimationProviderOk();
       const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(Date.now());
-      await insertCountedEstimations(accountId, today, 30);
+      await insertCountedEstimations(accountId, today, 15);
       await sendText({
         body: "朝はパン",
         sentAt: saturdayMorningInTokyo,

@@ -10,6 +10,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "0.135.0",
     "@hono/zod-openapi": "1.6.3",
+    "@peculiar/x509": "2.2.0",
     "@praha/byethrow": "0.12.0",
     "@praha/error-factory": "1.4.1",
     "@sentry/cloudflare": "11.8.0",
@@ -18,6 +19,7 @@
     "drizzle-orm": "0.45.4",
     "hono": "4.13.13",
     "jose": "6.2.12",
+    "reflect-metadata": "0.2.2",
     "ts-pattern": "5.9.2",
     "zod": "4.6.7"
   },

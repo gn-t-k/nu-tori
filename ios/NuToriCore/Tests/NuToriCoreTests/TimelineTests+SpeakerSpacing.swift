@@ -52,7 +52,7 @@ extension TimelineTests {
                                 classification: .meal, reply: .notRequested),
                             snackQuestion.id: replied, afterWeight.id: replied,
                         ],
-                        replies: [reply, snackReply], streams: [:])),
+                        replies: [reply, snackReply], streams: [:]), subscriptionNotices: []),
                 firstDay: CalendarDay(year: 2026, month: 9, day: 24),
                 today: CalendarDay(year: 2026, month: 9, day: 24))
         }

@@ -18,6 +18,9 @@ import { createReplyWatchers } from "../reply/domain/create-reply-watchers";
 import { createConversationProvider } from "../reply/durable-object/create-conversation-provider";
 import { createReplyStream } from "../reply/durable-object/create-reply-stream";
 import { createSentryOptions } from "../observability/create-sentry-options";
+import { readSubscriptionAccount } from "../subscription/d1/read-subscription-account";
+import { createSubscriptionTransactionStore } from "../subscription/durable-object/create-subscription-transaction-store";
+import { createTermsAgreementStore } from "../terms-agreement/durable-object/create-terms-agreement-store";
 import { sendUsageEvents } from "../observability/send-usage-events";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
 import { createFirstSignInStore } from "./create-first-sign-in-store";
@@ -41,37 +44,45 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     recordFirstSignIn(
       accountId: string,
-      signIn: { signedInAt: Date; timeZone: string | undefined },
+      signIn: Parameters<typeof accountRequests.recordFirstSignIn>[1],
     ): Promise<void> {
       setUser({ id: accountId });
       return this.respond(
         accountId,
         accountRequests.recordFirstSignIn(
-          { firstSignIn: createFirstSignInStore(drizzle(this.ctx.storage)) },
+          {
+            firstSignIn: createFirstSignInStore(drizzle(this.ctx.storage)),
+            termsAgreement: createTermsAgreementStore(drizzle(this.ctx.storage)),
+            writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
+          },
           signIn,
         ),
       );
     }
 
-    pushSyncWrites(
+    async pushSyncWrites(
       accountId: string,
       request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
     ) {
       setUser({ id: accountId });
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.pushSyncWrites(this.createSyncStores(), request, new Date()),
+        accountRequests.pushSyncWrites(await this.createSyncStores(accountId), request, new Date()),
       );
     }
 
-    pullSyncChanges(
+    async pullSyncChanges(
       accountId: string,
       request: { clientState: SyncClientState; afterSequence: number },
     ) {
       setUser({ id: accountId });
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.pullSyncChanges(this.createSyncStores(), request, new Date()),
+        accountRequests.pullSyncChanges(
+          await this.createSyncStores(accountId),
+          request,
+          new Date(),
+        ),
       );
     }
 
@@ -83,7 +94,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         await accountRequests.receiveMealPhoto(
           {
             writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
-            records: createRecordKindStores(this.ctx.storage),
+            records: await this.createRecordKindStores(accountId),
             mealPhotoArchive: createMealPhotoArchive(this.env.PHOTOS, accountId),
           },
           request,
@@ -98,7 +109,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         accountId,
         await accountRequests.readMealPhoto(
           {
-            records: createRecordKindStores(this.ctx.storage),
+            records: await this.createRecordKindStores(accountId),
             mealPhotoArchive: createMealPhotoArchive(this.env.PHOTOS, accountId),
           },
           photoId,
@@ -107,17 +118,17 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     }
 
     // 送った文章の見守る要求。文章が無ければ undefined
-    watchReply(
+    async watchReply(
       accountId: string,
       sentTextId: RecordId,
     ): Promise<ReadableStream<Uint8Array> | undefined> {
       setUser({ id: accountId });
+      const records = await this.createRecordKindStores(accountId);
       return this.respond(
         accountId,
         accountRequests.watchReply(
           {
-            openReplyStream: (id) =>
-              createReplyStream(this.replyWatchers, createRecordKindStores(this.ctx.storage), id),
+            openReplyStream: (id) => createReplyStream(this.replyWatchers, records, id),
           },
           sentTextId,
         ),
@@ -126,7 +137,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     // 目標の設定の、その場で答える要求。どの要求も、要求に載った身体データと摂取エネルギーを残さない。
     // 時刻は受け口が渡す（確かめのジョブが、開発用の環境で過去の時刻に差し替えるため。resolve-requested-at.ts）
-    previewGoalSetup(
+    async previewGoalSetup(
       accountId: string,
       request: Parameters<typeof accountRequests.previewGoalSetup>[1],
       now: Date,
@@ -134,11 +145,11 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       setUser({ id: accountId });
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.previewGoalSetup(this.createRecordStores(), request, now),
+        accountRequests.previewGoalSetup(await this.createRecordStores(accountId), request, now),
       );
     }
 
-    proposeGoals(
+    async proposeGoals(
       accountId: string,
       request: Parameters<typeof accountRequests.proposeGoals>[1],
       now: Date,
@@ -146,11 +157,11 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       setUser({ id: accountId });
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.proposeGoals(this.createRecordStores(), request, now),
+        accountRequests.proposeGoals(await this.createRecordStores(accountId), request, now),
       );
     }
 
-    assessCustomTargetWeight(
+    async assessCustomTargetWeight(
       accountId: string,
       request: Parameters<typeof accountRequests.assessCustomTargetWeight>[1],
       now: Date,
@@ -158,12 +169,16 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       setUser({ id: accountId });
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.assessCustomTargetWeight(this.createRecordStores(), request, now),
+        accountRequests.assessCustomTargetWeight(
+          await this.createRecordStores(accountId),
+          request,
+          now,
+        ),
       );
     }
 
     // 目標を決める。決めたら、目標・1日の目安・推定消費カロリーの記録を、応答と同期の両方に出す
-    decideGoal(
+    async decideGoal(
       accountId: string,
       request: Parameters<typeof accountRequests.decideGoal>[1],
       now: Date,
@@ -171,7 +186,67 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       setUser({ id: accountId });
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.decideGoal(this.createRecordStores(), request, now),
+        accountRequests.decideGoal(await this.createRecordStores(accountId), request, now),
+      );
+    }
+
+    findTermsAgreementRequirement(accountId: string) {
+      setUser({ id: accountId });
+      return this.respond(
+        accountId,
+        accountRequests.findTermsAgreementRequirement({
+          termsAgreement: createTermsAgreementStore(drizzle(this.ctx.storage)),
+        }),
+      );
+    }
+
+    agreeToTerms(accountId: string, request: Parameters<typeof accountRequests.agreeToTerms>[1]) {
+      setUser({ id: accountId });
+      return this.respond(
+        accountId,
+        accountRequests.agreeToTerms(
+          { termsAgreement: createTermsAgreementStore(drizzle(this.ctx.storage)) },
+          request,
+          new Date(),
+        ),
+      );
+    }
+
+    // 端末からの取引の知らせ。案内は受け口が D1 で決めてから呼ぶ
+    async reportSubscriptionTransaction(
+      accountId: string,
+      report: Parameters<typeof accountRequests.reportSubscriptionTransaction>[1],
+    ) {
+      setUser({ id: accountId });
+      return this.respond(
+        accountId,
+        accountRequests.reportSubscriptionTransaction(
+          {
+            ...(await this.createRecordStores(accountId)),
+            subscriptionTransaction: createSubscriptionTransactionStore(drizzle(this.ctx.storage)),
+          },
+          report,
+          new Date(),
+        ),
+      );
+    }
+
+    // App Store のサーバー通知。案内は受け口が D1 で決めてから呼ぶ
+    async receiveAppStoreServerNotification(
+      accountId: string,
+      notification: Parameters<typeof accountRequests.receiveAppStoreServerNotification>[1],
+    ) {
+      setUser({ id: accountId });
+      return this.respond(
+        accountId,
+        accountRequests.receiveAppStoreServerNotification(
+          {
+            ...(await this.createRecordStores(accountId)),
+            subscriptionTransaction: createSubscriptionTransactionStore(drizzle(this.ctx.storage)),
+          },
+          notification,
+          new Date(),
+        ),
       );
     }
 
@@ -201,7 +276,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         accountId,
         await accountRequests.runAlarm({
           writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
-          records: createRecordKindStores(this.ctx.storage),
+          records: await this.createRecordKindStores(accountId),
           mealPhotoArchive: createMealPhotoArchive(this.env.PHOTOS, accountId),
           estimationProvider: createEstimationProvider(this.env, accountId),
           conversationProvider: createConversationProvider(this.env, accountId),
@@ -229,18 +304,26 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       }
     }
 
-    private createSyncStores() {
+    private async createSyncStores(accountId: string) {
       return {
         ledger: createLedgerStore(this.ctx.storage),
-        ...this.createRecordStores(),
+        ...(await this.createRecordStores(accountId)),
       };
     }
 
-    private createRecordStores() {
+    private async createRecordStores(accountId: string) {
       return {
         writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
-        records: createRecordKindStores(this.ctx.storage),
+        records: await this.createRecordKindStores(accountId),
       };
+    }
+
+    // サブスクリプションの状態の元のうち、Durable Object の外にあるもの（D1 と環境変数）を読んでから組む
+    private async createRecordKindStores(accountId: string) {
+      return createRecordKindStores(
+        this.ctx.storage,
+        await readSubscriptionAccount(this.env, accountId),
+      );
     }
 
     // 要求ごとのログに足す値も、結果と一緒に受け口へ返す
