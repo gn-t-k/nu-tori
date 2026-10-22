@@ -1,7 +1,7 @@
 import type { Announcement } from "../announcement";
 import type { SitePage } from "../site-page";
 
-// アプリが開けない障害のときにも読めるよう、告知を nu-tori.app に載せる。告知は src/announcements/ に1つ1ファイルで足す（site/AGENTS.md）
+// アプリが開けない障害のときにも読めるよう、告知を nu-tori.app に載せる
 export const announcementsPage: SitePage = {
   outputPath: "/announcements",
   title: "告知 | nu-tori",

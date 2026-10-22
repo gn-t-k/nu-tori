@@ -4,7 +4,6 @@
 
 - 公開のページは `site/` で `hono/jsx` で書き、`vite build` と `@hono/vite-ssg` で静的な HTML に書き出す。main へのマージで `.github/workflows/deploy-site.yml` が `nu-tori.app` に出す。ページの足し方と確かめ方は `site/AGENTS.md`
 - ページのパス・`<title>`・説明・検索に載せるかは、ページの一覧（`site/src/site-pages.ts`）の1か所に置く
-- 変えたら `scripts/check site` を回す
 - 色は `DESIGN.md` のトークンを写す（`site/public/site.css`）
 
 ## 利用規約と特定商取引法に基づく表記

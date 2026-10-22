@@ -79,7 +79,7 @@ flowchart TD
 
 ### server と site
 
-- `site/` は `server/` と別のパッケージだが、両方にある依存（`hono`・`typescript`・`oxfmt`・`oxlint`・`oxlint-tsgolint`・`vitest`・`@cloudflare/vitest-plugin`・`wrangler`・`@tsconfig/strictest`・`@types/node`）と Node・pnpm は同じ版にそろえ、手で上げるときも両方を一緒に上げる
+- `site/` は `server/` と別のパッケージだが、両方の `package.json` にある依存と Node・pnpm は同じ版にそろえ、手で上げるときも両方を一緒に上げる
 - Node（`server/.node-version`・`site/.node-version`）と pnpm（`server/package.json`・`site/package.json` の `packageManager`）
 - pnpm は、Dependabot が対応する版（2026-09-28 時点で v12 まで）にとどめる。対応が広がったら上げる
 - `@cloudflare/vitest-plugin` が対応する Vitest の版にとどめる（2026-09-29 時点で 4.x）。Dependabot は `.github/dependabot.yml` の `ignore` で Vitest のメジャーの版上げを除いているので、対応が広がったら手で上げ、`ignore` を外す
