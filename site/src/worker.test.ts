@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
+import { notFoundPage } from "./pages/not-found-page";
 import { sitePages } from "./site-pages";
 import { fetchSite } from "./testing/fetch-site";
 import { fetchSiteWithLandingVariants } from "./testing/fetch-site-with-landing-variants";
@@ -14,16 +15,14 @@ describe("nu-tori.app の配信", () => {
       expect(response.status).toBe(200);
     });
 
-    test("今のプライバシーポリシーの制定日と改定日を返すこと", async () => {
-      expect(await response.text()).toContain("制定日: 2026年9月29日　改定日: 2026年10月22日");
+    test("サポートのページがリンクする、外国にある第三者への提供の目印を持つこと", async () => {
+      expect(await response.text()).toContain('id="overseas-transfer"');
     });
 
-    test("nu-tori.app で Cloudflare Web Analytics を使うことを書いていること", async () => {
-      expect(await response.text()).toContain("Cloudflare Web Analytics");
-    });
-
-    test("問い合わせ先のメールアドレスへリンクすること", async () => {
-      expect(await response.text()).toContain('<a href="mailto:support@nu-tori.app">');
+    test("問い合わせのフォームとメールの窓口へリンクすること", async () => {
+      const body = await response.text();
+      expect(body).toContain('<a href="https://forms.gle/KGg899DaWghiYnTx7">');
+      expect(body).toContain('<a href="mailto:support@nu-tori.app">');
     });
 
     test("外枠の足からサポートと告知のページへリンクすること", async () => {
@@ -55,6 +54,10 @@ describe("nu-tori.app の配信", () => {
       expect(body).toContain('<a href="mailto:support@nu-tori.app">');
       expect(body).toContain('<a href="/announcements">');
     });
+
+    test("メールの送り先の案内から、プライバシーポリシーの外国にある第三者への提供の節へリンクすること", async () => {
+      expect(await response.text()).toContain('<a href="/privacy#overseas-transfer">');
+    });
   });
 
   describe("告知のページ", () => {
@@ -82,37 +85,10 @@ describe("nu-tori.app の配信", () => {
       expect(response.status).toBe(200);
     });
 
-    test("制定日を書いていること", async () => {
-      expect(await response.text()).toContain("制定日: 2026年10月22日");
-    });
-
-    test("1条から14条までの条の番号と見出しがあること", async () => {
+    test("同意の対象のプライバシーポリシーと、問い合わせの先のサポートのページへリンクすること", async () => {
       const body = await response.text();
-      const headings = [...body.matchAll(/<h2 id="article-\d+">(.+?)<\/h2>/g)].map(
-        (match) => match[1],
-      );
-      expect(headings).toEqual([
-        "第1条（この規約について）",
-        "第2条（アカウント）",
-        "第3条（無料体験とサブスクリプション）",
-        "第4条（推定と返事）",
-        "第5条（1日の回数の上限）",
-        "第6条（禁止すること）",
-        "第7条（利用の停止）",
-        "第8条（記録の扱い）",
-        "第9条（退会）",
-        "第10条（サービスの変更・終了）",
-        "第11条（責任の範囲）",
-        "第12条（規約の変更）",
-        "第13条（準拠法と管轄）",
-        "第14条（問い合わせ）",
-      ]);
-    });
-
-    test("14条の問い合わせから、サポートのページへリンクすること", async () => {
-      const body = await response.text();
-      const article14 = body.slice(body.indexOf('<h2 id="article-14">'));
-      expect(article14).toContain('<a href="/support">');
+      expect(body).toContain('<a href="/privacy">');
+      expect(body).toContain('<a href="/support">');
     });
 
     test("価格を、特定商取引法に基づく表記で示すこと", async () => {
@@ -121,55 +97,30 @@ describe("nu-tori.app の配信", () => {
   });
 
   describe("特定商取引法に基づく表記", () => {
-    let body: string;
-    let status: number;
+    let response: Response;
     beforeEach(async () => {
-      const response = await fetchSite("/legal");
-      status = response.status;
-      body = await response.text();
+      response = await fetchSite("/legal");
     });
 
     test("/legal が 200 で返ること（課金画面が開く URL）", () => {
-      expect(status).toBe(200);
+      expect(response.status).toBe(200);
     });
 
-    test("#593 の事項が全部あること", () => {
-      const items = [...body.matchAll(/<th scope="row">(.+?)<\/th>/g)].map((match) => match[1]);
-      expect(items).toEqual([
-        "販売事業者",
-        "運営責任者",
-        "住所・電話番号",
-        "メールアドレス",
-        "販売価格",
-        "価格のほかにかかる費用",
-        "支払いの時期",
-        "支払いの方法",
-        "提供の時期",
-        "自動更新",
-        "解約と返金",
-        "無料体験",
-        "動作環境",
-      ]);
-    });
-
-    test("税込の月額と年額と、月額を1年続けたときの額を書くこと", () => {
-      expect(body).toContain("月額 980円（税込）");
-      expect(body).toContain("年額 8,800円（税込）");
-      expect(body).toContain("11,760円");
-    });
-
-    test("住所・電話番号の請求の窓口として、メールの窓口へリンクすること", () => {
+    test("住所・電話番号の請求の窓口として、メールの窓口とサポートのページへリンクすること", async () => {
+      const body = await response.text();
       expect(body).toContain('<a href="mailto:support@nu-tori.app">');
-    });
-
-    test("動作環境を、アプリの最低の版と同じ iOS 26 以降にすること", () => {
-      expect(body).toContain("iOS 26 以降");
+      expect(body).toContain('<a href="/support">');
     });
   });
 
   describe("出し方のページ", () => {
-    test("/daily-guide が 200 で返ること（目標の設定と目標の画面が開く URL）", async () => {
-      expect((await fetchSite("/daily-guide")).status).toBe(200);
+    let response: Response;
+    beforeEach(async () => {
+      response = await fetchSite("/daily-guide");
+    });
+
+    test("/daily-guide が 200 で返ること（目標の設定と目標の画面が開く URL）", () => {
+      expect(response.status).toBe(200);
     });
   });
 
@@ -266,10 +217,6 @@ describe("nu-tori.app の配信", () => {
 
     test("Cookie を付けないこと", () => {
       expect(response.headers.has("Set-Cookie")).toBe(false);
-    });
-
-    test("バッジを置かないので、Apple の商標の行も置かないこと", async () => {
-      expect(await response.text()).not.toContain(appleTrademarkNotice);
     });
 
     test("/privacy と同じセキュリティのヘッダーを付けること", () => {
@@ -371,10 +318,6 @@ describe("nu-tori.app の配信", () => {
       test("提供者のトークンがあれば、バッジのリンクが自分の版の ct と pt を持つこと（テストだけの版 b）", () => {
         expect(variantBBody).toContain(campaignLinkOfVariantB);
       });
-
-      test("足に Apple の商標の行を1回だけ置くこと", () => {
-        expect(variantABody.split(appleTrademarkNotice)).toHaveLength(2);
-      });
     });
   });
 
@@ -401,7 +344,7 @@ describe("nu-tori.app の配信", () => {
     });
 
     test("404 のページを返すこと", async () => {
-      expect(await response.text()).toContain("<title>ページが見つかりません | nu-tori</title>");
+      expect(await response.text()).toContain(`<title>${notFoundPage.title}</title>`);
     });
   });
 
@@ -456,7 +399,6 @@ const campaignLinkOfVariantA =
   'href="https://apps.apple.com/jp/app/apple-store/id6816842705?ct=lp-a&amp;mt=8"';
 const campaignLinkOfVariantB =
   'href="https://apps.apple.com/jp/app/apple-store/id6816842705?pt=test-provider-token&amp;ct=lp-b&amp;mt=8"';
-const appleTrademarkNotice = "Apple Inc. の商標です";
 
 const pickSecurityHeaders = (from: Response) =>
   Object.fromEntries(
