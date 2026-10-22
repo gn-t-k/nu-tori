@@ -11,6 +11,16 @@
 - ページに JavaScript とインラインの `style` を置かない。Content-Security-Policy（`src/security-headers.ts`）が自分のオリジンだけを許すため。見た目は `public/site.css` に書く
 - セキュリティのヘッダーは `src/security-headers.ts` の1か所に置く。`vite build` がそこから `_headers` を書き出し、Worker も同じ定義を付ける（Worker の応答には `_headers` が効かない）
 
+## 告知を足す
+
+告知のページ（`/announcements`）は、`src/announcements/` の告知のファイルを集め、出した日の新しい順に並べる。ファイルが無いときは「今お知らせしていることはありません。」を出す。
+
+1. `src/announcements/<出した日>-<英小文字の名前>.tsx`（例: `2026-11-03-sync-outage.tsx`）に、`announcement` の名前で `Announcement`（`src/announcement.ts`）を1つ出す。出した日・題・何が起きたか・影響・ユーザーができることを書く。問い合わせ先は告知のページが足すので書かない
+2. 書いたら `scripts/check site` を回し、`pnpm exec vite build` で書き出した `dist/announcements.html` を開いて文を読む。main に入れれば `deploy-site.yml` が出す
+
+- 公表には特定の個人が分かること（アカウント ID、漏れた中身、ユーザーの記録）を書かない（`docs/agents/production-incidents.md`）
+- 告知のページは、ページの一覧には1つだけ載る。告知ごとのページは作らない
+
 ## 確かめる
 
 - 変えたら `scripts/check site` を回す。整形・Lint・型検査のあと、書き出しと Worker の束ねをしてからテストを回す
