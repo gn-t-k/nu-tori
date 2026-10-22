@@ -65,6 +65,54 @@ describe("nu-tori.app の配信", () => {
     });
   });
 
+  describe("利用規約", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await fetchSite("/terms");
+    });
+
+    test("/terms が 200 で返ること（課金画面とサインインの画面が開く URL）", () => {
+      expect(response.status).toBe(200);
+    });
+
+    test("制定日を書いていること", async () => {
+      expect(await response.text()).toContain("制定日: 2026年10月22日");
+    });
+
+    test("1条から14条までの条の番号と見出しがあること", async () => {
+      const body = await response.text();
+      const headings = [...body.matchAll(/<h2 id="article-\d+">(.+?)<\/h2>/g)].map(
+        (match) => match[1],
+      );
+      expect(headings).toEqual([
+        "第1条（この規約について）",
+        "第2条（アカウント）",
+        "第3条（無料体験とサブスクリプション）",
+        "第4条（推定と返事）",
+        "第5条（1日の回数の上限）",
+        "第6条（禁止すること）",
+        "第7条（利用の停止）",
+        "第8条（記録の扱い）",
+        "第9条（退会）",
+        "第10条（サービスの変更・終了）",
+        "第11条（責任の範囲）",
+        "第12条（規約の変更）",
+        "第13条（準拠法と管轄）",
+        "第14条（問い合わせ）",
+      ]);
+    });
+
+    test("14条の問い合わせから、サポートのページへリンクすること", async () => {
+      const body = await response.text();
+      const article14 = body.slice(body.indexOf('<h2 id="article-14">'));
+      expect(article14).toContain('<a href="/support">');
+    });
+
+    test("価格を、特定商取引法に基づく表記で示すこと", async () => {
+      expect(await response.text()).toContain('<a href="/legal">');
+    });
+  });
+
   describe("出し方のページ", () => {
     test("/daily-guide が 200 で返ること（目標の設定と目標の画面が開く URL）", async () => {
       expect((await fetchSite("/daily-guide")).status).toBe(200);
@@ -222,6 +270,10 @@ describe("nu-tori.app の配信", () => {
 
     test("出し方のページの正規の URL が並ぶこと", () => {
       expect(sitemap).toContain("<loc>https://nu-tori.app/daily-guide</loc>");
+    });
+
+    test("利用規約の正規の URL が並ぶこと", () => {
+      expect(sitemap).toContain("<loc>https://nu-tori.app/terms</loc>");
     });
 
     test("LP の版の中のパスが無いこと", () => {
