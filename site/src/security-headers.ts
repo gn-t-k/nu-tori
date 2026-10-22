@@ -17,9 +17,8 @@ export const securityHeaders = {
   "X-Frame-Options": "DENY",
 } as const;
 
-// Apple の配るバッジの SVG は色と文字を style 属性で付けるので、ページの Content-Security-Policy では、直に開いたときと、
-// SVG の応答の決まりを <img> の中にも当てるブラウザで、ただの黒い角丸になる。Apple のファイルは変えられないため、この画像にだけ別の決まりを付ける
-export const appStoreBadgeImage = {
+// Apple の配るバッジの SVG は色と文字を style 属性で付け、ページの決まりのままだと黒い角丸になるので、Apple のファイルを変えずにこの画像にだけ別の決まりを付ける
+export const appStoreBadgeImageSecurityPolicy = {
   path: "/app-store-badge.svg",
   contentSecurityPolicy: "default-src 'none'; style-src 'unsafe-inline'",
 } as const;

@@ -1,18 +1,18 @@
 import ssg from "@hono/vite-ssg";
 import { defineConfig, type Plugin } from "vite";
-import { appStoreBadgeImage, securityHeaders } from "./src/security-headers.ts";
+import { appStoreBadgeImageSecurityPolicy, securityHeaders } from "./src/security-headers.ts";
 
-// Worker を通らない静的な asset に、Worker と同じセキュリティのヘッダーを付ける。
-// バッジの画像は、/* の Content-Security-Policy を「!」で外してから自分の決まりを付ける（同じ名前のヘッダーは足し合わされ、決まりが2つとも効くため）
+// Worker を通らない静的な asset に、Worker と同じセキュリティのヘッダーを付ける
 const writeHeadersFile = (): Plugin => ({
   name: "nu-tori-headers-file",
   apply: "build",
   generateBundle() {
     const lines = Object.entries(securityHeaders).map(([name, value]) => `  ${name}: ${value}`);
+    // /* の Content-Security-Policy を「!」で外してから付ける。同じ名前のヘッダーは足し合わされ、決まりが2つとも効くため
     const badgeLines = [
-      appStoreBadgeImage.path,
+      appStoreBadgeImageSecurityPolicy.path,
       "  ! Content-Security-Policy",
-      `  Content-Security-Policy: ${appStoreBadgeImage.contentSecurityPolicy}`,
+      `  Content-Security-Policy: ${appStoreBadgeImageSecurityPolicy.contentSecurityPolicy}`,
     ];
     this.emitFile({
       type: "asset",
