@@ -2,7 +2,7 @@ import { z } from "@hono/zod-openapi";
 import { match } from "ts-pattern";
 import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import type { Subscription } from "../../subscription/domain/compute-subscription";
-import { subscriptionPlans } from "../../subscription/domain/subscription";
+import { subscriptionPlans } from "../../subscription/domain/subscription-transaction-fact";
 import type { SubscriptionStatus } from "../domain/subscription-status";
 
 const freeTrialSchema = z

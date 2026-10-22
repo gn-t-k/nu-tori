@@ -1,6 +1,6 @@
 import type { RecordId } from "../../domain/record-id";
 import type { TermsAgreementScreen } from "./terms-agreement-screens";
-import type { TermsVersion } from "./terms-versions";
+import type { TermsVersion } from "./terms-version";
 
 export type TermsAgreementStore = {
   exists: (id: RecordId) => boolean;

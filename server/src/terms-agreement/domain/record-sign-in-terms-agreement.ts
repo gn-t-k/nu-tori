@@ -1,6 +1,6 @@
 import { generateRecordId } from "../../domain/record-id";
 import type { TermsAgreementStore } from "./terms-agreement-store";
-import { isTermsVersion } from "./terms-versions";
+import { isTermsVersion } from "./terms-version";
 
 // サインインの画面での同意。その版に同意した行がまだ無ければ足す。
 // 版を送らない前の版のアプリと、知らない版は書かない（次に開いたとき、同意のシートで取る）。

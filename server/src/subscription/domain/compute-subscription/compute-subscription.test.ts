@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import type { SubscriptionTransactionFact } from "../subscription";
+import type { SubscriptionTransactionFact } from "../subscription-transaction-fact";
 import { computeSubscription } from "./index";
 
 const monthly = "app.nu-tori.subscription.monthly";

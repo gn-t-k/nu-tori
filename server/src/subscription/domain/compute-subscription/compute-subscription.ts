@@ -2,7 +2,7 @@ import {
   appStoreProductPlans,
   type SubscriptionPlan,
   type SubscriptionTransactionFact,
-} from "../subscription";
+} from "../subscription-transaction-fact";
 
 // 取り消されていない取引から出すサブスクリプション。表にもキャッシュの列にも持たず、届いた取引の全部から毎回出す
 // （順番が入れ替わって届いた通知でも、同じ答えになるため）

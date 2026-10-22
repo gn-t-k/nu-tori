@@ -3,7 +3,7 @@ import type { AppStoreSubscriptionKey } from "./app-store-subscription-key";
 import type {
   SubscriptionTransactionReason,
   SubscriptionTransactionReportTrigger,
-} from "./subscription";
+} from "./subscription-transaction-fact";
 
 // サブスクリプションと取引と受け取りを書く置き場。どの表も書き足すだけ
 export type SubscriptionTransactionStore = {

@@ -9,7 +9,7 @@ import { getAccountDurableObject } from "../../durable-object/get-account-durabl
 import { createAppAccountTokenStore } from "../../subscription/d1/create-app-account-token-store";
 import { routeSubscriptionTransactionReport } from "../../subscription/d1/route-subscription-transaction-report";
 import { readAppStoreSubscriptionTransaction } from "../../subscription/domain/read-app-store-subscription-transaction";
-import { subscriptionTransactionReportTriggers } from "../../subscription/domain/subscription";
+import { subscriptionTransactionReportTriggers } from "../../subscription/domain/subscription-transaction-fact";
 import { authenticateAccount } from "../authenticate-account";
 import { SubscriptionTransactionReportFailedError } from "./subscription-transaction-report-failed-error";
 import { subscriptionTransactionRejectionCodes } from "./subscription-transaction-rejection-codes";

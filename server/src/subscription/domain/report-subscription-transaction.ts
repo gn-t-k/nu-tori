@@ -10,7 +10,7 @@ import type { EstimationTarget } from "../../estimation/domain/estimation-target
 import { createMealEstimationStatusKind } from "../../meal-estimation-status/domain/create-meal-estimation-status-kind";
 import { createSubscriptionStatusKind } from "../../subscription-status/domain/create-subscription-status-kind";
 import type { AppStoreSubscriptionTransaction } from "./read-app-store-subscription-transaction";
-import type { SubscriptionTransactionReportTrigger } from "./subscription";
+import type { SubscriptionTransactionReportTrigger } from "./subscription-transaction-fact";
 import type { SubscriptionTransactionStore } from "./subscription-transaction-store";
 import { writeReceivedSubscriptionFacts } from "./write-received-subscription-facts";
 

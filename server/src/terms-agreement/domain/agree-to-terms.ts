@@ -2,7 +2,7 @@ import { R } from "@praha/byethrow";
 import { ErrorFactory } from "@praha/error-factory";
 import type { RecordId } from "../../domain/record-id";
 import type { TermsAgreementStore } from "./terms-agreement-store";
-import { isTermsVersion } from "./terms-versions";
+import { isTermsVersion } from "./terms-version";
 
 // 同意のシートでの同意。要求の ID を同意の ID にし、同じ ID の再送は書かずに受け付ける
 export const agreeToTerms = (

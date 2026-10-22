@@ -1,6 +1,6 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { user } from "../../auth/authentication-tables";
-import { appStoreSubscriptionEnvironments } from "../domain/subscription";
+import { appStoreSubscriptionEnvironments } from "../domain/subscription-transaction-fact";
 
 // 購入者のトークン（appAccountToken）。サーバーが出し、アカウントの ID とは別の値にする
 const appAccountTokens = sqliteTable(

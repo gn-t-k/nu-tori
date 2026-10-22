@@ -5,7 +5,7 @@ import {
   appStoreSubscriptionEnvironments,
   subscriptionTransactionReasons,
   subscriptionTransactionReportTriggers,
-} from "../domain/subscription";
+} from "../domain/subscription-transaction-fact";
 
 // 受け取りの親。端末からの知らせでは端末が振った要求の ID、App Store のサーバー通知ではサーバーが出す UUID。
 // 種類はどのサブセットに行があるかで表す

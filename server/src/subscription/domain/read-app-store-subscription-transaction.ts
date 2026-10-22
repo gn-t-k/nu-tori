@@ -6,7 +6,7 @@ import {
   type AppStoreSubscriptionEnvironment,
   appStoreProductPlans,
   type SubscriptionTransactionReason,
-} from "./subscription";
+} from "./subscription-transaction-fact";
 
 // 書く取引の写し。署名を確かめた App Store の取引から、表に書く形にしたもの
 export type AppStoreSubscriptionTransaction = {

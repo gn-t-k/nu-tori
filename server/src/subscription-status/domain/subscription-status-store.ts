@@ -1,5 +1,5 @@
 import type { RecordId } from "../../domain/record-id";
-import type { SubscriptionTransactionFact } from "../../subscription/domain/subscription";
+import type { SubscriptionTransactionFact } from "../../subscription/domain/subscription-transaction-fact";
 
 // サブスクリプションの状態を計算する元の事実を読む置き場。DO の表のほかに、D1 のテストユーザーの旗と、環境ごとの課金を入れた日も渡す
 export type SubscriptionStatusStore = {
