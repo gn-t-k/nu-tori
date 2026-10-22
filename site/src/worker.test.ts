@@ -22,6 +22,12 @@ describe("nu-tori.app の配信", () => {
     });
   });
 
+  describe("出し方のページ", () => {
+    test("/daily-guide が 200 で返ること（目標の設定と目標の画面が開く URL）", async () => {
+      expect((await fetchSite("/daily-guide")).status).toBe(200);
+    });
+  });
+
   describe("ページの一覧の検索に載せるページ", () => {
     let indexedPages: { canonicalPath: string; title: string }[];
     beforeEach(() => {
@@ -164,6 +170,10 @@ describe("nu-tori.app の配信", () => {
     test("LP とプライバシーポリシーの正規の URL が並ぶこと", () => {
       expect(sitemap).toContain("<loc>https://nu-tori.app/</loc>");
       expect(sitemap).toContain("<loc>https://nu-tori.app/privacy</loc>");
+    });
+
+    test("出し方のページの正規の URL が並ぶこと", () => {
+      expect(sitemap).toContain("<loc>https://nu-tori.app/daily-guide</loc>");
     });
 
     test("LP の版の中のパスが無いこと", () => {
