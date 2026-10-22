@@ -354,6 +354,69 @@ merge_package_resolved() {
     ' "$first" "$second"
 }
 
+# Swift の「正本はサーバーの `名前`」のコメントのすぐ下の定数の値を、サーバーの同じ名前の定数（const 名前 = 値;）の値と比べる
+# 両方に置く決めごとは shared/ の JSON から読むので、ここで比べるのは、文に出すだけの値のような、shared/ に置かない写しだけ（docs/agents/shared-rules.md）
+check_server_constant_copies() {
+    local location name value definitions count server_value compared=0 failed=false
+    while IFS=$'\t' read -r location name value; do
+        compared=$((compared + 1))
+        if [ -z "$value" ]; then
+            echo "${location}: コメントのすぐ下に、数の値の定数（let 名前 = 値）が無い" >&2
+            failed=true
+            continue
+        fi
+        definitions="$(git -C "$root" ls-files --cached --others --exclude-standard -- 'server/src/*.ts' | grep -v '\.test\.ts$' |
+            (cd "$root" && xargs sed -nE "s/^[[:space:]]*(export )?const ${name}(: [A-Za-z]+)? = ([^;]+);.*/\3/p"))"
+        count="$(grep -c . <<< "$definitions" || true)"
+        if [ "$count" -ne 1 ]; then
+            echo "${location}: サーバーの server/src に const ${name} = 値; が ${count} 個ある（1個のはず）" >&2
+            failed=true
+            continue
+        fi
+        server_value="${definitions//_/}"
+        if ! awk -v a="$value" -v b="$server_value" 'BEGIN { exit !(a ~ /^-?[0-9.]+$/ && b ~ /^-?[0-9.]+$/ && a + 0 == b + 0) }'; then
+            echo "${location}: 端末は ${value}、サーバーの ${name} は ${definitions}" >&2
+            failed=true
+        fi
+    done < <(git -C "$root" ls-files --cached --others --exclude-standard -- 'ios/*.swift' | (cd "$root" && xargs awk '
+        function report(value) {
+            printf "%s\t%s\t%s\n", location, pending, value
+            pending = ""
+        }
+        # コメントがファイルの最後の行なら、すぐ下に定数が無いとして出す
+        FNR == 1 && pending != "" { report("") }
+        /正本はサーバーの `[^`]+`/ {
+            name = $0
+            sub(/.*正本はサーバーの `/, "", name)
+            sub(/`.*/, "", name)
+            pending = name
+            location = FILENAME ":" FNR
+            next
+        }
+        pending != "" && !/^[[:space:]]*\/\// {
+            value = $0
+            if (value ~ /let [A-Za-z0-9_]+(: [A-Za-z]+)? = -?[0-9][0-9_.]*[[:space:]]*$/) {
+                sub(/.* = /, "", value)
+                sub(/[[:space:]]*$/, "", value)
+                gsub(/_/, "", value)
+            } else {
+                value = ""
+            }
+            report(value)
+        }
+        END { if (pending != "") report("") }
+    '))
+    # コメントの書き方が変わって1つも読めないときに、比べずに通さない
+    if [ "$compared" -eq 0 ]; then
+        echo "ios/ の Swift に「正本はサーバーの \`名前\`」のコメントが1つも無い" >&2
+        return 1
+    fi
+    if $failed; then
+        echo "サーバーの値が正本。端末の値をサーバーにそろえる（docs/agents/shared-rules.md「サーバーを正本にする写し」）" >&2
+        return 1
+    fi
+}
+
 # 全部は数分かかるので、機械で見分けられる決まりの破れを、書いた直後に早く見られるよう分けておく（--lint）
 lint_ios() {
     if ! command -v swift > /dev/null; then
@@ -373,6 +436,10 @@ lint_ios() {
         (cd "$ios" && "$swiftlint" lint --fix --quiet)
     fi
     (cd "$ios" && "$swiftlint" lint --strict --quiet)
+
+    # 片側だけ変えても落ちるよう、ios と server のどちらを確かめるときも比べる
+    step "サーバーを正本にする端末の定数が、サーバーの値と同じか"
+    check_server_constant_copies
 }
 
 check_ios_app() {
@@ -491,6 +558,10 @@ lint_server() {
         (cd "$server" && pnpm exec oxlint --fix)
     fi
     (cd "$server" && pnpm exec oxlint)
+
+    # 片側だけ変えても落ちるよう、ios と server のどちらを確かめるときも比べる
+    step "サーバーを正本にする端末の定数が、サーバーの値と同じか"
+    check_server_constant_copies
 }
 
 print_usage() {
@@ -501,10 +572,10 @@ print_usage() {
        scripts/check --pick-targets < <変わったファイルの一覧>
   引数なし     まだ push していない変更（push 先が無ければ origin/main から分かれた点から）と作業中の変更が関わる、server と ios。
                文書（*.md）だけなら何も回さない。比べる先が取れなければ両方。全部を回すときは ios server と並べる
-  ios          整形、Lint、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
+  ios          整形、Lint、サーバーを正本にする定数の値、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
-  server       整形、Lint、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
+  server       整形、Lint、サーバーを正本にする定数の値、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   --fix        直せるものを直してから確かめる
   --lint       ios と server の整形と Lint だけを回す。対象を省くと、引数なしと同じ選び方をする
   --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる

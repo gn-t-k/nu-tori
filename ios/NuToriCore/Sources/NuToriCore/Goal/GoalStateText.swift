@@ -31,7 +31,7 @@ enum GoalStateText {
 
     /// 「72.0 kg ± 0.7 kg の範囲」
     static func maintenanceRange(_ goal: Goal) -> String {
-        "\(WeightAmountText.kilograms(goal.targetWeightKilograms)) ± \(WeightAmountText.kilograms(Pace.maintenanceBandKilograms)) の範囲"
+        "\(WeightAmountText.kilograms(goal.targetWeightKilograms)) ± \(WeightAmountText.kilograms(PaceRules.maintenanceBandKilograms)) の範囲"
     }
 
     /// 体重の傾向が保つ幅に入っているか。体重の傾向がまだ無ければ nil

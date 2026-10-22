@@ -37,7 +37,7 @@ public enum Pace: Hashable, Sendable {
             // ちょうど幅の端にある傾向は、浮動小数の誤差で幅の外にしない
             self = .maintenance(
                 isWithinBand: abs(trend - goal.targetWeightKilograms)
-                    <= Self.maintenanceBandKilograms + Self.tolerance)
+                    <= PaceRules.maintenanceBandKilograms + Self.tolerance)
             return
         case .lose(let change):
             sign = -1
@@ -50,22 +50,22 @@ public enum Pace: Hashable, Sendable {
             self = .unavailable
             return
         }
-        // 14 日前の体重の傾向が目標の中にあるよう、開始の日から 14 日たつまでは出さない
-        if goal.startedDay.distance(to: judgedDay) < Self.windowDays {
+        // 見る日数だけ前の体重の傾向が目標の中にあるよう、開始の日から見る日数たつまでは出さない
+        if goal.startedDay.distance(to: judgedDay) < PaceRules.windowDays {
             self = .pending
             return
         }
-        // 判定する日とその前の 13 日
-        let windowStart = judgedDay.advanced(by: -(Self.windowDays - 1))
+        // 判定する日を含む、見る日数の日
+        let windowStart = judgedDay.advanced(by: -(PaceRules.windowDays - 1))
         let recordDayCount = Set(weightRecordDays.filter { windowStart <= $0 && $0 <= judgedDay })
             .count
-        if recordDayCount < Self.minimumWeightRecordDayCount {
+        if recordDayCount < PaceRules.minimumWeightRecordDayCount {
             self = .inconclusive(weightRecordDayCount: recordDayCount)
             return
         }
         guard let judgedTrend = Self.trendKilograms(onOrBefore: judgedDay, in: days),
             let earlierTrend = Self.trendKilograms(
-                onOrBefore: judgedDay.advanced(by: -Self.windowDays), in: days)
+                onOrBefore: judgedDay.advanced(by: -PaceRules.windowDays), in: days)
         else {
             return nil
         }
@@ -101,13 +101,6 @@ public enum Pace: Hashable, Sendable {
     private static func roundedTenths(_ kilograms: Double) -> Int {
         Int((kilograms * 10 + 0.5).rounded(.down))
     }
-
-    /// 維持で、体重の傾向が収まっていればよい目標体重からの幅（±）。正本はサーバーの `maintenanceBandKg`
-    static let maintenanceBandKilograms = 0.7
-
-    private static let windowDays = 14
-
-    private static let minimumWeightRecordDayCount = 4
 
     private static let tolerance = 1e-9
 }
