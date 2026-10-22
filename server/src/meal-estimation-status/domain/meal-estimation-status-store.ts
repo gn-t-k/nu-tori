@@ -6,5 +6,7 @@ export type MealEstimationStatusStore = {
   findSchedulesOfMeal: (mealId: RecordId) => {
     dueAt: Date;
     progress: MealEstimationScheduleProgress;
+    // 予定から始めた推定。始めていなければ undefined
+    estimationId: string | undefined;
   }[];
 };

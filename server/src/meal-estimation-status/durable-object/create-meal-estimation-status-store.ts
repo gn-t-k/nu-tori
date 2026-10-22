@@ -73,6 +73,7 @@ export const createMealEstimationStatusStore = (
     ].map(({ dueAt, deferral, hold, estimation, completion, abandonment }) => ({
       dueAt,
       progress: toProgress({ deferral, hold, estimation, completion, abandonment }),
+      estimationId: estimation ?? undefined,
     })),
 });
 

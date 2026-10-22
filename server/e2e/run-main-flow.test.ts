@@ -2,7 +2,11 @@ import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import { createPhotoBytes } from "../src/http/meal-photo-routes/testing/create-photo-bytes";
 import { app } from "../src/http/app";
-import { mockCreateEstimationProviderOk } from "../src/estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
+import {
+  mockCreateEstimationProviderError,
+  mockCreateEstimationProviderOk,
+} from "../src/estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
+import { LlmCallBadRequestError } from "../src/domain/llm-call-bad-request-error";
 import { mockCreateConversationProviderOk } from "../src/reply/durable-object/create-conversation-provider/create-conversation-provider.mock";
 import { mealTextBody } from "./meal-text-body";
 import { runMainFlow } from "./run-main-flow";
@@ -181,6 +185,44 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
     test("推定できなかった状態を知らせて失敗し、アカウントは消すこと", async () => {
       await expect(runMainFlow(flowOptions)).rejects.toThrow(
         "推定できたにならず、no_dishes で終わった",
+      );
+      expect(await countCreatedAccounts()).toBe(0);
+    });
+  });
+
+  describe("写真の推定を提供元が 400 で断るとき", () => {
+    beforeEach(() => {
+      mockCreateEstimationProviderError(
+        new LlmCallBadRequestError({ errorType: "invalid_request_error" }),
+      );
+    });
+
+    test("最後の試みの結果とエラーの種類を知らせて失敗し、アカウントは消すこと", async () => {
+      await expect(runMainFlow(flowOptions)).rejects.toThrow(
+        "推定できたにならず、failed で終わった（最後の試み: bad_request、invalid_request_error。400 は開発用のワークスペースの月の支出の上限でも起きる。Sentry の課題の題で見分ける）",
+      );
+      expect(await countCreatedAccounts()).toBe(0);
+    });
+  });
+
+  describe("推定できなかった理由を読む口が無い Worker のとき", () => {
+    beforeEach(() => {
+      mockCreateEstimationProviderError(
+        new LlmCallBadRequestError({ errorType: "invalid_request_error" }),
+      );
+      const { send } = flowOptions;
+      flowOptions = {
+        ...flowOptions,
+        send: (url, init) =>
+          url.endsWith("/last-estimation-attempt")
+            ? Promise.resolve(new Response(null, { status: 404 }))
+            : send(url, init),
+      };
+    });
+
+    test("読めなかったことを知らせて失敗し、アカウントは消すこと", async () => {
+      await expect(runMainFlow(flowOptions)).rejects.toThrow(
+        "推定できたにならず、failed で終わった（最後の試みを読めなかった（状態コード 404））",
       );
       expect(await countCreatedAccounts()).toBe(0);
     });
