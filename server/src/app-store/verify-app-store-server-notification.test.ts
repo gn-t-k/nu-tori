@@ -8,7 +8,7 @@ import {
 import type { TestCertificateChain } from "./testing";
 import { verifyAppStoreServerNotification } from "./verify-app-store-server-notification";
 
-describe("verifyAppStoreServerNotification", () => {
+describe("App Store の通知の検証", () => {
   describe("取引と更新の情報を持つ通知のとき", () => {
     let chain: TestCertificateChain;
     let signedPayload: string;

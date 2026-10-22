@@ -3,7 +3,7 @@ import { createTestCertificateChain, signAppStoreTransaction } from "./testing";
 import type { TestCertificateChain } from "./testing";
 import { verifyAppStoreTransaction } from "./verify-app-store-transaction";
 
-describe("verifyAppStoreTransaction", () => {
+describe("App Store の取引の検証", () => {
   describe("鎖が差し込んだ根までつながるとき", () => {
     let chain: TestCertificateChain;
     let signedTransaction: string;

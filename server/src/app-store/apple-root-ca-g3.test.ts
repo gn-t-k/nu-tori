@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { appleRootCaG3 } from "./apple-root-ca-g3";
 import { X509Certificate } from "./peculiar-x509";
 
-describe("appleRootCaG3", () => {
+describe("Apple の根の証明書（Apple Root CA - G3）", () => {
   test("Apple が公開している Apple Root CA - G3 の SHA-256 の指紋と一致すること", async () => {
     const thumbprint = await new X509Certificate(appleRootCaG3).getThumbprint("SHA-256");
 
