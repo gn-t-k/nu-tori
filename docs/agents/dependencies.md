@@ -16,7 +16,7 @@ flowchart TD
 
 ## 週1回の流れとマージの条件
 
-- Dependabot（`.github/dependabot.yml`）は npm（`server`）と GitHub Actions を、`update-swift-packages.yml` は Swift Package を上げる。patch/minor はそれぞれ1つの PR にまとめる。major は、Dependabot は依存ごとの PR、Swift Package は依存ごとの Issue にする
+- Dependabot（`.github/dependabot.yml`）は npm（`server` と `site`）と GitHub Actions を、`update-swift-packages.yml` は Swift Package を上げる。patch/minor はそれぞれ1つの PR にまとめる。major は、Dependabot は依存ごとの PR、Swift Package は依存ごとの Issue にする
 - Dependabot の security updates は、週1回を待たずに、届いた時点で依存ごとの PR を出す
 - `update-swift-packages.yml` は、main で手で始める（workflow_dispatch）と、月曜を待たずに PR と Issue を出す。脆弱性が見つかったときに使う。main 以外で始めると PR も Issue も出さない
 - `dependency-pr.yml` は、check のワークフローが依存の PR のために走り終わったときに動き、次をすべて満たす PR を、App のトークンで merge コミットにしてマージする
@@ -77,9 +77,10 @@ flowchart TD
 
 - Sentry の CLI（npm の `sentry`）: `scripts/sentry` の版。0.x なので、上げたら `scripts/sentry issue view <短い ID> --json` の欄の名前が変わっていないかを確かめる
 
-### server
+### server と site
 
-- Node（`server/.node-version`）と pnpm（`server/package.json` の `packageManager`）
+- `site/` は `server/` と別のパッケージだが、両方にある依存（`hono`・`typescript`・`oxfmt`・`oxlint`・`oxlint-tsgolint`・`vitest`・`@cloudflare/vitest-plugin`・`wrangler`・`@tsconfig/strictest`・`@types/node`）と Node・pnpm は同じ版にそろえ、手で上げるときも両方を一緒に上げる
+- Node（`server/.node-version`・`site/.node-version`）と pnpm（`server/package.json`・`site/package.json` の `packageManager`）
 - pnpm は、Dependabot が対応する版（2026-09-28 時点で v12 まで）にとどめる。対応が広がったら上げる
 - `@cloudflare/vitest-plugin` が対応する Vitest の版にとどめる（2026-09-29 時点で 4.x）。Dependabot は `.github/dependabot.yml` の `ignore` で Vitest のメジャーの版上げを除いているので、対応が広がったら手で上げ、`ignore` を外す
 
