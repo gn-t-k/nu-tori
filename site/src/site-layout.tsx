@@ -3,6 +3,7 @@ import { raw } from "hono/html";
 import { AppStoreBadgePlacement } from "./app-store-badge-placement";
 import { siteOrigin } from "./site-origin";
 import type { SitePage } from "./site-page";
+import { webAnalytics } from "./web-analytics";
 
 // 全ページで共通の外枠（<head>、ヘッダー、足）。ページを足すチケットが、そのページへのリンクを footerLinks に足す
 export const SiteLayout = ({ page, children }: { page: SitePage; children: Child }) => (
@@ -20,6 +21,11 @@ export const SiteLayout = ({ page, children }: { page: SitePage; children: Child
           <meta name="robots" content="noindex" />
         )}
         <link rel="stylesheet" href="/site.css" />
+        <script
+          defer
+          src={webAnalytics.beaconScriptUrl}
+          data-cf-beacon={JSON.stringify({ token: webAnalytics.token })}
+        />
       </head>
       <body>
         <header class="site-header">
@@ -56,4 +62,9 @@ const AppleTrademarkNotice = () =>
     </p>
   ) : null;
 
-const footerLinks = [{ href: "/privacy", label: "プライバシーポリシー" }];
+const footerLinks = [
+  { href: "/privacy", label: "プライバシーポリシー" },
+  { href: "/support", label: "サポート" },
+  { href: "/daily-guide", label: "推定消費カロリーと1日の目安の出し方" },
+  { href: "/announcements", label: "告知" },
+];

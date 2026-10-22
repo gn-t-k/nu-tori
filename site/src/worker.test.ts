@@ -17,6 +17,59 @@ describe("nu-tori.app の配信", () => {
     test("今のプライバシーポリシーの制定日と改定日を返すこと", async () => {
       expect(await response.text()).toContain("制定日: 2026年9月29日　改定日: 2026年10月22日");
     });
+
+    test("nu-tori.app で Cloudflare Web Analytics を使うことを書いていること", async () => {
+      expect(await response.text()).toContain("Cloudflare Web Analytics");
+    });
+
+    test("問い合わせ先のメールアドレスへリンクすること", async () => {
+      expect(await response.text()).toContain('<a href="mailto:support@nu-tori.app">');
+    });
+
+    test("外枠の足からサポートと告知のページへリンクすること", async () => {
+      const body = await response.text();
+      expect(body).toContain('<a href="/support">');
+      expect(body).toContain('<a href="/announcements">');
+    });
+  });
+
+  describe("サポート", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await fetchSite("/support");
+    });
+
+    test("/support が 200 で返ること（App Store Connect に入れる URL）", () => {
+      expect(response.status).toBe(200);
+    });
+
+    test("問い合わせのフォームと、メールの窓口と、告知のページへリンクすること", async () => {
+      const body = await response.text();
+      expect(body).toContain('<a href="https://forms.gle/KGg899DaWghiYnTx7">');
+      expect(body).toContain('<a href="mailto:support@nu-tori.app">');
+      expect(body).toContain('<a href="/announcements">');
+    });
+  });
+
+  describe("告知のページ", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await fetchSite("/announcements");
+    });
+
+    test("/announcements が 200 で返ること（アプリが開けないときに読む URL）", () => {
+      expect(response.status).toBe(200);
+    });
+
+    test("告知の問い合わせ先として、サポートのページへリンクすること", async () => {
+      expect(await response.text()).toContain('<a href="/support">');
+    });
+  });
+
+  describe("出し方のページ", () => {
+    test("/daily-guide が 200 で返ること（目標の設定と目標の画面が開く URL）", async () => {
+      expect((await fetchSite("/daily-guide")).status).toBe(200);
+    });
   });
 
   describe("ページの一覧の検索に載せるページ", () => {
@@ -44,6 +97,50 @@ describe("nu-tori.app の配信", () => {
       expect(results).toEqual(
         indexedPages.map((page) => ({ path: page.canonicalPath, status: 200, hasTitle: true })),
       );
+    });
+  });
+
+  describe("Cloudflare Web Analytics のビーコン", () => {
+    let pagePaths: string[];
+    beforeEach(() => {
+      pagePaths = [
+        "/",
+        "/no-such-page",
+        ...sitePages.flatMap((page) =>
+          page.search.kind === "indexed" ? [page.search.canonicalPath] : [],
+        ),
+      ];
+    });
+
+    test("仮のページと 404 のページを含む、どのページにもサイトのトークンを持つビーコンがあること", async () => {
+      const results = await Promise.all(
+        pagePaths.map(async (path) => {
+          const body = await (await fetchSite(path)).text();
+          return {
+            path,
+            hasBeacon:
+              body.includes('src="https://static.cloudflareinsights.com/beacon.min.js"') &&
+              body.includes("5b7ef7db1a48416e99daa88b371967e9"),
+          };
+        }),
+      );
+      expect(results).toEqual(pagePaths.map((path) => ({ path, hasBeacon: true })));
+    });
+  });
+
+  describe("ページで読み書きしてよい先（Content-Security-Policy）", () => {
+    let directives: string[];
+    beforeEach(async () => {
+      const policy = (await fetchSite("/privacy")).headers.get("Content-Security-Policy") ?? "";
+      directives = policy.split(";").map((directive) => directive.trim());
+    });
+
+    test("自分のオリジンとビーコンのスクリプトだけを読ませること", () => {
+      expect(directives).toContain("script-src 'self' https://static.cloudflareinsights.com");
+    });
+
+    test("自分のオリジンとビーコンの送り先だけに送らせること", () => {
+      expect(directives).toContain("connect-src 'self' https://cloudflareinsights.com");
     });
   });
 
@@ -216,6 +313,15 @@ describe("nu-tori.app の配信", () => {
     test("LP とプライバシーポリシーの正規の URL が並ぶこと", () => {
       expect(sitemap).toContain("<loc>https://nu-tori.app/</loc>");
       expect(sitemap).toContain("<loc>https://nu-tori.app/privacy</loc>");
+    });
+
+    test("サポートと告知のページの正規の URL が並ぶこと", () => {
+      expect(sitemap).toContain("<loc>https://nu-tori.app/support</loc>");
+      expect(sitemap).toContain("<loc>https://nu-tori.app/announcements</loc>");
+    });
+
+    test("出し方のページの正規の URL が並ぶこと", () => {
+      expect(sitemap).toContain("<loc>https://nu-tori.app/daily-guide</loc>");
     });
 
     test("LP の版の中のパスが無いこと", () => {
