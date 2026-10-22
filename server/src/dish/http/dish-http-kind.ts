@@ -33,7 +33,7 @@ const createDishWriteSchema = z
   .object({
     id: writeIdSchema,
     type: z.literal("create_dish"),
-    dishId: recordIdSchema.openapi({ description: "端末が振る UUID v4" }),
+    dishId: recordIdSchema.meta({ description: "端末が振る UUID v4" }),
     mealId: recordIdSchema,
     name: z.string(),
     positionInMeal: z.number().int().openapi({

@@ -27,6 +27,13 @@
     "nu-tori/no-switch-statement": "error",
     "nu-tori/no-random-uuid": "error",
     "nu-tori/no-setup-in-describe": "error",
+    "nu-tori/no-mock-in-test": "error",
+    "nu-tori/no-object-in-test": "error",
+    "nu-tori/test-title-ends-with-koto": "error",
+    "nu-tori/japanese-describe-title": "error",
+    "nu-tori/filename-matches-export": "error",
+    "vitest/require-top-level-describe": "error",
+    "vitest/no-duplicate-hooks": "error",
     "no-restricted-imports": [
       "error",
       {
@@ -44,6 +51,10 @@
     {
       "files": ["src/app-store/peculiar-x509.ts"],
       "rules": { "no-restricted-imports": "off" }
+    },
+    {
+      "files": ["**/*.mock.ts"],
+      "rules": { "nu-tori/filename-matches-export": "off" }
     },
     {
       "files": ["src/domain/record-id/record-id.ts"],

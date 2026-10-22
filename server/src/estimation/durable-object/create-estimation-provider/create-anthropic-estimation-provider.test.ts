@@ -69,7 +69,7 @@ const estimatedNutrients = {
 const photos = [new Uint8Array([1, 2, 3]).buffer, new Uint8Array([4, 5]).buffer];
 const neverEnds = () => new AbortController().signal;
 
-describe("createAnthropicEstimationProvider", () => {
+describe("Anthropic の推定の提供元", () => {
   describe("① 写真から料理を読み取る", () => {
     describe("料理が写っているとき", () => {
       let provider: EstimationProvider;

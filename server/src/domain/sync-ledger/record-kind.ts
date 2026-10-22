@@ -1,7 +1,7 @@
 import type { RecordId } from "../record-id";
 import type { CurrentRecord } from "./current-record";
 import type { RecordChangeTarget } from "./record-change-target";
-import type { WriteReceiptId } from "./sync-ledger";
+import type { WriteReceiptId } from "./create-sync-ledger";
 import type { WriteBase } from "./write-base";
 import type { WriteKind } from "./write-kind";
 import type { RejectionReason } from "../rejection-reason";

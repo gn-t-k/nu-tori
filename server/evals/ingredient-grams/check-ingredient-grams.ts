@@ -6,12 +6,13 @@ import { toWrittenMealsRequest } from "../../src/estimation/domain/to-written-me
 import type { IdentifiedIngredient } from "../../src/estimation/domain/estimation-provider";
 import { identifyDishes } from "../../src/estimation/durable-object/create-estimation-provider/identify-dishes";
 import { identifyWrittenMeals } from "../../src/estimation/durable-object/create-estimation-provider/identify-written-meals";
+import { missingEvalApiKeyMessage, readEvalApiKey } from "../read-eval-api-key";
 
 // ① が答える材料の g（食べた分の可食部の g）が、ありうる範囲に収まるかを、本番と同じ指示とモデルで確かめる（#517）。
 // 量と1単位あたりの g を別々に答えさせていたとき、重ねて答えて桁が跳ねた（卵 50 g × 50 = 2,500 g）。
 // 同じ食事を何回か読ませ、材料ごとの g と、範囲から外れた数、桁が違う数を出す。
 // 回し方（手で。CI と scripts/check には入れない）: server/ で `pnpm exec tsx evals/ingredient-grams/check-ingredient-grams.ts`。
-// 鍵は開発用のワークスペースのキー NU_TORI_ANTHROPIC_API_KEY。文章は作り話だけにする（公開リポジトリ）。
+// 鍵の置き場は read-eval-api-key.ts。文章は作り話だけにする（公開リポジトリ）。
 // 手元の写真も読ませるときは、JPEG を .scratch/ingredient-grams/（gitignore）に置く。範囲は持たないので、桁だけを見る
 const runs = 5;
 
@@ -133,9 +134,9 @@ const committedPhotoCases: readonly { file: string; expected: readonly ExpectedI
 
 const localPhotoDirectory = path.join(import.meta.dirname, "../../.scratch/ingredient-grams");
 
-const apiKey = process.env["NU_TORI_ANTHROPIC_API_KEY"];
+const apiKey = readEvalApiKey();
 if (apiKey === undefined) {
-  throw new Error("開発用のワークスペースのキーを NU_TORI_ANTHROPIC_API_KEY に置いてから回す");
+  throw new Error(missingEvalApiKeyMessage);
 }
 // 呼び先を名指す。環境の ANTHROPIC_BASE_URL（エージェントの道具が置くことがある）に向かわないように
 const client = new Anthropic({ apiKey, baseURL: "https://api.anthropic.com" });

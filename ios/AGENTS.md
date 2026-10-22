@@ -81,12 +81,15 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 - 書いたら、まず `scripts/check ios --lint --fix` で整形と Lint だけを回す（数秒〜20秒ほど。全部は4〜5分）。Swift の決まりのうち機械で見分けられるもの（`.swiftlint.yml` の `custom_rules`）はここで落ちるので、通してから全部を回す
 - Linux で `swift` が無いときは、`scripts/install-swift` で入れる
 - Linux では、アプリのビルドを CI の `ios-app` に任せる
-- UI テストは、PR では CI で回さない。UI テストか画面の経路を変える PR は、PR の先頭のコミットで Mac の `scripts/check ios-ui-test` を回し、コミットと結果を PR の本文に書いてから merge する。Mac のセッションでは自分で回す。Linux のセッションでは、開発者にそのコミットの SHA を添えて回すよう頼む
-  - 開発者の Mac で落ちたら、落ちたテストの名前と失敗の要約を貼ってもらって読む
-  - 開発者が「Mac を開けない」と言ったら、そのブランチで `gh workflow run ios-ui-test.yml --ref <ブランチ>` を回し、そのランの URL と結果を、Mac の結果の代わりに PR の本文に書く
-  - PR の無いブランチでも、同じ `gh workflow run` で回せる
+- UI テストは、PR では CI で回さない。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストを回し、コミットと結果を PR の本文に書いてから merge する。Mac のセッションでは自分で `scripts/check ios-ui-test` を回す
+- Linux のセッションでは、PR の先頭のコミットで CI の `ios-app`（アプリのビルド）が通るのを待ってから、次の2つを同時に始め、先に出た結果で進める。そのランの URL か Mac の結果を PR の本文に書く
+  - `gh workflow run ios-ui-test.yml --ref <ブランチ>` を回す。PR の無いブランチでも回せる
+  - 開発者に、そのコミットの SHA を添えて、Mac で `scripts/check ios-ui-test` を回すよう頼む。Mac で落ちたら、落ちたテストの名前と失敗の要約を貼ってもらって読む
   - CI の回が落ちたら、`.github/workflows/ios-ui-test.yml` が上げる成果物（失敗の要約とスクリーンショット）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む
   - main でだけ落ちたとき（Mac と CI で Xcode やシミュレーターの版がずれていることがある）は、`docs/agents/tooling.md` の「CI」
+
+  **Why:** Mac に頼んでから返事を待つあいだ CI を回さず、8時間止まった（#586）。Linux ではアプリを組めないので、組めない直しが Mac で初めて見つかり、半日の往復になった
+
 - UI テストはサーバーにつながない。API とサインイン済みの状態を差し替える（差し替えの置き場と切り替え方は `docs/agents/languages/swift.md` の「依存の差し替え」）。API とのつなぎは、`NuToriAPI` のテスト（トランスポートの差し替え）とサーバーのテストで確かめる
 
 ## 配布と実機の確認

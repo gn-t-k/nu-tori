@@ -2,7 +2,7 @@ import type { RecordId } from "../../record-id";
 import type { CurrentRecord } from "../current-record";
 import type { RecordKind } from "../record-kind";
 import { rejectWrite } from "../reject-write";
-import type { TestChildStore } from "./test-child-kind";
+import type { TestChildStore } from "./create-test-child-kind";
 
 export type TestRecordStore = {
   find: (id: RecordId) => number | undefined;

@@ -1,14 +1,14 @@
 import { generateRecordId, type RecordId } from "../record-id";
 import { beforeEach, describe, expect, test } from "vitest";
 import type { SyncClientState } from "../sync-client-state";
-import { createSyncLedger } from "./sync-ledger";
+import { createSyncLedger } from "./create-sync-ledger";
 import { createMemoryLedgerStore } from "./testing/create-memory-ledger-store";
 import { createMemoryTestChildStore } from "./testing/create-memory-test-child-store";
 import { createMemoryTestRecordStore } from "./testing/create-memory-test-record-store";
-import { createTestChildKind, type TestChildStore } from "./testing/test-child-kind";
-import { createTestFollowerKind } from "./testing/test-follower-kind";
+import { createTestChildKind, type TestChildStore } from "./testing/create-test-child-kind";
+import { createTestFollowerKind } from "./testing/create-test-follower-kind";
 import { testFollowerRecordId } from "./testing/test-follower-record-id";
-import { createTestRecordKind, type TestRecordWrite } from "./testing/test-record-kind";
+import { createTestRecordKind, type TestRecordWrite } from "./testing/create-test-record-kind";
 
 const record1 = generateRecordId();
 const record2 = generateRecordId();

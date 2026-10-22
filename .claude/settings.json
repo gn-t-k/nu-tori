@@ -1,4 +1,18 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(scripts/clean-builds --delete)",
+      "Bash(gh pr merge:*)",
+      "mcp__github__merge_pull_request",
+      "Bash(git commit --amend *)",
+      "Bash(git push --force-with-lease origin claude/*)",
+      "mcp__claude-code-remote__delete_trigger"
+    ],
+    "ask": [
+      "Bash(git push --force-with-lease origin claude/* *)",
+      "Bash(git push --force-with-lease *main*)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -8,6 +22,11 @@
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh",
             "async": true
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/warn-behind-main.sh",
+            "timeout": 30
           }
         ]
       },
@@ -16,7 +35,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/warn-behind-main.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/warn-behind-main.sh",
+            "timeout": 30
           }
         ]
       }

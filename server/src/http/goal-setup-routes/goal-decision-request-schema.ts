@@ -13,7 +13,7 @@ import { weightChangeDirectionSchema } from "./weight-change-direction-schema";
 
 // 目標を決める要求。摂取エネルギーと身体データは、初めての目標のときに、目標案の要求と同じものを添える
 export const goalDecisionRequestSchema = goalSetupSituationSchema.extend({
-  requestId: recordIdSchema.openapi({
+  requestId: recordIdSchema.meta({
     description:
       "端末が振った要求の ID（UUID v4）。冪等の鍵。同じ ID の再送は、書かずに初めての応答と同じ形で返す",
   }),

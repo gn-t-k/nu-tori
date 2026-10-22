@@ -21,7 +21,7 @@
 ### ファイルと公開するもの
 
 - 公開するものは export で数える
-- ファイル名は export する名前のケバブケースにする（`compute-weight-trend.ts` → `export const computeWeightTrend`、`weight-record-store.ts` → `export type WeightRecordStore`）
+- ファイル名は export する名前のケバブケースにする（`compute-weight-trend.ts` → `export const computeWeightTrend`、`weight-record-store.ts` → `export type WeightRecordStore`）。export する名前のどれとも合わないファイルは、`.oxlintrc.json` の `nu-tori/filename-matches-export` が落とす
 - mock のファイル（`mockXxxOk` と `mockXxxError` を対で export する）と、再 export だけの `index.ts`・`testing/index.ts` は、「1つのファイルから1つ」を置き換える。関数と一緒に export するエラーのクラスは「失敗の扱い」
 - 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/` のディレクトリにし、入口の `foo/index.ts` から再 export する（`foo/foo.ts`、`foo/foo.test.ts`、`foo/foo.mock.ts` を並べる）
 

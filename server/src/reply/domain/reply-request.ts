@@ -1,5 +1,5 @@
 import type { RecordId } from "../../domain/record-id";
-import type { WriteReceiptId } from "../../domain/sync-ledger/sync-ledger";
+import type { WriteReceiptId } from "../../domain/sync-ledger/create-sync-ledger";
 
 // 返事の依頼。依頼ときっかけのサブセットは、返事の書き込みの口（writeReplyEvents）の request で一緒に書く
 export type ReplyRequest = {
