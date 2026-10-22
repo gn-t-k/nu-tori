@@ -8,7 +8,8 @@
 2. ページの一覧（`src/site-pages.ts`）に足す。書き出し・`sitemap.xml`・`<head>`・テストがここを読む
 3. 公開のページなら、外枠の足のリンク（`src/site-layout.tsx` の `footerLinks`）に足す
 
-- ページに JavaScript とインラインの `style` を置かない。Content-Security-Policy（`src/security-headers.ts`）が自分のオリジンだけを許すため。見た目は `public/site.css` に書く
+- ページに JavaScript とインラインの `style` を置かない。Content-Security-Policy（`src/security-headers.ts`）が自分のオリジンと Cloudflare Web Analytics のビーコンだけを許すため。見た目は `public/site.css` に書く
+- Cloudflare Web Analytics のビーコンは外枠（`src/site-layout.tsx`）が全ページに置く。サイトのトークンとビーコンの送り先は `src/web-analytics.ts` の1か所にあり、CSP もそこから作る。LP に PostHog・Sentry は入れない
 - セキュリティのヘッダーは `src/security-headers.ts` の1か所に置く。`vite build` がそこから `_headers` を書き出し、Worker も同じ定義を付ける（Worker の応答には `_headers` が効かない）
 
 ## 告知を足す

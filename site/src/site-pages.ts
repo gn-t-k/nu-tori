@@ -1,4 +1,5 @@
 import { announcementsPage } from "./pages/announcements-page";
+import { dailyGuidePage } from "./pages/daily-guide-page";
 import { landingPlaceholderPage } from "./pages/landing-placeholder-page";
 import { notFoundPage } from "./pages/not-found-page";
 import { privacyPage } from "./pages/privacy-page";
@@ -10,6 +11,7 @@ export const sitePages: readonly SitePage[] = [
   landingPlaceholderPage,
   privacyPage,
   supportPage,
+  dailyGuidePage,
   announcementsPage,
   notFoundPage,
 ];
