@@ -46,7 +46,7 @@ struct TermsAgreementSheetView: View {
         /// 同意を送って、応答を待っている
         case agreeing
         /// 受け付けられなかった。押し直してもらう
-        case failed(TermsAgreementPrompt.AgreeOutcome.FailureReason)
+        case failed(RequestFailureReason)
     }
 
     @State private var progress: Progress
@@ -96,7 +96,7 @@ struct TermsAgreementSheetView: View {
     }
 
     private func failureMessage(
-        for reason: TermsAgreementPrompt.AgreeOutcome.FailureReason
+        for reason: RequestFailureReason
     ) -> String {
         switch reason {
         case .unreachable:

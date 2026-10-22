@@ -24,7 +24,7 @@ public actor SubscriptionPurchases {
             }
             return .issued(token)
         } catch {
-            return .unavailable(error.isUnreachableOrTimedOut ? .unreachable : .retryLater)
+            return .unavailable(RequestFailureReason(error))
         }
     }
 
@@ -83,7 +83,7 @@ public actor SubscriptionPurchases {
         /// この Apple アカウントのサブスクリプションは、ほかの nu-tori のアカウントのもの
         case ownedByOtherAccount
         /// 買えたが、まだサーバーに知らせられていない。取引は終えずに残し、次に開いたときに知らせ直す
-        case notLinkedYet(FailureReason)
+        case notLinkedYet(RequestFailureReason)
         /// サーバーが取引を受け付けなかった。不具合のときだけ起きる
         case rejected
     }
@@ -91,7 +91,7 @@ public actor SubscriptionPurchases {
     public enum AppAccountTokenOutcome: Sendable, Equatable {
         case issued(UUID)
         /// 受け取れなかった。受け取れるまで買えない
-        case unavailable(FailureReason)
+        case unavailable(RequestFailureReason)
     }
 
     public enum RestoreOutcome: Sendable, Equatable {
@@ -103,7 +103,7 @@ public actor SubscriptionPurchases {
         case nothingToRestore
         /// Apple アカウントへのサインインを閉じた
         case cancelled
-        case failed(FailureReason)
+        case failed(RequestFailureReason)
 
         /// 1つでも結びついたら結びついた、でなければ1つでもほかのアカウントのものならそれを返す
         fileprivate init(_ outcomes: [ReportOutcome]) {
@@ -129,19 +129,12 @@ public actor SubscriptionPurchases {
         case unknown
     }
 
-    public enum FailureReason: Sendable, Equatable {
-        /// 電波が無いときと時間切れ
-        case unreachable
-        /// 回数の歯止め、サーバーの失敗、StoreKit の失敗
-        case retryLater
-    }
-
     /// 1つの取引を知らせた結果
     fileprivate enum ReportOutcome: Sendable, Equatable {
         case linked
         case ownedByOtherAccount
         case rejected
-        case notReported(FailureReason)
+        case notReported(RequestFailureReason)
     }
 
     private let store: any SubscriptionStore
@@ -188,7 +181,7 @@ public actor SubscriptionPurchases {
                 requestId: requestId, signedTransaction: transaction.signedTransaction,
                 trigger: trigger)
         } catch {
-            return .notReported(error.isUnreachableOrTimedOut ? .unreachable : .retryLater)
+            return .notReported(RequestFailureReason(error))
         }
         let outcome: ReportOutcome
         switch result {
