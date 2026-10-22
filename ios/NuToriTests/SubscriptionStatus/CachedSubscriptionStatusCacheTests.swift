@@ -9,22 +9,6 @@ import Testing
 struct CachedSubscriptionStatusCacheTests {
     static let periodEndsAt = Date(timeIntervalSince1970: 1_800_000_000)
 
-    static let statuses: [SubscriptionStatus] = [
-        .testUser,
-        .regular(
-            freeTrial: .available(lastDay: CalendarDay(year: 2026, month: 11, day: 19)),
-            subscription: .none),
-        .regular(
-            freeTrial: .usedByEarlierAccount,
-            subscription: .subscribed(
-                plan: .monthly, periodEndsAt: periodEndsAt, billingGrace: .none)),
-        .regular(
-            freeTrial: .available(lastDay: CalendarDay(year: 2026, month: 11, day: 19)),
-            subscription: .subscribed(
-                plan: .yearly, periodEndsAt: periodEndsAt,
-                billingGrace: .granted(endsAt: periodEndsAt.addingTimeInterval(86_400)))),
-    ]
-
     @Suite("まだ何も書いていないとき")
     @MainActor
     struct Empty {
@@ -40,33 +24,101 @@ struct CachedSubscriptionStatusCacheTests {
         func readsNothing() throws {
             #expect(try cache.savedRecord() == nil)
         }
+    }
 
-        @Test("テストユーザーを書くと、同じ状態を読めること")
+    @Suite("まだ何も書いていない行に、テストユーザーを書くとき")
+    @MainActor
+    struct WritingTestUser {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataSingleRecordCache<CachedSubscriptionStatus>
+        let testUser: SubscriptionStatus
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            cache = SwiftDataSingleRecordCache(context: store.container.mainContext)
+            testUser = .testUser
+        }
+
+        @Test("同じ状態を読めること")
         func readsBackTestUser() throws {
-            try cache.write(CachedSubscriptionStatusCacheTests.statuses[0])
+            try cache.write(testUser)
 
-            #expect(try cache.savedRecord() == CachedSubscriptionStatusCacheTests.statuses[0])
+            #expect(try cache.savedRecord() == testUser)
+        }
+    }
+
+    @Suite("まだ何も書いていない行に、無料体験中で買っていない状態を書くとき")
+    @MainActor
+    struct WritingFreeTrial {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataSingleRecordCache<CachedSubscriptionStatus>
+        let freeTrial: SubscriptionStatus
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            cache = SwiftDataSingleRecordCache(context: store.container.mainContext)
+            freeTrial = .regular(
+                freeTrial: .available(lastDay: CalendarDay(year: 2026, month: 11, day: 19)),
+                subscription: .none)
         }
 
-        @Test("無料体験中で買っていない状態を書くと、同じ状態を読めること")
+        @Test("同じ状態を読めること")
         func readsBackFreeTrial() throws {
-            try cache.write(CachedSubscriptionStatusCacheTests.statuses[1])
+            try cache.write(freeTrial)
 
-            #expect(try cache.savedRecord() == CachedSubscriptionStatusCacheTests.statuses[1])
+            #expect(try cache.savedRecord() == freeTrial)
+        }
+    }
+
+    @Suite("まだ何も書いていない行に、作り直したアカウントで、猶予の無いサブスクリプション中の状態を書くとき")
+    @MainActor
+    struct WritingSubscribedWithoutGrace {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataSingleRecordCache<CachedSubscriptionStatus>
+        let subscribedWithoutGrace: SubscriptionStatus
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            cache = SwiftDataSingleRecordCache(context: store.container.mainContext)
+            subscribedWithoutGrace = .regular(
+                freeTrial: .usedByEarlierAccount,
+                subscription: .subscribed(
+                    plan: .monthly, periodEndsAt: CachedSubscriptionStatusCacheTests.periodEndsAt,
+                    billingGrace: .none))
         }
 
-        @Test("作り直したアカウントで、猶予の無いサブスクリプション中の状態を書くと、同じ状態を読めること")
+        @Test("同じ状態を読めること")
         func readsBackSubscribedWithoutGrace() throws {
-            try cache.write(CachedSubscriptionStatusCacheTests.statuses[2])
+            try cache.write(subscribedWithoutGrace)
 
-            #expect(try cache.savedRecord() == CachedSubscriptionStatusCacheTests.statuses[2])
+            #expect(try cache.savedRecord() == subscribedWithoutGrace)
+        }
+    }
+
+    @Suite("まだ何も書いていない行に、猶予のあるサブスクリプション中の状態を書くとき")
+    @MainActor
+    struct WritingSubscribedWithGrace {
+        let store: SwiftDataSyncStore
+        let cache: SwiftDataSingleRecordCache<CachedSubscriptionStatus>
+        let subscribedWithGrace: SubscriptionStatus
+
+        init() throws {
+            store = try SwiftDataSyncStore(inMemory: true)
+            cache = SwiftDataSingleRecordCache(context: store.container.mainContext)
+            subscribedWithGrace = .regular(
+                freeTrial: .available(lastDay: CalendarDay(year: 2026, month: 11, day: 19)),
+                subscription: .subscribed(
+                    plan: .yearly, periodEndsAt: CachedSubscriptionStatusCacheTests.periodEndsAt,
+                    billingGrace: .granted(
+                        endsAt: CachedSubscriptionStatusCacheTests.periodEndsAt.addingTimeInterval(
+                            86_400))))
         }
 
-        @Test("猶予のあるサブスクリプション中の状態を書くと、同じ状態を読めること")
+        @Test("同じ状態を読めること")
         func readsBackSubscribedWithGrace() throws {
-            try cache.write(CachedSubscriptionStatusCacheTests.statuses[3])
+            try cache.write(subscribedWithGrace)
 
-            #expect(try cache.savedRecord() == CachedSubscriptionStatusCacheTests.statuses[3])
+            #expect(try cache.savedRecord() == subscribedWithGrace)
         }
     }
 
@@ -75,19 +127,25 @@ struct CachedSubscriptionStatusCacheTests {
     struct Written {
         let store: SwiftDataSyncStore
         let cache: SwiftDataSingleRecordCache<CachedSubscriptionStatus>
+        let revised: SubscriptionStatus
 
         init() throws {
             store = try SwiftDataSyncStore(inMemory: true)
             cache = SwiftDataSingleRecordCache(context: store.container.mainContext)
-            try cache.write(CachedSubscriptionStatusCacheTests.statuses[3])
+            let subscribedWithGrace = SubscriptionStatus.regular(
+                freeTrial: .available(lastDay: CalendarDay(year: 2026, month: 11, day: 19)),
+                subscription: .subscribed(
+                    plan: .yearly, periodEndsAt: CachedSubscriptionStatusCacheTests.periodEndsAt,
+                    billingGrace: .granted(
+                        endsAt: CachedSubscriptionStatusCacheTests.periodEndsAt.addingTimeInterval(
+                            86_400))))
+            try cache.write(subscribedWithGrace)
             try cache.context.save()
+            revised = .regular(freeTrial: .usedByEarlierAccount, subscription: .none)
         }
 
         @Test("別の状態を書くと、行を増やさず、前の状態の値を残さずに替わること")
         func replaces() throws {
-            let revised = SubscriptionStatus.regular(
-                freeTrial: .usedByEarlierAccount, subscription: .none)
-
             try cache.write(revised)
 
             #expect(try cache.savedRecord() == revised)
@@ -112,7 +170,13 @@ struct CachedSubscriptionStatusCacheTests {
         init() throws {
             store = try SwiftDataSyncStore(inMemory: true)
             cache = SwiftDataSingleRecordCache(context: store.container.mainContext)
-            try cache.write(CachedSubscriptionStatusCacheTests.statuses[2])
+            try cache.write(
+                .regular(
+                    freeTrial: .usedByEarlierAccount,
+                    subscription: .subscribed(
+                        plan: .monthly,
+                        periodEndsAt: CachedSubscriptionStatusCacheTests.periodEndsAt,
+                        billingGrace: .none)))
             let row = try #require(
                 try cache.context.fetch(FetchDescriptor<CachedSubscriptionStatus>()).first)
             row.plan = "weekly"

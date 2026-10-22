@@ -9,36 +9,60 @@ struct SubscriptionStatusSyncingTests {
 
     @Suite("取りに行った変更をキャッシュに当てるとき")
     struct Applying {
-        let syncing = SubscriptionStatusSyncing()
-        let cache = MemorySingleRecordCache<SubscriptionStatus>()
+        @Suite("状態の無い変更が届いたとき")
+        struct NotArrived {
+            let syncing = SubscriptionStatusSyncing()
+            let cache = MemorySingleRecordCache<SubscriptionStatus>()
+            let changes: [SyncChange]
 
-        @Test("まだ届いていなければ、キャッシュに無いこと")
-        func startsEmpty() throws {
-            try syncing.apply([.unknown(kind: "note")], to: cache)
+            init() {
+                changes = [.unknown(kind: "note")]
+            }
 
-            #expect(cache.read() == nil)
+            @Test("キャッシュに無いこと")
+            func startsEmpty() throws {
+                try syncing.apply(changes, to: cache)
+
+                #expect(cache.read() == nil)
+            }
         }
 
-        @Test("無料体験中の状態が、最後の日を日付にしてキャッシュに入ること")
-        func storesFreeTrial() throws {
-            try syncing.apply(
-                [
+        @Suite("無料体験中の状態が届いたとき")
+        struct FreeTrial {
+            let syncing = SubscriptionStatusSyncing()
+            let cache = MemorySingleRecordCache<SubscriptionStatus>()
+            let changes: [SyncChange]
+
+            init() {
+                changes = [
                     .subscriptionStatus(
                         .regular(freeTrial: .available(lastDay: "2026-11-19"), subscription: .none))
-                ], to: cache)
+                ]
+            }
 
-            #expect(
-                cache.read()
-                    == .regular(
-                        freeTrial: .available(lastDay: CalendarDay(year: 2026, month: 11, day: 19)),
-                        subscription: .none))
+            @Test("最後の日を日付にしてキャッシュに入ること")
+            func storesFreeTrial() throws {
+                try syncing.apply(changes, to: cache)
+
+                #expect(
+                    cache.read()
+                        == .regular(
+                            freeTrial: .available(
+                                lastDay: CalendarDay(year: 2026, month: 11, day: 19)),
+                            subscription: .none))
+            }
         }
 
-        @Test("サブスクリプション中の状態が、商品と期限と猶予の終わりのままキャッシュに入ること")
-        func storesSubscribed() throws {
-            let graceEndsAt = SubscriptionStatusSyncingTests.periodEndsAt.addingTimeInterval(86_400)
-            try syncing.apply(
-                [
+        @Suite("サブスクリプション中の状態が届いたとき")
+        struct Subscribed {
+            let syncing = SubscriptionStatusSyncing()
+            let cache = MemorySingleRecordCache<SubscriptionStatus>()
+            let graceEndsAt: Date
+            let changes: [SyncChange]
+
+            init() {
+                graceEndsAt = SubscriptionStatusSyncingTests.periodEndsAt.addingTimeInterval(86_400)
+                changes = [
                     .subscriptionStatus(
                         .regular(
                             freeTrial: .usedByEarlierAccount,
@@ -46,41 +70,66 @@ struct SubscriptionStatusSyncingTests {
                                 plan: .yearly,
                                 periodEndsAt: SubscriptionStatusSyncingTests.periodEndsAt,
                                 billingGrace: .granted(endsAt: graceEndsAt))))
-                ], to: cache)
+                ]
+            }
 
-            #expect(
-                cache.read()
-                    == .regular(
-                        freeTrial: .usedByEarlierAccount,
-                        subscription: .subscribed(
-                            plan: .yearly,
-                            periodEndsAt: SubscriptionStatusSyncingTests.periodEndsAt,
-                            billingGrace: .granted(endsAt: graceEndsAt))))
+            @Test("商品と期限と猶予の終わりのままキャッシュに入ること")
+            func storesSubscribed() throws {
+                try syncing.apply(changes, to: cache)
+
+                #expect(
+                    cache.read()
+                        == .regular(
+                            freeTrial: .usedByEarlierAccount,
+                            subscription: .subscribed(
+                                plan: .yearly,
+                                periodEndsAt: SubscriptionStatusSyncingTests.periodEndsAt,
+                                billingGrace: .granted(endsAt: graceEndsAt))))
+            }
         }
 
-        @Test("続けて届いたら、最後に届いた状態にすること")
-        func keepsLatest() throws {
-            try syncing.apply(
-                [
+        @Suite("状態が続けて届いたとき")
+        struct Successive {
+            let syncing = SubscriptionStatusSyncing()
+            let cache = MemorySingleRecordCache<SubscriptionStatus>()
+            let changes: [SyncChange]
+
+            init() {
+                changes = [
                     .subscriptionStatus(
                         .regular(freeTrial: .available(lastDay: "2026-11-19"), subscription: .none)),
                     .subscriptionStatus(.testUser),
-                ], to: cache)
+                ]
+            }
 
-            #expect(cache.read() == .testUser)
+            @Test("最後に届いた状態にすること")
+            func keepsLatest() throws {
+                try syncing.apply(changes, to: cache)
+
+                #expect(cache.read() == .testUser)
+            }
         }
 
-        @Test("最後の日が読めない状態は、キャッシュを変えないこと")
-        func skipsUnreadableDay() throws {
-            try syncing.apply([.subscriptionStatus(.testUser)], to: cache)
+        @Suite("キャッシュに状態があり、最後の日が読めない状態が届いたとき")
+        struct UnreadableDay {
+            let syncing = SubscriptionStatusSyncing()
+            let cache = MemorySingleRecordCache<SubscriptionStatus>()
+            let changes: [SyncChange]
 
-            try syncing.apply(
-                [
+            init() throws {
+                try syncing.apply([.subscriptionStatus(.testUser)], to: cache)
+                changes = [
                     .subscriptionStatus(
                         .regular(freeTrial: .available(lastDay: "11/19"), subscription: .none))
-                ], to: cache)
+                ]
+            }
 
-            #expect(cache.read() == .testUser)
+            @Test("キャッシュを変えないこと")
+            func skipsUnreadableDay() throws {
+                try syncing.apply(changes, to: cache)
+
+                #expect(cache.read() == .testUser)
+            }
         }
     }
 

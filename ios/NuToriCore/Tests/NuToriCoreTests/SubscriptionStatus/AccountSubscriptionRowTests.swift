@@ -68,28 +68,36 @@ struct AccountSubscriptionRowTests {
 
     @Suite("年額のサブスクリプション中で、自動更新を読めないとき")
     struct SubscribedYearlyUnknownRenewal {
-        @Test("年額と更新日を値にすること")
-        func value() {
-            let row = AccountSubscriptionRow(
+        let row: AccountSubscriptionRow
+
+        init() {
+            row = AccountSubscriptionRow(
                 standing: .subscribed(
                     plan: .yearly, periodEndsAt: AccountSubscriptionRowTests.periodEndsAt,
                     endsAt: AccountSubscriptionRowTests.periodEndsAt),
                 autoRenewal: .unknown, timeZone: AccountSubscriptionRowTests.tokyo)
+        }
 
+        @Test("年額と更新日を値にすること")
+        func value() {
             #expect(row.value == "年額・11月20日に更新")
         }
     }
 
     @Suite("サブスクリプション中で、自動更新がオフのとき")
     struct SubscribedCancelled {
-        @Test("解約したことと、サブスクリプションの終わりの日を値にすること")
-        func value() {
-            let row = AccountSubscriptionRow(
+        let row: AccountSubscriptionRow
+
+        init() {
+            row = AccountSubscriptionRow(
                 standing: .subscribed(
                     plan: .monthly, periodEndsAt: AccountSubscriptionRowTests.periodEndsAt,
                     endsAt: AccountSubscriptionRowTests.graceEndsAt),
                 autoRenewal: .off, timeZone: AccountSubscriptionRowTests.tokyo)
+        }
 
+        @Test("解約したことと、サブスクリプションの終わりの日を値にすること")
+        func value() {
             #expect(row.value == "解約しました・12月6日まで使えます")
         }
     }

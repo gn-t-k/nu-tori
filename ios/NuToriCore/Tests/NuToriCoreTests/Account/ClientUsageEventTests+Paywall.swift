@@ -5,46 +5,130 @@ import Testing
 extension ClientUsageEventTests {
     @Suite("課金画面")
     struct Paywall {
-        @Test("開いたところと、無料体験中かサブスクリプション切れかを載せること")
-        func opened() {
-            let events: [ClientUsageEvent] = [
-                .paywallOpened(
+        @Suite("無料体験中に、アカウントの画面の行から開いたとき")
+        struct OpenedFromAccountRow {
+            let event: ClientUsageEvent
+
+            init() {
+                event = .paywallOpened(
                     entry: .accountRow,
                     standing: .freeTrial(
-                        lastDay: CalendarDay(year: 2026, month: 10, day: 30), remainingDays: 10)),
-                .paywallOpened(entry: .noticeCard, standing: .expired),
-                .paywallOpened(entry: .composerChip, standing: .expired),
-                .paywallOpened(
+                        lastDay: CalendarDay(year: 2026, month: 10, day: 30), remainingDays: 10))
+            }
+
+            @Test("開いたところと、無料体験中であることを載せること")
+            func opened() {
+                #expect(event.name == "paywall_opened")
+                #expect(
+                    event.fields == [
+                        "entry": .token("account_row"), "standing": .token("free_trial"),
+                    ])
+                #expect(event.screenToken == nil)
+            }
+        }
+
+        @Suite("サブスクリプション切れで、知らせのカードから開いたとき")
+        struct OpenedFromNoticeCard {
+            let event: ClientUsageEvent
+
+            init() {
+                event = .paywallOpened(entry: .noticeCard, standing: .expired)
+            }
+
+            @Test("開いたところと、サブスクリプション切れであることを載せること")
+            func opened() {
+                #expect(event.name == "paywall_opened")
+                #expect(
+                    event.fields == ["entry": .token("notice_card"), "standing": .token("expired")])
+                #expect(event.screenToken == nil)
+            }
+        }
+
+        @Suite("サブスクリプション切れで、入力欄のチップから開いたとき")
+        struct OpenedFromComposerChip {
+            let event: ClientUsageEvent
+
+            init() {
+                event = .paywallOpened(entry: .composerChip, standing: .expired)
+            }
+
+            @Test("開いたところと、サブスクリプション切れであることを載せること")
+            func opened() {
+                #expect(event.name == "paywall_opened")
+                #expect(
+                    event.fields == [
+                        "entry": .token("composer_chip"), "standing": .token("expired"),
+                    ])
+                #expect(event.screenToken == nil)
+            }
+        }
+
+        @Suite("サブスクリプション中に、サブスクリプションを待っている推定の行から開いたとき")
+        struct OpenedFromAwaitingMeal {
+            let event: ClientUsageEvent
+
+            init() {
+                event = .paywallOpened(
                     entry: .awaitingMeal,
                     standing: .subscribed(
                         plan: .monthly, periodEndsAt: Date(timeIntervalSince1970: 0),
-                        endsAt: Date(timeIntervalSince1970: 0))),
-            ]
+                        endsAt: Date(timeIntervalSince1970: 0)))
+            }
 
-            #expect(events.map(\.name) == Array(repeating: "paywall_opened", count: 4))
-            #expect(
-                events.map(\.fields) == [
-                    ["entry": .token("account_row"), "standing": .token("free_trial")],
-                    ["entry": .token("notice_card"), "standing": .token("expired")],
-                    ["entry": .token("composer_chip"), "standing": .token("expired")],
-                    ["entry": .token("awaiting_meal"), "standing": .token("subscribed")],
-                ])
-            #expect(events.allSatisfy { $0.screenToken == nil })
+            @Test("開いたところと、サブスクリプション中であることを載せること")
+            func opened() {
+                #expect(event.name == "paywall_opened")
+                #expect(
+                    event.fields == [
+                        "entry": .token("awaiting_meal"), "standing": .token("subscribed"),
+                    ])
+                #expect(event.screenToken == nil)
+            }
         }
 
-        @Test("閉じたときの StoreKit の結果を載せること")
-        func closed() {
-            let events: [ClientUsageEvent] = [
-                .paywallClosed(.purchased), .paywallClosed(.cancelled), .paywallClosed(.pending),
-            ]
+        @Suite("買って閉じたとき")
+        struct ClosedPurchased {
+            let event: ClientUsageEvent
 
-            #expect(events.map(\.name) == Array(repeating: "paywall_closed", count: 3))
-            #expect(
-                events.map(\.fields) == [
-                    ["result": .token("purchased")],
-                    ["result": .token("cancelled")],
-                    ["result": .token("pending")],
-                ])
+            init() {
+                event = .paywallClosed(.purchased)
+            }
+
+            @Test("StoreKit の結果を purchased にすること")
+            func closed() {
+                #expect(event.name == "paywall_closed")
+                #expect(event.fields == ["result": .token("purchased")])
+            }
+        }
+
+        @Suite("買わずに閉じたとき")
+        struct ClosedCancelled {
+            let event: ClientUsageEvent
+
+            init() {
+                event = .paywallClosed(.cancelled)
+            }
+
+            @Test("StoreKit の結果を cancelled にすること")
+            func closed() {
+                #expect(event.name == "paywall_closed")
+                #expect(event.fields == ["result": .token("cancelled")])
+            }
+        }
+
+        @Suite("承認を待って閉じたとき")
+        struct ClosedPending {
+            let event: ClientUsageEvent
+
+            init() {
+                event = .paywallClosed(.pending)
+            }
+
+            @Test("StoreKit の結果を pending にすること")
+            func closed() {
+                #expect(event.name == "paywall_closed")
+                #expect(event.fields == ["result": .token("pending")])
+            }
         }
     }
 }
