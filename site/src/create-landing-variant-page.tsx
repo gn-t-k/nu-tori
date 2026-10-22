@@ -1,6 +1,7 @@
 import type { FC } from "hono/jsx";
 import { appStoreCampaignUrl } from "./app-store-campaign-url";
 import type { AppStoreListing } from "./app-store-listing";
+import { isLandingVariantName } from "./is-landing-variant-name";
 import type { SitePage } from "./site-page";
 
 // LP の版のページ。振り分けの Worker が /_lp/<版>/ を読んで / で返すので、正規の URL はどの版も / にする。
@@ -18,8 +19,7 @@ export const createLandingVariantPage = ({
   description: string;
   Content: FC<{ appStoreUrl: string }>;
 }): SitePage => {
-  // Cookie の値と書き出す先のパスにそのまま使うので、英小文字と数字だけにする
-  if (!/^[a-z0-9]+$/u.test(variant)) {
+  if (!isLandingVariantName(variant)) {
     throw new Error(`LP の版の名前は英小文字と数字だけにする: ${variant}`);
   }
   const appStoreUrl = appStoreCampaignUrl(listing, variant);

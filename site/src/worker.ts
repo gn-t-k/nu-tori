@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { generateCookie, getCookie } from "hono/cookie";
+import { isLandingVariantName } from "./is-landing-variant-name";
 import { securityHeaders } from "./security-headers";
 
 // assets.run_worker_first（wrangler.jsonc）で、/ と /_lp/* だけがここを通る。ほかのパスは静的な asset のまま返る
@@ -23,8 +24,8 @@ app.get("/", async (c) => {
   if (variants.length === 0) {
     return fetchPage(c.env, c.req.url, "/_lp/_placeholder/");
   }
-  // 版の名前は Cookie とパスにそのまま入るので、設定の誤りは振り分ける前に止める
-  if (variants.some((variant) => !/^[a-z0-9]+$/u.test(variant))) {
+  // 設定の誤りは振り分ける前に止める
+  if (!variants.every(isLandingVariantName)) {
     throw new Error(`LP_VARIANTS の版の名前は英小文字と数字だけにする: ${variants.join(", ")}`);
   }
 
