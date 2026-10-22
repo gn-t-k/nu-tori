@@ -159,7 +159,7 @@ finished_worktrees() {
                 reason="${line#locked }"
                 ;;
             "")
-                # $bases は空白区切りの ref の並びなので、分けて渡す
+                # shellcheck disable=SC2086 # $bases は空白区切りの ref の並びなので、引用符で囲まずに分けて渡す
                 if [ "$path" != "$root" ] && [ -d "$path" ] && is_finished_worktree "$path" $bases; then
                     printf '%s\t%s\n' "$path" "$(describe_lock "$locked" "$reason")"
                 fi

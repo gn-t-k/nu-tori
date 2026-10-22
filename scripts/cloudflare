@@ -67,6 +67,7 @@ case "$command" in
     logs)
         extra="${2:-}"
         [ -n "$extra" ] || extra='{}'
+        # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
         WORKER="$worker" MINUTES="${since:-60}" EXTRA="$extra" node -e '
             const { view = "events", limit = 100, filters = [], ...parameters } = JSON.parse(process.env.EXTRA);
             const now = Date.now();
@@ -83,6 +84,7 @@ case "$command" in
             }));' | post_json "$account/workers/observability/telemetry/query"
         ;;
     metrics)
+        # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
         ACCOUNT="$NU_TORI_CLOUDFLARE_ACCOUNT_ID" WORKER="$worker" HOURS="${since:-24}" node -e '
             const end = new Date();
             const start = new Date(end - Number(process.env.HOURS) * 3_600_000);

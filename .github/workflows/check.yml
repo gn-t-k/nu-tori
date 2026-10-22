@@ -19,6 +19,7 @@ jobs:
     outputs:
       ios: ${{ steps.changed.outputs.ios }}
       server: ${{ steps.changed.outputs.server }}
+      scripts: ${{ steps.changed.outputs.scripts }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -30,6 +31,7 @@ jobs:
           if ! files="$(git diff --name-only --no-renames "$BASE" "$GITHUB_SHA")"; then
             echo "ios=true" >> "$GITHUB_OUTPUT"
             echo "server=true" >> "$GITHUB_OUTPUT"
+            echo "scripts=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # どのパスがどの対象に当たるかは、手元と同じ決まりを scripts/check に置く
@@ -75,3 +77,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: server/pnpm-lock.yaml
       - run: scripts/check server
+
+  scripts:
+    needs: changes
+    if: needs.changes.outputs.scripts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/check scripts
