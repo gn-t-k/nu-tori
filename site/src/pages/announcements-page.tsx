@@ -8,6 +8,7 @@ export const announcementsPage: SitePage = {
   description:
     "nu-tori の障害や個人情報の取り扱いなど、運営からの告知を新しい順に載せています。アプリが開けないときもここで読めます。",
   kind: "public",
+  footerLabel: "告知",
   Content: () => {
     const announcements = sortNewestFirst(
       import.meta.glob<Announcement>("../announcements/*.tsx", {

@@ -3,9 +3,10 @@ import { raw } from "hono/html";
 import { AppStoreBadgePlacement } from "./app-store-badge-placement";
 import { siteOrigin } from "./site-origin";
 import { canonicalPathOf, type SitePage } from "./site-page";
+import { sitePages } from "./site-pages";
 import { webAnalytics } from "./web-analytics";
 
-// 全ページで共通の外枠（<head>、ヘッダー、足）。ページを足すチケットが、そのページへのリンクを footerLinks に足す
+// 全ページで共通の外枠（<head>、ヘッダー、足）
 export const SiteLayout = ({ page, children }: { page: SitePage; children: Child }) => {
   const canonicalPath = canonicalPathOf(page);
   return (
@@ -39,11 +40,15 @@ export const SiteLayout = ({ page, children }: { page: SitePage; children: Child
           <footer class="site-footer">
             <nav>
               <ul>
-                {footerLinks.map((link) => (
-                  <li>
-                    <a href={link.href}>{link.label}</a>
-                  </li>
-                ))}
+                {sitePages.flatMap((linked) =>
+                  linked.kind === "public"
+                    ? [
+                        <li>
+                          <a href={linked.outputPath}>{linked.footerLabel}</a>
+                        </li>,
+                      ]
+                    : [],
+                )}
               </ul>
             </nav>
             <p>医療の助言ではありません。持病のある方は、医師に相談してください。</p>
@@ -64,12 +69,3 @@ const AppleTrademarkNotice = () =>
       Apple Inc. のサービスマークです。
     </p>
   ) : null;
-
-const footerLinks = [
-  { href: "/privacy", label: "プライバシーポリシー" },
-  { href: "/terms", label: "利用規約" },
-  { href: "/legal", label: "特定商取引法に基づく表記" },
-  { href: "/support", label: "サポート" },
-  { href: "/daily-guide", label: "推定消費カロリーと1日の目安の出し方" },
-  { href: "/announcements", label: "告知" },
-];

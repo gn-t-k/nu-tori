@@ -9,6 +9,7 @@ export const termsPage: SitePage = {
   description:
     "nu-tori の利用規約です。アカウント、無料体験とサブスクリプション、推定と返事、禁止すること、退会、責任の範囲などを定めます。",
   kind: "public",
+  footerLabel: "利用規約",
   Content: () => (
     <>
       <h1>nu-tori 利用規約</h1>

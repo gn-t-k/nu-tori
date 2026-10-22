@@ -11,6 +11,7 @@ export const legalPage: SitePage = {
   description:
     "nu-tori のサブスクリプションについて、販売事業者、価格、支払いの時期と方法、自動更新と解約、無料体験を定めた特定商取引法に基づく表記です。",
   kind: "public",
+  footerLabel: "特定商取引法に基づく表記",
   Content: () => (
     <>
       <h1>特定商取引法に基づく表記</h1>

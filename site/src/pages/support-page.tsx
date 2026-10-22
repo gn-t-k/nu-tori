@@ -8,6 +8,7 @@ export const supportPage: SitePage = {
   title: "サポート | nu-tori",
   description: `nu-tori への問い合わせは、問い合わせのフォームか ${supportContact.email} のメールで受け付けます。`,
   kind: "public",
+  footerLabel: "サポート",
   Content: () => (
     <>
       <h1>サポート</h1>

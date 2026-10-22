@@ -4,9 +4,8 @@
 
 ## ページを足す
 
-1. `src/pages/<名前>-page.tsx` に `SitePage`（`src/site-page.ts`）を1つ書く。`outputPath` は末尾のスラッシュ無し（`/terms` → `terms.html`）にする。公開のページは `kind` を `public` にし、`outputPath` が正規の URL のパスになる
-2. ページの一覧（`src/site-pages.ts`）に足す。書き出し・`sitemap.xml`・`<head>`・テストがここを読む
-3. 公開のページなら、外枠の足のリンク（`src/site-layout.tsx` の `footerLinks`）に足す
+1. `src/pages/<名前>-page.tsx` に `SitePage`（`src/site-page.ts`）を1つ書く。`outputPath` は末尾のスラッシュ無し（`/terms` → `terms.html`）にする。公開のページは `kind` を `public` にし、足のリンクの文を `footerLabel` に書く。`outputPath` が正規の URL のパスになる
+2. ページの一覧（`src/site-pages.ts`）に足す。書き出し・`sitemap.xml`・`<head>`・外枠の足のリンク・テストがここを読み、公開のページの並びが足のリンクの並びになる
 
 - ページに JavaScript とインラインの `style` を置かない。Content-Security-Policy（`src/security-headers.ts`）が自分のオリジンと Cloudflare Web Analytics のビーコンだけを許すため。見た目は `public/site.css` に書く
 - Cloudflare Web Analytics のビーコンは外枠（`src/site-layout.tsx`）が全ページに置く。サイトのトークンとビーコンの送り先は `src/web-analytics.ts` の1か所にあり、CSP もそこから作る。LP に PostHog・Sentry は入れない

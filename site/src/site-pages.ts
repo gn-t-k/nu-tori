@@ -9,7 +9,7 @@ import { supportPage } from "./pages/support-page";
 import { termsPage } from "./pages/terms-page";
 import type { SitePage } from "./site-page";
 
-// 書き出し、sitemap.xml、<head>、テストがここを読む。ページを足すときは、ここに1つ足し、外枠の足のリンク（site-layout.tsx）も足す
+// 公開のページの並びが、外枠の足のリンクの並びになる
 export const sitePages: readonly SitePage[] = [
   landingPlaceholderPage,
   landingAPage,

@@ -7,6 +7,8 @@ export const dailyGuidePage: SitePage = {
   title: "推定消費カロリーと1日の目安の出し方 | nu-tori",
   description: "nu-tori が、推定消費カロリーと1日の目安をどう出し、毎週どう見直すかを説明します。",
   kind: "public",
+  // 目標の設定と目標の画面のリンク（#641）と同じ文言にする
+  footerLabel: "推定消費カロリーと1日の目安の出し方",
   Content: () => (
     <>
       <h1>推定消費カロリーと1日の目安の出し方</h1>

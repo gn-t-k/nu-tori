@@ -19,8 +19,8 @@ export const canonicalPathOf = (page: SitePage): string | undefined =>
   )[page.kind];
 
 type SitePageKind =
-  // 公開のページ。書き出す先のパスを正規の URL にして、検索に載せる
-  | { kind: "public" }
+  // 公開のページ。書き出す先のパスを正規の URL にして、検索に載せ、外枠の足からリンクする
+  | { kind: "public"; footerLabel: string }
   // / に返すページ（仮のページと LP の版）。振り分けの Worker が /_lp/<名前>/ を読んで / で返すので、正規の URL はどれも / にする
   | { kind: "landing" }
   | { kind: "unindexed" };
