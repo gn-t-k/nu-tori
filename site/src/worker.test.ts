@@ -195,6 +195,20 @@ describe("nu-tori.app の配信", () => {
     });
   });
 
+  describe("App Store のバッジの画像", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await fetchSite("/app-store-badge.svg");
+    });
+
+    // Apple の SVG は色を style 属性で付けるので、ページと同じ決まりでは直に開いたときに色と文字が消える
+    test("style 属性だけを許し、ほかは何も読ませない決まりを1つだけ付けること", () => {
+      expect(response.headers.get("Content-Security-Policy")).toBe(
+        "default-src 'none'; style-src 'unsafe-inline'",
+      );
+    });
+  });
+
   describe("LP の版が無いとき（LP_VARIANTS が空）", () => {
     let response: Response;
     let privacyResponse: Response;
