@@ -21,7 +21,8 @@ public enum SubscriptionStatus: Hashable, Sendable {
         case subscribed(plan: Plan, periodEndsAt: Date, billingGrace: BillingGrace)
     }
 
-    public enum Plan: Hashable, Sendable {
+    /// rawValue は端末のキャッシュの行に保存する値。変えると、保存した行を読めなくなる（置き場を消して取り直す）
+    public enum Plan: String, Hashable, Sendable {
         case monthly
         case yearly
     }
