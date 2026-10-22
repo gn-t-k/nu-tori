@@ -1,9 +1,18 @@
 {
-  "$schema": "../server/node_modules/wrangler/config-schema.json",
-  // 静的なページだけを配る。コードを持たないので、開発用の環境は置かない
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // 書き出したページ（dist）を配り、LP の版を振り分ける。開発用の環境は置かない（vite の手元の表示とテストで確かめる）
   "name": "nu-tori-site",
+  "main": "src/worker.ts",
   "compatibility_date": "2026-08-22",
-  "assets": { "directory": "public" },
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    // ほかのパスは Worker を通さず、静的な asset のまま返す（無料で、_headers が効く）
+    "run_worker_first": ["/", "/_lp/*"],
+    "not_found_handling": "404-page",
+  },
+  // LP の版の名前（英小文字と数字）の一覧。空のあいだは / に仮のページを返す
+  "vars": { "LP_VARIANTS": [] },
   "routes": [{ "pattern": "nu-tori.app", "custom_domain": true }],
   "workers_dev": false,
   "preview_urls": false,
