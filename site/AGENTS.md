@@ -11,8 +11,18 @@
 - ページに JavaScript とインラインの `style` を置かない。Content-Security-Policy（`src/security-headers.ts`）が自分のオリジンだけを許すため。見た目は `public/site.css` に書く
 - セキュリティのヘッダーは `src/security-headers.ts` の1か所に置く。`vite build` がそこから `_headers` を書き出し、Worker も同じ定義を付ける（Worker の応答には `_headers` が効かない）
 
+## LP の版を足す・外す
+
+振り分けの Worker が、`wrangler.jsonc` の `LP_VARIANTS` から訪問者ごとに版を等しい確率で選び、Cookie `nu_tori_lp`（版の名前だけ、30日）で覚えて、`/_lp/<版>/` を `/` で返す。`LP_VARIANTS` が空のあいだは仮のページを返す。
+
+- 足す: `src/pages/landing-<版>-page.tsx` に `createLandingVariantPage`（`src/create-landing-variant-page.tsx`）で版のページを1つ書いてページの一覧に足し、`LP_VARIANTS` に版の名前を1つ足す。版の名前は英小文字と数字だけ。バッジのリンクは版の名前から `ct=lp-<版>` を作るので、App Store Connect のキャンペーンでその版のダウンロード数を見る
+- 外す: `LP_VARIANTS` から名前を消す。その版の Cookie を持つ人は、次に開いたときに残った版に振り直される。版のページは、一覧から消すまで書き出されるが、`/_lp/*` を直に開くと `/` へ転送するので外からは見えない
+- バッジは `AppStoreBadge`（`src/app-store-badge.tsx`）を1ページに1つ置く。置いたページの足にだけ Apple の商標の行が出る。アプリの ID と提供者のトークンは `src/app-store-listing.ts` の1か所に置く
+- Cookie の名前・中身・残る期間を変えたら、プライバシーポリシーの「ウェブサイトのトップページの Cookie」も直す
+
 ## 確かめる
 
 - 変えたら `scripts/check site` を回す。整形・Lint・型検査のあと、書き出しと Worker の束ねをしてからテストを回す
 - テストの継ぎ目は1つ（`src/worker.test.ts`）。書き出した `dist` と wrangler が束ねた Worker を、`wrangler.jsonc` の設定のまま別の Worker として動かし（`vitest.config.ts`）、`src/testing/fetch-site.ts` の `fetchSite` で要求を投げて、状態・ヘッダー・本文を見る。テストの実行環境の `SELF` は assets の振り分けの前段（`run_worker_first`）を通らないので使わない。ページの部品の単体テストと、Hono の経路を直に叩くテストは書かない
+- LP の版の振り分けは、本番の `LP_VARIANTS` に頼らず、版を a と b にした2つめの Worker（`src/testing/fetch-site-with-landing-variants.ts`）で確かめる。b はテストだけの版で、`vite build --mode test` が本番のページに足して `.wrangler/test-dist` に書き出す（`src/testing/test-site-app.tsx`）。版を選ぶ乱数は、テストの実行環境だけの `LP_VARIANT_DRAW` で決める
 - 文言と見た目はテストせず、書き出したページを開いて見る
