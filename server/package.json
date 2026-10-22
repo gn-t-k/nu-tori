@@ -15,7 +15,7 @@
     "@praha/error-factory": "1.4.1",
     "@sentry/cloudflare": "11.8.0",
     "@sentry/hono": "11.8.0",
-    "better-auth": "1.7.10",
+    "better-auth": "1.7.11",
     "drizzle-orm": "0.45.4",
     "hono": "4.13.13",
     "jose": "6.2.12",
@@ -24,7 +24,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "1.4.3",
+    "@cloudflare/vitest-plugin": "1.4.5",
     "@praha/byethrow-docs": "0.12.0",
     "@praha/byethrow-oxlint": "0.12.0",
     "@praha/byethrow-testing": "0.12.0",
@@ -39,7 +39,7 @@
     "tsx": "4.23.15",
     "typescript": "7.0.2",
     "vitest": "4.1.12",
-    "wrangler": "4.151.0"
+    "wrangler": "4.151.2"
   },
   "packageManager": "pnpm@12.6.0"
 }
