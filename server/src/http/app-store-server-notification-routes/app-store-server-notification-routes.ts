@@ -43,7 +43,7 @@ export const appStoreServerNotificationRoutes = new OpenAPIHono<{
       readAppStoreRootCertificate(),
     );
     if (R.isFailure(verified)) {
-      c.set("appStoreNotification", { result: "rejected" });
+      c.set("appStoreNotification", { signature: "unverified", result: "rejected" });
       captureException(
         new AppStoreServerNotificationUnhandledError({
           reason: "unverified",
@@ -54,7 +54,7 @@ export const appStoreServerNotificationRoutes = new OpenAPIHono<{
       return c.body(null, 400);
     }
     const { notificationUUID, notificationType, subtype, signedDate, data } = verified.value;
-    const log = { notificationType, notificationSubtype: subtype };
+    const log = { signature: "verified", notificationType, notificationSubtype: subtype } as const;
     const reportUnhandled = (reason: AppStoreServerNotificationUnhandledError["reason"]): void => {
       if (data?.environment !== "Production") {
         return;
