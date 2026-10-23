@@ -337,10 +337,11 @@ public actor SyncEngine {
         collectingRejectionsIn rejectedWrites: inout [RejectedWrite],
         awaitingPullIn awaitingPullWriteIds: inout [UUID]
     ) async throws -> SyncResult.StopReason? {
-        let maxWritesPerRequest = 500
+        // 1回の要求で送る書き込みの数の上限。正本はサーバーの `maximumWritesPerRequest`
+        let maximumWritesPerRequest = 500
         let pending = try await store.pendingEntries()
-        for batchStart in stride(from: 0, to: pending.count, by: maxWritesPerRequest) {
-            let batchEnd = min(batchStart + maxWritesPerRequest, pending.count)
+        for batchStart in stride(from: 0, to: pending.count, by: maximumWritesPerRequest) {
+            let batchEnd = min(batchStart + maximumWritesPerRequest, pending.count)
             let batch = Array(pending[batchStart..<batchEnd])
             let writes = try batch.map(syncWrite)
             let clientState = await clientState(pendingWrites: pending[batchStart...])

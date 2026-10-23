@@ -33,6 +33,14 @@ try renderAcceptedDeadlineDays(
 )
 .write(to: output.appending(path: "AcceptedDeadlineDays.swift"), atomically: true, encoding: .utf8)
 
+try renderPaceRules(
+    JSONDecoder().decode(
+        PaceRules.self,
+        from: Data(contentsOf: shared.appending(path: "pace.json"))
+    )
+)
+.write(to: output.appending(path: "PaceRules.swift"), atomically: true, encoding: .utf8)
+
 /// 下限は minimum（含む）か exclusiveMinimum（含まない）のどちらか。上限は maximum（含む）で、無ければ上限なし
 private struct Bounds: Decodable {
     let lowerBound: LowerBound
@@ -153,6 +161,29 @@ private func renderAcceptedDeadlineDays(_ days: DayBounds) -> String {
     public enum AcceptedDeadlineDays {
         public static let minimum = \(days.minimum)
         public static let maximum = \(days.maximum)
+    }
+
+    """
+}
+
+private struct PaceRules: Decodable {
+    let windowDays: Int
+    let minimumWeightRecordDayCount: Int
+    let maintenanceBandKg: Double
+}
+
+private func renderPaceRules(_ rules: PaceRules) -> String {
+    """
+    // shared/pace.json から書き出した。直すときは JSON を直し、scripts/check ios --fix で書き出し直す
+
+    /// ペースの判定の係数
+    public enum PaceRules {
+        /// 体重の傾向の動きを見る日数（判定する日を含む）。目標を立ててからこの日数たつまでは判定しない
+        public static let windowDays = \(rules.windowDays)
+        /// 言い切るのに要る、見る日数のうち体重記録のある日の数
+        public static let minimumWeightRecordDayCount = \(rules.minimumWeightRecordDayCount)
+        /// 維持で、体重の傾向が収まっていればよい目標体重からの幅（±）
+        public static let maintenanceBandKilograms = \(rules.maintenanceBandKg)
     }
 
     """

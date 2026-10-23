@@ -7,6 +7,7 @@ import type { WeightChangeDirection } from "../weight-change-direction";
 import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
 import { maintenanceBandKg } from "../maintenance-band-kg";
 import { paceWindowDays } from "../pace-window-days";
+import { minimumWeightRecordDayCount } from "../minimum-weight-record-day-count";
 
 export type PaceGoal =
   | {
@@ -102,5 +103,3 @@ export const computePace = ({
 
 // -0.04 kg/週のような値が -0 にならないよう、0 を足して -0 を 0 にする（端末の JSON では 0 と -0 を分けない）
 const roundRateKg = (kgPerWeek: number): number => roundToTenthKg(kgPerWeek, "round") + 0;
-
-const minimumWeightRecordDayCount = 4;
