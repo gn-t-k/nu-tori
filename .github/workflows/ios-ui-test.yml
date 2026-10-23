@@ -46,6 +46,7 @@ jobs:
         run: |
           results=ios/.build/NuTori.xcresult
           [ -d "$results" ] || exit 0
+          mkdir -p ios/.build/report
           xcrun xcresulttool get test-results summary --path "$results" --compact > ios/.build/report/summary.json
           jq -r '.testFailures[]? | "- \(.testIdentifierString): \(.failureText)"' ios/.build/report/summary.json |
             tee ios/.build/report/failures.txt >> "$GITHUB_STEP_SUMMARY"
