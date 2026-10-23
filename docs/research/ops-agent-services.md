@@ -225,3 +225,149 @@ flowchart TB
   - https://docs.x.ai/x-subscription/grok-bot
   - https://docs.x.ai/grok/connectors 、https://docs.x.ai/grok/connectors/gmail-google-calendar
   - https://x.ai/pricing
+
+## 追補: 指示の置き場・データの置き場・Google Workspace・データの扱い（Claude Code を加えて）
+
+調査日: 2026-10-23（同じ日の追加の調べもの）
+対象: Grok Bot、OpenAI dots、**Claude Code（claude.ai/code のクラウドのセッションと、予定で動く「scheduled tasks」（旧名 routines）、コネクタ）**。Claude Duet は短く。
+
+> **確認の方法**: 上と同じ。claude.com・code.claude.com・openai.com・learn.chatgpt.com・x.ai・docs.x.ai への直接の取得をもう一度試したが、プロキシの 403（`connect_rejected`）と名前解決の失敗で開けなかった。そこで Web 検索を公式のドメイン（code.claude.com、support.claude.com、privacy.claude.com、anthropic.com、claude.com、help.openai.com、learn.chatgpt.com、openai.com、developers.openai.com、x.ai、docs.x.ai）に絞り、抜粋を読んだ。区分「抜粋で確認」「抜粋からの読み取り」「探したが記述なし」の意味も上と同じ。
+>
+> **前の節との食い違い**: Grok Bot の FAQ の抜粋は、デスクトップを macOS・Windows・Linux、手元のアプリを iOS・Android としている（上の表は macOS と iOS）。後から広がったと読める（抜粋からの読み取り）。
+
+### 問いの対応（図）
+
+```mermaid
+flowchart LR
+  subgraph 指示の置き場
+    G1[Grok Bot: Bot の description<br/>＋スキル＋記憶]
+    O1[dots: 会話・Custom rules・dot の記憶<br/>スキルはつないだ PC が要る]
+    C1[Claude Code: リポジトリの CLAUDE.md と .claude/skills<br/>＋予定のタスクのプロンプト]
+  end
+  subgraph 動く場所
+    G2[ユーザーごとに1台の microVM<br/>/workspace が残る・米国]
+    O2[dot のクラウドのコンピューター<br/>コードは Codex のクラウド環境]
+    C2[タスクごとの VM<br/>毎回 GitHub から clone<br/>claude/ のブランチに push]
+  end
+  G1 --> G2
+  O1 --> O2
+  C1 --> C2
+```
+
+### 1. 指示はどこに置き、どう渡すか
+
+| 道具 | 答え | 確かさ | 出典 |
+|---|---|---|---|
+| Grok Bot | **Bot ごとの「description」が、ずっと守らせたい決まりの置き場**。その仕事だけの指示は会話で渡す（"Use the conversation for task-specific instructions. Use the description for rules that should remain true."） | 抜粋で確認 | https://docs.x.ai/grok-bot/bots |
+| Grok Bot | 記憶（好み、役目、前の仕事のまとめ）とルーティンは **Bot に属し**、道具（プラグイン）とスキルは **アカウントに属する**。スキルは「仕事のやり方を書いた使い回せる指示」。一度見せた手順をスキルとして保存し、ルーティンで予定に載せる | 抜粋で確認 | https://docs.x.ai/grok-bot/skills-routines-and-automations 、https://docs.x.ai/grok-bot/overview |
+| Grok Bot | テンプレートに Bot の指示の写し、記憶、スキル、プラグインが入り、共有できる | 抜粋で確認 | https://x.ai/bot/guides/templates-for-grok-bot |
+| Grok Bot | **スキルを SKILL.md の文字として直接書く・直す手順は、Grok Bot については出なかった**。SKILL.md の形式と `AGENTS.md` を読む仕組みは、別製品の Grok Build（ターミナルのコーディングエージェント）の文書にある。Grok Bot のマーケットプレイスの1件は「手元のプラグインは読まず、Cursor のダッシュボードとマーケットプレイスからだけ読む」と書く | 探したが記述なし（Grok Bot で）／Grok Build は抜粋で確認 | https://docs.x.ai/build/features/project-rules 、https://docs.x.ai/build/features/skills-plugins-marketplaces |
+| Grok Bot | GitHub のリポジトリを clone してその中の `AGENTS.md` やスキルに従う、という使い方の記述は出なかった。ターミナルとファイルがあり GitHub のコネクタもあるので、毎回「このファイルを読んでから始める」とルーティンに書けば読ませられると読めるが、確かめていない | 探したが記述なし／抜粋からの読み取り | https://docs.x.ai/grok-bot/computer-and-apps |
+| Grok Bot | Google Drive のコネクタで Docs を探して読める（下の 3.）ので、毎回 Drive の文書を読ませる指示は書ける | 抜粋からの読み取り | https://docs.x.ai/grok/connectors/google-drive |
+| dots | 決まりの置き場は **Custom rules**（許す・先に聞く・止める）。ただし「dot が守ろうとする指示で、間違えうる」と公式が書く（"They are instructions your dot tries to follow, and it can make mistakes."） | 抜粋で確認 | https://learn.chatgpt.com/docs/dots/controls |
+| dots | dot は好み、決めたこと、続いている仕事について **自分のノート（記憶）** を持つ。ChatGPT の保存された記憶とは別。**個々の記憶は見られず、消せず、直せない** | 抜粋で確認 | https://learn.chatgpt.com/docs/dots/tasks-and-memory 、https://help.openai.com/en/articles/20001529-dots-privacy-security-and-safety-faqs |
+| dots | 繰り返しの手順は「scheduled task」として保存する（何を確かめるか、いつ、何で知らせるか、結果の送り先）。Scheduled の欄で間隔・時刻・知らせを変えられ、dot に頼んで一覧・変更・取りやめもできる。タスクの中身を文字として直接編集できるかは抜粋に出なかった | 抜粋で確認／中身の編集は探したが記述なし | https://learn.chatgpt.com/docs/dots/tasks-and-memory |
+| dots | **手元のスキル（Local skills）はつないだ PC が要る**（"Local skills require a connected computer."）。OpenAI のスキルは SKILL.md を中心にしたフォルダの形式 | 抜粋で確認 | https://learn.chatgpt.com/docs/dots 、https://developers.openai.com/api/docs/guides/tools-skills |
+| dots | リポジトリの仕事は、**先に Codex でクラウド環境（リポジトリと準備の設定）を作り、dot がそれを使う** | 抜粋で確認 | https://learn.chatgpt.com/docs/dots |
+| Claude Code | クラウドのセッションは **clone したリポジトリの `CLAUDE.md`（直下と `.claude/CLAUDE.md`、パス指定の無い `.claude/rules/`）を読み、`.claude/skills/`・`.claude/agents/`・`.claude/commands/` も clone と一緒に使える**。claude.ai で有効にしたスキルも読む。手元の `~/.claude/skills/` と、`.claude/settings.json` の `enabledPlugins` のプラグインは来ない | 抜粋で確認 | https://code.claude.com/docs/en/cloud-environments 、https://code.claude.com/docs/en/skills |
+| Claude Code | 例外: **Projects の中のクラウドのスレッドは `CLAUDE.md` は読むが、リポジトリのスキル・`.mcp.json`・`.claude/settings.json` は読まない**（回避は claude.ai でスキルを有効にする） | 抜粋で確認 | https://code.claude.com/docs/en/claude-projects |
+| Claude Code | 予定のタスク（scheduled tasks）は、名前・**プロンプト（文字）**・リポジトリ・環境・コネクタ・きっかけを持ち、claude.ai/code/routines の「Edit」で直せる。CLI の `/schedule` でも作れる。手順の本体はリポジトリのスキルに置き、プロンプトから呼ぶ形にできる | 抜粋で確認／スキルを呼ぶ形は抜粋からの読み取り | https://code.claude.com/docs/en/routines |
+| Claude Code | Desktop アプリの「手元の予定のタスク」は別機能で、プロンプトを SKILL.md としてディスクに持つ。アプリが開いているあいだだけ動く | 抜粋で確認 | https://code.claude.com/docs/en/desktop-scheduled-tasks |
+| Claude Duet | Claude アプリと同じ記憶とスキルを使い、過去のチャットを検索できる（Settings > Memory で切れる）。リポジトリを読む機能の記述は無い | 抜粋で確認／リポジトリは探したが記述なし | https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context |
+
+### 2. どこで動き、何が残るか
+
+| 道具 | 答え | 確かさ | 出典 |
+|---|---|---|---|
+| Grok Bot | ブラウザ、ファイル、ターミナルのある **ずっと残るクラウドのコンピューター**。長く残すファイルは共有の `/workspace` に置く。一時ディレクトリ、手で入れたパッケージ、コミットしていない状態は「作り直されうる」扱い。「Reset Bot's Computer」は最後のスナップショットから作り直し、直近の変更は消えうる | 抜粋で確認 | https://docs.x.ai/grok-bot/computer-and-apps 、https://docs.x.ai/grok-bot/overview |
+| Grok Bot | ブラウザのログインと **コマンドラインの資格情報も全部の Bot で共有** | 抜粋で確認 | https://docs.x.ai/grok-bot/computer-and-apps |
+| Grok Bot | ターミナルで `git push` できるか、GitHub の資格情報をどう渡すか、python・node が入っているかは出なかった（git の操作の記述は Grok Build のもの） | 探したが記述なし | — |
+| dots | 自分のクラウドのコンピューターとブラウザを持ち、ファイル、ソフト、ブラウザのセッションを使う間で持ち越せる（"can keep its state between periods of use"） | 抜粋で確認 | https://learn.chatgpt.com/docs/dots/computers-and-apps |
+| dots | dot のコンピューターで python を動かす、パッケージを残す、git で clone・push する、の直接の記述は出なかった。コードの仕事は Codex のクラウド環境に渡す作り | 探したが記述なし／抜粋からの読み取り | https://learn.chatgpt.com/docs/dots |
+| Claude Code | Anthropic が管理する VM で動き、**VM はそのタスク専用**。毎回、選んだ GitHub のリポジトリを既定のブランチから clone し、変更は `claude/` で始まるブランチに push する。シェルのコマンドを動かせる | 抜粋で確認 | https://code.claude.com/docs/en/routines 、https://code.claude.com/docs/en/claude-code-on-the-web |
+| Claude Code | 残るのは **環境の設定**（ネットワークの範囲、環境変数、準備のスクリプト、ネットワークの秘密の値）と、準備のスクリプトの結果のキャッシュ、GitHub のトークン（暗号化して claude.ai のアカウントに保存）、セッションの記録。VM の上のファイルは残らない（"The virtual machine exists only for that specific task"）。**残したいものはリポジトリにコミットするか、外のサービスに書く** | 抜粋で確認／ファイルが消えるのは抜粋からの読み取り | https://code.claude.com/docs/en/cloud-environments 、https://code.claude.com/docs/en/claude-code-on-the-web |
+| Claude Code | 予定のタスクは **自律で動き、許可の確認で止まらない**。シェルのコマンドもコネクタの呼び出しも承認なしで行う。コネクタは既定で全部（書き込みを含む）入るので、要らないものを外すよう公式が勧める | 抜粋で確認 | https://code.claude.com/docs/en/routines |
+| Claude Code | きっかけは時刻の予定・HTTP の呼び出し・GitHub のできごと。GitHub のできごとには Claude の GitHub App が要る。タスクは個人のアカウントに属しチームには属さない。Pro・Max・Team・Enterprise、リサーチプレビュー | 抜粋で確認 | https://code.claude.com/docs/en/routines |
+| Claude Code（この調査の環境での観察） | この調べもの自体が Claude Code のクラウドのセッションで動いており、リポジトリの `AGENTS.md` が読み込まれ、claude.ai のコネクタ（Gmail など）が渡され、許していないホストへの通信はプロキシに拒まれた。公式の記述どおりの動き（観察で、3区分のどれでもない） | 観察 | — |
+
+### 3. Google Drive・Sheets・Docs
+
+| 道具 | 答え | 確かさ | 出典 |
+|---|---|---|---|
+| Grok Bot | Grok の **Google Drive コネクタ** で、Docs・Sheets・Slides などを探して読み、**新しい Google Docs を含むファイルを作って書ける**（"Create and write files including new Google Docs."）。書き込みの権限は任意で付ける。Sheets の編集ができるとする事業者向けページもある | 抜粋で確認（作成・書き込み）／Sheets に行を足すのは抜粋からの読み取り | https://docs.x.ai/grok/connectors/google-drive 、https://x.ai/grok/business |
+| Grok Bot | Grok のコネクタが Grok Bot のプラグインとしてそのまま出ることは上の節で確かめた。Drive が Grok Bot で同じ権限で使えるかの個別の記述は出なかった | 抜粋からの読み取り | https://docs.x.ai/grok-bot/teams-and-enterprises |
+| dots | ChatGPT の **Google Drive アプリ**（2026年3月に Docs・Sheets・Slides のアプリを統合）が、Google Docs と Sheets の作成と更新の書き込みに対応。共有ドライブはまだ対象外。dot は入れて有効にしたアプリを使い、読み取りと書き込みの権限はプラグインごとに選ぶ | 抜粋で確認（ChatGPT 全体）／dot で書けるかは抜粋からの読み取り | https://help.openai.com/en/articles/10929079-google-drive-app-and-setup-in-chatgpt 、https://help.openai.com/en/articles/6825453-chatgpt-release-notes 、https://help.openai.com/en/articles/20001495 |
+| dots | 先回りの調べものでは、つないだアプリは読み取り専用（上の節） | 抜粋で確認 | https://help.openai.com/en/articles/20001529-dots-privacy-security-and-safety-faqs |
+| Claude Code | claude.ai のコネクタが二層。**Google Drive コネクタ** は探す・読む・共有・移動・ゴミ箱（Sheets も読める、文字だけ取り出す）。**別の Google Docs・Sheets・Slides のコネクタ** で新しいファイルを作り、編集する | 抜粋で確認（claude.ai 全体） | https://support.claude.com/en/articles/10166901-use-google-workspace-connectors 、https://support.claude.com/en/articles/16951679-use-claude-in-google-docs-sheets-and-slides |
+| Claude Code | クラウドのセッションと予定のタスクは、claude.ai に設定したコネクタを受け取る（セッションの中でのログインは無い）。**Google Drive や Sheets のコネクタがクラウドのセッションで使えると名指した記述は出なかった** | 抜粋で確認（仕組み）／Google を名指しは探したが記述なし | https://code.claude.com/docs/en/mcp 、https://code.claude.com/docs/en/routines |
+| Claude Code | Sheets の行の追加ができるか（作成・編集とは別に）は出なかった | 探したが記述なし | — |
+
+### 4. データの扱い（アプリのプライバシーポリシーのため）
+
+アプリの問い合わせをこれらの道具に読ませると、その事業者がユーザーの問い合わせを扱う先になる。
+
+| 道具・プラン | 学習への利用 | 残る期間 | 処理する場所 | DPA・事業者向けの条件 | 確かさ | 出典 |
+|---|---|---|---|---|---|---|
+| Claude Code（Pro・Max） | 消費者のプラン（Free・Pro・Max）は「モデルの改善」の設定がオンなら学習に使う。Claude Code も含む。設定はいつでも変えられる。既定がオンかオフかは抜粋に出なかった | オンなら5年、オフなら30日。規約違反と判定されたものは最長2年。クラウドのセッションの記録は Anthropic が保存し、セッションごとに消せる。ゼロデータ保持はクラウドのセッションに使えない | 消費者向けは「事業者や協力先が活動する国で処理しうる」。米国で保存と明記したのは商用の顧客向けの記事 | **DPA は商用の規約（Team・Enterprise・API）に組み込まれたもので、消費者のプラン（Pro・Max）は消費者の規約** | 抜粋で確認（場所は消費者について明記なし） | https://code.claude.com/docs/en/data-usage 、https://privacy.claude.com/en/articles/10023548-how-long-do-you-store-my-data 、https://privacy.claude.com/en/articles/10458704-how-does-anthropic-protect-the-personal-data-of-claude-users 、https://privacy.claude.com/en/articles/7996890-where-are-your-servers-located-do-you-host-your-models-on-eu-servers 、https://privacy.claude.com/en/articles/7996862-how-do-i-view-and-sign-your-data-processing-addendum-dpa 、https://www.anthropic.com/legal |
+| Claude Duet（Pro・Max） | Duet 専用の決まりは出なかった。Claude の消費者の決まり（上と同じ）が当たると読める | 同上と読める | 同上 | 同上 | 抜粋からの読み取り | https://privacy.claude.com/en/articles/7996885-how-do-you-use-personal-data-in-model-training |
+| dots（ChatGPT Pro） | 個人のプランでは「Improve the model for everyone」の設定で、dot の会話と仕事を学習に使うかが決まる。Business・Enterprise・Edu は既定で使わない | dot の文脈は dot を消すまで残り、消すと消える。dot が作ったファイル・Codex のスレッド・ChatGPT の会話は別に残る | Pro での場所の記述は出なかった。データの所在地の選択は Enterprise・Edu・API など（Business は順次）向け | **DPA は Business・Enterprise・API 向け**。Plus・Pro 向けの DPA は ChatGPT Sites で集めた個人データに限られる | 抜粋で確認（場所は探したが記述なし） | https://help.openai.com/en/articles/20001529-dots-privacy-security-and-safety-faqs 、https://openai.com/business-data/ 、https://help.openai.com/en/articles/9903489-data-residency-and-inference-residency-for-chatgpt 、https://openai.com/policies/chatgpt-sites-data-processing-addendum/ |
+| Grok Bot（X Premium など） | **学習のオプトアウトは Cursor のアカウントとプライバシーの設定に従う**。Privacy Mode がオンなら学習に使わず、確かめられないときは学習しない側に倒す。Grok Bot は Legacy Privacy Mode に対応しない。X から使う Grok の学習の止め方は X のヘルプセンターを見よとある。Premium での既定は抜粋に出なかった | Privacy Mode がオンならモデル提供者はプロンプトと出力を残さない（不正の検知で印のついたものは残しうる）。**Bot を消しても、そのコンピューターのファイルとログインは残りうる**。利用規約は、データ・ファイル・ブラウザのセッション・資格情報・記憶・ルーティンを残るクラウドの環境に保持しうると書く | **Grok Bot のコンピューターは今は米国で動く**（契約上の約束ではなく今の状態として） | Grok Bot と第三者のモデルは Anysphere（Cursor）が提供し、Cursor のサービスでは Anysphere が SpaceXSI の再委託先。DPA の文書と「X Subscription Grok Addendum」「Cursor Addendum」がある。**Premium の個人にこの DPA が当たるかは読み取れなかった**（Cursor Addendum は 2026-10-07 時点で Grok か X の Teams の契約者に限るとある） | 抜粋で確認（個人への適用は探したが記述なし） | https://docs.x.ai/grok-bot/security 、https://docs.x.ai/grok-bot/approvals-security-and-privacy 、https://x.ai/legal/faq 、https://x.ai/legal/grok-bot-terms 、https://x.ai/legal/data-processing-addendum 、https://x.ai/legal/x-subscription-grok-addendum 、https://x.ai/legal/x-subscription-cursor-addendum 、https://docs.x.ai/grok-bot/teams-and-enterprises |
+
+**プライバシーポリシーへの読み取り**: 3社とも、個人のプラン（Pro・Max、ChatGPT Pro、X Premium）では、利用者側を「委託元」とする DPA が当たるという記述は出なかった。DPA の枠に入るのは、Anthropic は Team・Enterprise・API、OpenAI は Business・Enterprise・API（抜粋で確認）。xAI は Teams の契約者向けの付属書が見えた。問い合わせを読ませるなら、ポリシーには「問い合わせの内容を、これらの事業者（米国など）の AI サービスで処理する」と書き、学習の設定を切ったうえで使うのが、確かめた範囲での最小（抜粋からの読み取り。法的な判断ではない）。Grok Bot は、Cursor（Anysphere）も処理に入ることを書く必要があると読める。
+
+### 5. 日本で使えるか（再確認）
+
+| 道具 | 答え | 確かさ | 出典 |
+|---|---|---|---|
+| dots | Pro は「EEA・スイス・英国を除く市場の18歳以上」に順に出す。日本は除外の一覧に無い。同じページに「米国の Pro だけのベータ」とする古いと見られる一文も残る。Business Premium と Enterprise は「世界に順に」 | 抜粋で確認／日本が入るのは抜粋からの読み取り | https://help.openai.com/en/articles/20001530-getting-started-with-your-dot 、https://learn.chatgpt.com/docs/dots |
+| Grok Bot | 製品そのものの国の一覧は出なかった。`@bot` の X からの呼び出しの除外（オーストラリア、英国、EU、アイスランド、リヒテンシュタイン、ノルウェー）に日本は無い。判断は X のアカウントに登録した国で、VPN では変わらない | 探したが記述なし（製品の国）／抜粋からの読み取り（日本） | https://docs.x.ai/grok-bot/tag-on-x 、https://docs.x.ai/grok-bot/faq |
+| Claude Code | 前の節の Duet と違い、予定のタスクは Pro・Max・Team・Enterprise に出ていて、国の制限の記述は出なかった（この調べものも日本の開発者のアカウントで動いている） | 抜粋で確認（プラン）／国は探したが記述なし | https://code.claude.com/docs/en/routines |
+
+### nu-tori の置き場の決め方への影響
+
+検討している置き方: **手順は公開リポジトリ（nu-tori）にスキルとして置き、判断とデータは Google Workspace の Drive（Sheets・Docs）に置く**。
+
+```mermaid
+flowchart TB
+  R[nu-tori のリポジトリ<br/>手順＝スキル・AGENTS.md] -->|clone して読む| CC[Claude Code の予定のタスク]
+  R -.->|自分で読ませる指示が要る・未確認| GB[Grok Bot]
+  R -.->|Codex のクラウド環境経由| DT[dots]
+  D[Drive<br/>判断と記録＝Sheets・Docs] -->|claude.ai のコネクタ・名指しの記述なし| CC
+  D -->|Drive コネクタで読み書き| GB
+  D -->|Google Drive アプリで読み書き| DT
+```
+
+- **Claude Code（クラウドの予定のタスク）が、この置き方に一番そのまま合う。** 毎回リポジトリを clone し、`CLAUDE.md` とリポジトリのスキルを読むことが公式に書かれている（抜粋で確認）。Drive 側は claude.ai のコネクタを受け取る仕組みで、Google の Docs・Sheets のコネクタは作成と編集ができる（抜粋で確認）が、クラウドのセッションで Google のコネクタが使えると名指した記述は無かったので、最初に1回試して確かめる。気をつけること: 予定のタスクは承認なしで動き、コネクタは既定で書き込みも全部入る（抜粋で確認）。「外へ向く操作は承認を通す」原則に合わせるには、送信のできるコネクタ（Gmail など）を外し、成果は下書き・Sheets の行・PR に限る作りにする（抜粋からの読み取り）。VM は残らないので、判断と記録を Drive に置く方針とも合う。Projects の中のスレッドではリポジトリのスキルが読まれない点に注意（抜粋で確認）。
+- **Grok Bot は、Drive 側は合う**（Drive コネクタで Docs の作成と書き込み、抜粋で確認）。**手順側は Grok Bot が好む形と違う**: 決まりは Bot の description、手順はアカウントのスキル（アプリの中で保存）、残すファイルは `/workspace` という、Grok Bot の中に持つ作りで、リポジトリのスキルを読む仕組みは記述が無かった（探したが記述なし）。リポジトリを正にするなら、ルーティンの指示に「GitHub から手順のファイルを読んでから始める」と書く回り道になり、確かめていない。
+- **dots も Drive 側は合う**（Google Drive アプリが Docs・Sheets の書き込みに対応、抜粋で確認。dot で書けるかは抜粋からの読み取り）。**手順側は、スキルがつないだ PC 前提で、リポジトリの仕事は Codex のクラウド環境に渡す作り**（抜粋で確認）。dot が好むのは、決まりを Custom rules と dot の記憶（見られず直せない）に、繰り返しを scheduled task に持つ形で、手順を文字で管理して差分を追う使い方には向かない（抜粋からの読み取り）。
+- **Claude Duet** はリポジトリを読む機能の記述が無く、日本からまだ使えないので、この置き方の検討から外してよい（抜粋からの読み取り）。
+- **どれを選んでも**、問い合わせの本文が Drive とエージェントの事業者の両方に渡るので、プライバシーポリシーには Google と、選んだ事業者（Grok Bot なら Cursor も）を書く。個人のプランでは DPA の枠の外になると読める（4. を参照）。
+
+### この追補の出典
+
+すべて 2026-10-23 に、公式ドメインに絞った Web 検索の抜粋で読んだ（本文は直接開けなかった）。
+
+- Claude Code・Claude
+  - https://code.claude.com/docs/en/claude-code-on-the-web
+  - https://code.claude.com/docs/en/cloud-environments
+  - https://code.claude.com/docs/en/routines 、https://code.claude.com/docs/en/web-scheduled-tasks 、https://code.claude.com/docs/en/desktop-scheduled-tasks
+  - https://code.claude.com/docs/en/skills 、https://code.claude.com/docs/en/claude-projects 、https://code.claude.com/docs/en/mcp
+  - https://code.claude.com/docs/en/data-usage
+  - https://support.claude.com/en/articles/12618689-use-claude-code-in-the-cloud
+  - https://support.claude.com/en/articles/10166901-use-google-workspace-connectors 、https://support.claude.com/en/articles/16951679-use-claude-in-google-docs-sheets-and-slides
+  - https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context
+  - https://privacy.claude.com/en/articles/10023548-how-long-do-you-store-my-data 、https://privacy.claude.com/en/articles/7996885-how-do-you-use-personal-data-in-model-training 、https://privacy.claude.com/en/articles/10458704-how-does-anthropic-protect-the-personal-data-of-claude-users 、https://privacy.claude.com/en/articles/7996890-where-are-your-servers-located-do-you-host-your-models-on-eu-servers 、https://privacy.claude.com/en/articles/7996862-how-do-i-view-and-sign-your-data-processing-addendum-dpa
+  - https://www.anthropic.com/legal 、https://www.anthropic.com/news/updates-to-our-consumer-terms
+- OpenAI dots・ChatGPT
+  - https://learn.chatgpt.com/docs/dots 、https://learn.chatgpt.com/docs/dots/computers-and-apps 、https://learn.chatgpt.com/docs/dots/tasks-and-memory 、https://learn.chatgpt.com/docs/dots/controls
+  - https://help.openai.com/en/articles/20001530-getting-started-with-your-dot 、https://help.openai.com/en/articles/20001529-dots-privacy-security-and-safety-faqs 、https://help.openai.com/en/articles/20001495
+  - https://help.openai.com/en/articles/10929079-google-drive-app-and-setup-in-chatgpt 、https://help.openai.com/en/articles/6825453-chatgpt-release-notes
+  - https://openai.com/business-data/ 、https://help.openai.com/en/articles/9903489-data-residency-and-inference-residency-for-chatgpt 、https://openai.com/policies/chatgpt-sites-data-processing-addendum/
+  - https://developers.openai.com/api/docs/guides/tools-skills
+- Grok Bot・xAI
+  - https://docs.x.ai/grok-bot/bots 、https://docs.x.ai/grok-bot/overview 、https://docs.x.ai/grok-bot/computer-and-apps 、https://docs.x.ai/grok-bot/skills-routines-and-automations 、https://docs.x.ai/grok-bot/faq 、https://docs.x.ai/grok-bot/tag-on-x
+  - https://docs.x.ai/grok-bot/security 、https://docs.x.ai/grok-bot/approvals-security-and-privacy 、https://docs.x.ai/grok-bot/teams-and-enterprises
+  - https://x.ai/bot/guides/templates-for-grok-bot
+  - https://docs.x.ai/grok/connectors/google-drive 、https://x.ai/grok/business
+  - https://docs.x.ai/build/features/project-rules 、https://docs.x.ai/build/features/skills-plugins-marketplaces
+  - https://x.ai/legal/faq 、https://x.ai/legal/grok-bot-terms 、https://x.ai/legal/data-processing-addendum 、https://x.ai/legal/x-subscription-grok-addendum 、https://x.ai/legal/x-subscription-cursor-addendum
