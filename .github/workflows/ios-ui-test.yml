@@ -30,8 +30,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: scripts/check ios-ui-test
       # 見た目を変えた PR の本文に貼るため、通った回でもスクリーンショットを残す（docs/agents/git.md）
+      # 書き出せなくても、テストの結果（ジョブの成否と main の Issue）は変えない
       - name: スクリーンショットを書き出す
         if: success() || failure()
+        continue-on-error: true
         run: |
           results=ios/.build/NuTori.xcresult
           if [ ! -d "$results" ]; then
