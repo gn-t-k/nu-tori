@@ -25,7 +25,7 @@ main() {
                 repeat="$2"
                 shift
                 ;;
-            ios | ios-app | ios-ui-test | server) targets="$targets $1" ;;
+            ios | ios-app | ios-ui-test | server | site) targets="$targets $1" ;;
             *) usage_error ;;
         esac
         shift
@@ -56,6 +56,7 @@ check_target() {
         ios-app) check_ios_app ;;
         ios-ui-test) check_ios_ui_test ;;
         server) if $lint_only; then lint_server; else check_server; fi ;;
+        site) if $lint_only; then lint_site; else check_site; fi ;;
     esac
 }
 
@@ -63,7 +64,7 @@ check_target() {
 pick_targets() {
     local files target
     files="$(cat)"
-    for target in ios server; do
+    for target in ios server site; do
         if [ -n "$(target_files "$target" "$files")" ]; then
             echo "$target=true"
         else
@@ -77,20 +78,23 @@ target_files() {
     local paths="$target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$"
     # アプリの API のクライアントは、サーバーの OpenAPI の文書から生成する
     if [ "$target" = ios ]; then paths="$paths|server/openapi\.json\$"; fi
+    # site の Lint は、server の独自のルールを読む
+    if [ "$target" = site ]; then paths="$paths|server/oxlint-plugin\.js\$"; fi
     # 文書（*.md）だけの変更では、確かめるものが無い
     grep -vE '\.md$' <<< "$files" | grep -E "^($paths)" || true
 }
 
 # CI がまだ見ていない分（まだ push していない変更と作業中の変更）が関わる対象だけを確かめる
 check_changed() {
-    local upstream base files picked run_ios=false run_server=false
+    local upstream base files picked run_ios=false run_server=false run_site=false
     step "確かめる対象を選ぶ"
     upstream="$(git -C "$root" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null)" ||
         upstream=origin/main
     base="$(git -C "$root" merge-base "$upstream" HEAD 2> /dev/null)" || base=""
     if [ -z "$base" ] || ! files="$(unpushed_files_except_main "$base")"; then
-        echo "${upstream} と比べられないので、server と ios の両方を確かめる"
+        echo "${upstream} と比べられないので、server と site と ios のすべてを確かめる"
         check_target server
+        check_target site
         check_target ios
         return
     fi
@@ -99,11 +103,17 @@ check_changed() {
     picked="$(pick_targets <<< "$files")"
     [[ "$picked" == *ios=true* ]] && run_ios=true
     [[ "$picked" == *server=true* ]] && run_server=true
+    [[ "$picked" == *site=true* ]] && run_site=true
     report_target server "$run_server" "$files"
+    report_target site "$run_site" "$files"
     report_target ios "$run_ios" "$files"
-    if ! $run_ios && ! $run_server; then
+    if ! $run_ios && ! $run_server && ! $run_site; then
         echo "確かめる対象が無い（文書だけの変更か、変更が無い）"
         return
+    fi
+
+    if $run_site; then
+        check_target site
     fi
 
     if $run_server; then
@@ -472,44 +482,83 @@ MESSAGE
     (cd "$server" && pnpm exec vitest run)
 }
 
-# 整形と Lint だけ。oxlint は型を見るので、Worker の型の宣言も書き出す（--lint）
+# 整形と Lint だけ（--lint）
 lint_server() {
-    step "サーバーの依存（pnpm）"
-    (cd "$server" && pnpm install --frozen-lockfile)
+    lint_worker_package "$server" "サーバーの依存（pnpm）"
+}
+
+# server と site で同じ手順の、整形と Lint。oxlint は型を見るので、Worker の型の宣言も書き出す
+# 引数: パッケージのディレクトリ、依存を入れる段の見出し
+lint_worker_package() {
+    local directory="$1" dependencies_heading="$2"
+
+    step "$dependencies_heading"
+    (cd "$directory" && pnpm install --frozen-lockfile)
 
     step "整形（oxfmt）"
     if $fix; then
-        (cd "$server" && pnpm exec oxfmt)
+        (cd "$directory" && pnpm exec oxfmt)
     fi
-    (cd "$server" && pnpm exec oxfmt --check)
+    (cd "$directory" && pnpm exec oxfmt --check)
 
     step "Worker の型の宣言（wrangler types）"
-    (cd "$server" && pnpm exec wrangler types > /dev/null)
+    (cd "$directory" && pnpm exec wrangler types > /dev/null)
 
     step "Lint（oxlint）"
     if $fix; then
-        (cd "$server" && pnpm exec oxlint --fix)
+        (cd "$directory" && pnpm exec oxlint --fix)
     fi
-    (cd "$server" && pnpm exec oxlint)
+    (cd "$directory" && pnpm exec oxlint)
+}
+
+check_site() {
+    lint_site
+
+    step "型検査（tsc）"
+    (cd "$site" && pnpm exec tsc)
+
+    # テストは、出すときと同じ形（書き出したページと、wrangler が束ねた Worker）に要求を投げるので、先に作る
+    step "ページの書き出し（vite build）"
+    (cd "$site" && pnpm exec vite build)
+
+    # LP の版の振り分けは、テストだけの版を足した書き出しで確かめる（site/vitest.config.ts）
+    step "テストの版を足したページの書き出し（vite build --mode test）"
+    (cd "$site" && pnpm exec vite build --mode test)
+
+    step "Worker の束ね（wrangler deploy --dry-run）"
+    (cd "$site" && pnpm exec wrangler deploy --dry-run --outdir .wrangler/test-worker > /dev/null)
+
+    # 版を選ぶ乱数を決めた、テストだけの入口（site/vitest.config.ts）
+    step "テストの版の Worker の束ね（wrangler deploy --dry-run）"
+    (cd "$site" && pnpm exec wrangler deploy src/testing/landing-variants-test-worker.ts --dry-run --outdir .wrangler/test-landing-variants-worker > /dev/null)
+
+    step "テスト（Vitest）"
+    (cd "$site" && pnpm exec vitest run)
+}
+
+# 整形と Lint だけ（--lint）
+lint_site() {
+    lint_worker_package "$site" "公開のページの依存（pnpm）"
 }
 
 print_usage() {
     cat << 'USAGE'
-使い方: scripts/check [ios | ios-app | ios-ui-test | server] [--fix]
-       scripts/check [ios | server] --lint [--fix]
+使い方: scripts/check [ios | ios-app | ios-ui-test | server | site] [--fix]
+       scripts/check [ios | server | site] --lint [--fix]
        scripts/check ios-ui-test [--only <クラス>[/<メソッド>]]... [--repeat <回数>]
        scripts/check --pick-targets < <変わったファイルの一覧>
-  引数なし     まだ push していない変更（push 先が無ければ origin/main から分かれた点から）と作業中の変更が関わる、server と ios。
-               文書（*.md）だけなら何も回さない。比べる先が取れなければ両方。全部を回すときは ios server と並べる
+  引数なし     まだ push していない変更（push 先が無ければ origin/main から分かれた点から）と作業中の変更が関わる、server と site と ios。
+               文書（*.md）だけなら何も回さない。比べる先が取れなければすべて。全部を回すときは ios server site と並べる
   ios          整形、Lint、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
   server       整形、Lint、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
+  site         公開のページ（nu-tori.app）の整形、Lint、型検査、書き出しと、書き出したページを載せた Worker のテスト
   --fix        直せるものを直してから確かめる
-  --lint       ios と server の整形と Lint だけを回す。対象を省くと、引数なしと同じ選び方をする
+  --lint       ios と server と site の整形と Lint だけを回す。対象を省くと、引数なしと同じ選び方をする
   --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる
   --repeat     UI テストを、落ちるまで最大その回数くり返す。揺れを再現するときに使う
-  --pick-targets  標準入力の変わったファイルの一覧から、確かめる対象を ios=<true|false> と server=<true|false> の2行で出す（CI 向け）
+  --pick-targets  標準入力の変わったファイルの一覧から、確かめる対象を ios=<true|false>、server=<true|false>、site=<true|false> の3行で出す（CI 向け）
 USAGE
 }
 
@@ -707,6 +756,7 @@ list_simulators_with_runtime() {
 root="$(cd "$(dirname "$0")/.." && pwd)"
 ios="$root/ios"
 server="$root/server"
+site="$root/site"
 # MobileBuildMCP（.mobilebuildmcp/config.yaml の derivedDataPath）と同じ置き場にし、worktree を消せば一緒に消えるようにする。同時に回したときの引き換えは docs/agents/ios-mac.md
 derived_data="$ios/.build/DerivedData"
 swiftlint_version=0.65.1
