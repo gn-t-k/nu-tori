@@ -85,7 +85,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 - Linux のセッションでは、PR の先頭のコミットで CI の `ios-app`（アプリのビルド）が通るのを待ってから、次の2つを同時に始め、先に出た結果で進める。そのランの URL か Mac の結果を PR の本文に書く
   - `gh workflow run ios-ui-test.yml --ref <ブランチ>` を回す。PR の無いブランチでも回せる
   - 開発者に、そのコミットの SHA を添えて、Mac で `scripts/check ios-ui-test` を回すよう頼む。Mac で落ちたら、落ちたテストの名前と失敗の要約を貼ってもらって読む
-  - CI の回が落ちたら、`.github/workflows/ios-ui-test.yml` が上げる成果物（失敗の要約とスクリーンショット）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む
+  - CI の回が落ちたら、`.github/workflows/ios-ui-test.yml` が上げる成果物（失敗の要約とスクリーンショット。通った回はスクリーンショットだけ）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む
   - main でだけ落ちたとき（Mac と CI で Xcode やシミュレーターの版がずれていることがある）は、`docs/agents/tooling.md` の「CI」
 
   **Why:** Mac に頼んでから返事を待つあいだ CI を回さず、8時間止まった（#586）。Linux ではアプリを組めないので、組めない直しが Mac で初めて見つかり、半日の往復になった

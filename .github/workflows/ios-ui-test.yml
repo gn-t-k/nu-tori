@@ -47,9 +47,15 @@ jobs:
             | group_by(.test) | map({test: .[0].test, texts: map(.text)})' ios/.build/report/summary.json |
             sed 's/^/failures=/' >> "$GITHUB_OUTPUT"
           xcrun xcresulttool export attachments --path "$results" --output-path ios/.build/report/attachments
+      # 見た目を変えた PR の本文に貼るため、通った回でもスクリーンショットを残す（docs/agents/git.md）
+      - name: スクリーンショットを書き出す
+        if: success()
+        run: |
+          mkdir -p ios/.build/report/attachments
+          xcrun xcresulttool export attachments --path ios/.build/NuTori.xcresult --output-path ios/.build/report/attachments
       - id: upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
+        if: success() || failure()
         with:
           name: ios-ui-test-report
           path: ios/.build/report
