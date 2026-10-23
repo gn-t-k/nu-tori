@@ -6,7 +6,7 @@ import { computeCalendarDayInTimeZone } from "../src/domain/compute-calendar-day
 import { computeStartOfWeek } from "../src/domain/compute-start-of-week";
 import { millisecondsPerDay } from "../src/domain/milliseconds-per-day";
 import { generateRecordId } from "../src/domain/record-id";
-import { e2eRequestHeaders } from "../src/http/e2e-session-routes/e2e-request-headers";
+import { e2eRequestHeaders } from "../src/http/e2e-access";
 import { goalDecisionSchema } from "../src/http/goal-setup-routes/goal-decision-schema";
 import { goalProposalsSchema } from "../src/http/goal-setup-routes/goal-proposals-schema";
 import { goalSetupPreviewSchema } from "../src/http/goal-setup-routes/goal-setup-preview-schema";
@@ -415,7 +415,7 @@ const waitForEstimation = (
   waitForChanges(options, session, {
     goal: "推定できた",
     timeoutMs: options.estimationTimeoutMs,
-    inspect: (changes) => inspectEstimation(changes, mealId),
+    inspect: (changes) => inspectEstimation(options, session, changes, mealId),
   });
 
 // 文章を読み分けて文章の食事ができ、その推定が終わるまで待つ。食事と読み分けられなければ失敗にする
@@ -445,17 +445,24 @@ const waitForWrittenMealEstimation = (
       if (mealId === undefined) {
         throw new Error("食事と読み分けられたのに、文章の食事が無い");
       }
-      return inspectEstimation(changes, mealId);
+      return inspectEstimation(options, session, changes, mealId);
     },
   });
 
-const inspectEstimation = (
+const inspectEstimation = async (
+  options: MainFlowOptions,
+  session: Session,
   changes: Change[],
   mealId: string,
-): Inspection<{ dishIds: [string, ...string[]]; ingredientCount: number }> => {
+): Promise<Inspection<{ dishIds: [string, ...string[]]; ingredientCount: number }>> => {
   const status = findEstimationStatus(changes, mealId) ?? "未取得";
   if (status === "estimated") {
     return { done: requireEstimatedDishIdsAndIngredientCount(changes, mealId) };
+  }
+  if (status === "failed") {
+    throw new Error(
+      `推定できたにならず、failed で終わった（${await describeLastEstimationAttempt(options, session, mealId)}）`,
+    );
   }
   if (status !== "awaiting_photos" && status !== "estimating") {
     throw new Error(`推定できたにならず、${status} で終わった`);
@@ -463,11 +470,51 @@ const inspectEstimation = (
   return { waiting: status };
 };
 
+// 推定できなかった理由。同期の推定の状態は理由を持たないので、確かめのジョブのための口で最後に終わった試みを読む
+const describeLastEstimationAttempt = async (
+  options: MainFlowOptions,
+  session: Session,
+  mealId: string,
+): Promise<string> => {
+  const response = await callApi(
+    options,
+    session,
+    "GET",
+    `/v1/e2e/meals/${mealId}/last-estimation-attempt`,
+    { headers: { [e2eRequestHeaders.signInSecret]: options.signInSecret } },
+  );
+  if (response.status !== 200) {
+    return `最後の試みを読めなかった（状態コード ${response.status}）`;
+  }
+  const { lastEndedAttempt } = z
+    .object({
+      lastEndedAttempt: z
+        .object({ result: z.string(), errorType: z.string().nullable() })
+        .nullable(),
+    })
+    .parse(await response.json());
+  if (lastEndedAttempt === null) {
+    return "終わった試みが無い";
+  }
+  const { result, errorType } = lastEndedAttempt;
+  return [
+    `最後の試み: ${errorType === null ? result : `${result}、${errorType}`}`,
+    // ワークスペースの月の支出の上限に当たったときも 400 になり、サーバーは見分けない。見分けるには Sentry の課題の題を読む
+    ...(result === "bad_request"
+      ? ["400 は開発用のワークスペースの月の支出の上限でも起きる。Sentry の課題の題で見分ける"]
+      : []),
+  ].join("。");
+};
+
 // 変更を取りに行き続け、inspect が終わったと言うまで待つ。inspect は、望まない結果で終わったら投げる
 const waitForChanges = async <T>(
   options: MainFlowOptions,
   session: Session,
-  wait: { goal: string; timeoutMs: number; inspect: (changes: Change[]) => Inspection<T> },
+  wait: {
+    goal: string;
+    timeoutMs: number;
+    inspect: (changes: Change[]) => Inspection<T> | Promise<Inspection<T>>;
+  },
 ): Promise<T> => {
   const startedAt = Date.now();
   const changes: Change[] = [];
@@ -480,7 +527,7 @@ const waitForChanges = async <T>(
     if (pulled.hasMore) {
       continue;
     }
-    const inspection = wait.inspect(changes);
+    const inspection = await wait.inspect(changes);
     if ("done" in inspection) {
       return inspection.done;
     }

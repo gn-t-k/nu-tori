@@ -4,6 +4,7 @@ import { createSentryOptions } from "../observability/create-sentry-options";
 import { accountRoutes } from "./account-routes";
 import { appStoreServerNotificationRoutes } from "./app-store-server-notification-routes";
 import { appleServerNotificationRoutes } from "./apple-server-notification-routes";
+import { e2eEstimationAttemptRoutes } from "./e2e-estimation-attempt-routes";
 import { e2eSessionRoutes } from "./e2e-session-routes";
 import { goalSetupRoutes } from "./goal-setup-routes";
 import { healthRoutes } from "./health-routes";
@@ -24,6 +25,7 @@ app
   .use("/v1/*", rejectUnsupportedAppBuild)
   .route("/", sessionRoutes)
   .route("/", e2eSessionRoutes)
+  .route("/", e2eEstimationAttemptRoutes)
   .route("/", healthRoutes)
   .route("/", accountRoutes)
   .route("/", syncRoutes)

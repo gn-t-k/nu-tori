@@ -117,6 +117,17 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
+    async findLastEstimationAttemptConclusionOfMeal(accountId: string, mealId: RecordId) {
+      setUser({ id: accountId });
+      return this.respond(
+        accountId,
+        accountRequests.findLastEstimationAttemptConclusionOfMeal(
+          { records: await this.createRecordKindStores(accountId) },
+          mealId,
+        ),
+      );
+    }
+
     // 送った文章の見守る要求。文章が無ければ undefined
     async watchReply(
       accountId: string,

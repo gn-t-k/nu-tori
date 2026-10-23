@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
 import { sentTextTables } from "../../sent-text/durable-object/sent-text-tables";
-import type { MealEstimationScheduleProgress } from "../domain/meal-estimation-schedule-progress";
+import type { MealEstimationScheduleState } from "../domain/meal-estimation-schedule-progress";
 import type { MealEstimationStatusStore } from "../domain/meal-estimation-status-store";
 
 const {
@@ -70,30 +70,28 @@ export const createMealEstimationStatusStore = (
         .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
         .where(eq(estimationCreatedMeals.mealId, mealId))
         .all(),
-    ].map(({ dueAt, deferral, hold, estimation, completion, abandonment }) => ({
-      dueAt,
-      progress: toProgress({ deferral, hold, estimation, completion, abandonment }),
-    })),
+    ].map(({ dueAt, ...events }) => ({ dueAt, ...toScheduleState(events) })),
 });
 
-const toProgress = (events: {
+const toScheduleState = (events: {
   deferral: string | null;
   hold: string | null;
   estimation: string | null;
   completion: "estimated" | "no_dishes" | null;
   abandonment: string | null;
-}): MealEstimationScheduleProgress => {
+}): MealEstimationScheduleState => {
   if (events.deferral !== null) {
-    return "deferred";
+    return { progress: "deferred" };
   }
   if (events.hold !== null) {
-    return "held";
+    return { progress: "held" };
   }
   if (events.estimation === null) {
-    return "waiting";
+    return { progress: "waiting" };
   }
+  const estimationId = events.estimation;
   if (events.completion !== null) {
-    return events.completion;
+    return { progress: events.completion, estimationId };
   }
-  return events.abandonment === null ? "estimating" : "abandoned";
+  return { progress: events.abandonment === null ? "estimating" : "abandoned", estimationId };
 };
