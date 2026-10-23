@@ -35,6 +35,7 @@ struct GoalSetupProposalsPage: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("goal-setup-unreachable")
             }
+            GoalSetupMedicalNote(isDeciding: content.isDeciding)
             GoalSetupStartButton(
                 title: "この目標で始める", identifier: "goal-setup-proposal-start",
                 isDeciding: content.isDeciding, decide: actions.decide

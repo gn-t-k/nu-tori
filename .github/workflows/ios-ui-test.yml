@@ -29,9 +29,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: scripts/check ios-ui-test
-      - id: report
-        name: 失敗の要約とスクリーンショットを書き出す
-        if: failure()
+      # 見た目を変えた PR の本文に貼るため、通った回でもスクリーンショットを残す（docs/agents/git.md）
+      - name: スクリーンショットを書き出す
+        if: success() || failure()
         run: |
           results=ios/.build/NuTori.xcresult
           if [ ! -d "$results" ]; then
@@ -39,6 +39,14 @@ jobs:
             exit 0
           fi
           mkdir -p ios/.build/report/attachments
+          xcrun xcresulttool export attachments --path "$results" --output-path ios/.build/report/attachments
+      - id: report
+        name: 失敗の要約を書き出す
+        if: failure()
+        run: |
+          results=ios/.build/NuTori.xcresult
+          [ -d "$results" ] || exit 0
+          mkdir -p ios/.build/report
           xcrun xcresulttool get test-results summary --path "$results" --compact > ios/.build/report/summary.json
           jq -r '.testFailures[]? | "- \(.testIdentifierString): \(.failureText)"' ios/.build/report/summary.json |
             tee ios/.build/report/failures.txt >> "$GITHUB_STEP_SUMMARY"
@@ -46,10 +54,9 @@ jobs:
           jq -c '[.testFailures[]? | {test: .testIdentifierString, text: .failureText}]
             | group_by(.test) | map({test: .[0].test, texts: map(.text)})' ios/.build/report/summary.json |
             sed 's/^/failures=/' >> "$GITHUB_OUTPUT"
-          xcrun xcresulttool export attachments --path "$results" --output-path ios/.build/report/attachments
       - id: upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
+        if: success() || failure()
         with:
           name: ios-ui-test-report
           path: ios/.build/report

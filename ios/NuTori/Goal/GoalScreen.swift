@@ -65,6 +65,7 @@ struct GoalScreen: View {
                 if let energyChart = overview.energyChart {
                     GoalScreenCard(title: "推定消費カロリーと1日の目安") {
                         GoalEnergyChartView(chart: energyChart)
+                        DailyGuideExplanationLink()
                     }
                     .accessibilityIdentifier("goal-energy-chart")
                 }
