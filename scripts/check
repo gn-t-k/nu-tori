@@ -382,8 +382,6 @@ merge_package_resolved() {
 check_server_constant_copies() {
     local location name value definitions count server_value compared=0 failed=false
     # CI の ios のジョブはコンテナの中で git を使えない（リポジトリの持ち主が違う）ので、git に頼らず find で集める。ビルドの置き場（.build）は数 GB あるので降りない
-    # awk を xargs から呼ぶので、ShellCheck は単一引用符の中の $0 を awk のものと見分けられない
-    # shellcheck disable=SC2016
     while IFS=$'\t' read -r location name value; do
         compared=$((compared + 1))
         if [ -z "$value" ]; then
@@ -403,7 +401,10 @@ check_server_constant_copies() {
             echo "${location}: 端末は ${value}、サーバーの ${name} は ${definitions}" >&2
             failed=true
         fi
-    done < <(cd "$root" && find ios -name .build -prune -o -name '*.swift' -print0 | xargs -0 awk '
+    done < <(
+        # awk を xargs から呼ぶので、ShellCheck は単一引用符の中の $0 を awk のものと見分けられない
+        # shellcheck disable=SC2016
+        cd "$root" && find ios -name .build -prune -o -name '*.swift' -print0 | xargs -0 awk '
         function report(value) {
             printf "%s\t%s\t%s\n", location, pending, value
             pending = ""
