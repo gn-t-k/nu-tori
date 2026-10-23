@@ -20,6 +20,7 @@ jobs:
       ios: ${{ steps.changed.outputs.ios }}
       server: ${{ steps.changed.outputs.server }}
       site: ${{ steps.changed.outputs.site }}
+      scripts: ${{ steps.changed.outputs.scripts }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,6 +33,7 @@ jobs:
             echo "ios=true" >> "$GITHUB_OUTPUT"
             echo "server=true" >> "$GITHUB_OUTPUT"
             echo "site=true" >> "$GITHUB_OUTPUT"
+            echo "scripts=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # どのパスがどの対象に当たるかは、手元と同じ決まりを scripts/check に置く
@@ -94,3 +96,11 @@ jobs:
           cache-dependency-path: site/pnpm-lock.yaml
       # Lint は server の独自のルール（server/oxlint-plugin.js）を読むが、server の依存は要らない
       - run: scripts/check site
+
+  scripts:
+    needs: changes
+    if: needs.changes.outputs.scripts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/check scripts

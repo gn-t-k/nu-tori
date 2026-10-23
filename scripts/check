@@ -25,7 +25,7 @@ main() {
                 repeat="$2"
                 shift
                 ;;
-            ios | ios-app | ios-ui-test | server | site) targets="$targets $1" ;;
+            ios | ios-app | ios-ui-test | server | site | scripts) targets="$targets $1" ;;
             *) usage_error ;;
         esac
         shift
@@ -57,6 +57,8 @@ check_target() {
         ios-ui-test) check_ios_ui_test ;;
         server) if $lint_only; then lint_server; else check_server; fi ;;
         site) if $lint_only; then lint_site; else check_site; fi ;;
+        # Lint だけなので、--lint でも同じものを回す
+        scripts) check_scripts ;;
     esac
 }
 
@@ -64,7 +66,7 @@ check_target() {
 pick_targets() {
     local files target
     files="$(cat)"
-    for target in ios server site; do
+    for target in ios server site scripts; do
         if [ -n "$(target_files "$target" "$files")" ]; then
             echo "$target=true"
         else
@@ -74,28 +76,34 @@ pick_targets() {
 }
 
 target_files() {
-    local target="$1" files="$2"
-    local paths="$target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$"
-    # アプリの API のクライアントは、サーバーの OpenAPI の文書から生成する
-    if [ "$target" = ios ]; then paths="$paths|server/openapi\.json\$"; fi
-    # site の Lint は、server の独自のルールを読む
-    if [ "$target" = site ]; then paths="$paths|server/oxlint-plugin\.js\$"; fi
+    local target="$1" files="$2" paths
+    case "$target" in
+        ios | server | site)
+            paths="$target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$"
+            # アプリの API のクライアントは、サーバーの OpenAPI の文書から生成する
+            if [ "$target" = ios ]; then paths="$paths|server/openapi\.json\$"; fi
+            # site の Lint は、server の独自のルールを読む
+            if [ "$target" = site ]; then paths="$paths|server/oxlint-plugin\.js\$"; fi
+            ;;
+        scripts) paths="scripts/|\.claude/hooks/|\.github/workflows/check\.yml\$" ;;
+    esac
     # 文書（*.md）だけの変更では、確かめるものが無い
     grep -vE '\.md$' <<< "$files" | grep -E "^($paths)" || true
 }
 
 # CI がまだ見ていない分（まだ push していない変更と作業中の変更）が関わる対象だけを確かめる
 check_changed() {
-    local upstream base files picked run_ios=false run_server=false run_site=false
+    local upstream base files picked run_ios=false run_server=false run_site=false run_scripts=false
     step "確かめる対象を選ぶ"
     upstream="$(git -C "$root" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null)" ||
         upstream=origin/main
     base="$(git -C "$root" merge-base "$upstream" HEAD 2> /dev/null)" || base=""
     if [ -z "$base" ] || ! files="$(unpushed_files_except_main "$base")"; then
-        echo "${upstream} と比べられないので、server と site と ios のすべてを確かめる"
+        echo "${upstream} と比べられないので、server と site と ios と scripts のすべてを確かめる"
         check_target server
         check_target site
         check_target ios
+        check_target scripts
         return
     fi
     echo "${upstream} と比べて、まだ push していない変更と作業中の変更から選ぶ（origin/main と同じ中身のファイルは除く）"
@@ -104,10 +112,12 @@ check_changed() {
     [[ "$picked" == *ios=true* ]] && run_ios=true
     [[ "$picked" == *server=true* ]] && run_server=true
     [[ "$picked" == *site=true* ]] && run_site=true
+    [[ "$picked" == *scripts=true* ]] && run_scripts=true
     report_target server "$run_server" "$files"
     report_target site "$run_site" "$files"
     report_target ios "$run_ios" "$files"
-    if ! $run_ios && ! $run_server && ! $run_site; then
+    report_target scripts "$run_scripts" "$files"
+    if ! $run_ios && ! $run_server && ! $run_site && ! $run_scripts; then
         echo "確かめる対象が無い（文書だけの変更か、変更が無い）"
         return
     fi
@@ -127,6 +137,9 @@ check_changed() {
     fi
     if $run_ios; then
         check_target ios
+    fi
+    if $run_scripts; then
+        check_target scripts
     fi
 }
 
@@ -541,24 +554,39 @@ lint_site() {
     lint_worker_package "$site" "公開のページの依存（pnpm）"
 }
 
+# 既定の重さで当てる。-o all は、変数を {} で囲む（SC2250）だけで数百件出る
+check_scripts() {
+    step "Lint（ShellCheck ${shellcheck_version}）"
+    install_shellcheck
+    local files=() file
+    # node のスクリプトも同じフォルダにあるので、シバンで選ぶ。.agents/skills/ は mattpocock/skills のファイルなので当てない
+    for file in "$root"/scripts/* "$root"/.claude/hooks/*; do
+        if [ -f "$file" ] && head -n 1 "$file" | grep -qE '^#!.*[/ ](ba)?sh$'; then
+            files+=("${file#"$root"/}")
+        fi
+    done
+    (cd "$root" && "$shellcheck" "${files[@]}")
+}
+
 print_usage() {
     cat << 'USAGE'
-使い方: scripts/check [ios | ios-app | ios-ui-test | server | site] [--fix]
-       scripts/check [ios | server | site] --lint [--fix]
+使い方: scripts/check [ios | ios-app | ios-ui-test | server | site | scripts] [--fix]
+       scripts/check [ios | server | site | scripts] --lint [--fix]
        scripts/check ios-ui-test [--only <クラス>[/<メソッド>]]... [--repeat <回数>]
        scripts/check --pick-targets < <変わったファイルの一覧>
-  引数なし     まだ push していない変更（push 先が無ければ origin/main から分かれた点から）と作業中の変更が関わる、server と site と ios。
-               文書（*.md）だけなら何も回さない。比べる先が取れなければすべて。全部を回すときは ios server site と並べる
+  引数なし     まだ push していない変更（push 先が無ければ origin/main から分かれた点から）と作業中の変更が関わる、server と site と ios と scripts。
+               文書（*.md）だけなら何も回さない。比べる先が取れなければすべて。全部を回すときは ios server site scripts と並べる
   ios          整形、Lint、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
   server       整形、Lint、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   site         公開のページ（nu-tori.app）の整形、Lint、型検査、書き出しと、書き出したページを載せた Worker のテスト
+  scripts      scripts/ と .claude/hooks/ のシェルの Lint（ShellCheck）。--fix でも直さない
   --fix        直せるものを直してから確かめる
-  --lint       ios と server と site の整形と Lint だけを回す。対象を省くと、引数なしと同じ選び方をする
+  --lint       ios と server と site の整形と Lint だけを回す（scripts はもともと Lint だけ）。対象を省くと、引数なしと同じ選び方をする
   --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる
   --repeat     UI テストを、落ちるまで最大その回数くり返す。揺れを再現するときに使う
-  --pick-targets  標準入力の変わったファイルの一覧から、確かめる対象を ios=<true|false>、server=<true|false>、site=<true|false> の3行で出す（CI 向け）
+  --pick-targets  標準入力の変わったファイルの一覧から、確かめる対象を ios=<true|false>、server=<true|false>、site=<true|false>、scripts=<true|false> の4行で出す（CI 向け）
 USAGE
 }
 
@@ -610,18 +638,56 @@ install_swiftlint() {
     local dir="$root/.tools/swiftlint-$swiftlint_version"
     # custom rules を使うので、Linux でも swiftlint-static ではなく swiftlint を使う
     if [ ! -x "$dir/swiftlint" ]; then
-        mkdir -p "$dir"
-        curl -fsSL -o "$dir/$asset" \
-            "https://github.com/realm/SwiftLint/releases/download/$swiftlint_version/$asset"
-        if command -v sha256sum > /dev/null; then
-            echo "$sha256  $dir/$asset" | sha256sum -c - >&2
-        else
-            echo "$sha256  $dir/$asset" | shasum -a 256 -c - >&2
-        fi
+        download_verified "https://github.com/realm/SwiftLint/releases/download/$swiftlint_version/$asset" "$sha256" "$dir/$asset"
         unzip -oq "$dir/$asset" -d "$dir"
         rm "$dir/$asset"
     fi
     swiftlint="$dir/swiftlint"
+}
+
+# 版と SHA-256 を固定した ShellCheck を、無ければ .tools/ に落とし、パスを shellcheck に入れる
+install_shellcheck() {
+    local platform sha256
+    case "$(uname -s)-$(uname -m)" in
+        Linux-x86_64)
+            platform=linux.x86_64
+            sha256=8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+            ;;
+        Linux-aarch64)
+            platform=linux.aarch64
+            sha256=12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588
+            ;;
+        Darwin-x86_64)
+            platform=darwin.x86_64
+            sha256=3c89db4edcab7cf1c27bff178882e0f6f27f7afdf54e859fa041fca10febe4c6
+            ;;
+        Darwin-arm64)
+            platform=darwin.aarch64
+            sha256=56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79
+            ;;
+        *)
+            echo "ShellCheck の配布物が無い環境: $(uname -s)-$(uname -m)" >&2
+            return 1
+            ;;
+    esac
+    local dir="$root/.tools/shellcheck-$shellcheck_version" asset="shellcheck-$shellcheck_version.$platform.tar.xz"
+    if [ ! -x "$dir/shellcheck" ]; then
+        download_verified "https://github.com/koalaman/shellcheck/releases/download/$shellcheck_version/$asset" "$sha256" "$dir/$asset"
+        tar -xJf "$dir/$asset" -C "$dir" --strip-components=1
+        rm "$dir/$asset"
+    fi
+    shellcheck="$dir/shellcheck"
+}
+
+download_verified() {
+    local url="$1" sha256="$2" file="$3"
+    mkdir -p "$(dirname "$file")"
+    curl -fsSL -o "$file" "$url"
+    if command -v sha256sum > /dev/null; then
+        echo "$sha256  $file" | sha256sum -c - >&2
+    else
+        echo "$sha256  $file" | shasum -a 256 -c - >&2
+    fi
 }
 
 # attachScreenshot を本体で直に呼ばない test メソッドを「ファイル: func test_…」の形で出す。メソッドの終わりは、次の func かファイルの終わりとみなす（テストの中に func を入れ子にすると、そこで終わったとみなす）
@@ -761,6 +827,8 @@ site="$root/site"
 derived_data="$ios/.build/DerivedData"
 swiftlint_version=0.65.1
 swiftlint=""
+shellcheck_version=v0.11.0
+shellcheck=""
 ui_test_simulator=""
 current_step=""
 only_testing=()

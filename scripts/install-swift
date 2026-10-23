@@ -19,6 +19,7 @@ main() {
     local base="https://download.swift.org/swift-$version-release/${platform//./}/swift-$version-RELEASE/swift-$version-RELEASE-$platform"
     local work
     work="$(mktemp -d)"
+    # shellcheck disable=SC2064 # work は関数の local で、EXIT のときには見えないので、今の値で埋め込む
     trap "rm -rf '$work'" EXIT
 
     echo "Swift $version を入れる" >&2
@@ -43,7 +44,9 @@ main() {
 # download.swift.org の配布物の名前（ubuntu24.04、ubuntu24.04-aarch64 など）
 swift_platform() {
     local id version_id
+    # shellcheck disable=SC1091 # 読むのは動かす機械のファイルで、確かめる機械のものではない
     id="$(. /etc/os-release && echo "$ID")"
+    # shellcheck disable=SC1091,SC2153 # VERSION_ID は /etc/os-release が入れる。version_id の書き損じではない
     version_id="$(. /etc/os-release && echo "$VERSION_ID")"
     local platform="$id$version_id"
     if [ "$(uname -m)" = aarch64 ]; then
