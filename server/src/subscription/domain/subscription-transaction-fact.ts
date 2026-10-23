@@ -24,8 +24,8 @@ export type SubscriptionPlan = (typeof subscriptionPlans)[number];
 
 // App Store Connect の商品の ID と、月額か年額か。表には持たない（#647 の「お金と回数」）
 export const appStoreProductPlans: Readonly<Record<string, SubscriptionPlan>> = {
-  "app.nu-tori.subscription.monthly": "monthly",
-  "app.nu-tori.subscription.yearly": "yearly",
+  "app.nu_tori.subscription.monthly": "monthly",
+  "app.nu_tori.subscription.yearly": "yearly",
 };
 
 // 判定に使う取引。取り消しと、ついた請求の猶予の終わりを持つ

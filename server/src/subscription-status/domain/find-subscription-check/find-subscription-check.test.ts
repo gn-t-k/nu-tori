@@ -94,7 +94,7 @@ const monthlyTransaction = (
   expiresAt: string,
 ): SubscriptionStatusFacts["transactions"][number] => ({
   environment: "production",
-  appStoreProductId: "app.nu-tori.subscription.monthly",
+  appStoreProductId: "app.nu_tori.subscription.monthly",
   expiresAt: new Date(expiresAt),
   revocations: [],
   gracePeriodExpiresAts: [],

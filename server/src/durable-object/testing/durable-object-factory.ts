@@ -568,7 +568,7 @@ const appStoreSubscriptionTransactions = defineFactory({
         .then((transaction) => transaction.id),
     // 一意なので、行ごとに別の値にする
     appStoreTransactionId: generateRecordId(),
-    appStoreProductId: "app.nu-tori.subscription.monthly",
+    appStoreProductId: "app.nu_tori.subscription.monthly",
   }),
 });
 
