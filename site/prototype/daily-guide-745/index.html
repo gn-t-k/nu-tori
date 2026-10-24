@@ -1,0 +1,585 @@
+<title>消費カロリーの説明の試作</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* PROTOTYPE（#745）。site/public/site.css の写しに、図のための規則を足した。本番に移すときは site.css に置く */
+:root {
+  --background: #f2f2f7;
+  --surface: #ffffff;
+  --on-surface: #000000;
+  --on-surface-secondary: rgba(60, 60, 67, 0.6);
+  --on-surface-tertiary: rgba(60, 60, 67, 0.3);
+  --separator: rgba(60, 60, 67, 0.29);
+  --fill: #efeff0;
+  --primary: #6155f5;
+  --primary-soft: color-mix(in srgb, #6155f5 22%, #ffffff);
+  --switcher-bg: #1c1c1e;
+  --switcher-fg: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #000000; --surface: #1c1c1e; --on-surface: #ffffff;
+    --on-surface-secondary: rgba(235, 235, 245, 0.6); --on-surface-tertiary: rgba(235, 235, 245, 0.3);
+    --separator: rgba(84, 84, 88, 0.6); --fill: #323236; --primary: #6d7cff;
+    --primary-soft: color-mix(in srgb, #6d7cff 30%, #1c1c1e);
+    --switcher-bg: #ffffff; --switcher-fg: #000000; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --background: #000000; --surface: #1c1c1e; --on-surface: #ffffff;
+  --on-surface-secondary: rgba(235, 235, 245, 0.6); --on-surface-tertiary: rgba(235, 235, 245, 0.3);
+  --separator: rgba(84, 84, 88, 0.6); --fill: #323236; --primary: #6d7cff;
+  --primary-soft: color-mix(in srgb, #6d7cff 30%, #1c1c1e);
+  --switcher-bg: #ffffff; --switcher-fg: #000000; color-scheme: dark;
+}
+body { margin: 0; background: var(--background); color: var(--on-surface); font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif; font-size: 17px; line-height: 1.6; }
+.site-header, main, .site-footer { max-width: 680px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.site-header { padding-top: 16px; }
+.site-name { color: var(--on-surface); font-size: 17px; font-weight: 600; text-decoration: none; }
+main { padding-top: 24px; padding-bottom: 48px; }
+.site-footer { border-top: 1px solid var(--separator); padding-top: 24px; padding-bottom: 120px; color: var(--on-surface-secondary); font-size: 13px; line-height: 18px; }
+.site-footer p { margin: 0 0 4px; }
+h1 { font-size: 28px; line-height: 1.3; margin: 0 0 8px; text-wrap: balance; }
+h2 { font-size: 22px; line-height: 1.4; margin: 40px 0 12px; text-wrap: balance; }
+h3 { font-size: 17px; margin: 24px 0 8px; }
+p, ul, ol { margin: 0 0 12px; }
+ul, ol { padding-left: 1.4em; }
+a { color: var(--primary); }
+
+/* ---- 図 ---- */
+.figure { margin: 16px 0 20px; background: var(--surface); border-radius: 12px; padding: 12px 12px 14px; }
+.figure-scroll { overflow-x: auto; }
+.figure svg { display: block; width: 100%; max-width: 560px; height: auto; margin: 0 auto; font-family: inherit; }
+.figure figcaption { margin-top: 8px; color: var(--on-surface-secondary); font-size: 13px; line-height: 18px; }
+.grid { stroke: var(--separator); stroke-width: 0.5; fill: none; }
+.marker { stroke: var(--on-surface-tertiary); stroke-width: 1; stroke-dasharray: 2 3; fill: none; }
+.tick { fill: var(--on-surface-secondary); font-size: 10px; font-variant-numeric: tabular-nums; }
+.dot { fill: var(--on-surface-tertiary); stroke: none; }
+.trend { stroke: var(--primary); stroke-width: 2.5; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.predicted { stroke: var(--on-surface-secondary); stroke-width: 2; stroke-dasharray: 5 4; fill: none; }
+.guide { stroke: var(--on-surface-secondary); stroke-width: 2; fill: none; }
+.truth { stroke: var(--on-surface-tertiary); stroke-width: 2; stroke-dasharray: 2 4; fill: none; stroke-linecap: round; }
+.end { fill: var(--on-surface-secondary); stroke: var(--surface); stroke-width: 1.5; }
+.trend-end { fill: var(--primary); }
+.gap { stroke: var(--on-surface); stroke-width: 1.2; fill: none; }
+.gap-label { fill: var(--on-surface); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.series-label { fill: var(--primary); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.series-label.muted, .value.muted { fill: var(--on-surface-secondary); }
+.series-label.faint { fill: var(--on-surface-secondary); font-weight: 400; }
+.value { fill: var(--primary); font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.node { fill: var(--fill); stroke: none; }
+.node.accent { fill: var(--primary-soft); }
+.node-text { fill: var(--on-surface); font-size: 13px; }
+.node-text.accent { font-weight: 600; }
+.col-label { fill: var(--on-surface-secondary); font-size: 11px; }
+.loop-label { fill: var(--primary); }
+.arrow { stroke: var(--on-surface-secondary); stroke-width: 1.4; fill: none; }
+.arrow.loop { stroke: var(--primary); stroke-dasharray: 4 3; }
+.arrow-head { fill: var(--on-surface-secondary); }
+
+.equation { background: var(--surface); border-radius: 12px; padding: 12px 16px; margin: 0 0 20px; font-size: 15px; line-height: 20px; display: grid; gap: 8px; font-variant-numeric: tabular-nums; }
+.eq-row { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; }
+.eq-row > * { min-width: 0; }
+.eq-label { color: var(--on-surface-secondary); font-size: 13px; }
+.eq-result { border-top: 1px solid var(--separator); padding-top: 8px; }
+@media (max-width: 420px) { .eq-row { grid-template-columns: 1fr; gap: 0; } }
+
+.persona { color: var(--on-surface-secondary); font-size: 15px; line-height: 20px; }
+.figure-title { margin-top: 32px; }
+.week { background: var(--surface); border-radius: 12px; padding: 14px 16px; margin: 12px 0; font-size: 15px; line-height: 21px; }
+.week h3 { margin: 0 0 8px; font-size: 17px; }
+.week p { margin: 0 0 8px; }
+.week p:last-child { margin-bottom: 0; }
+.week-dates { color: var(--on-surface-secondary); font-weight: 400; font-size: 13px; margin-left: 6px; }
+.week-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 10px; }
+.week-facts div { min-width: 0; }
+.week-facts dt { color: var(--on-surface-secondary); font-size: 12px; line-height: 16px; }
+.week-facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bars { display: grid; gap: 4px; margin: 0 0 10px; }
+.bar-row { display: grid; grid-template-columns: 2.5em 1fr; align-items: center; gap: 8px; font-size: 12px; color: var(--on-surface-secondary); }
+.bar-track { display: block; position: relative; height: 10px; background: var(--fill); border-radius: 4px; overflow: hidden; }
+.bar-track::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--on-surface-secondary); }
+.bar { position: absolute; top: 0; height: 100%; }
+.bar.neg { right: 50%; border-radius: 4px 0 0 4px; }
+.bar.pos { left: 50%; border-radius: 0 4px 4px 0; }
+.bar-axis-labels { display: flex; justify-content: space-between; font-size: 11px; line-height: 14px; }
+.predicted-bar { background: var(--on-surface-tertiary); }
+.actual-bar { background: var(--primary); }
+.week-result { border-top: 1px solid var(--separator); padding-top: 8px; font-variant-numeric: tabular-nums; }
+.note { display: block; color: var(--on-surface-secondary); font-size: 13px; line-height: 18px; margin-top: 2px; }
+.w0{width:0%}.w1{width:1%}.w2{width:2%}.w3{width:3%}.w4{width:4%}.w5{width:5%}.w6{width:6%}.w7{width:7%}.w8{width:8%}.w9{width:9%}.w10{width:10%}.w11{width:11%}.w12{width:12%}.w13{width:13%}.w14{width:14%}.w15{width:15%}.w16{width:16%}.w17{width:17%}.w18{width:18%}.w19{width:19%}.w20{width:20%}.w21{width:21%}.w22{width:22%}.w23{width:23%}.w24{width:24%}.w25{width:25%}.w26{width:26%}.w27{width:27%}.w28{width:28%}.w29{width:29%}.w30{width:30%}.w31{width:31%}.w32{width:32%}.w33{width:33%}.w34{width:34%}.w35{width:35%}.w36{width:36%}.w37{width:37%}.w38{width:38%}.w39{width:39%}.w40{width:40%}.w41{width:41%}.w42{width:42%}.w43{width:43%}.w44{width:44%}.w45{width:45%}.w46{width:46%}.w47{width:47%}.w48{width:48%}.w49{width:49%}.w50{width:50%}.w51{width:51%}.w52{width:52%}.w53{width:53%}.w54{width:54%}.w55{width:55%}.w56{width:56%}.w57{width:57%}.w58{width:58%}.w59{width:59%}.w60{width:60%}.w61{width:61%}.w62{width:62%}.w63{width:63%}.w64{width:64%}.w65{width:65%}.w66{width:66%}.w67{width:67%}.w68{width:68%}.w69{width:69%}.w70{width:70%}.w71{width:71%}.w72{width:72%}.w73{width:73%}.w74{width:74%}.w75{width:75%}.w76{width:76%}.w77{width:77%}.w78{width:78%}.w79{width:79%}.w80{width:80%}.w81{width:81%}.w82{width:82%}.w83{width:83%}.w84{width:84%}.w85{width:85%}.w86{width:86%}.w87{width:87%}.w88{width:88%}.w89{width:89%}.w90{width:90%}.w91{width:91%}.w92{width:92%}.w93{width:93%}.w94{width:94%}.w95{width:95%}.w96{width:96%}.w97{width:97%}.w98{width:98%}.w99{width:99%}.w100{width:100%}
+details { background: var(--surface); border-radius: 10px; padding: 0 16px; margin: 0 0 8px; }
+summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+details[open] { padding-bottom: 8px; }
+.rule-head { margin-top: 28px; }
+
+/* ---- 試作の切り替え（本番には持ち込まない） ---- */
+.proto-note { max-width: 680px; margin: 0 auto; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); color: var(--on-surface-secondary); font-size: 12px; line-height: 16px; }
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 20; display: flex; align-items: center; gap: 4px; background: var(--switcher-bg); color: var(--switcher-fg); border-radius: 9999px; padding: 4px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25); font-size: 14px; max-width: calc(100vw - 32px); }
+.switcher button { width: 44px; height: 44px; border: 0; border-radius: 9999px; background: transparent; color: inherit; font-size: 18px; cursor: pointer; }
+.switcher button:focus-visible { outline: 2px solid var(--primary); }
+.switcher-label { padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+</style>
+
+<p class="proto-note">PROTOTYPE（#745）: 「推定消費カロリーと1日の目安の出し方」の見せ方を3案で見比べる試作です。下の帯の ← → で案を切り替えます。数字は架空の1人を、本番のサーバーの決まりで計算した値です。</p>
+<header class="site-header"><a class="site-name" href="#">nu-tori</a></header>
+<main id="variant-a" data-name="今の本文に図を差し込む">
+<h1>推定消費カロリーと1日の目安の出し方</h1>
+<p>nu-tori は、1日に食べる量の目安（1日の目安）を、推定消費カロリーと目標から出し、毎週の記録で見直します。このページでは、その出し方を説明します。</p>
+<h2>1. 推定消費カロリーは推定です</h2>
+<p>推定消費カロリーは、1日に消費するカロリーを、体重の傾向と食べた量から推定した値です。体の中を測った値ではありません。</p>
+<p>体重の傾向は、体重の記録から日々の増減をならした体重の推移です。食べた量に比べて体重の傾向が減っていれば、食べた量より多く消費していると推定します。</p>
+
+<figure class="figure" id="a-trend">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 230" role="img" aria-label="毎朝の体重は1日で0.5 kg ほど上下するが、体重の傾向はなめらかに動く">
+    <line class="grid" x1="34" x2="286" y1="171.38461538461507" y2="171.38461538461507"/><text class="tick" x="28" y="175.38461538461507" text-anchor="end">77</text><line class="grid" x1="34" x2="286" y1="99.84615384615377" y2="99.84615384615377"/><text class="tick" x="28" y="103.84615384615377" text-anchor="end">78</text><line class="grid" x1="34" x2="286" y1="28.307692307692463" y2="28.307692307692463"/><text class="tick" x="28" y="32.30769230769246" text-anchor="end">79</text>
+    <line class="marker" x1="120.04878048780489" x2="120.04878048780489" y1="14" y2="200"/><text class="tick" x="124.04878048780489" y="24">使い始めた日</text>
+    <circle class="dot" cx="34.0" cy="49.8" r="2.6"/><circle class="dot" cx="40.1" cy="64.1" r="2.6"/><circle class="dot" cx="46.3" cy="56.9" r="2.6"/><circle class="dot" cx="52.4" cy="78.4" r="2.6"/><circle class="dot" cx="58.6" cy="99.8" r="2.6"/><circle class="dot" cx="64.7" cy="85.5" r="2.6"/><circle class="dot" cx="70.9" cy="71.2" r="2.6"/><circle class="dot" cx="77.0" cy="107.0" r="2.6"/><circle class="dot" cx="83.2" cy="92.7" r="2.6"/><circle class="dot" cx="89.3" cy="78.4" r="2.6"/><circle class="dot" cx="95.5" cy="35.5" r="2.6"/><circle class="dot" cx="101.6" cy="56.9" r="2.6"/><circle class="dot" cx="107.8" cy="85.5" r="2.6"/><circle class="dot" cx="113.9" cy="78.4" r="2.6"/><circle class="dot" cx="120.0" cy="92.7" r="2.6"/><circle class="dot" cx="126.2" cy="64.1" r="2.6"/><circle class="dot" cx="132.3" cy="35.5" r="2.6"/><circle class="dot" cx="138.5" cy="42.6" r="2.6"/><circle class="dot" cx="144.6" cy="71.2" r="2.6"/><circle class="dot" cx="150.8" cy="49.8" r="2.6"/><circle class="dot" cx="156.9" cy="71.2" r="2.6"/><circle class="dot" cx="163.1" cy="49.8" r="2.6"/><circle class="dot" cx="169.2" cy="78.4" r="2.6"/><circle class="dot" cx="175.4" cy="99.8" r="2.6"/><circle class="dot" cx="181.5" cy="71.2" r="2.6"/><circle class="dot" cx="187.7" cy="64.1" r="2.6"/><circle class="dot" cx="193.8" cy="99.8" r="2.6"/><circle class="dot" cx="200.0" cy="92.7" r="2.6"/><circle class="dot" cx="206.1" cy="121.3" r="2.6"/><circle class="dot" cx="212.2" cy="121.3" r="2.6"/><circle class="dot" cx="218.4" cy="114.2" r="2.6"/><circle class="dot" cx="224.5" cy="128.5" r="2.6"/><circle class="dot" cx="230.7" cy="85.5" r="2.6"/><circle class="dot" cx="236.8" cy="99.8" r="2.6"/><circle class="dot" cx="243.0" cy="121.3" r="2.6"/><circle class="dot" cx="249.1" cy="92.7" r="2.6"/><circle class="dot" cx="255.3" cy="121.3" r="2.6"/><circle class="dot" cx="261.4" cy="149.9" r="2.6"/><circle class="dot" cx="267.6" cy="142.8" r="2.6"/><circle class="dot" cx="273.7" cy="157.1" r="2.6"/><circle class="dot" cx="279.9" cy="164.2" r="2.6"/><circle class="dot" cx="286.0" cy="178.5" r="2.6"/>
+    <path class="trend" d="M34.0 64.2 L40.1 64.2 L46.3 63.4 L52.4 64.9 L58.6 68.4 L64.7 70.1 L70.9 70.2 L77.0 73.9 L83.2 75.8 L89.3 76.1 L95.5 72.0 L101.6 70.5 L107.8 72.0 L113.9 72.6 L120.0 74.6 L126.2 73.6 L132.3 69.8 L138.5 67.1 L144.6 67.5 L150.8 65.7 L156.9 66.3 L163.1 64.6 L169.2 66.0 L175.4 69.4 L181.5 69.6 L187.7 69.0 L193.8 72.1 L200.0 74.2 L206.1 78.9 L212.2 83.1 L218.4 86.2 L224.5 90.4 L230.7 90.0 L236.8 90.9 L243.0 94.0 L249.1 93.8 L255.3 96.6 L261.4 101.9 L267.6 106.0 L273.7 111.1 L279.9 116.4 L286.0 122.6"/>
+    <text class="series-label" x="292" y="126.64006348797888">体重の傾向</text>
+    <text class="series-label muted" x="292" y="194.5384615384608">毎朝の体重</text>
+    <text class="tick" x="34" y="220" text-anchor="start">12/22</text>
+    <text class="tick" x="286" y="220" text-anchor="end">2/1</text>
+    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
+  </svg>
+  </div>
+  <figcaption>点は毎朝の体重、線は体重の傾向です。1日で 0.5 kg ほど上下しても、傾向はなめらかに動きます。nu-tori は、傾向のほうの動きを見ます。</figcaption>
+</figure>
+<p>運動の記録やワークアウト、消費したエネルギーの記録は使いません。運動した分も、体重の傾向の動きに表れるからです。</p>
+<h2>2. 最初の推定消費カロリー</h2>
+<p>初めて目標を立てるときに、次のどちらかで出します。</p>
+<h3>記録が足りるとき: 食べた量と体重の傾向から逆算します</h3>
+<p>今日を除く直前の 28 日の、食べた量と体重から出します。食べた量は、nu-tori を使い始めた日からは nu-tori の食事の記録を、使い始める前の日はヘルスケアの摂取エネルギーを使います。</p>
+<ul><li>食べた量のある日が 14 日以上あること。食べた量がほかの日の中ほどの値の半分に満たない日（1食だけ記録した日など）は、記録の途中とみなして数えません</li><li>体重を記録した日が 4 日以上あり、最初の日から最後の日まで 14 日以上あること</li></ul>
+<p>食べた量の1日の平均から、体重の傾きの分を引いて出します。体重 1 kg の増減を 7,700 kcal とみなし、たとえば体重が1日に 0.1 kg ずつ減っていれば、食べた量の平均に 770 kcal を足した値になります。</p>
+<h3>記録が足りないとき: 身体データから式で出します</h3>
+<p>身長・生年月日（年齢）・性別と、開始の日の体重の傾向から、安静にしているときの消費を Mifflin-St Jeor の式で出し、活動量の係数を掛けます。ヘルスケアから読めない値は、アプリで入れていただきます。</p>
+<ul><li>歩数が読めるとき: 直前 28 日の、歩いた日の平均の歩数で決めます。5,000 歩未満は 1.4、10,000 歩未満は 1.55、それ以上は 1.7</li><li>歩数が読めないとき: 3つから選んでいただきます。ほぼ座り仕事は 1.4、立ち仕事が多いは 1.55、よく動くは 1.7</li></ul>
+<p>身体データと、使い始める前の摂取エネルギーは、この計算にだけ使い、保存しません。</p>
+<h2>3. 1日の目安</h2>
+<p>1日の目安は、推定消費カロリーから、目標の速さで1日に減らす分を引いたものです。増量では、1日に足す分を足します。</p>
+<p>1日に減らす（足す）分は、期限の日までに目標体重へ届くのに要る体重の変化の速さに、7,700 kcal/kg を掛けて出します。たとえば、体重の傾向が1日に 0.05 kg ずつ減る速さなら、1日に 385 kcal を減らします。維持では、体重の傾向が目標体重の ±0.7 kg の中にあれば、減らしも足しもしません。外れたら、体重の傾向の 1週間に 0.15% の速さで目標体重へ戻す分だけ減らし（足し）ます。</p>
+<p>値は 50 kcal 単位に丸め、次の上限と下限を当てます。</p>
+<ul><li>必要な速さの上限: 1週間に、開始の日の体重の傾向の 0.75%（減量）・0.5%（増量）より速くしません。期限までの日が少なくても、無理な速さにしません</li><li>1日の目安の下限: 1,200 kcal より低くしません</li><li>1週の変化の幅: 毎週の見直しで、前の週の1日の目安から ±150 kcal より大きく変えません</li></ul>
+<h2>4. 毎週の見直し</h2>
+<p>毎週、月曜から当てる推定消費カロリーと1日の目安を、その前の週（月曜から日曜）の記録で見直します。</p>
+<ol><li>前の週の食べた量の平均と、そのときの推定消費カロリーから、体重の傾向がどれだけ変わるはずだったかを出します</li><li>実際の体重の傾向の変化と比べ、ずれの分だけ推定消費カロリーを動かします。一度に全部は動かさず、食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど大きく動かします</li><li>新しい推定消費カロリーで、上の 3 と同じように1日の目安を出し直します</li></ol>
+
+<figure class="figure" id="a-review">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 240" role="img" aria-label="予想した体重の動きと、実際の体重の傾向のずれ">
+    <line class="grid" x1="34" x2="264" y1="201.08233538441766" y2="201.08233538441766"/><text class="tick" x="28" y="205.08233538441766" text-anchor="end">78.0</text><line class="grid" x1="34" x2="264" y1="173.4398483377877" y2="173.4398483377877"/><text class="tick" x="28" y="177.4398483377877" text-anchor="end">78.1</text><line class="grid" x1="34" x2="264" y1="145.79736129115383" y2="145.79736129115383"/><text class="tick" x="28" y="149.79736129115383" text-anchor="end">78.2</text><line class="grid" x1="34" x2="264" y1="118.15487424452388" y2="118.15487424452388"/><text class="tick" x="28" y="122.15487424452388" text-anchor="end">78.3</text><line class="grid" x1="34" x2="264" y1="90.51238719789002" y2="90.51238719789002"/><text class="tick" x="28" y="94.51238719789002" text-anchor="end">78.4</text><line class="grid" x1="34" x2="264" y1="62.869900151260055" y2="62.869900151260055"/><text class="tick" x="28" y="66.86990015126005" text-anchor="end">78.5</text><line class="grid" x1="34" x2="264" y1="35.2274131046301" y2="35.2274131046301"/><text class="tick" x="28" y="39.2274131046301" text-anchor="end">78.6</text>
+    <path class="predicted" d="M34.0 71.3 L264.0 168.5"/>
+    <path class="trend" d="M34.0 71.3 L66.9 64.9 L99.7 70.2 L132.6 83.3 L165.4 84.0 L198.3 81.9 L231.1 93.8 L264.0 101.8"/>
+    <circle class="end" cx="264" cy="168.53626943005116" r="3.5"/>
+    <circle class="end trend-end" cx="264" cy="101.80062534549758" r="3.5"/>
+    <text class="series-label" x="38" y="54.91496928973865">実際の傾向 −0.11 kg</text>
+    <text class="series-label muted" x="132.57142857142856" y="132.9641006661738" text-anchor="middle">予想 −0.35 kg</text>
+    <path class="gap" d="M274 101.80062534549758 h6 V168.53626943005116 h-6"/>
+    <text class="gap-label" x="286" y="133.16844738777436">ずれ</text>
+    <text class="gap-label" x="286" y="149.16844738777436">0.24 kg</text>
+    <text class="tick" x="34" y="230" text-anchor="start">1/11（日）</text>
+    <text class="tick" x="264" y="230" text-anchor="end">1/18（日）</text>
+    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
+  </svg>
+  </div>
+  <figcaption>1月12日〜1月18日の週。食べた量の平均 1,900 kcal と、推定消費カロリー 2,287 kcal の差から予想した動き（点線）より、実際の傾向（実線）は減りませんでした。</figcaption>
+</figure>
+
+<div class="equation">
+  <div class="eq-row"><span class="eq-label">ずれ</span><span class="eq-value">0.24 kg × 7,700 kcal ÷ 7 日 ＝ 1日 266 kcal</span></div>
+  <div class="eq-row"><span class="eq-label">動かす割合</span><span class="eq-value">× 0.5（7日記録・同じ向きのずれが2週続いた）</span></div>
+  <div class="eq-row eq-result"><span class="eq-label">推定消費カロリー</span><span class="eq-value">2,287 → <strong>2,154 kcal</strong></span></div>
+</div>
+<p>次のどれかに当たる週は、見直しを見送り、推定消費カロリーも1日の目安も前の週のままにします。</p>
+<ul><li>使い始めて 7 日に満たない（最初の値を食べた量と体重から逆算したときは当てません）</li><li>その週に体重の記録が無い</li><li>その週に食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li></ul>
+<h2>5. 例: ある人の4週間</h2>
+<p class="persona">30歳・身長 172 cm・ほぼ座り仕事の男性。使い始める前の4週間は体重計だけ使い、体重の傾向は 78.4 kg で横ばい。食事は記録していなかったので、最初の推定消費カロリーは式で出します。目標は12週で 74.4 kg。</p>
+<p>式で出した推定消費カロリーは 2,399 kcal、1日の目安は 2,050 kcal でした。毎週の見直しで、次のように動きます。</p>
+
+<figure class="figure" id="a-weeks">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 250" role="img" aria-label="推定消費カロリーが毎週の見直しで本当の消費に近づき、1日の目安もそれに沿って下がる">
+    <line class="grid" x1="40" x2="276" y1="198.5263157894737" y2="198.5263157894737"/><text class="tick" x="34" y="202.5263157894737" text-anchor="end">1,600</text><line class="grid" x1="40" x2="276" y1="155.57894736842104" y2="155.57894736842104"/><text class="tick" x="34" y="159.57894736842104" text-anchor="end">1,800</text><line class="grid" x1="40" x2="276" y1="112.63157894736842" y2="112.63157894736842"/><text class="tick" x="34" y="116.63157894736842" text-anchor="end">2,000</text><line class="grid" x1="40" x2="276" y1="69.68421052631581" y2="69.68421052631581"/><text class="tick" x="34" y="73.68421052631581" text-anchor="end">2,200</text><line class="grid" x1="40" x2="276" y1="26.73684210526318" y2="26.73684210526318"/><text class="tick" x="34" y="30.73684210526318" text-anchor="end">2,400</text>
+    <path class="truth" d="M40.0 80.4 L87.2 80.9 L134.4 82.2 L181.6 84.3 L228.8 86.5"/>
+    <path class="trend" d="M40.0 27.0 L87.2 27.0 L87.2 51.0 L134.4 51.0 L134.4 79.6 L181.6 79.6 L181.6 95.5 L228.8 95.5 L228.8 94.8 L276.0 94.8"/>
+    <path class="guide" d="M40.0 101.9 L87.2 101.9 L87.2 134.1 L134.4 134.1 L134.4 166.3 L181.6 166.3 L181.6 187.8 L228.8 187.8 L228.8 187.8 L276.0 187.8"/>
+    <text class="value" x="63.6" y="20.951578947368432" text-anchor="middle">2,399</text><text class="value" x="110.80000000000001" y="45.00210526315789" text-anchor="middle">2,287</text><text class="value" x="158" y="73.56210526315789" text-anchor="middle">2,154</text><text class="value" x="205.2" y="89.45263157894736" text-anchor="middle">2,080</text><text class="value" x="252.4" y="88.80842105263157" text-anchor="middle">2,083</text>
+    <text class="value muted" x="63.6" y="116.89473684210526" text-anchor="middle">2,050</text><text class="value muted" x="110.80000000000001" y="149.10526315789474" text-anchor="middle">1,900</text><text class="value muted" x="158" y="181.31578947368422" text-anchor="middle">1,750</text><text class="value muted" x="205.2" y="202.78947368421052" text-anchor="middle">1,650</text><text class="value muted" x="252.4" y="202.78947368421052" text-anchor="middle">1,650</text>
+    <text class="series-label" x="282" y="92.80842105263157">推定消費</text>
+    <text class="series-label" x="282" y="106.80842105263157">カロリー</text>
+    <text class="series-label muted" x="282" y="191.78947368421052">1日の目安</text>
+    <text class="series-label faint" x="232.8" y="64.51594759103233">本当の消費</text>
+    <text class="tick" x="63.6" y="240" text-anchor="middle">1週目</text><text class="tick" x="110.80000000000001" y="240" text-anchor="middle">2週目</text><text class="tick" x="158" y="240" text-anchor="middle">3週目</text><text class="tick" x="205.2" y="240" text-anchor="middle">4週目</text><text class="tick" x="252.4" y="240" text-anchor="middle">5週目</text>
+    <text class="tick" x="34" y="12" text-anchor="end">kcal</text>
+  </svg>
+  </div>
+  <figcaption>架空の1人の例です。「本当の消費」（点線）は、この人の体だけが知っている値として置いた仮定で、nu-tori には見えません。推定消費カロリーは、毎週のずれから本当の消費に近づいていきます。</figcaption>
+</figure>
+<p>体重が減ると、消費も減ります。見直しをせずに同じ量を食べ続けると、減り方はだんだん緩くなり、やがて止まります。</p>
+
+<figure class="figure" id="a-plateau">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 220" role="img" aria-label="同じ量を食べ続けると、体重の減り方がだんだん緩くなり、止まっていく">
+    <line class="grid" x1="34" x2="340" y1="174.1818181818182" y2="174.1818181818182"/><text class="tick" x="28" y="178.1818181818182" text-anchor="end">60</text><line class="grid" x1="34" x2="340" y1="134.63636363636363" y2="134.63636363636363"/><text class="tick" x="28" y="138.63636363636363" text-anchor="end">65</text><line class="grid" x1="34" x2="340" y1="95.0909090909091" y2="95.0909090909091"/><text class="tick" x="28" y="99.0909090909091" text-anchor="end">70</text><line class="grid" x1="34" x2="340" y1="55.54545454545456" y2="55.54545454545456"/><text class="tick" x="28" y="59.54545454545456" text-anchor="end">75</text>
+    <path class="trend" d="M34.0 37.4 L45.8 50.3 L57.5 62.0 L69.3 72.6 L81.1 82.2 L92.8 90.9 L104.6 98.8 L116.4 105.9 L128.2 112.4 L139.9 118.3 L151.7 123.6 L163.5 128.4 L175.2 132.8 L187.0 136.8 L198.8 140.4 L210.5 143.6 L222.3 146.6 L234.1 149.2 L245.8 151.7 L257.6 153.9 L269.4 155.9 L281.2 157.7 L292.9 159.3 L304.7 160.8 L316.5 162.1 L328.2 163.3 L340.0 164.4"/>
+    <circle class="end trend-end" cx="187" cy="136.76094564712503" r="3.5"/>
+    <text class="value" x="193" y="124.76094564712503" text-anchor="start">1年で 12.6 kg 減</text>
+    <circle class="end trend-end" cx="340" cy="164.43929833331367" r="3.5"/>
+    <text class="value" x="340" y="150.43929833331367" text-anchor="end">次の1年は 3.5 kg 減</text>
+    <text class="tick" x="34" y="210" text-anchor="start">今</text>
+    <text class="tick" x="187" y="210" text-anchor="middle">1年後</text>
+    <text class="tick" x="340" y="210" text-anchor="end">2年後</text>
+    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
+  </svg>
+  </div>
+  <figcaption>1,650 kcal を見直さずに食べ続けたときの体重の動き（同じ仮定で計算）。体重が減ると消費も減り（この例では 1 kg あたり 1日 27 kcal）、食べた量との差が縮んで、減り方がだんだん緩くなります。nu-tori は毎週の見直しで、この変化に合わせて1日の目安を直します。</figcaption>
+</figure>
+<h2>6. 記録を続けると、推定が確かになります</h2>
+<p>推定消費カロリーは、体重の傾向と食べた量のずれから直していきます。毎朝の体重と、食事の記録が揃うほど、推定は実際の消費に近づき、1日の目安も合っていきます。</p>
+<p>体重は、毎朝、同じころに量ると、日々の揺れが小さくなります。食事は、食べたものを撮るか書くかして、1日の分をなるべく全部記録してください。</p>
+<h2>7. 医療の助言ではありません</h2>
+<p>医療の助言ではありません。持病のある方は、医師に相談してください。</p>
+</main>
+<main id="variant-b" data-name="1人の4週間を追う" hidden>
+<h1>推定消費カロリーと1日の目安の出し方</h1>
+<p>nu-tori は、1日に食べる量の目安（1日の目安）を、推定消費カロリーと目標から出し、毎週の記録で見直します。このページでは、その出し方を説明します。</p>
+<p>決まりを読む前に、架空の1人が使い始めてからの4週間を追います。数字は、nu-tori が実際に使っている決まりで計算しました。</p>
+<h2>ある人の4週間</h2>
+<p class="persona">30歳・身長 172 cm・ほぼ座り仕事の男性。使い始める前の4週間は体重計だけ使い、体重の傾向は 78.4 kg で横ばい。食事は記録していなかったので、最初の推定消費カロリーは式で出します。目標は12週で 74.4 kg。</p>
+<section class="week week-zero">
+  <h3>使い始めた日 <span class="week-dates">1月5日（月）</span></h3>
+  <p>身長・年齢・性別と体重の傾向から、式で推定消費カロリーを <strong>2,399 kcal</strong> と出しました。12週で 4.0 kg 減らすのに1日 349 kcal ほど減らし、1日の目安は <strong>2,050 kcal</strong>。式の値は、同じ体格の人の平均です。この人の本当の消費は分かりません。</p>
+</section>
+<h3 class="figure-title">毎朝の体重は揺れます</h3>
+
+<figure class="figure" id="b-trend">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 230" role="img" aria-label="毎朝の体重は1日で0.5 kg ほど上下するが、体重の傾向はなめらかに動く">
+    <line class="grid" x1="34" x2="286" y1="171.38461538461507" y2="171.38461538461507"/><text class="tick" x="28" y="175.38461538461507" text-anchor="end">77</text><line class="grid" x1="34" x2="286" y1="99.84615384615377" y2="99.84615384615377"/><text class="tick" x="28" y="103.84615384615377" text-anchor="end">78</text><line class="grid" x1="34" x2="286" y1="28.307692307692463" y2="28.307692307692463"/><text class="tick" x="28" y="32.30769230769246" text-anchor="end">79</text>
+    <line class="marker" x1="120.04878048780489" x2="120.04878048780489" y1="14" y2="200"/><text class="tick" x="124.04878048780489" y="24">使い始めた日</text>
+    <circle class="dot" cx="34.0" cy="49.8" r="2.6"/><circle class="dot" cx="40.1" cy="64.1" r="2.6"/><circle class="dot" cx="46.3" cy="56.9" r="2.6"/><circle class="dot" cx="52.4" cy="78.4" r="2.6"/><circle class="dot" cx="58.6" cy="99.8" r="2.6"/><circle class="dot" cx="64.7" cy="85.5" r="2.6"/><circle class="dot" cx="70.9" cy="71.2" r="2.6"/><circle class="dot" cx="77.0" cy="107.0" r="2.6"/><circle class="dot" cx="83.2" cy="92.7" r="2.6"/><circle class="dot" cx="89.3" cy="78.4" r="2.6"/><circle class="dot" cx="95.5" cy="35.5" r="2.6"/><circle class="dot" cx="101.6" cy="56.9" r="2.6"/><circle class="dot" cx="107.8" cy="85.5" r="2.6"/><circle class="dot" cx="113.9" cy="78.4" r="2.6"/><circle class="dot" cx="120.0" cy="92.7" r="2.6"/><circle class="dot" cx="126.2" cy="64.1" r="2.6"/><circle class="dot" cx="132.3" cy="35.5" r="2.6"/><circle class="dot" cx="138.5" cy="42.6" r="2.6"/><circle class="dot" cx="144.6" cy="71.2" r="2.6"/><circle class="dot" cx="150.8" cy="49.8" r="2.6"/><circle class="dot" cx="156.9" cy="71.2" r="2.6"/><circle class="dot" cx="163.1" cy="49.8" r="2.6"/><circle class="dot" cx="169.2" cy="78.4" r="2.6"/><circle class="dot" cx="175.4" cy="99.8" r="2.6"/><circle class="dot" cx="181.5" cy="71.2" r="2.6"/><circle class="dot" cx="187.7" cy="64.1" r="2.6"/><circle class="dot" cx="193.8" cy="99.8" r="2.6"/><circle class="dot" cx="200.0" cy="92.7" r="2.6"/><circle class="dot" cx="206.1" cy="121.3" r="2.6"/><circle class="dot" cx="212.2" cy="121.3" r="2.6"/><circle class="dot" cx="218.4" cy="114.2" r="2.6"/><circle class="dot" cx="224.5" cy="128.5" r="2.6"/><circle class="dot" cx="230.7" cy="85.5" r="2.6"/><circle class="dot" cx="236.8" cy="99.8" r="2.6"/><circle class="dot" cx="243.0" cy="121.3" r="2.6"/><circle class="dot" cx="249.1" cy="92.7" r="2.6"/><circle class="dot" cx="255.3" cy="121.3" r="2.6"/><circle class="dot" cx="261.4" cy="149.9" r="2.6"/><circle class="dot" cx="267.6" cy="142.8" r="2.6"/><circle class="dot" cx="273.7" cy="157.1" r="2.6"/><circle class="dot" cx="279.9" cy="164.2" r="2.6"/><circle class="dot" cx="286.0" cy="178.5" r="2.6"/>
+    <path class="trend" d="M34.0 64.2 L40.1 64.2 L46.3 63.4 L52.4 64.9 L58.6 68.4 L64.7 70.1 L70.9 70.2 L77.0 73.9 L83.2 75.8 L89.3 76.1 L95.5 72.0 L101.6 70.5 L107.8 72.0 L113.9 72.6 L120.0 74.6 L126.2 73.6 L132.3 69.8 L138.5 67.1 L144.6 67.5 L150.8 65.7 L156.9 66.3 L163.1 64.6 L169.2 66.0 L175.4 69.4 L181.5 69.6 L187.7 69.0 L193.8 72.1 L200.0 74.2 L206.1 78.9 L212.2 83.1 L218.4 86.2 L224.5 90.4 L230.7 90.0 L236.8 90.9 L243.0 94.0 L249.1 93.8 L255.3 96.6 L261.4 101.9 L267.6 106.0 L273.7 111.1 L279.9 116.4 L286.0 122.6"/>
+    <text class="series-label" x="292" y="126.64006348797888">体重の傾向</text>
+    <text class="series-label muted" x="292" y="194.5384615384608">毎朝の体重</text>
+    <text class="tick" x="34" y="220" text-anchor="start">12/22</text>
+    <text class="tick" x="286" y="220" text-anchor="end">2/1</text>
+    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
+  </svg>
+  </div>
+  <figcaption>点は毎朝の体重、線は体重の傾向です。1日で 0.5 kg ほど上下しても、傾向はなめらかに動きます。nu-tori は、傾向のほうの動きを見ます。</figcaption>
+</figure>
+
+<section class="week">
+  <h3>1週目 <span class="week-dates">1月5日〜1月11日</span></h3>
+  <dl class="week-facts">
+    <div><dt>食べた量</dt><dd>2,050 kcal</dd></div>
+    <div><dt>予想した動き</dt><dd>−0.32 kg</dd></div>
+    <div><dt>実際の動き</dt><dd>+0.09 kg</dd></div>
+  </dl>
+  <div class="bars" aria-hidden="true">
+    
+<div class="bar-row"><span class="bar-name">予想</span><span class="bar-track"><span class="bar predicted-bar neg w32"></span></span></div>
+<div class="bar-row"><span class="bar-name">実際</span><span class="bar-track"><span class="bar actual-bar pos w9"></span></span></div>
+<div class="bar-row bar-axis"><span></span><span class="bar-axis-labels"><span>減る</span><span>0</span><span>増える</span></span></div>
+  </div>
+  <p>予想より減らなかった（ずれ 0.41 kg）。体重の傾向は水分の揺れで少し上がりました。動かす割合は 0.25。</p>
+  <p class="week-result">推定消費カロリー 2,399 → <strong>2,287 kcal</strong><br>1日の目安 2,050 → <strong>1,900 kcal</strong><span class="note">前の週から 150 kcal までしか変えない決まりで止めました</span></p>
+</section>
+<section class="week">
+  <h3>2週目 <span class="week-dates">1月12日〜1月18日</span></h3>
+  <dl class="week-facts">
+    <div><dt>食べた量</dt><dd>1,900 kcal</dd></div>
+    <div><dt>予想した動き</dt><dd>−0.35 kg</dd></div>
+    <div><dt>実際の動き</dt><dd>−0.11 kg</dd></div>
+  </dl>
+  <div class="bars" aria-hidden="true">
+    
+<div class="bar-row"><span class="bar-name">予想</span><span class="bar-track"><span class="bar predicted-bar neg w35"></span></span></div>
+<div class="bar-row"><span class="bar-name">実際</span><span class="bar-track"><span class="bar actual-bar neg w11"></span></span></div>
+<div class="bar-row bar-axis"><span></span><span class="bar-axis-labels"><span>減る</span><span>0</span><span>増える</span></span></div>
+  </div>
+  <p>予想より減らなかった（ずれ 0.24 kg）。動かす割合は 0.5（同じ向きのずれが2週続いたので大きく）。</p>
+  <p class="week-result">推定消費カロリー 2,287 → <strong>2,154 kcal</strong><br>1日の目安 1,900 → <strong>1,750 kcal</strong><span class="note">前の週から 150 kcal までしか変えない決まりで止めました</span></p>
+</section>
+<section class="week">
+  <h3>3週目 <span class="week-dates">1月19日〜1月25日</span></h3>
+  <dl class="week-facts">
+    <div><dt>食べた量</dt><dd>1,750 kcal</dd></div>
+    <div><dt>予想した動き</dt><dd>−0.37 kg</dd></div>
+    <div><dt>実際の動き</dt><dd>−0.28 kg</dd></div>
+  </dl>
+  <div class="bars" aria-hidden="true">
+    
+<div class="bar-row"><span class="bar-name">予想</span><span class="bar-track"><span class="bar predicted-bar neg w37"></span></span></div>
+<div class="bar-row"><span class="bar-name">実際</span><span class="bar-track"><span class="bar actual-bar neg w28"></span></span></div>
+<div class="bar-row bar-axis"><span></span><span class="bar-axis-labels"><span>減る</span><span>0</span><span>増える</span></span></div>
+  </div>
+  <p>予想より減らなかった（ずれ 0.09 kg）。動かす割合は 0.75（同じ向きのずれが3週続いたので大きく）。</p>
+  <p class="week-result">推定消費カロリー 2,154 → <strong>2,080 kcal</strong><br>1日の目安 1,750 → <strong>1,650 kcal</strong></p>
+</section>
+<section class="week">
+  <h3>4週目 <span class="week-dates">1月26日〜2月1日</span></h3>
+  <dl class="week-facts">
+    <div><dt>食べた量</dt><dd>1,650 kcal</dd></div>
+    <div><dt>予想した動き</dt><dd>−0.39 kg</dd></div>
+    <div><dt>実際の動き</dt><dd>−0.40 kg</dd></div>
+  </dl>
+  <div class="bars" aria-hidden="true">
+    
+<div class="bar-row"><span class="bar-name">予想</span><span class="bar-track"><span class="bar predicted-bar neg w39"></span></span></div>
+<div class="bar-row"><span class="bar-name">実際</span><span class="bar-track"><span class="bar actual-bar neg w40"></span></span></div>
+<div class="bar-row bar-axis"><span></span><span class="bar-axis-labels"><span>減る</span><span>0</span><span>増える</span></span></div>
+  </div>
+  <p>ほぼ予想どおり（ずれ 0.01 kg）。動かす割合は 0.3（同じ向きのずれが1週続いたので大きく）。</p>
+  <p class="week-result">推定消費カロリー 2,080 → <strong>2,083 kcal</strong><br>1日の目安 1,650 → <strong>1,650 kcal</strong></p>
+</section>
+<h3 class="figure-title">4週間で、推定は本当の消費に近づきました</h3>
+
+<figure class="figure" id="b-weeks">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 250" role="img" aria-label="推定消費カロリーが毎週の見直しで本当の消費に近づき、1日の目安もそれに沿って下がる">
+    <line class="grid" x1="40" x2="276" y1="198.5263157894737" y2="198.5263157894737"/><text class="tick" x="34" y="202.5263157894737" text-anchor="end">1,600</text><line class="grid" x1="40" x2="276" y1="155.57894736842104" y2="155.57894736842104"/><text class="tick" x="34" y="159.57894736842104" text-anchor="end">1,800</text><line class="grid" x1="40" x2="276" y1="112.63157894736842" y2="112.63157894736842"/><text class="tick" x="34" y="116.63157894736842" text-anchor="end">2,000</text><line class="grid" x1="40" x2="276" y1="69.68421052631581" y2="69.68421052631581"/><text class="tick" x="34" y="73.68421052631581" text-anchor="end">2,200</text><line class="grid" x1="40" x2="276" y1="26.73684210526318" y2="26.73684210526318"/><text class="tick" x="34" y="30.73684210526318" text-anchor="end">2,400</text>
+    <path class="truth" d="M40.0 80.4 L87.2 80.9 L134.4 82.2 L181.6 84.3 L228.8 86.5"/>
+    <path class="trend" d="M40.0 27.0 L87.2 27.0 L87.2 51.0 L134.4 51.0 L134.4 79.6 L181.6 79.6 L181.6 95.5 L228.8 95.5 L228.8 94.8 L276.0 94.8"/>
+    <path class="guide" d="M40.0 101.9 L87.2 101.9 L87.2 134.1 L134.4 134.1 L134.4 166.3 L181.6 166.3 L181.6 187.8 L228.8 187.8 L228.8 187.8 L276.0 187.8"/>
+    <text class="value" x="63.6" y="20.951578947368432" text-anchor="middle">2,399</text><text class="value" x="110.80000000000001" y="45.00210526315789" text-anchor="middle">2,287</text><text class="value" x="158" y="73.56210526315789" text-anchor="middle">2,154</text><text class="value" x="205.2" y="89.45263157894736" text-anchor="middle">2,080</text><text class="value" x="252.4" y="88.80842105263157" text-anchor="middle">2,083</text>
+    <text class="value muted" x="63.6" y="116.89473684210526" text-anchor="middle">2,050</text><text class="value muted" x="110.80000000000001" y="149.10526315789474" text-anchor="middle">1,900</text><text class="value muted" x="158" y="181.31578947368422" text-anchor="middle">1,750</text><text class="value muted" x="205.2" y="202.78947368421052" text-anchor="middle">1,650</text><text class="value muted" x="252.4" y="202.78947368421052" text-anchor="middle">1,650</text>
+    <text class="series-label" x="282" y="92.80842105263157">推定消費</text>
+    <text class="series-label" x="282" y="106.80842105263157">カロリー</text>
+    <text class="series-label muted" x="282" y="191.78947368421052">1日の目安</text>
+    <text class="series-label faint" x="232.8" y="64.51594759103233">本当の消費</text>
+    <text class="tick" x="63.6" y="240" text-anchor="middle">1週目</text><text class="tick" x="110.80000000000001" y="240" text-anchor="middle">2週目</text><text class="tick" x="158" y="240" text-anchor="middle">3週目</text><text class="tick" x="205.2" y="240" text-anchor="middle">4週目</text><text class="tick" x="252.4" y="240" text-anchor="middle">5週目</text>
+    <text class="tick" x="34" y="12" text-anchor="end">kcal</text>
+  </svg>
+  </div>
+  <figcaption>架空の1人の例です。「本当の消費」（点線）は、この人の体だけが知っている値として置いた仮定で、nu-tori には見えません。推定消費カロリーは、毎週のずれから本当の消費に近づいていきます。</figcaption>
+</figure>
+<h3 class="figure-title">体重が減ると、消費も減ります</h3>
+<p>この人が4週目の 1,650 kcal を、見直さずに食べ続けたとします。</p>
+
+<figure class="figure" id="b-plateau">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 220" role="img" aria-label="同じ量を食べ続けると、体重の減り方がだんだん緩くなり、止まっていく">
+    <line class="grid" x1="34" x2="340" y1="174.1818181818182" y2="174.1818181818182"/><text class="tick" x="28" y="178.1818181818182" text-anchor="end">60</text><line class="grid" x1="34" x2="340" y1="134.63636363636363" y2="134.63636363636363"/><text class="tick" x="28" y="138.63636363636363" text-anchor="end">65</text><line class="grid" x1="34" x2="340" y1="95.0909090909091" y2="95.0909090909091"/><text class="tick" x="28" y="99.0909090909091" text-anchor="end">70</text><line class="grid" x1="34" x2="340" y1="55.54545454545456" y2="55.54545454545456"/><text class="tick" x="28" y="59.54545454545456" text-anchor="end">75</text>
+    <path class="trend" d="M34.0 37.4 L45.8 50.3 L57.5 62.0 L69.3 72.6 L81.1 82.2 L92.8 90.9 L104.6 98.8 L116.4 105.9 L128.2 112.4 L139.9 118.3 L151.7 123.6 L163.5 128.4 L175.2 132.8 L187.0 136.8 L198.8 140.4 L210.5 143.6 L222.3 146.6 L234.1 149.2 L245.8 151.7 L257.6 153.9 L269.4 155.9 L281.2 157.7 L292.9 159.3 L304.7 160.8 L316.5 162.1 L328.2 163.3 L340.0 164.4"/>
+    <circle class="end trend-end" cx="187" cy="136.76094564712503" r="3.5"/>
+    <text class="value" x="193" y="124.76094564712503" text-anchor="start">1年で 12.6 kg 減</text>
+    <circle class="end trend-end" cx="340" cy="164.43929833331367" r="3.5"/>
+    <text class="value" x="340" y="150.43929833331367" text-anchor="end">次の1年は 3.5 kg 減</text>
+    <text class="tick" x="34" y="210" text-anchor="start">今</text>
+    <text class="tick" x="187" y="210" text-anchor="middle">1年後</text>
+    <text class="tick" x="340" y="210" text-anchor="end">2年後</text>
+    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
+  </svg>
+  </div>
+  <figcaption>1,650 kcal を見直さずに食べ続けたときの体重の動き（同じ仮定で計算）。体重が減ると消費も減り（この例では 1 kg あたり 1日 27 kcal）、食べた量との差が縮んで、減り方がだんだん緩くなります。nu-tori は毎週の見直しで、この変化に合わせて1日の目安を直します。</figcaption>
+</figure>
+<p>毎週の体重と食べた量のずれを読み、推定消費カロリーを直し続けるのが、nu-tori の見直しです。</p>
+<h2>決まりの詳細</h2>
+<details><summary>推定消費カロリーは推定です</summary>
+<p>推定消費カロリーは、1日に消費するカロリーを、体重の傾向と食べた量から推定した値です。体の中を測った値ではありません。</p>
+<p>体重の傾向は、体重の記録から日々の増減をならした体重の推移です。食べた量に比べて体重の傾向が減っていれば、食べた量より多く消費していると推定します。</p><p>運動の記録やワークアウト、消費したエネルギーの記録は使いません。運動した分も、体重の傾向の動きに表れるからです。</p></details>
+<details><summary>最初の推定消費カロリー</summary>
+<p>初めて目標を立てるときに、次のどちらかで出します。</p>
+<h3>記録が足りるとき: 食べた量と体重の傾向から逆算します</h3>
+<p>今日を除く直前の 28 日の、食べた量と体重から出します。食べた量は、nu-tori を使い始めた日からは nu-tori の食事の記録を、使い始める前の日はヘルスケアの摂取エネルギーを使います。</p>
+<ul><li>食べた量のある日が 14 日以上あること。食べた量がほかの日の中ほどの値の半分に満たない日（1食だけ記録した日など）は、記録の途中とみなして数えません</li><li>体重を記録した日が 4 日以上あり、最初の日から最後の日まで 14 日以上あること</li></ul>
+<p>食べた量の1日の平均から、体重の傾きの分を引いて出します。体重 1 kg の増減を 7,700 kcal とみなし、たとえば体重が1日に 0.1 kg ずつ減っていれば、食べた量の平均に 770 kcal を足した値になります。</p>
+<h3>記録が足りないとき: 身体データから式で出します</h3>
+<p>身長・生年月日（年齢）・性別と、開始の日の体重の傾向から、安静にしているときの消費を Mifflin-St Jeor の式で出し、活動量の係数を掛けます。ヘルスケアから読めない値は、アプリで入れていただきます。</p>
+<ul><li>歩数が読めるとき: 直前 28 日の、歩いた日の平均の歩数で決めます。5,000 歩未満は 1.4、10,000 歩未満は 1.55、それ以上は 1.7</li><li>歩数が読めないとき: 3つから選んでいただきます。ほぼ座り仕事は 1.4、立ち仕事が多いは 1.55、よく動くは 1.7</li></ul>
+<p>身体データと、使い始める前の摂取エネルギーは、この計算にだけ使い、保存しません。</p></details>
+<details><summary>1日の目安</summary>
+<p>1日の目安は、推定消費カロリーから、目標の速さで1日に減らす分を引いたものです。増量では、1日に足す分を足します。</p>
+<p>1日に減らす（足す）分は、期限の日までに目標体重へ届くのに要る体重の変化の速さに、7,700 kcal/kg を掛けて出します。たとえば、体重の傾向が1日に 0.05 kg ずつ減る速さなら、1日に 385 kcal を減らします。維持では、体重の傾向が目標体重の ±0.7 kg の中にあれば、減らしも足しもしません。外れたら、体重の傾向の 1週間に 0.15% の速さで目標体重へ戻す分だけ減らし（足し）ます。</p>
+<p>値は 50 kcal 単位に丸め、次の上限と下限を当てます。</p>
+<ul><li>必要な速さの上限: 1週間に、開始の日の体重の傾向の 0.75%（減量）・0.5%（増量）より速くしません。期限までの日が少なくても、無理な速さにしません</li><li>1日の目安の下限: 1,200 kcal より低くしません</li><li>1週の変化の幅: 毎週の見直しで、前の週の1日の目安から ±150 kcal より大きく変えません</li></ul></details>
+<details><summary>毎週の見直し</summary>
+<p>毎週、月曜から当てる推定消費カロリーと1日の目安を、その前の週（月曜から日曜）の記録で見直します。</p><ol><li>前の週の食べた量の平均と、そのときの推定消費カロリーから、体重の傾向がどれだけ変わるはずだったかを出します</li><li>実際の体重の傾向の変化と比べ、ずれの分だけ推定消費カロリーを動かします。一度に全部は動かさず、食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど大きく動かします</li><li>新しい推定消費カロリーで、上の 3 と同じように1日の目安を出し直します</li></ol><p>次のどれかに当たる週は、見直しを見送り、推定消費カロリーも1日の目安も前の週のままにします。</p>
+<ul><li>使い始めて 7 日に満たない（最初の値を食べた量と体重から逆算したときは当てません）</li><li>その週に体重の記録が無い</li><li>その週に食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li></ul></details>
+<details><summary>記録を続けると、推定が確かになります</summary>
+<p>推定消費カロリーは、体重の傾向と食べた量のずれから直していきます。毎朝の体重と、食事の記録が揃うほど、推定は実際の消費に近づき、1日の目安も合っていきます。</p>
+<p>体重は、毎朝、同じころに量ると、日々の揺れが小さくなります。食事は、食べたものを撮るか書くかして、1日の分をなるべく全部記録してください。</p></details>
+<h2>6. 医療の助言ではありません</h2>
+<p>医療の助言ではありません。持病のある方は、医師に相談してください。</p>
+</main>
+<main id="variant-c" data-name="流れの図から読む" hidden>
+<h1>推定消費カロリーと1日の目安の出し方</h1>
+<p>nu-tori は、1日に食べる量の目安（1日の目安）を、推定消費カロリーと目標から出し、毎週の記録で見直します。このページでは、その出し方を説明します。</p>
+
+<figure class="figure figure-loop" id="c-loop">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 470" role="img" aria-label="毎週の見直しの流れ">
+    <defs><marker id="c-loop-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text class="col-label" x="100" y="14" text-anchor="middle">食事の記録から</text>
+    <text class="col-label" x="265" y="14" text-anchor="middle">体重の記録から</text>
+    <rect class="node " x="36" y="24" width="128" height="36" rx="10"/><text class="node-text " x="100" y="47" text-anchor="middle">食べた量</text>
+    <rect class="node " x="196" y="24" width="138" height="36" rx="10"/><text class="node-text " x="265" y="47" text-anchor="middle">毎朝の体重</text>
+    <rect class="node " x="36" y="92" width="128" height="48" rx="10"/><text class="node-text " x="100" y="112" text-anchor="middle">推定消費カロリー</text><text class="node-text " x="100" y="129" text-anchor="middle">との差</text>
+    <rect class="node " x="196" y="92" width="138" height="48" rx="10"/><text class="node-text " x="265" y="112" text-anchor="middle">体重の傾向</text><text class="node-text " x="265" y="129" text-anchor="middle">（揺れをならす）</text>
+    <rect class="node " x="36" y="172" width="128" height="48" rx="10"/><text class="node-text " x="100" y="192" text-anchor="middle">予想した</text><text class="node-text " x="100" y="209" text-anchor="middle">体重の動き</text>
+    <rect class="node " x="196" y="172" width="138" height="48" rx="10"/><text class="node-text " x="265" y="192" text-anchor="middle">実際の</text><text class="node-text " x="265" y="209" text-anchor="middle">体重の動き</text>
+    <path class="arrow" d="M100 60 V90" marker-end="url(#c-loop-head)"/>
+    <path class="arrow" d="M265 60 V90" marker-end="url(#c-loop-head)"/>
+    <path class="arrow" d="M100 140 V170" marker-end="url(#c-loop-head)"/>
+    <path class="arrow" d="M265 140 V170" marker-end="url(#c-loop-head)"/>
+    <rect class="node accent" x="110" y="258" width="150" height="36" rx="10"/><text class="node-text accent" x="185" y="281" text-anchor="middle">ずれ</text>
+    <path class="arrow" d="M100 220 L160 256" marker-end="url(#c-loop-head)"/>
+    <path class="arrow" d="M265 220 L210 256" marker-end="url(#c-loop-head)"/>
+    <rect class="node " x="96" y="326" width="178" height="48" rx="10"/><text class="node-text " x="185" y="346" text-anchor="middle">推定消費カロリーを</text><text class="node-text " x="185" y="363" text-anchor="middle">ずれの分だけ動かす</text>
+    <rect class="node " x="96" y="406" width="178" height="48" rx="10"/><text class="node-text " x="185" y="426" text-anchor="middle">1日の目安を</text><text class="node-text " x="185" y="443" text-anchor="middle">出し直す</text>
+    <path class="arrow" d="M185 294 V324" marker-end="url(#c-loop-head)"/>
+    <path class="arrow" d="M185 374 V404" marker-end="url(#c-loop-head)"/>
+    <path class="arrow loop" d="M96 430 H16 V42 H34" marker-end="url(#c-loop-head)"/>
+    <text class="col-label loop-label" x="56" y="452" text-anchor="middle">次の週へ</text>
+  </svg>
+  </div>
+  <figcaption>毎週月曜に、前の週（月〜日）の記録でこの流れを1回まわします。</figcaption>
+</figure>
+<p>推定消費カロリーは、体重の傾向と食べた量から推定した値です。体の中を測った値ではありません。予想した体重の動きと実際の動きがずれたら、推定のほうを直します。図の段を、ひとつずつ見ていきます。</p>
+<h2>体重の傾向: 日々の揺れをならします</h2>
+
+<figure class="figure" id="c-trend">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 230" role="img" aria-label="毎朝の体重は1日で0.5 kg ほど上下するが、体重の傾向はなめらかに動く">
+    <line class="grid" x1="34" x2="286" y1="171.38461538461507" y2="171.38461538461507"/><text class="tick" x="28" y="175.38461538461507" text-anchor="end">77</text><line class="grid" x1="34" x2="286" y1="99.84615384615377" y2="99.84615384615377"/><text class="tick" x="28" y="103.84615384615377" text-anchor="end">78</text><line class="grid" x1="34" x2="286" y1="28.307692307692463" y2="28.307692307692463"/><text class="tick" x="28" y="32.30769230769246" text-anchor="end">79</text>
+    <line class="marker" x1="120.04878048780489" x2="120.04878048780489" y1="14" y2="200"/><text class="tick" x="124.04878048780489" y="24">使い始めた日</text>
+    <circle class="dot" cx="34.0" cy="49.8" r="2.6"/><circle class="dot" cx="40.1" cy="64.1" r="2.6"/><circle class="dot" cx="46.3" cy="56.9" r="2.6"/><circle class="dot" cx="52.4" cy="78.4" r="2.6"/><circle class="dot" cx="58.6" cy="99.8" r="2.6"/><circle class="dot" cx="64.7" cy="85.5" r="2.6"/><circle class="dot" cx="70.9" cy="71.2" r="2.6"/><circle class="dot" cx="77.0" cy="107.0" r="2.6"/><circle class="dot" cx="83.2" cy="92.7" r="2.6"/><circle class="dot" cx="89.3" cy="78.4" r="2.6"/><circle class="dot" cx="95.5" cy="35.5" r="2.6"/><circle class="dot" cx="101.6" cy="56.9" r="2.6"/><circle class="dot" cx="107.8" cy="85.5" r="2.6"/><circle class="dot" cx="113.9" cy="78.4" r="2.6"/><circle class="dot" cx="120.0" cy="92.7" r="2.6"/><circle class="dot" cx="126.2" cy="64.1" r="2.6"/><circle class="dot" cx="132.3" cy="35.5" r="2.6"/><circle class="dot" cx="138.5" cy="42.6" r="2.6"/><circle class="dot" cx="144.6" cy="71.2" r="2.6"/><circle class="dot" cx="150.8" cy="49.8" r="2.6"/><circle class="dot" cx="156.9" cy="71.2" r="2.6"/><circle class="dot" cx="163.1" cy="49.8" r="2.6"/><circle class="dot" cx="169.2" cy="78.4" r="2.6"/><circle class="dot" cx="175.4" cy="99.8" r="2.6"/><circle class="dot" cx="181.5" cy="71.2" r="2.6"/><circle class="dot" cx="187.7" cy="64.1" r="2.6"/><circle class="dot" cx="193.8" cy="99.8" r="2.6"/><circle class="dot" cx="200.0" cy="92.7" r="2.6"/><circle class="dot" cx="206.1" cy="121.3" r="2.6"/><circle class="dot" cx="212.2" cy="121.3" r="2.6"/><circle class="dot" cx="218.4" cy="114.2" r="2.6"/><circle class="dot" cx="224.5" cy="128.5" r="2.6"/><circle class="dot" cx="230.7" cy="85.5" r="2.6"/><circle class="dot" cx="236.8" cy="99.8" r="2.6"/><circle class="dot" cx="243.0" cy="121.3" r="2.6"/><circle class="dot" cx="249.1" cy="92.7" r="2.6"/><circle class="dot" cx="255.3" cy="121.3" r="2.6"/><circle class="dot" cx="261.4" cy="149.9" r="2.6"/><circle class="dot" cx="267.6" cy="142.8" r="2.6"/><circle class="dot" cx="273.7" cy="157.1" r="2.6"/><circle class="dot" cx="279.9" cy="164.2" r="2.6"/><circle class="dot" cx="286.0" cy="178.5" r="2.6"/>
+    <path class="trend" d="M34.0 64.2 L40.1 64.2 L46.3 63.4 L52.4 64.9 L58.6 68.4 L64.7 70.1 L70.9 70.2 L77.0 73.9 L83.2 75.8 L89.3 76.1 L95.5 72.0 L101.6 70.5 L107.8 72.0 L113.9 72.6 L120.0 74.6 L126.2 73.6 L132.3 69.8 L138.5 67.1 L144.6 67.5 L150.8 65.7 L156.9 66.3 L163.1 64.6 L169.2 66.0 L175.4 69.4 L181.5 69.6 L187.7 69.0 L193.8 72.1 L200.0 74.2 L206.1 78.9 L212.2 83.1 L218.4 86.2 L224.5 90.4 L230.7 90.0 L236.8 90.9 L243.0 94.0 L249.1 93.8 L255.3 96.6 L261.4 101.9 L267.6 106.0 L273.7 111.1 L279.9 116.4 L286.0 122.6"/>
+    <text class="series-label" x="292" y="126.64006348797888">体重の傾向</text>
+    <text class="series-label muted" x="292" y="194.5384615384608">毎朝の体重</text>
+    <text class="tick" x="34" y="220" text-anchor="start">12/22</text>
+    <text class="tick" x="286" y="220" text-anchor="end">2/1</text>
+    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
+  </svg>
+  </div>
+  <figcaption>点は毎朝の体重、線は体重の傾向です。1日で 0.5 kg ほど上下しても、傾向はなめらかに動きます。nu-tori は、傾向のほうの動きを見ます。</figcaption>
+</figure>
+<p>運動の記録やワークアウト、消費したエネルギーの記録は使いません。運動した分も、体重の傾向の動きに表れるからです。</p>
+<h2>ずれ: 予想と実際を比べます</h2>
+
+<figure class="figure" id="c-review">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 240" role="img" aria-label="予想した体重の動きと、実際の体重の傾向のずれ">
+    <line class="grid" x1="34" x2="264" y1="201.08233538441766" y2="201.08233538441766"/><text class="tick" x="28" y="205.08233538441766" text-anchor="end">78.0</text><line class="grid" x1="34" x2="264" y1="173.4398483377877" y2="173.4398483377877"/><text class="tick" x="28" y="177.4398483377877" text-anchor="end">78.1</text><line class="grid" x1="34" x2="264" y1="145.79736129115383" y2="145.79736129115383"/><text class="tick" x="28" y="149.79736129115383" text-anchor="end">78.2</text><line class="grid" x1="34" x2="264" y1="118.15487424452388" y2="118.15487424452388"/><text class="tick" x="28" y="122.15487424452388" text-anchor="end">78.3</text><line class="grid" x1="34" x2="264" y1="90.51238719789002" y2="90.51238719789002"/><text class="tick" x="28" y="94.51238719789002" text-anchor="end">78.4</text><line class="grid" x1="34" x2="264" y1="62.869900151260055" y2="62.869900151260055"/><text class="tick" x="28" y="66.86990015126005" text-anchor="end">78.5</text><line class="grid" x1="34" x2="264" y1="35.2274131046301" y2="35.2274131046301"/><text class="tick" x="28" y="39.2274131046301" text-anchor="end">78.6</text>
+    <path class="predicted" d="M34.0 71.3 L264.0 168.5"/>
+    <path class="trend" d="M34.0 71.3 L66.9 64.9 L99.7 70.2 L132.6 83.3 L165.4 84.0 L198.3 81.9 L231.1 93.8 L264.0 101.8"/>
+    <circle class="end" cx="264" cy="168.53626943005116" r="3.5"/>
+    <circle class="end trend-end" cx="264" cy="101.80062534549758" r="3.5"/>
+    <text class="series-label" x="38" y="54.91496928973865">実際の傾向 −0.11 kg</text>
+    <text class="series-label muted" x="132.57142857142856" y="132.9641006661738" text-anchor="middle">予想 −0.35 kg</text>
+    <path class="gap" d="M274 101.80062534549758 h6 V168.53626943005116 h-6"/>
+    <text class="gap-label" x="286" y="133.16844738777436">ずれ</text>
+    <text class="gap-label" x="286" y="149.16844738777436">0.24 kg</text>
+    <text class="tick" x="34" y="230" text-anchor="start">1/11（日）</text>
+    <text class="tick" x="264" y="230" text-anchor="end">1/18（日）</text>
+    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
+  </svg>
+  </div>
+  <figcaption>1月12日〜1月18日の週。食べた量の平均 1,900 kcal と、推定消費カロリー 2,287 kcal の差から予想した動き（点線）より、実際の傾向（実線）は減りませんでした。</figcaption>
+</figure>
+<h2>動かす: ずれの一部ずつ直します</h2>
+
+<div class="equation">
+  <div class="eq-row"><span class="eq-label">ずれ</span><span class="eq-value">0.24 kg × 7,700 kcal ÷ 7 日 ＝ 1日 266 kcal</span></div>
+  <div class="eq-row"><span class="eq-label">動かす割合</span><span class="eq-value">× 0.5（7日記録・同じ向きのずれが2週続いた）</span></div>
+  <div class="eq-row eq-result"><span class="eq-label">推定消費カロリー</span><span class="eq-value">2,287 → <strong>2,154 kcal</strong></span></div>
+</div>
+<p>一度に全部は動かしません。食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど大きく動かします。これを毎週くり返すと、推定は本当の消費に近づきます。</p>
+
+<figure class="figure" id="c-weeks">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 250" role="img" aria-label="推定消費カロリーが毎週の見直しで本当の消費に近づき、1日の目安もそれに沿って下がる">
+    <line class="grid" x1="40" x2="276" y1="198.5263157894737" y2="198.5263157894737"/><text class="tick" x="34" y="202.5263157894737" text-anchor="end">1,600</text><line class="grid" x1="40" x2="276" y1="155.57894736842104" y2="155.57894736842104"/><text class="tick" x="34" y="159.57894736842104" text-anchor="end">1,800</text><line class="grid" x1="40" x2="276" y1="112.63157894736842" y2="112.63157894736842"/><text class="tick" x="34" y="116.63157894736842" text-anchor="end">2,000</text><line class="grid" x1="40" x2="276" y1="69.68421052631581" y2="69.68421052631581"/><text class="tick" x="34" y="73.68421052631581" text-anchor="end">2,200</text><line class="grid" x1="40" x2="276" y1="26.73684210526318" y2="26.73684210526318"/><text class="tick" x="34" y="30.73684210526318" text-anchor="end">2,400</text>
+    <path class="truth" d="M40.0 80.4 L87.2 80.9 L134.4 82.2 L181.6 84.3 L228.8 86.5"/>
+    <path class="trend" d="M40.0 27.0 L87.2 27.0 L87.2 51.0 L134.4 51.0 L134.4 79.6 L181.6 79.6 L181.6 95.5 L228.8 95.5 L228.8 94.8 L276.0 94.8"/>
+    <path class="guide" d="M40.0 101.9 L87.2 101.9 L87.2 134.1 L134.4 134.1 L134.4 166.3 L181.6 166.3 L181.6 187.8 L228.8 187.8 L228.8 187.8 L276.0 187.8"/>
+    <text class="value" x="63.6" y="20.951578947368432" text-anchor="middle">2,399</text><text class="value" x="110.80000000000001" y="45.00210526315789" text-anchor="middle">2,287</text><text class="value" x="158" y="73.56210526315789" text-anchor="middle">2,154</text><text class="value" x="205.2" y="89.45263157894736" text-anchor="middle">2,080</text><text class="value" x="252.4" y="88.80842105263157" text-anchor="middle">2,083</text>
+    <text class="value muted" x="63.6" y="116.89473684210526" text-anchor="middle">2,050</text><text class="value muted" x="110.80000000000001" y="149.10526315789474" text-anchor="middle">1,900</text><text class="value muted" x="158" y="181.31578947368422" text-anchor="middle">1,750</text><text class="value muted" x="205.2" y="202.78947368421052" text-anchor="middle">1,650</text><text class="value muted" x="252.4" y="202.78947368421052" text-anchor="middle">1,650</text>
+    <text class="series-label" x="282" y="92.80842105263157">推定消費</text>
+    <text class="series-label" x="282" y="106.80842105263157">カロリー</text>
+    <text class="series-label muted" x="282" y="191.78947368421052">1日の目安</text>
+    <text class="series-label faint" x="232.8" y="64.51594759103233">本当の消費</text>
+    <text class="tick" x="63.6" y="240" text-anchor="middle">1週目</text><text class="tick" x="110.80000000000001" y="240" text-anchor="middle">2週目</text><text class="tick" x="158" y="240" text-anchor="middle">3週目</text><text class="tick" x="205.2" y="240" text-anchor="middle">4週目</text><text class="tick" x="252.4" y="240" text-anchor="middle">5週目</text>
+    <text class="tick" x="34" y="12" text-anchor="end">kcal</text>
+  </svg>
+  </div>
+  <figcaption>架空の1人の例です。「本当の消費」（点線）は、この人の体だけが知っている値として置いた仮定で、nu-tori には見えません。推定消費カロリーは、毎週のずれから本当の消費に近づいていきます。</figcaption>
+</figure>
+<h2>出し直す: 体重が減ると、消費も減ります</h2>
+<p>体重が減ると消費も減るので、同じ量を食べ続けると、減り方はだんだん緩くなります。毎週の見直しは、この変化にも合わせます。</p>
+
+<figure class="figure" id="c-plateau">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 220" role="img" aria-label="同じ量を食べ続けると、体重の減り方がだんだん緩くなり、止まっていく">
+    <line class="grid" x1="34" x2="340" y1="174.1818181818182" y2="174.1818181818182"/><text class="tick" x="28" y="178.1818181818182" text-anchor="end">60</text><line class="grid" x1="34" x2="340" y1="134.63636363636363" y2="134.63636363636363"/><text class="tick" x="28" y="138.63636363636363" text-anchor="end">65</text><line class="grid" x1="34" x2="340" y1="95.0909090909091" y2="95.0909090909091"/><text class="tick" x="28" y="99.0909090909091" text-anchor="end">70</text><line class="grid" x1="34" x2="340" y1="55.54545454545456" y2="55.54545454545456"/><text class="tick" x="28" y="59.54545454545456" text-anchor="end">75</text>
+    <path class="trend" d="M34.0 37.4 L45.8 50.3 L57.5 62.0 L69.3 72.6 L81.1 82.2 L92.8 90.9 L104.6 98.8 L116.4 105.9 L128.2 112.4 L139.9 118.3 L151.7 123.6 L163.5 128.4 L175.2 132.8 L187.0 136.8 L198.8 140.4 L210.5 143.6 L222.3 146.6 L234.1 149.2 L245.8 151.7 L257.6 153.9 L269.4 155.9 L281.2 157.7 L292.9 159.3 L304.7 160.8 L316.5 162.1 L328.2 163.3 L340.0 164.4"/>
+    <circle class="end trend-end" cx="187" cy="136.76094564712503" r="3.5"/>
+    <text class="value" x="193" y="124.76094564712503" text-anchor="start">1年で 12.6 kg 減</text>
+    <circle class="end trend-end" cx="340" cy="164.43929833331367" r="3.5"/>
+    <text class="value" x="340" y="150.43929833331367" text-anchor="end">次の1年は 3.5 kg 減</text>
+    <text class="tick" x="34" y="210" text-anchor="start">今</text>
+    <text class="tick" x="187" y="210" text-anchor="middle">1年後</text>
+    <text class="tick" x="340" y="210" text-anchor="end">2年後</text>
+    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
+  </svg>
+  </div>
+  <figcaption>1,650 kcal を見直さずに食べ続けたときの体重の動き（同じ仮定で計算）。体重が減ると消費も減り（この例では 1 kg あたり 1日 27 kcal）、食べた量との差が縮んで、減り方がだんだん緩くなります。nu-tori は毎週の見直しで、この変化に合わせて1日の目安を直します。</figcaption>
+</figure>
+<h2>決まりの詳細</h2>
+<h3 class="rule-head">最初の推定消費カロリー</h3>
+<p>初めて目標を立てるときに、次のどちらかで出します。</p>
+<h3>記録が足りるとき: 食べた量と体重の傾向から逆算します</h3>
+<p>今日を除く直前の 28 日の、食べた量と体重から出します。食べた量は、nu-tori を使い始めた日からは nu-tori の食事の記録を、使い始める前の日はヘルスケアの摂取エネルギーを使います。</p>
+<ul><li>食べた量のある日が 14 日以上あること。食べた量がほかの日の中ほどの値の半分に満たない日（1食だけ記録した日など）は、記録の途中とみなして数えません</li><li>体重を記録した日が 4 日以上あり、最初の日から最後の日まで 14 日以上あること</li></ul>
+<p>食べた量の1日の平均から、体重の傾きの分を引いて出します。体重 1 kg の増減を 7,700 kcal とみなし、たとえば体重が1日に 0.1 kg ずつ減っていれば、食べた量の平均に 770 kcal を足した値になります。</p>
+<h3>記録が足りないとき: 身体データから式で出します</h3>
+<p>身長・生年月日（年齢）・性別と、開始の日の体重の傾向から、安静にしているときの消費を Mifflin-St Jeor の式で出し、活動量の係数を掛けます。ヘルスケアから読めない値は、アプリで入れていただきます。</p>
+<ul><li>歩数が読めるとき: 直前 28 日の、歩いた日の平均の歩数で決めます。5,000 歩未満は 1.4、10,000 歩未満は 1.55、それ以上は 1.7</li><li>歩数が読めないとき: 3つから選んでいただきます。ほぼ座り仕事は 1.4、立ち仕事が多いは 1.55、よく動くは 1.7</li></ul>
+<p>身体データと、使い始める前の摂取エネルギーは、この計算にだけ使い、保存しません。</p>
+<h3 class="rule-head">1日の目安</h3>
+<p>1日の目安は、推定消費カロリーから、目標の速さで1日に減らす分を引いたものです。増量では、1日に足す分を足します。</p>
+<p>1日に減らす（足す）分は、期限の日までに目標体重へ届くのに要る体重の変化の速さに、7,700 kcal/kg を掛けて出します。たとえば、体重の傾向が1日に 0.05 kg ずつ減る速さなら、1日に 385 kcal を減らします。維持では、体重の傾向が目標体重の ±0.7 kg の中にあれば、減らしも足しもしません。外れたら、体重の傾向の 1週間に 0.15% の速さで目標体重へ戻す分だけ減らし（足し）ます。</p>
+<p>値は 50 kcal 単位に丸め、次の上限と下限を当てます。</p>
+<ul><li>必要な速さの上限: 1週間に、開始の日の体重の傾向の 0.75%（減量）・0.5%（増量）より速くしません。期限までの日が少なくても、無理な速さにしません</li><li>1日の目安の下限: 1,200 kcal より低くしません</li><li>1週の変化の幅: 毎週の見直しで、前の週の1日の目安から ±150 kcal より大きく変えません</li></ul>
+<h3 class="rule-head">毎週の見直し</h3>
+
+<p>毎週、月曜から当てる推定消費カロリーと1日の目安を、その前の週（月曜から日曜）の記録で見直します。</p><ol><li>前の週の食べた量の平均と、そのときの推定消費カロリーから、体重の傾向がどれだけ変わるはずだったかを出します</li><li>実際の体重の傾向の変化と比べ、ずれの分だけ推定消費カロリーを動かします。一度に全部は動かさず、食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど大きく動かします</li><li>新しい推定消費カロリーで、上の 3 と同じように1日の目安を出し直します</li></ol><p>次のどれかに当たる週は、見直しを見送り、推定消費カロリーも1日の目安も前の週のままにします。</p>
+<ul><li>使い始めて 7 日に満たない（最初の値を食べた量と体重から逆算したときは当てません）</li><li>その週に体重の記録が無い</li><li>その週に食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li></ul>
+<h2>5. 記録を続けると、推定が確かになります</h2>
+<p>推定消費カロリーは、体重の傾向と食べた量のずれから直していきます。毎朝の体重と、食事の記録が揃うほど、推定は実際の消費に近づき、1日の目安も合っていきます。</p>
+<p>体重は、毎朝、同じころに量ると、日々の揺れが小さくなります。食事は、食べたものを撮るか書くかして、1日の分をなるべく全部記録してください。</p>
+<h2>6. 医療の助言ではありません</h2>
+<p>医療の助言ではありません。持病のある方は、医師に相談してください。</p>
+</main>
+<footer class="site-footer">
+  <p>医療の助言ではありません。持病のある方は、医師に相談してください。</p>
+  <p>nu-tori for iPhone</p>
+</footer>
+<nav class="switcher" aria-label="試作の案の切り替え">
+  <button type="button" id="prev" aria-label="前の案">←</button>
+  <span class="switcher-label" id="label"></span>
+  <button type="button" id="next" aria-label="次の案">→</button>
+</nav>
+<script>
+// 試作の切り替えだけ。Artifact では URL のクエリが届かないので、#a・#b・#c で案を選ぶ
+const keys = ["a","b","c"];
+let current = keys.includes(location.hash.slice(1)) ? location.hash.slice(1) : "a";
+const show = (key) => {
+  current = key;
+  for (const k of keys) document.getElementById("variant-" + k).hidden = k !== key;
+  const main = document.getElementById("variant-" + key);
+  document.getElementById("label").textContent = key.toUpperCase() + "（" + main.dataset.name + "）";
+  try { history.replaceState(null, "", "#" + key); } catch {}
+};
+const step = (n) => { show(keys[(keys.indexOf(current) + n + keys.length) % keys.length]); window.scrollTo(0, 0); };
+document.getElementById("prev").addEventListener("click", () => step(-1));
+document.getElementById("next").addEventListener("click", () => step(1));
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest && e.target.closest("input, textarea, [contenteditable]")) return;
+  if (e.key === "ArrowLeft") step(-1);
+  if (e.key === "ArrowRight") step(1);
+});
+show(current);
+</script>

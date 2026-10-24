@@ -1,0 +1,581 @@
+{
+  "initial": {
+    "kcal": 2399,
+    "source": "formula",
+    "startingWeightTrendKg": 78.38041131871172,
+    "guideKcal": 2050,
+    "limitHits": []
+  },
+  "deadline": "2026-03-29",
+  "priorDays": [
+    {
+      "calendarDay": "2025-12-08",
+      "weightKg": 78.5,
+      "trendKg": 78.5
+    },
+    {
+      "calendarDay": "2025-12-09",
+      "weightKg": 78.1,
+      "trendKg": 78.46
+    },
+    {
+      "calendarDay": "2025-12-10",
+      "weightKg": 78.2,
+      "trendKg": 78.434
+    },
+    {
+      "calendarDay": "2025-12-11",
+      "weightKg": 78.4,
+      "trendKg": 78.4306
+    },
+    {
+      "calendarDay": "2025-12-12",
+      "weightKg": 78.9,
+      "trendKg": 78.47754
+    },
+    {
+      "calendarDay": "2025-12-13",
+      "weightKg": 78.7,
+      "trendKg": 78.499786
+    },
+    {
+      "calendarDay": "2025-12-14",
+      "weightKg": 78.1,
+      "trendKg": 78.4598074
+    },
+    {
+      "calendarDay": "2025-12-15",
+      "weightKg": 78.9,
+      "trendKg": 78.50382666
+    },
+    {
+      "calendarDay": "2025-12-16",
+      "weightKg": 78.7,
+      "trendKg": 78.523443994
+    },
+    {
+      "calendarDay": "2025-12-17",
+      "weightKg": 78.3,
+      "trendKg": 78.5010995946
+    },
+    {
+      "calendarDay": "2025-12-18",
+      "weightKg": 78.8,
+      "trendKg": 78.53098963514
+    },
+    {
+      "calendarDay": "2025-12-19",
+      "weightKg": 78.3,
+      "trendKg": 78.507890671626
+    },
+    {
+      "calendarDay": "2025-12-20",
+      "weightKg": 78.5,
+      "trendKg": 78.5071016044634
+    },
+    {
+      "calendarDay": "2025-12-21",
+      "weightKg": 78.2,
+      "trendKg": 78.47639144401705
+    },
+    {
+      "calendarDay": "2025-12-22",
+      "weightKg": 78.7,
+      "trendKg": 78.49875229961535
+    },
+    {
+      "calendarDay": "2025-12-23",
+      "weightKg": 78.5,
+      "trendKg": 78.49887706965382
+    },
+    {
+      "calendarDay": "2025-12-24",
+      "weightKg": 78.6,
+      "trendKg": 78.50898936268844
+    },
+    {
+      "calendarDay": "2025-12-25",
+      "weightKg": 78.3,
+      "trendKg": 78.48809042641959
+    },
+    {
+      "calendarDay": "2025-12-26",
+      "weightKg": 78,
+      "trendKg": 78.43928138377763
+    },
+    {
+      "calendarDay": "2025-12-27",
+      "weightKg": 78.2,
+      "trendKg": 78.41535324539987
+    },
+    {
+      "calendarDay": "2025-12-28",
+      "weightKg": 78.4,
+      "trendKg": 78.41381792085988
+    },
+    {
+      "calendarDay": "2025-12-29",
+      "weightKg": 77.9,
+      "trendKg": 78.3624361287739
+    },
+    {
+      "calendarDay": "2025-12-30",
+      "weightKg": 78.1,
+      "trendKg": 78.3361925158965
+    },
+    {
+      "calendarDay": "2025-12-31",
+      "weightKg": 78.3,
+      "trendKg": 78.33257326430684
+    },
+    {
+      "calendarDay": "2026-01-01",
+      "weightKg": 78.9,
+      "trendKg": 78.38931593787616
+    },
+    {
+      "calendarDay": "2026-01-02",
+      "weightKg": 78.6,
+      "trendKg": 78.41038434408854
+    },
+    {
+      "calendarDay": "2026-01-03",
+      "weightKg": 78.2,
+      "trendKg": 78.38934590967969
+    },
+    {
+      "calendarDay": "2026-01-04",
+      "weightKg": 78.3,
+      "trendKg": 78.38041131871172
+    }
+  ],
+  "days": [
+    {
+      "calendarDay": "2026-01-05",
+      "weightKg": 78.1,
+      "trueWeightKg": 78.4,
+      "kcal": 2170,
+      "trueExpenditureKcal": 2150,
+      "trendKg": 78.35237018684055
+    },
+    {
+      "calendarDay": "2026-01-06",
+      "weightKg": 78.5,
+      "trueWeightKg": 78.40259740259741,
+      "kcal": 1970,
+      "trueExpenditureKcal": 2150.0701298701297,
+      "trendKg": 78.36713316815649
+    },
+    {
+      "calendarDay": "2026-01-07",
+      "weightKg": 78.9,
+      "trueWeightKg": 78.37921167144545,
+      "kcal": 2250,
+      "trueExpenditureKcal": 2149.438715129027,
+      "trendKg": 78.42041985134084
+    },
+    {
+      "calendarDay": "2026-01-08",
+      "weightKg": 78.8,
+      "trueWeightKg": 78.39227157857155,
+      "kcal": 1900,
+      "trueExpenditureKcal": 2149.7913326214316,
+      "trendKg": 78.45837786620676
+    },
+    {
+      "calendarDay": "2026-01-09",
+      "weightKg": 78.4,
+      "trueWeightKg": 78.35983114576358,
+      "kcal": 2110,
+      "trueExpenditureKcal": 2148.9154409356165,
+      "trendKg": 78.45254007958609
+    },
+    {
+      "calendarDay": "2026-01-10",
+      "weightKg": 78.7,
+      "trueWeightKg": 78.35477719239532,
+      "kcal": 1800,
+      "trueExpenditureKcal": 2148.7789841946733,
+      "trendKg": 78.47728607162747
+    },
+    {
+      "calendarDay": "2026-01-11",
+      "weightKg": 78.4,
+      "trueWeightKg": 78.30948122042199,
+      "kcal": 2150,
+      "trueExpenditureKcal": 2147.5559929513934,
+      "trendKg": 78.46955746446473
+    },
+    {
+      "calendarDay": "2026-01-12",
+      "weightKg": 78.7,
+      "trueWeightKg": 78.3097986239348,
+      "kcal": 2020,
+      "trueExpenditureKcal": 2147.5645628462394,
+      "trendKg": 78.49260171801825
+    },
+    {
+      "calendarDay": "2026-01-13",
+      "weightKg": 78.3,
+      "trueWeightKg": 78.29323179759113,
+      "kcal": 1820,
+      "trueExpenditureKcal": 2147.1172585349605,
+      "trendKg": 78.47334154621643
+    },
+    {
+      "calendarDay": "2026-01-14",
+      "weightKg": 78,
+      "trueWeightKg": 78.25074903674243,
+      "kcal": 2100,
+      "trueExpenditureKcal": 2145.9702239920457,
+      "trendKg": 78.4260073915948
+    },
+    {
+      "calendarDay": "2026-01-15",
+      "weightKg": 78.4,
+      "trueWeightKg": 78.24477887778242,
+      "kcal": 1750,
+      "trueExpenditureKcal": 2145.8090297001254,
+      "trendKg": 78.42340665243532
+    },
+    {
+      "calendarDay": "2026-01-16",
+      "weightKg": 78.5,
+      "trueWeightKg": 78.1933751076915,
+      "kcal": 1960,
+      "trueExpenditureKcal": 2144.4211279076703,
+      "trendKg": 78.43106598719179
+    },
+    {
+      "calendarDay": "2026-01-17",
+      "weightKg": 78,
+      "trueWeightKg": 78.16942431185933,
+      "kcal": 1650,
+      "trueExpenditureKcal": 2143.7744564202017,
+      "trendKg": 78.38795938847261
+    },
+    {
+      "calendarDay": "2026-01-18",
+      "weightKg": 78.1,
+      "trueWeightKg": 78.10529775907749,
+      "kcal": 2000,
+      "trueExpenditureKcal": 2142.043039495092,
+      "trendKg": 78.35916344962534
+    },
+    {
+      "calendarDay": "2026-01-19",
+      "weightKg": 77.7,
+      "trueWeightKg": 78.08685061109111,
+      "kcal": 1870,
+      "trueExpenditureKcal": 2141.54496649946,
+      "trendKg": 78.29324710466281
+    },
+    {
+      "calendarDay": "2026-01-20",
+      "weightKg": 77.7,
+      "trueWeightKg": 78.05158503102625,
+      "kcal": 1670,
+      "trueExpenditureKcal": 2140.5927958377088,
+      "trendKg": 78.23392239419653
+    },
+    {
+      "calendarDay": "2026-01-21",
+      "weightKg": 77.8,
+      "trueWeightKg": 77.99046908351485,
+      "kcal": 1950,
+      "trueExpenditureKcal": 2138.942665254901,
+      "trendKg": 78.19053015477687
+    },
+    {
+      "calendarDay": "2026-01-22",
+      "weightKg": 77.6,
+      "trueWeightKg": 77.96593107504019,
+      "kcal": 1600,
+      "trueExpenditureKcal": 2138.2801390260847,
+      "trendKg": 78.13147713929918
+    },
+    {
+      "calendarDay": "2026-01-23",
+      "weightKg": 78.2,
+      "trueWeightKg": 77.89602456347836,
+      "kcal": 1810,
+      "trueExpenditureKcal": 2136.3926632139155,
+      "trendKg": 78.13832942536926
+    },
+    {
+      "calendarDay": "2026-01-24",
+      "weightKg": 78,
+      "trueWeightKg": 77.85363590591811,
+      "kcal": 1500,
+      "trueExpenditureKcal": 2135.2481694597886,
+      "trendKg": 78.12449648283234
+    },
+    {
+      "calendarDay": "2026-01-25",
+      "weightKg": 77.7,
+      "trueWeightKg": 77.77113614365061,
+      "kcal": 1850,
+      "trueExpenditureKcal": 2133.020675878566,
+      "trendKg": 78.0820468345491
+    },
+    {
+      "calendarDay": "2026-01-26",
+      "weightKg": 78.1,
+      "trueWeightKg": 77.73438021171833,
+      "kcal": 1770,
+      "trueExpenditureKcal": 2132.028265716395,
+      "trendKg": 78.08384215109419
+    },
+    {
+      "calendarDay": "2026-01-27",
+      "weightKg": 77.7,
+      "trueWeightKg": 77.68736355383308,
+      "kcal": 1570,
+      "trueExpenditureKcal": 2130.758815953493,
+      "trendKg": 78.04545793598477
+    },
+    {
+      "calendarDay": "2026-01-28",
+      "weightKg": 77.3,
+      "trueWeightKg": 77.61453773357938,
+      "kcal": 1850,
+      "trueExpenditureKcal": 2128.7925188066433,
+      "trendKg": 77.9709121423863
+    },
+    {
+      "calendarDay": "2026-01-29",
+      "weightKg": 77.4,
+      "trueWeightKg": 77.57833091295514,
+      "kcal": 1500,
+      "trueExpenditureKcal": 2127.8149346497885,
+      "trendKg": 77.91382092814767
+    },
+    {
+      "calendarDay": "2026-01-30",
+      "weightKg": 77.2,
+      "trueWeightKg": 77.49679650585776,
+      "kcal": 1710,
+      "trueExpenditureKcal": 2125.6135056581593,
+      "trendKg": 77.8424388353329
+    },
+    {
+      "calendarDay": "2026-01-31",
+      "weightKg": 77.1,
+      "trueWeightKg": 77.44282072590215,
+      "kcal": 1400,
+      "trueExpenditureKcal": 2124.156159599358,
+      "trendKg": 77.76819495179961
+    },
+    {
+      "calendarDay": "2026-02-01",
+      "weightKg": 76.9,
+      "trueWeightKg": 77.34877447140873,
+      "kcal": 1750,
+      "trueExpenditureKcal": 2121.6169107280357,
+      "trendKg": 77.68137545661965
+    }
+  ],
+  "reviews": [
+    {
+      "reviewedMonday": "2026-01-12",
+      "previousExpenditureKcal": 2399,
+      "previousGuideKcal": 2050,
+      "averageEnergyIntakeKcal": 2050,
+      "recordedMealDayCount": 7,
+      "actualWeightChangeKg": 0.08914614575300561,
+      "sundayWeightTrendKg": 78.46955746446473,
+      "predictedWeightChangeKg": -0.31727272727272726,
+      "deviationKg": -0.4064188730257329,
+      "expenditureKcal": 2287,
+      "deviationDirection": "negative",
+      "guideKcal": 1900,
+      "limitHits": [
+        "weekly_change"
+      ]
+    },
+    {
+      "reviewedMonday": "2026-01-19",
+      "previousExpenditureKcal": 2287,
+      "previousGuideKcal": 1900,
+      "averageEnergyIntakeKcal": 1900,
+      "recordedMealDayCount": 7,
+      "actualWeightChangeKg": -0.11039401483938605,
+      "sundayWeightTrendKg": 78.35916344962534,
+      "predictedWeightChangeKg": -0.3518181818181818,
+      "deviationKg": -0.24142416697879576,
+      "expenditureKcal": 2154,
+      "deviationDirection": "negative",
+      "guideKcal": 1750,
+      "limitHits": [
+        "weekly_change"
+      ]
+    },
+    {
+      "reviewedMonday": "2026-01-26",
+      "previousExpenditureKcal": 2154,
+      "previousGuideKcal": 1750,
+      "averageEnergyIntakeKcal": 1750,
+      "recordedMealDayCount": 7,
+      "actualWeightChangeKg": -0.2771166150762383,
+      "sundayWeightTrendKg": 78.0820468345491,
+      "predictedWeightChangeKg": -0.36727272727272725,
+      "deviationKg": -0.09015611219648895,
+      "expenditureKcal": 2080,
+      "deviationDirection": "negative",
+      "guideKcal": 1650,
+      "limitHits": []
+    },
+    {
+      "reviewedMonday": "2026-02-02",
+      "previousExpenditureKcal": 2080,
+      "previousGuideKcal": 1650,
+      "averageEnergyIntakeKcal": 1650,
+      "recordedMealDayCount": 7,
+      "actualWeightChangeKg": -0.40067137792945573,
+      "sundayWeightTrendKg": 77.68137545661965,
+      "predictedWeightChangeKg": -0.39090909090909093,
+      "deviationKg": 0.009762287020364802,
+      "expenditureKcal": 2083,
+      "deviationDirection": "positive",
+      "guideKcal": 1650,
+      "limitHits": []
+    }
+  ],
+  "plateau": [
+    {
+      "week": 4,
+      "trueWeightKg": 77.30051253495054,
+      "trueExpenditureKcal": 2120.3138384436643
+    },
+    {
+      "week": 8,
+      "trueWeightKg": 75.66883151606046,
+      "trueExpenditureKcal": 2076.2584509336325
+    },
+    {
+      "week": 12,
+      "trueWeightKg": 74.18999384070844,
+      "trueExpenditureKcal": 2036.3298336991277
+    },
+    {
+      "week": 16,
+      "trueWeightKg": 72.84968231858994,
+      "trueExpenditureKcal": 2000.1414226019283
+    },
+    {
+      "week": 20,
+      "trueWeightKg": 71.63492088380563,
+      "trueExpenditureKcal": 1967.342863862752
+    },
+    {
+      "week": 24,
+      "trueWeightKg": 70.53394896862969,
+      "trueExpenditureKcal": 1937.6166221530013
+    },
+    {
+      "week": 28,
+      "trueWeightKg": 69.53610764497799,
+      "trueExpenditureKcal": 1910.6749064144055
+    },
+    {
+      "week": 32,
+      "trueWeightKg": 68.63173643126919,
+      "trueExpenditureKcal": 1886.2568836442679
+    },
+    {
+      "week": 36,
+      "trueWeightKg": 67.81207976562625,
+      "trueExpenditureKcal": 1864.1261536719087
+    },
+    {
+      "week": 40,
+      "trueWeightKg": 67.06920223994987,
+      "trueExpenditureKcal": 1844.0684604786466
+    },
+    {
+      "week": 44,
+      "trueWeightKg": 66.39591177421302,
+      "trueExpenditureKcal": 1825.8896179037513
+    },
+    {
+      "week": 48,
+      "trueWeightKg": 65.78568998719715,
+      "trueExpenditureKcal": 1809.413629654323
+    },
+    {
+      "week": 52,
+      "trueWeightKg": 65.23262908956319,
+      "trueExpenditureKcal": 1794.480985418206
+    },
+    {
+      "week": 56,
+      "trueWeightKg": 64.73137468829454,
+      "trueExpenditureKcal": 1780.9471165839523
+    },
+    {
+      "week": 60,
+      "trueWeightKg": 64.27707394878095,
+      "trueExpenditureKcal": 1768.6809966170856
+    },
+    {
+      "week": 64,
+      "trueWeightKg": 63.86532861267968,
+      "trueExpenditureKcal": 1757.5638725423514
+    },
+    {
+      "week": 68,
+      "trueWeightKg": 63.49215241670286,
+      "trueExpenditureKcal": 1747.488115250977
+    },
+    {
+      "week": 72,
+      "trueWeightKg": 63.15393250008554,
+      "trueExpenditureKcal": 1738.3561775023095
+    },
+    {
+      "week": 76,
+      "trueWeightKg": 62.847394427105854,
+      "trueExpenditureKcal": 1730.079649531858
+    },
+    {
+      "week": 80,
+      "trueWeightKg": 62.56957048602666,
+      "trueExpenditureKcal": 1722.5784031227197
+    },
+    {
+      "week": 84,
+      "trueWeightKg": 62.31777095754887,
+      "trueExpenditureKcal": 1715.7798158538194
+    },
+    {
+      "week": 88,
+      "trueWeightKg": 62.08955807461534,
+      "trueExpenditureKcal": 1709.618068014614
+    },
+    {
+      "week": 92,
+      "trueWeightKg": 61.882722421460315,
+      "trueExpenditureKcal": 1704.0335053794283
+    },
+    {
+      "week": 96,
+      "trueWeightKg": 61.695261543414574,
+      "trueExpenditureKcal": 1698.9720616721934
+    },
+    {
+      "week": 100,
+      "trueWeightKg": 61.525360560379816,
+      "trueExpenditureKcal": 1694.384735130255
+    },
+    {
+      "week": 104,
+      "trueWeightKg": 61.37137459628369,
+      "trueExpenditureKcal": 1690.2271140996595
+    },
+    {
+      "week": 108,
+      "trueWeightKg": 61.231812854408616,
+      "trueExpenditureKcal": 1686.4589470690325
+    }
+  ]
+}
