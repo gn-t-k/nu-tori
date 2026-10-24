@@ -23,8 +23,7 @@ struct GoalSetupMaintenancePage: View {
                         GoalSetupRecalculatedNote()
                     }
                 }
-                // DESIGN.md の押せないボタン（`.disabled` に任せる）に従わず、文と値も薄くする。仕様 #523 の「決める」が、押したら「ほかを薄くして」と決めているため
-                .opacity(content.isDeciding ? 0.4 : 1)
+                .dimmedWhileDeciding(content.isDeciding)
                 if content.unreachableRequest == .decision {
                     Text(GoalSetupUnreachableText.decision)
                         .font(.footnote)
@@ -40,8 +39,7 @@ struct GoalSetupMaintenancePage: View {
                         GoalSetupRetryButton(retry: actions.retry)
                     }
                 }
-                .opacity(content.isDeciding ? 0.4 : 1)
-                .disabled(content.isDeciding)
+                .dimmedWhileDeciding(content.isDeciding)
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 120)

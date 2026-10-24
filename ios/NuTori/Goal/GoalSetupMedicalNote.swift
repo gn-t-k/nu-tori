@@ -13,8 +13,6 @@ struct GoalSetupMedicalNote: View {
                 .accessibilityIdentifier("goal-setup-medical-note")
             DailyGuideExplanationLink()
         }
-        // DESIGN.md の押せないボタン（`.disabled` に任せる）に従わず、文も薄くする。仕様 #523 の「決める」が、押したら「ほかを薄くして」と決めているため
-        .opacity(isDeciding ? 0.4 : 1)
-        .disabled(isDeciding)
+        .dimmedWhileDeciding(isDeciding)
     }
 }
