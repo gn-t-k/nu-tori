@@ -449,7 +449,7 @@ struct SubscriptionPurchasesTests {
         init() {
             monthly = SubscriptionProduct(id: monthlyId, plan: .monthly, displayPrice: "¥980")
             yearly = SubscriptionProduct(
-                id: "app.nu-tori.subscription.yearly", plan: .yearly, displayPrice: "¥8,800")
+                id: "app.nu_tori.subscription.yearly", plan: .yearly, displayPrice: "¥8,800")
             let other = SubscriptionProduct(id: "other", plan: .monthly, displayPrice: "¥1")
             purchases = .fixture(
                 store: .ok(products: [yearly, other, monthly]), transport: .ok())
@@ -462,7 +462,7 @@ struct SubscriptionPurchasesTests {
     }
 }
 
-private let monthlyId = "app.nu-tori.subscription.monthly"
+private let monthlyId = "app.nu_tori.subscription.monthly"
 private let requestId = UUID(uuidString: "6A1F2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D")!
 private let linkedJSON = """
     {"result":"linked","changes":[

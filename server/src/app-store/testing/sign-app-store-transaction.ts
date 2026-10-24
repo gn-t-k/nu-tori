@@ -37,7 +37,7 @@ export const signAppStoreTransaction = (
     originalTransactionId: "2000000000000001",
     webOrderLineItemId: "2000000000000002",
     bundleId: env.APPLE_BUNDLE_ID,
-    productId: "app.nu-tori.subscription.monthly",
+    productId: "app.nu_tori.subscription.monthly",
     subscriptionGroupIdentifier: "21000000",
     purchaseDate: Date.parse("2026-10-20T00:00:00Z"),
     originalPurchaseDate: Date.parse("2026-10-20T00:00:00Z"),

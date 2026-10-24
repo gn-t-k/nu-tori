@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, test } from "vitest";
 import type { SubscriptionTransactionFact } from "../subscription-transaction-fact";
 import { computeSubscription } from "./index";
 
-const monthly = "app.nu-tori.subscription.monthly";
-const yearly = "app.nu-tori.subscription.yearly";
+const monthly = "app.nu_tori.subscription.monthly";
+const yearly = "app.nu_tori.subscription.yearly";
 
 const transaction = (
   fact: Pick<SubscriptionTransactionFact, "appStoreProductId" | "expiresAt"> &

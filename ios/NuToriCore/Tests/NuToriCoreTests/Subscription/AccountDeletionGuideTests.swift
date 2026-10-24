@@ -296,9 +296,9 @@ private let graceEndDay = CalendarDay(year: 2026, month: 11, day: 18)
 private let tokyo = TimeZone(identifier: "Asia/Tokyo")!
 private let products = [
     SubscriptionProduct(
-        id: "app.nu-tori.subscription.monthly", plan: .monthly, displayPrice: "¥980"),
+        id: "app.nu_tori.subscription.monthly", plan: .monthly, displayPrice: "¥980"),
     SubscriptionProduct(
-        id: "app.nu-tori.subscription.yearly", plan: .yearly, displayPrice: "¥8,800"),
+        id: "app.nu_tori.subscription.yearly", plan: .yearly, displayPrice: "¥8,800"),
 ]
 
 private func subscribed(

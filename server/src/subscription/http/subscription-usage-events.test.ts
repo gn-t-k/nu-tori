@@ -242,7 +242,7 @@ describe("サブスクリプションの利用状況の出来事", () => {
       const sent = JSON.stringify(readPostHogCapturedEvents(captureSpy));
       expect(
         [
-          "app.nu-tori.subscription.monthly",
+          "app.nu_tori.subscription.monthly",
           "480000",
           originalTransactionId,
           appAccountToken,

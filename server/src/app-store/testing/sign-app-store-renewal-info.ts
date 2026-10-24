@@ -21,8 +21,8 @@ export const signAppStoreRenewalInfo = (
 ): Promise<string> =>
   signAppStoreJws(chain, {
     originalTransactionId: "2000000000000001",
-    autoRenewProductId: "app.nu-tori.subscription.monthly",
-    productId: "app.nu-tori.subscription.monthly",
+    autoRenewProductId: "app.nu_tori.subscription.monthly",
+    productId: "app.nu_tori.subscription.monthly",
     autoRenewStatus: 1,
     signedDate: Date.parse("2026-10-20T00:00:01Z"),
     environment: "Production",

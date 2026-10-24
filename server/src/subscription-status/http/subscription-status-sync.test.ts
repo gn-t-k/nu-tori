@@ -90,12 +90,12 @@ describe("サブスクリプションの状態の同期", () => {
         const { subscriptionId } = await factory.appStoreSubscriptions.create();
         await createTransaction(factory, {
           subscriptionId,
-          appStoreProductId: "app.nu-tori.subscription.monthly",
+          appStoreProductId: "app.nu_tori.subscription.monthly",
           expiresAt: new Date("2026-10-15T00:00:00Z"),
         });
         await createTransaction(factory, {
           subscriptionId,
-          appStoreProductId: "app.nu-tori.subscription.monthly",
+          appStoreProductId: "app.nu_tori.subscription.monthly",
           expiresAt: new Date("2026-11-15T00:00:00Z"),
         });
       });
@@ -119,7 +119,7 @@ describe("サブスクリプションの状態の同期", () => {
     beforeEach(async () => {
       await seed(async (factory) => {
         const { id } = await createTransaction(factory, {
-          appStoreProductId: "app.nu-tori.subscription.yearly",
+          appStoreProductId: "app.nu_tori.subscription.yearly",
           expiresAt: new Date("2026-11-15T00:00:00Z"),
         });
         const failure = await factory.subscriptionBillingFailures.create({
@@ -150,7 +150,7 @@ describe("サブスクリプションの状態の同期", () => {
         const { subscriptionId } = await factory.appStoreSubscriptions.create();
         const { id } = await createTransaction(factory, {
           subscriptionId,
-          appStoreProductId: "app.nu-tori.subscription.monthly",
+          appStoreProductId: "app.nu_tori.subscription.monthly",
           expiresAt: new Date("2026-10-15T00:00:00Z"),
         });
         const failure = await factory.subscriptionBillingFailures.create({
@@ -162,7 +162,7 @@ describe("サブスクリプションの状態の同期", () => {
         });
         await createTransaction(factory, {
           subscriptionId,
-          appStoreProductId: "app.nu-tori.subscription.monthly",
+          appStoreProductId: "app.nu_tori.subscription.monthly",
           expiresAt: new Date("2026-11-20T00:00:00Z"),
         });
       });
@@ -185,7 +185,7 @@ describe("サブスクリプションの状態の同期", () => {
         for (const expiresAt of ["2026-10-15T00:00:00Z", "2026-11-15T00:00:00Z"]) {
           const { id } = await createTransaction(factory, {
             subscriptionId,
-            appStoreProductId: "app.nu-tori.subscription.monthly",
+            appStoreProductId: "app.nu_tori.subscription.monthly",
             expiresAt: new Date(expiresAt),
           });
           await factory.subscriptionTransactionRevocations.create({
@@ -204,7 +204,7 @@ describe("サブスクリプションの状態の同期", () => {
     beforeEach(async () => {
       await seed(async (factory) => {
         const { id } = await createTransaction(factory, {
-          appStoreProductId: "app.nu-tori.subscription.monthly",
+          appStoreProductId: "app.nu_tori.subscription.monthly",
           expiresAt: new Date("2026-11-15T00:00:00Z"),
         });
         const revocation = await factory.subscriptionTransactionRevocations.create({
@@ -244,7 +244,7 @@ describe("サブスクリプションの状態の同期", () => {
       await drizzleD1(env.DB).insert(subscriptionD1Tables.testUsers).values({ accountId });
       await seed(async (factory) => {
         await createTransaction(factory, {
-          appStoreProductId: "app.nu-tori.subscription.monthly",
+          appStoreProductId: "app.nu_tori.subscription.monthly",
           expiresAt: new Date("2026-11-15T00:00:00Z"),
         });
       });

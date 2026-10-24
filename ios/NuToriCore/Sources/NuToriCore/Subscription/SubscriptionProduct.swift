@@ -13,7 +13,7 @@ public struct SubscriptionProduct: Sendable, Equatable {
 
     /// 商品の ID と月額か年額か。サーバーの `server/src/subscription/domain/subscription-transaction-fact.ts` と同じ組にする
     public static let ids: [String: SubscriptionStatus.Plan] = [
-        "app.nu-tori.subscription.monthly": .monthly,
-        "app.nu-tori.subscription.yearly": .yearly,
+        "app.nu_tori.subscription.monthly": .monthly,
+        "app.nu_tori.subscription.yearly": .yearly,
     ]
 }
