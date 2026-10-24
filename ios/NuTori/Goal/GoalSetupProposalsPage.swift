@@ -23,9 +23,7 @@ struct GoalSetupProposalsPage: View {
                     waitingRows
                 }
             }
-            // DESIGN.md の押せないボタン（`.disabled` に任せる）に従わず、文と値も薄くする。仕様 #523 の「決める」が、押したら「ほかを薄くして」と決めているため
-            .opacity(content.isDeciding ? 0.4 : 1)
-            .disabled(content.isDeciding)
+            .dimmedWhileDeciding(content.isDeciding)
             if content.showsRecalculated {
                 GoalSetupRecalculatedNote()
             }
@@ -55,8 +53,7 @@ struct GoalSetupProposalsPage: View {
                         .disabled(content.proposals == nil)
                 }
             }
-            .opacity(content.isDeciding ? 0.4 : 1)
-            .disabled(content.isDeciding)
+            .dimmedWhileDeciding(content.isDeciding)
         }
     }
 
