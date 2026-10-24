@@ -1,0 +1,424 @@
+<title>グラフが出るまでの推定消費カロリー</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE（捨てる前提）。「目標の画面で、グラフが出るまでの推定消費カロリーと1日の目安の見せ方を決める」（gn-t-k/nu-tori#744）の試作。
+  目標の画面の「推定消費カロリーと1日の目安」のカードを、今の形（A）と4つの案（B〜E）で描き分ける。ほかのカードは今の画面を簡単にしたもの。
+  場面は4つ（使い始めた日・式／使い始めた日・逆算／見直し1回／グラフが出た日）と、目標は2種類（減らす・増やす）。
+  下のバーの ‹ › か ← → キーで案を、上のボタンで場面と目標を切り替える。#<案>-<場面>-<目標> で開ける（例: #E-s1-lose）。
+  土台は main の画面のコード（コミット d4cd16a の ios/NuTori/Goal/GoalScreen.swift、GoalEnergyChartView.swift と
+  ios/NuToriCore/Sources/NuToriCore/Goal/GoalOverview+History.swift）。main には入れない。
+  値はすべて作ったもの。開発者の健康データは入れていない。
+-->
+<style>
+/* 試作のページの上に、iPhone の幅の画面を置く。画面の中は DESIGN.md のトークン、外は試作の道具の色 */
+:root{
+  --bg:#f2f2f7; --surface:#ffffff; --ink:#000000; --ink2:rgb(60 60 67 / .6); --ink3:rgb(60 60 67 / .3);
+  --sep:rgb(60 60 67 / .29); --fill:#efeff0; --tint:#6155f5; --on-tint:#ffffff; --track:#e5e5ea;
+  --tint-soft:color-mix(in srgb,#6155f5 12%,transparent);
+  --page:#e6e6ee; --page-ink:#1c1c24; --page-muted:#62626e; --frame:#c4c4d0; --panel:#f7f7fb;
+  --font:system-ui,-apple-system,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+    --sep:rgb(84 84 88 / .6); --fill:#323236; --tint:#6d7cff; --on-tint:#ffffff; --track:#2c2c2e;
+    --tint-soft:color-mix(in srgb,#6d7cff 18%,transparent);
+    --page:#0d0d12; --page-ink:#e6e6ee; --page-muted:#9a9aa8; --frame:#3a3a44; --panel:#18181e;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --ink:#ffffff; --ink2:rgb(235 235 245 / .6); --ink3:rgb(235 235 245 / .3);
+  --sep:rgb(84 84 88 / .6); --fill:#323236; --tint:#6d7cff; --on-tint:#ffffff; --track:#2c2c2e;
+  --tint-soft:color-mix(in srgb,#6d7cff 18%,transparent);
+  --page:#0d0d12; --page-ink:#e6e6ee; --page-muted:#9a9aa8; --frame:#3a3a44; --panel:#18181e;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--page-ink);font:14px/1.5 var(--font);
+  padding-block:16px 104px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:6px}
+
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.intro h1{font-size:20px;margin:0 0 4px;text-wrap:balance}
+.intro p{margin:0;color:var(--page-muted);max-width:760px}
+.ctrl{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.seg{display:flex;flex-wrap:wrap;gap:4px;padding:3px;border-radius:12px;background:var(--panel);box-shadow:0 0 0 .5px var(--frame)}
+.seg button{padding:6px 11px;border-radius:9px;font-size:13px;color:var(--page-muted)}
+.seg button[aria-pressed="true"]{background:var(--tint);color:var(--on-tint)}
+.ctrl .lab{font-size:12px;color:var(--page-muted);margin-right:-10px}
+
+.stage{display:grid;grid-template-columns:minmax(0,375px) minmax(0,1fr);gap:24px;align-items:start}
+.stage.all{grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr))}
+@media (max-width:760px){.stage{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.col > .vname{font-size:14px;font-weight:600}
+.col > .vname span{font-weight:400;color:var(--page-muted);font-size:12.5px;margin-left:6px}
+
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.box{background:var(--panel);border-radius:14px;padding:14px 16px;box-shadow:0 0 0 .5px var(--frame);display:flex;flex-direction:column;gap:6px}
+.box h2{font-size:15px;margin:0}
+.box p{margin:0}
+.box ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:13px;font-variant-numeric:tabular-nums}
+.kv dt{color:var(--page-muted)}
+.kv dd{margin:0}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;border-radius:5px;padding:0 6px;border:1px solid currentColor;margin-right:6px}
+.tag.keep{color:#15803d}.tag.change{color:#c2410c}.tag.new{color:#c2410c}.tag.none{color:#15803d}
+
+/* ── 電話の画面 ── */
+.phone{background:var(--bg);color:var(--ink);border:1px solid var(--frame);border-radius:36px;overflow:hidden;font-size:17px;line-height:1.3;max-width:375px;width:100%}
+.statusbar{height:30px}
+.nav{height:44px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 10px}
+.nav .back{color:var(--tint);font-size:17px;white-space:nowrap}
+.nav .t{font-weight:600}
+.scroll{padding:4px 16px 28px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.card h3{font-size:17px;font-weight:600;margin:0}
+.fn{font-size:13px;color:var(--ink2);line-height:18px}
+.big{font-size:22px;font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.pfc{display:flex;gap:14px;font-size:13px;color:var(--ink2)}
+.pfc i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+.quiet{border:1px dashed var(--sep);border-radius:8px;height:110px;display:grid;place-items:center;color:var(--ink3);font-size:13px}
+.target{box-shadow:0 0 0 2px var(--tint)}
+.link{color:var(--tint);font-size:13px;min-height:44px;display:flex;align-items:center}
+.listrow{background:var(--surface);border-radius:10px;min-height:44px;padding:0 16px;display:flex;align-items:center;gap:12px}
+.listrow .sp{flex:1}
+.listrow .chev{color:var(--ink3);font-size:15px}
+svg text{font-family:var(--font)}
+
+/* 案 B */
+.heroNum{font-size:34px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.1}
+.heroNum small{font-size:17px;font-weight:400;margin-left:4px}
+.bars{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.bar{display:grid;grid-template-columns:4.6em 1fr;align-items:center;gap:8px;font-size:12px;color:var(--ink2)}
+.bar .tr{height:18px;border-radius:5px;position:relative;background:transparent}
+.bar .seg1{position:absolute;inset:0 auto 0 0;border-radius:5px}
+.bar .gap{position:absolute;top:0;bottom:0;border-radius:0 5px 5px 0;
+  background:repeating-linear-gradient(135deg,var(--tint-soft) 0 4px,transparent 4px 8px);box-shadow:inset 0 0 0 1.2px var(--tint)}
+.gapLabel{font-size:13px;font-variant-numeric:tabular-nums;color:var(--tint);font-weight:600;align-self:flex-end}
+
+/* 案 C */
+.chip{align-self:flex-start;font-size:12px;font-weight:600;color:var(--tint);background:var(--tint-soft);border-radius:999px;padding:3px 10px}
+.ladder{display:grid;grid-template-columns:1.2em 1fr auto;gap:6px 6px;align-items:baseline;font-variant-numeric:tabular-nums;margin-top:4px}
+.ladder .op{color:var(--ink2);text-align:center}
+.ladder .sub{grid-column:2 / 4;font-size:12px;color:var(--ink2);margin-top:-6px}
+.ladder .rule{grid-column:1 / 4;height:1px;background:var(--sep)}
+.ladder .v{font-size:17px}
+.ladder .v.strong{font-size:22px;font-weight:600}
+
+/* 案 D */
+.pair{display:flex;gap:18px;align-items:baseline;flex-wrap:wrap}
+.pair div{display:flex;flex-direction:column}
+.pair b{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.weeks{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column}
+.weeks li{display:grid;grid-template-columns:18px 1fr auto;gap:2px 10px;padding:7px 0;position:relative;font-size:15px}
+.weeks li::before{content:"";position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--track)}
+.weeks li:first-child::before{top:50%}
+.weeks li:last-child::before{bottom:50%}
+.weeks .dot{width:12px;height:12px;border-radius:50%;margin:4px 3px;position:relative;z-index:1;background:var(--surface);box-shadow:inset 0 0 0 2px var(--ink3)}
+.weeks .done .dot{background:var(--tint);box-shadow:none}
+.weeks .next .dot{box-shadow:inset 0 0 0 3px var(--tint)}
+.weeks .skip .dot{box-shadow:inset 0 0 0 2px var(--ink3);background:repeating-linear-gradient(135deg,var(--ink3) 0 2px,transparent 2px 4px)}
+.weeks .meta{font-size:12px;color:var(--ink2);grid-column:2 / 4}
+.weeks .r{font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink2)}
+.weeks .next .r{color:var(--tint);font-weight:600}
+.weeks .dim{color:var(--ink2)}
+
+/* ── 案の切り替え ── */
+.switcher{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:var(--page-ink);color:var(--page);box-shadow:0 6px 24px rgb(0 0 0 / .25);z-index:10;max-width:calc(100% - 32px)}
+.switcher button{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:var(--page);flex:none}
+.switcher .lab{padding:0 8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lab b{margin-right:6px}
+</style>
+
+<div class="wrap">
+  <div class="intro">
+    <h1>グラフが出るまでの「推定消費カロリーと1日の目安」</h1>
+    <p>点が3つたまる（早くて2週目の終わり）までのあいだに、「1日の推定消費カロリーはこれくらい」「1日の目安はそこから決まり、毎週育っていく」が伝わる形を見比べる（#744）。紫の枠のカードだけが案ごとに変わる。値はすべて作ったもの。</p>
+  </div>
+  <div class="ctrl">
+    <span class="lab">場面</span>
+    <div class="seg" id="scSeg"></div>
+    <span class="lab">目標</span>
+    <div class="seg" id="dirSeg"></div>
+    <span class="lab">見かた</span>
+    <div class="seg" id="viewSeg"></div>
+  </div>
+  <div class="stage" id="stage"></div>
+</div>
+
+<div class="switcher" id="switcher">
+  <button id="prev" aria-label="前の案">‹</button>
+  <div class="lab" id="vlab"></div>
+  <button id="next" aria-label="次の案">›</button>
+</div>
+
+<script>
+// ── 作った値 ──
+const START = '2026-10-24'; // 土曜に使い始め、同じ日に目標を立てた
+const DEADLINE = '2027-01-30';
+const SCENES = {
+  s1: { name:'使い始めた日（式）', today:'2026-10-24', source:'formula',
+    lose:[['2026-10-24',2250,1800]], gain:[['2026-10-24',2050,2350]] },
+  s2: { name:'使い始めた日（逆算）', today:'2026-10-24', source:'backCalculated',
+    lose:[['2026-10-24',2310,1860]], gain:[['2026-10-24',2010,2310]] },
+  s3: { name:'見直し1回', today:'2026-11-03', source:'formula',
+    lose:[['2026-10-24',2250,1800],['2026-11-02',2190,1740]], gain:[['2026-10-24',2050,2350],['2026-11-02',2090,2390]] },
+  s4: { name:'グラフが出た日', today:'2026-11-10', source:'formula',
+    lose:[['2026-10-24',2250,1800],['2026-11-02',2190,1740],['2026-11-09',2160,1720]],
+    gain:[['2026-10-24',2050,2350],['2026-11-02',2090,2390],['2026-11-09',2120,2420]] },
+};
+const GOALS = {
+  lose:{ name:'減らす', label:'減量', from:'74.0', to:'70.0', gapWord:'減らす分', sign:'−' },
+  gain:{ name:'増やす', label:'増量', from:'58.0', to:'61.0', gapWord:'足す分', sign:'+' },
+};
+// 見直しは毎週月曜。使い始めて7日に満たない週は見送る（10月26日は見送り）
+const DEFERRED = ['2026-10-26'];
+
+// ── 日付 ──
+const D = s => new Date(s + 'T00:00:00');
+const iso = d => d.toISOString().slice(0,10);
+const add = (s,n) => { const d = D(s); d.setDate(d.getDate()+n); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const diff = (a,b) => Math.round((D(b)-D(a))/86400000);
+const md = s => { const d = D(s); return `${d.getMonth()+1}月${d.getDate()}日`; };
+const wd = s => '日月火水木金土'[D(s).getDay()];
+const mdw = s => `${md(s)}（${wd(s)}）`;
+const kcal = n => `${n.toLocaleString('en-US')} kcal`;
+const n0 = n => n.toLocaleString('en-US');
+function mondaysAfter(s, until){ const out=[]; let d=s; while(D(d).getDay()!==1) d=add(d,1); if(d===s) d=add(d,7); for(;d<=until;d=add(d,7)) out.push(d); return out; }
+
+// 場面と目標から、カードが使う値をまとめる
+function ctxOf(sc, dir){
+  const S = SCENES[sc], G = GOALS[dir];
+  const points = S[dir].map(([day,e,g]) => ({day,e,g}));
+  const latest = points.at(-1);
+  const mondays = mondaysAfter(START, DEADLINE);
+  const next = mondays.find(m => m > S.today && !DEFERRED.includes(m));
+  const reviewsDone = points.length - 1;
+  return { sc, dir, S, G, points, latest, today:S.today, source:S.source, next,
+    untilNext: diff(S.today, next), reviewsDone, drawn: points.length >= 3, mondays,
+    gap: Math.abs(latest.g - latest.e) };
+}
+const sourceShort = c => c.reviewsDone > 0 ? `${md(c.latest.day)}に記録から見直した値`
+  : c.source === 'formula' ? '式で出した値' : '記録から逆算した値';
+const sourceNote = c => c.reviewsDone > 0 ? '毎週月曜に、食事と体重の記録から直します'
+  : c.source === 'formula' ? '今は式の値。記録から直していきます' : 'これまでの食事と体重から逆算した値。毎週直します';
+
+// ── グラフ（今の GoalEnergyChartView を SVG で写したもの） ──
+// opts.frameAlways: 点が1つでも描く。opts.upcoming: これからの月曜に印
+function chart(c, opts = {}){
+  const W = 320, H = opts.h || 190, L = 44, R = 10, T = 14, B = opts.upcoming ? 36 : 22;
+  const total = diff(START, DEADLINE);
+  const x = day => L + (W-L-R) * diff(START, day) / total;
+  const vals = c.points.flatMap(p => [p.e, p.g]);
+  let lo = Math.min(...vals) - 150, hi = Math.max(...vals) + 150;
+  if (hi - lo < 800){ const m = (hi+lo)/2; lo = m-400; hi = m+400; }
+  const y = v => T + (H-T-B) * (hi - v) / (hi - lo);
+  const step = 200, ticks = []; for (let t = Math.ceil(lo/step)*step; t <= hi; t += step) ticks.push(t);
+  const tk = ticks.filter((_,i) => ticks.length <= 4 || i % 2 === 0);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="推定消費カロリーと1日の目安のグラフ">`;
+  tk.forEach(t => { s += `<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--sep)" stroke-width=".5"/>`
+    + `<text x="${L-6}" y="${y(t)+3.5}" font-size="10" text-anchor="end" fill="var(--ink2)">${n0(t)}</text>`; });
+  // 2本の間の塗り（点ごとの帯）と、階段
+  const pts = c.points;
+  const endX = x(DEADLINE);
+  for (let i = 0; i < pts.length; i++){
+    const x1 = x(pts[i].day), x2 = i < pts.length-1 ? x(pts[i+1].day) : (opts.frameAlways ? x(c.today) : x1);
+    if (x2 > x1) s += `<rect x="${x1}" width="${x2-x1}" y="${y(Math.max(pts[i].e,pts[i].g))}" height="${Math.abs(y(pts[i].e)-y(pts[i].g))}" fill="var(--tint-soft)"/>`;
+  }
+  let stepD = `M${x(pts[0].day)},${y(pts[0].g)}`;
+  for (let i = 1; i < pts.length; i++) stepD += ` H${x(pts[i].day)} V${y(pts[i].g)}`;
+  stepD += ` H${endX}`;
+  s += `<path d="${stepD}" fill="none" stroke="var(--ink2)" stroke-width="1.4" stroke-dasharray="3 3"/>`;
+  if (pts.length > 1) s += `<polyline points="${pts.map(p => `${x(p.day)},${y(p.e)}`).join(' ')}" fill="none" stroke="var(--tint)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  pts.forEach(p => { s += `<circle cx="${x(p.day)}" cy="${y(p.e)}" r="${pts.length === 1 ? 4 : 2.6}" fill="var(--tint)"/>`; });
+  DEFERRED.filter(d => d <= c.today).forEach(d => {
+    s += `<line x1="${x(d)}" x2="${x(d)}" y1="${T}" y2="${H-B}" stroke="var(--ink3)" stroke-dasharray="2 2"/>`
+      + `<text x="${x(d)+3}" y="${T+8}" font-size="9" fill="var(--ink2)">見送り</text>`; });
+  // 線の端の名前
+  const last = pts.at(-1), lx = x(last.day) + 6, above = last.e >= last.g;
+  s += `<text x="${lx}" y="${y(last.e) + (above ? -6 : 12)}" font-size="10" fill="var(--ink2)">推定 ${n0(last.e)}</text>`;
+  s += `<text x="${lx}" y="${y(last.g) + (above ? 12 : -6)}" font-size="10" fill="var(--ink2)">目安 ${n0(last.g)}</text>`;
+  if (opts.frameAlways){
+    s += `<line x1="${x(c.today)}" x2="${x(c.today)}" y1="${T}" y2="${H-B}" stroke="var(--ink3)"/>`;
+    s += `<rect x="${x(c.today)}" y="${T}" width="${endX - x(c.today)}" height="${H-B-T}" fill="var(--fill)" opacity=".45"/>`;
+  }
+  if (opts.upcoming){
+    const yb = H - B + 9;
+    c.mondays.forEach(m => {
+      const isDef = DEFERRED.includes(m), past = m <= c.today, isNext = m === c.next;
+      if (past && !isDef) s += `<circle cx="${x(m)}" cy="${yb}" r="3" fill="var(--tint)"/>`;
+      else if (isDef) s += `<circle cx="${x(m)}" cy="${yb}" r="2.6" fill="none" stroke="var(--ink3)" stroke-dasharray="1.5 1.5"/>`;
+      else s += `<circle cx="${x(m)}" cy="${yb}" r="${isNext ? 3.6 : 2.4}" fill="${isNext ? 'var(--surface)' : 'none'}" stroke="${isNext ? 'var(--tint)' : 'var(--ink3)'}" stroke-width="${isNext ? 2 : 1}"/>`;
+    });
+    const nx = x(c.next);
+    s += `<text x="${Math.min(nx, W-R-46)}" y="${yb+14}" font-size="10" fill="var(--tint)" font-weight="600">次 ${md(c.next)}</text>`;
+  }
+  s += `<text x="${L}" y="${H-3}" font-size="10" fill="var(--ink2)">${md(START)}</text>`;
+  s += `<text x="${W-R}" y="${H-3}" font-size="10" text-anchor="end" fill="var(--ink2)">${md(DEADLINE)}</text>`;
+  return s + '</svg>';
+}
+const link = '<div class="link">推定消費カロリーと1日の目安の出し方</div>';
+
+// ── 案 ──
+const VARIANTS = [
+  { key:'A', name:'今の形', short:'数字3行と注記',
+    rule:['keep','3点たまるまで描かない、のまま'], values:['none','今の値だけ'],
+    notes:['比べるための今の画面。','上の「今の1日の目安」のカードと、数字が2回出る。'],
+    card(c){
+      if (c.drawn) return `<h3>推定消費カロリーと1日の目安</h3>${chart(c)}${link}`;
+      const d = c.latest.g - c.latest.e;
+      return `<h3>推定消費カロリーと1日の目安</h3>
+        <div class="num">推定消費カロリー ${kcal(c.latest.e)}</div>
+        <div class="num">1日の目安 ${kcal(c.latest.g)}</div>
+        <div class="num">1日の目安は推定消費カロリーより ${kcal(Math.abs(d))} ${d < 0 ? '少ない' : '多い'}</div>
+        <div class="fn">週ごとの見直しが 2 回たまると、グラフで見せます。</div>${link}`;
+    } },
+  { key:'B', name:'推定消費カロリーを主役に', short:'大きな数字と2本の棒',
+    rule:['keep','3点たまるまで描かない、のまま。グラフが出ても数字と棒は上に残す'], values:['none','新しい値は要らない（出どころは今受け取っている initialSource）'],
+    notes:['推定消費カロリーをいちばん大きく出し、1日の目安は同じ目盛り（0 kcal から）の棒で並べ、差を斜線で見せる。','増やす目標では、目安の棒が長く、足す分が棒の右にはみ出す。','上の「今の1日の目安」のカードより大きな数字になる。目安のカードとの重なりは残る。'],
+    card(c){
+      const max = Math.max(c.latest.e, c.latest.g), pe = c.latest.e/max*100, pg = c.latest.g/max*100;
+      const lose = c.dir === 'lose';
+      const barE = `<div class="bar"><span>推定</span><div class="tr"><div class="seg1" style="width:${pe}%;background:var(--ink3)"></div></div></div>`;
+      const barG = `<div class="bar"><span>1日の目安</span><div class="tr"><div class="seg1" style="width:${pg}%;background:var(--tint)"></div>
+        ${lose ? `<div class="gap" style="left:${pg}%;width:${pe-pg}%"></div>` : ''}</div></div>`;
+      const barEgain = `<div class="bar"><span>推定</span><div class="tr"><div class="seg1" style="width:${pe}%;background:var(--ink3)"></div><div class="gap" style="left:${pe}%;width:${pg-pe}%"></div></div></div>`;
+      return `<h3>推定消費カロリーと1日の目安</h3>
+        <div class="fn">あなたの1日の推定消費カロリー</div>
+        <div class="heroNum">${n0(c.latest.e)}<small>kcal</small></div>
+        <div class="bars">${lose ? barE + barG : barEgain + barG}</div>
+        <div class="gapLabel">${c.G.gapWord} ${c.G.sign}${kcal(c.gap)}</div>
+        <div class="fn">${sourceNote(c)}</div>
+        ${c.drawn ? chart(c, {h:160}) : ''}${link}`;
+    } },
+  { key:'C', name:'出どころから語る', short:'出どころの札と引き算の段',
+    rule:['keep','3点たまるまで描かない、のまま。グラフが出たら札と段をグラフの下に'], values:['none','新しい値は要らない（initialSource と、目標の体重・期限は受け取っている）'],
+    notes:['「どこから来た値か」の札を先頭に置き、推定消費カロリー − 減らす分 = 1日の目安 を引き算の段で見せる。','見直しが入ると、札が「記録から見直した値」に変わり、はじめからの変わり方を1行で出す。','減らす分の根拠は「目標の体重と期限」とだけ書く。週のペースの数字は入れていない。'],
+    card(c){
+      const first = c.points[0], ch = c.latest.e - first.e;
+      const ladder = `<div class="ladder">
+          <span></span><span>推定消費カロリー</span><span class="v">${kcal(c.latest.e)}</span>
+          <span class="op">${c.G.sign}</span><span>${c.G.gapWord}</span><span class="v">${kcal(c.gap)}</span>
+          <span class="sub">目標の ${c.G.to} kg と ${md(DEADLINE)} の期限から</span>
+          <span class="rule"></span>
+          <span class="op">=</span><span><b>1日の目安</b></span><span class="v strong">${kcal(c.latest.g)}</span>
+        </div>`;
+      const hist = c.reviewsDone > 0 ? `<div class="fn">はじめ ${kcal(first.e)} → 今 ${kcal(c.latest.e)}（${ch < 0 ? '−' : '+'}${Math.abs(ch)}）</div>` : '';
+      return `<h3>推定消費カロリーと1日の目安</h3>
+        ${c.drawn ? chart(c) : ''}
+        <span class="chip">${sourceShort(c)}</span>
+        ${c.drawn ? '' : `<div class="fn">${sourceNote(c)}</div>`}
+        ${ladder}${hist}${link}`;
+    } },
+  { key:'D', name:'次の見直しまでを見せる', short:'週の道のり',
+    rule:['keep','3点たまるまで描かない、のまま。グラフが出たら、道のりは次の見直しの1行に縮める'], values:['new','次の見直しの日と、見送る予定の週が要る（使い始めて7日の判定はサーバーの決めごと）'],
+    notes:['今の値は上に小さく2つ並べ、主役は「はじめ → 見送り → 最初の見直し → …」の週の道のり。','済んだ週は塗った点と値、次の週は輪と「あと n 日」。','次の見直しの日を端末で数えると、7日の見送りの決めごとが端末とサーバーの二重になる。サーバーから日を受け取るか、docs/agents/shared-rules.md に足すかを決める必要がある。'],
+    card(c){
+      const top = `<div class="pair"><div><span class="fn">推定消費カロリー</span><b>${kcal(c.latest.e)}</b></div><div><span class="fn">1日の目安</span><b>${kcal(c.latest.g)}</b></div></div>`;
+      if (c.drawn) return `<h3>推定消費カロリーと1日の目安</h3>${chart(c)}
+        <div class="row"><span>次の見直し</span><span class="num" style="color:var(--tint);font-weight:600">${mdw(c.next)}・あと${c.untilNext}日</span></div>${link}`;
+      const items = [];
+      items.push(`<li class="done"><span class="dot"></span><span>${md(START)}　はじめ</span><span class="r">${n0(c.points[0].e)}</span>
+        <span class="meta">${c.source === 'formula' ? '式で出した値' : '記録から逆算した値'}</span></li>`);
+      c.mondays.slice(0, 4).forEach(m => {
+        const p = c.points.find(p => p.day === m);
+        if (DEFERRED.includes(m)) items.push(`<li class="skip"><span class="dot"></span><span class="dim">${md(m)}　見送り</span><span></span>
+          <span class="meta">使い始めて7日に満たない週</span></li>`);
+        else if (p) { const prev = c.points[c.points.indexOf(p)-1]; const d = p.e - prev.e;
+          items.push(`<li class="done"><span class="dot"></span><span>${md(m)}　見直し</span><span class="r">${n0(p.e)}（${d<0?'−':'+'}${Math.abs(d)}）</span></li>`); }
+        else if (m === c.next) items.push(`<li class="next"><span class="dot"></span><span>${md(m)}　${c.reviewsDone === 0 ? '最初の見直し' : '次の見直し'}</span><span class="r">あと${c.untilNext}日</span></li>`);
+        else items.push(`<li><span class="dot"></span><span class="dim">${md(m)}</span><span></span></li>`);
+      });
+      items.push(`<li><span class="dot"></span><span class="dim">… ${md(DEADLINE)}　期限</span><span></span></li>`);
+      return `<h3>推定消費カロリーと1日の目安</h3>${top}<ul class="weeks">${items.join('')}</ul>${link}`;
+    } },
+  { key:'E', name:'グラフの枠を最初から', short:'点1つから描くグラフ',
+    rule:['change','「3点たまるまで描かない」をやめ、点が1つでも描く'], values:['new','横軸の月曜の印だけなら新しい値は要らない。見送る週と「次」の印は D と同じく新しい値が要る'],
+    notes:['横軸は最初から目標の開始の日から期限の日まで。今日より右は薄く塗り、月曜ごとの輪が右へ埋まっていく。','点が1つのときは、点と、期限まで延ばした目安の破線だけになる。','今日の線より左の帯（2本の間の塗り）は、今日まで延ばしている。今のグラフは延ばしていない。'],
+    card(c){
+      return `<h3>推定消費カロリーと1日の目安</h3>${chart(c, {frameAlways:true, upcoming:true, h:206})}
+        <div class="fn"><span style="color:var(--tint)">●</span> 推定消費カロリー　┄ 1日の目安　○ 見直し</div>
+        ${c.reviewsDone === 0 ? `<div class="fn">${sourceNote(c)}</div>` : ''}${link}`;
+    } },
+];
+
+// ── 画面 ──
+function phone(v, c){
+  const lose = c.dir === 'lose';
+  return `<div class="phone">
+    <div class="statusbar"></div>
+    <div class="nav"><span class="back">‹ タイムライン</span><span class="t">目標</span><span></span></div>
+    <div class="scroll">
+      <div class="card"><div class="row"><h3>${c.G.label}</h3><span class="fn">${md(START)}〜${md(DEADLINE)}</span></div>
+        <div class="num">${c.G.from} kg → ${c.G.to} kg</div></div>
+      <div class="card"><div class="row"><h3>今の1日の目安</h3><span class="fn">${md(c.latest.day)}から</span></div>
+        <div class="big">${kcal(c.latest.g)}</div>
+        <div class="pfc"><span><i style="background:#f07f1a"></i>P ${lose?110:120} g</span><span><i style="background:#15803d"></i>F ${lose?50:65} g</span><span><i style="background:#2c7be5"></i>C ${lose?225:320} g</span></div></div>
+      <div class="card"><h3>体重の傾向</h3><div class="quiet">（今のまま）</div></div>
+      <div class="card target">${v.card(c)}</div>
+      ${c.reviewsDone > 0 ? `<div class="listrow"><span>週の振り返り</span><span class="sp"></span><span class="fn num">${md(add(c.points.at(-1).day,-7))}〜${md(add(c.points.at(-1).day,-1))}</span><span class="chev">›</span></div>` : ''}
+    </div></div>`;
+}
+
+let state = { v:'A', sc:'s1', dir:'lose', view:'one' };
+function readHash(){
+  const m = location.hash.match(/^#([A-E])-(s[1-4])-(lose|gain)$/);
+  if (m) state = { ...state, v:m[1], sc:m[2], dir:m[3] };
+}
+function writeHash(){ history.replaceState(null, '', `#${state.v}-${state.sc}-${state.dir}`); }
+
+function seg(el, items, key){
+  el.innerHTML = items.map(([k,l]) => `<button aria-pressed="${state[key]===k}" data-k="${k}">${l}</button>`).join('');
+  el.onclick = e => { const b = e.target.closest('button'); if (!b) return; state[key] = b.dataset.k; render(); };
+}
+const tag = ([k,t]) => `<span class="tag ${k}">${{keep:'変えない',change:'変える',new:'要る',none:'要らない'}[k]}</span>${t}`;
+
+function render(){
+  seg(document.getElementById('scSeg'), Object.entries(SCENES).map(([k,s]) => [k, s.name]), 'sc');
+  seg(document.getElementById('dirSeg'), Object.entries(GOALS).map(([k,g]) => [k, g.name]), 'dir');
+  seg(document.getElementById('viewSeg'), [['one','1つずつ'],['all','全部の案を並べる']], 'view');
+  const c = ctxOf(state.sc, state.dir), v = VARIANTS.find(v => v.key === state.v);
+  const stage = document.getElementById('stage');
+  stage.className = 'stage' + (state.view === 'all' ? ' all' : '');
+  if (state.view === 'all'){
+    stage.innerHTML = VARIANTS.map(v => `<div class="col"><div class="vname">${v.key}　${v.name}<span>${v.short}</span></div>${phone(v, c)}</div>`).join('');
+  } else {
+    stage.innerHTML = `<div class="col">${phone(v, c)}</div>
+      <div class="side">
+        <div class="box"><h2>${v.key}　${v.name}</h2>
+          <ul>${v.notes.map(n => `<li>${n}</li>`).join('')}</ul></div>
+        <div class="box"><h2>この案で変わるもの</h2>
+          <p>グラフの決まり　${tag(v.rule)}</p>
+          <p>アプリが新しく受け取る値　${tag(v.values)}</p></div>
+        <div class="box"><h2>この場面の値</h2>
+          <dl class="kv">
+            <dt>今日</dt><dd>${mdw(c.today)}</dd>
+            <dt>目標</dt><dd>${c.G.label}　${md(START)}〜${md(DEADLINE)}</dd>
+            <dt>最初の推定の出どころ</dt><dd>${c.source === 'formula' ? 'formula（式）' : 'backCalculated（逆算）'}</dd>
+            <dt>点（目安を当て始めた日）</dt><dd>${c.points.map(p => `${md(p.day)} 推定 ${n0(p.e)}・目安 ${n0(p.g)}`).join('<br>')}</dd>
+            <dt>見送った週</dt><dd>${md(DEFERRED[0])}（使い始めて7日未満）${DEFERRED[0] > c.today ? '　※これから' : ''}</dd>
+            <dt>次の見直し</dt><dd>${mdw(c.next)}　あと${c.untilNext}日　<span style="color:var(--page-muted)">（今アプリは受け取っていない）</span></dd>
+            <dt>今のアプリ</dt><dd>${c.drawn ? 'グラフを描く' : `数字を出す（点 ${c.points.length} / 3）`}</dd>
+          </dl></div>
+      </div>`;
+  }
+  document.getElementById('vlab').innerHTML = state.view === 'all' ? '<b>全部の案</b>場面と目標は上で切り替え' : `<b>${v.key}</b>${v.name}`;
+  writeHash();
+}
+function cycle(d){ const i = VARIANTS.findIndex(v => v.key === state.v); state.v = VARIANTS[(i + d + VARIANTS.length) % VARIANTS.length].key; state.view = 'one'; render(); }
+document.getElementById('prev').onclick = () => cycle(-1);
+document.getElementById('next').onclick = () => cycle(1);
+addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  if (e.key === 'ArrowRight') cycle(1);
+});
+addEventListener('hashchange', () => { readHash(); render(); });
+readHash(); render();
+</script>
