@@ -31,7 +31,7 @@ final class OpenGoalFromDaySummaryAndWeightScreenUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["目標"].waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "日のまとめから開いた目標の画面")
 
-        app.tapBack()
+        app.tapBack(from: "目標")
         XCTAssertTrue(app.buttons["goal-link"].waitForExistence(timeout: 5))
         openTodaySummary()
         app.buttons["day-summary-next-goal"].tap()

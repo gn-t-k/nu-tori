@@ -26,7 +26,7 @@ final class SwitchGoalOnGoalScreenUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["goal-switch-continuing-note"].exists)
         attachScreenshot(of: app, named: "目標の画面で広げたカード")
 
-        app.tapBack()
+        app.tapBack(from: "目標")
         XCTAssertTrue(app.buttons["goal-link"].waitForExistence(timeout: 5))
         XCTAssertFalse(flowCard.exists)
         attachScreenshot(of: app, named: "戻ったタイムライン")
