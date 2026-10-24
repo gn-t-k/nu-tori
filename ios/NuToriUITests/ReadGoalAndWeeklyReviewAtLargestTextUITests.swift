@@ -48,7 +48,7 @@ final class ReadGoalAndWeeklyReviewAtLargestTextUITests: XCTestCase {
     }
 
     func test_タイムラインの変更の知らせで変わった量を新しい値の下に置くこと() {
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.tapBack()
         let value = app.descendants(matching: .any)["daily-guide-change-value"]
         XCTAssertTrue(value.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "いちばん大きな文字のタイムライン")

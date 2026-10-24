@@ -22,7 +22,7 @@ final class CorrectWeightFromWeightScreenUITests: XCTestCase {
         app.buttons["完了"].tap()
         XCTAssertTrue(app.staticTexts["70.0"].waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "体重の画面で直した値")
-        app.navigationBars["体重"].buttons.element(boundBy: 0).tap()
+        app.tapBack(from: "体重")
         let updated = app.descendants(matching: .any).matching(
             NSPredicate(format: "label CONTAINS %@", "70.0 kg")
         ).firstMatch

@@ -51,7 +51,7 @@ final class EditMealUITests: XCTestCase {
         // 名前は打ったまま確定せずに「‹ 食事」で戻っても、送られて料理の行の名前が変わる
         let name = app.textFields["dish-name"]
         replaceText(of: name, with: "カツ丼", length: 3)
-        app.navigationBars["親子丼"].buttons.element(boundBy: 0).tap()
+        app.tapBack(from: "親子丼")
         XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
         XCTAssertTrue(dish(named: "カツ丼").waitForExistence(timeout: 5))
         dish(named: "カツ丼").tap()
@@ -61,7 +61,7 @@ final class EditMealUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["鶏もも肉"].exists)
         XCTAssertEqual(quantity.value as? String, "2")
         attachScreenshot(of: app, named: "推定し直したカツ丼の料理の画面")
-        app.navigationBars["カツ丼"].buttons.element(boundBy: 0).tap()
+        app.tapBack(from: "カツ丼")
         XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
 
         let addDish = app.buttons["meal-add-dish"]

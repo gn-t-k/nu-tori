@@ -29,7 +29,7 @@ final class OpenWeeklyReviewAndGoalFromMondayTimelineUITests: XCTestCase {
         XCTAssertTrue(app.staticText(containing: "9月28日〜10月4日").waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "週の振り返り")
 
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.tapBack()
         let goalLink = app.buttons["goal-link"]
         XCTAssertTrue(goalLink.waitForExistence(timeout: 5))
         goalLink.tap()
