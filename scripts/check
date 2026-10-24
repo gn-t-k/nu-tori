@@ -804,12 +804,13 @@ missing_screen_previews() {
 }
 
 # いちばん新しい iOS のランタイムの、最初の iPhone のシミュレータの ID
+# 折りたためる iPhone Duo は飛ばす。開いた画面ではナビゲーションバーの「戻る」が右の列に移り、XCUITest から押せない。iOS 27.1 のランタイムは iPhone Duo だけを持つので、飛ばさないと Xcode 27.1 で UI テストがこの機種で回る（#719）
 latest_iphone_simulator() {
     local id
     id="$(xcrun simctl list devices available | awk '
         /^-- iOS / { ios = 1; picked = 0; next }
         /^-- / { ios = 0; next }
-        ios && !picked && /^ +iPhone/ {
+        ios && !picked && /^ +iPhone/ && !/^ +iPhone Duo / {
             match($0, /\([0-9A-F-]{36}\)/)
             latest = substr($0, RSTART + 1, 36)
             picked = 1

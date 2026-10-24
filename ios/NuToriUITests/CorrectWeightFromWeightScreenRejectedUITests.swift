@@ -21,7 +21,7 @@ final class CorrectWeightFromWeightScreenRejectedUITests: XCTestCase {
         XCTAssertTrue(app.textFields["体重の値"].waitForExistence(timeout: 5))
         app.typeSeventyKilograms()
         app.buttons["完了"].tap()
-        app.navigationBars["体重"].buttons.element(boundBy: 0).tap()
+        app.tapBack(from: "体重")
 
         let line = app.staticTexts["rejected-weight-line"]
         XCTAssertTrue(line.waitForExistence(timeout: 5))

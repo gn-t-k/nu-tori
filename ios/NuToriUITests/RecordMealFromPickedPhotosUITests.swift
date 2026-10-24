@@ -37,8 +37,7 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
         attachScreenshot(of: app, named: "食事の画面")
         dish.tap()
         XCTAssertTrue(app.navigationBars["親子丼"].waitForExistence(timeout: 5))
-        // 戻るのボタン（「‹ 食事」）。版によって文字を出さないので、並びの最初のボタンで押す
-        app.navigationBars["親子丼"].buttons.element(boundBy: 0).tap()
+        app.tapBack(from: "親子丼")
         XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
         let delete = app.buttons["meal-delete"]
         XCTAssertTrue(app.scrollUntilExists(delete))
