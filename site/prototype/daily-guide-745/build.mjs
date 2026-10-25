@@ -164,7 +164,7 @@ const weeksFigure = ({ id, caption = true }) => {
     <text class="series-label" x="${x(5) + 6}" y="${y(est.at(-1)) - 2}">推定消費</text>
     <text class="series-label" x="${x(5) + 6}" y="${y(est.at(-1)) + 12}">カロリー</text>
     <text class="series-label muted" x="${x(5) + 6}" y="${y(guide.at(-1)) + 4}">1日の目安</text>
-    <text class="series-label faint" x="${x(4) + 4}" y="${y(days.at(-1).trueExpenditureKcal) - 22}">本当の消費</text>
+    <text class="series-label faint" x="${x(4) + 4}" y="${y(days.at(-1).trueExpenditureKcal) - 22}">本当に使うカロリー</text>
     ${[0, 1, 2, 3, 4].map((i) => `<text class="tick" x="${(x(i) + x(i + 1)) / 2}" y="${H - 10}" text-anchor="middle">${i === 0 ? "1週目" : i + 1 + "週目"}</text>`).join("")}
     <text class="tick" x="${L - 6}" y="${T - 4}" text-anchor="end">kcal</text>
   </svg>
@@ -289,19 +289,26 @@ ${reviewFigure({ id: "e-review", caption: "Aさんの2週目です。点線が n
 <p>nu-tori は、このずれから、推定消費カロリーを次のように直しました。</p>
 ${reviewEquation()}
 <p>nu-tori がこれを毎週くり返すと、Aさんの推定消費カロリーは、Aさんの体が本当に使うカロリー（点線）に近づきます。</p>
-${weeksFigure({ id: "e-weeks", caption: "Aさんの4週間です。推定消費カロリーが毎週直り、1日の目安もそれに合わせて下がります。" })}
+${weeksFigure({ id: "e-weeks", caption: "Aさんが使い始めてから5週目までです。推定消費カロリーが毎週直り、1日の目安もそれに合わせて下がります。" })}
 
 <h2 id="e-2">2. やせて体が使うカロリーが減っても、nu-tori が目安を合わせ直します</h2>
-<p>体重が減ると、あなたの体が1日に使うカロリーも減ります。そのため、同じ量を食べ続けると、体重の減り方はだんだん緩くなります。nu-tori は、この分も毎週の見直しで直すので、あなたが計算し直す必要はありません。</p>
-${plateauFigure({ id: "e-plateau", caption: `Aさんが、同じ ${kcal(reviews.at(-1).guideKcal)} kcal を見直さずに2年食べ続けたときの体重です。1年目は ${kg1(plateau[0].trueWeightKg - plateau[13].trueWeightKg)} kg 減りますが、2年目は ${kg1(plateau[13].trueWeightKg - plateau.at(-1).trueWeightKg)} kg しか減りません。` })}
+<p>体重が減ると、あなたの体が1日に使うカロリーも減ります。体が軽くなるほど、体を保ち、動かすのに要るカロリーが減るからです。そのため、同じ量を食べ続けると、体重の減り方はだんだん緩くなります。</p>
+<p>nu-tori は、この分も 1 と同じ毎週の見直しで推定消費カロリーに反映し、1日の目安を出し直します。あなたが計算し直す必要はありません。</p>
+<h3>Aさんの例</h3>
+<p>Aさんの体が本当に使うカロリーは、4週間で体重が減るにつれて、${kcal(days[0].trueExpenditureKcal)} kcal から ${kcal(days.at(-1).trueExpenditureKcal)} kcal に減りました。もしAさんが、4週目の1日の目安 ${kcal(reviews.at(-1).guideKcal)} kcal を見直さずに食べ続けると、体重は1年目に ${kg1(plateau[0].trueWeightKg - plateau[13].trueWeightKg)} kg 減りますが、2年目には ${kg1(plateau[13].trueWeightKg - plateau.at(-1).trueWeightKg)} kg しか減りません。</p>
+${plateauFigure({ id: "e-plateau", caption: `Aさんが ${kcal(reviews.at(-1).guideKcal)} kcal を2年食べ続けたときの体重です。体重が 1 kg 減ると、Aさんの体が1日に使うカロリーが 27 kcal 減ると仮定しました。` })}
 
 <h2 id="e-3">3. 体重計の数字が一時的に増えても、nu-tori は目安を大きく変えません</h2>
-<p>外食した翌朝は、体重計の数字が 0.5〜1 kg 増えていることがあります。増えたのは脂肪ではなく、食べた物や体の水分です。nu-tori は、毎朝の数字をならした体重の動き（体重の傾向）を見るので、こうした一時的な増減で目安を大きく変えません。</p>
-${trendFigure({ id: "e-trend", caption: "Aさんの、毎朝の体重（点）と体重の傾向（線）です。点が日によって上下しても、線はなめらかに動きます。" })}
-<details><summary>目安が大きく変わらないようにする決まり</summary>
-<ul><li>nu-tori は、1週のずれの分を、推定消費カロリーに一度に全部は反映しません。食事を記録した日が多い週ほど、また同じ向きのずれが続いた週ほど、大きく動かします</li><li>nu-tori は、1日の目安を、1週に 150 kcal より大きく上げ下げしません</li></ul>
-${rules.skip}
-</details>
+<p>外食した翌朝は、体重計の数字が 0.5〜1 kg 増えていることがあります。増えたのは脂肪ではなく、食べた物や体の水分です。nu-tori は、こうした一時的な増減で目安を大きく変えないように、次の4つの決まりを守ります。</p>
+<h3>nu-tori は、毎朝の体重をならした「体重の傾向」を見ます</h3>
+<p>nu-tori は、1日ごとの体重ではなく、毎朝の体重をならした体重の傾向の動きを、予想と比べます。たとえば、Aさんの毎朝の体重は日によって 0.5 kg ほど上下しましたが、Aさんの体重の傾向はなめらかに動きました。</p>
+${trendFigure({ id: "e-trend", caption: "Aさんの、毎朝の体重（点）と体重の傾向（線）です。" })}
+<h3>nu-tori は、推定消費カロリーを、ずれの一部ずつ直します</h3>
+<p>nu-tori は、1週のずれの分を、一度に全部は推定消費カロリーに反映しません。食事を記録した日が多い週ほど、また同じ向きのずれが続いた週ほど、大きく直します。たとえば、nu-tori は、Aさんの2週目のずれの半分だけを直しました（1 の式の「そのうち動かす割合」）。</p>
+<h3>nu-tori は、1日の目安を1週に 150 kcal までしか変えません</h3>
+<p>nu-tori は、毎週の見直しで、1日の目安を前の週から 150 kcal より大きく上げ下げしません。たとえば、Aさんの1週目と2週目の見直しでは、決まりどおりに出すと1日の目安が 150 kcal より大きく下がるところでした。nu-tori は、どちらの週も 150 kcal 下げるところで止めました。</p>
+<h3>nu-tori は、記録が少ない週の見直しを見送ります</h3>
+<p>nu-tori は、体重の記録が無い週と、食事を記録した日が 4 日に満たない週の見直しを見送り、推定消費カロリーと1日の目安を前の週のままにします。</p>
 
 <h2>あなたがするのは、毎朝の体重と食事の記録だけです</h2>
 <ul><li>毎朝、同じころに体重を量ってください</li><li>食べたものを撮ってください。1日の分をなるべく全部記録してください</li></ul>
@@ -310,7 +317,7 @@ ${rules.skip}
 <h2>計算の決まり</h2>
 <details><summary>最初の推定消費カロリー</summary><h3>記録が足りるとき: nu-tori は、食べた量と体重の傾向から逆算します</h3>${rules.backCalculated}<h3>記録が足りないとき: nu-tori は、身体データから式で出します</h3>${rules.formula}</details>
 <details><summary>1日の目安</summary>${rules.guide}${rules.limits}</details>
-<details><summary>毎週の見直し</summary>${rules.review}</details>
+<details><summary>毎週の見直し</summary>${rules.review}${rules.skip}</details>
 
 <h2>医療の助言ではありません</h2>
 <p>このページの内容は、医療の助言ではありません。持病のある方は、医師に相談してください。</p>
