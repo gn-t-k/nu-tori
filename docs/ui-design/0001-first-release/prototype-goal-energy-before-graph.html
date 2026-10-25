@@ -6,6 +6,8 @@
   場面は4つ（使い始めた日・式／使い始めた日・逆算／見直し1回／グラフが出た日）と、目標は2種類（減らす・増やす）。
   下のバーの ‹ › か ← → キーで案を、上のボタンで場面と目標を切り替える。#<案>-<場面>-<目標> で開ける（例: #E-s1-lose）。
   開発者の答え（#744、2026-10-25）: C を土台に B の棒を組み合わせ、要らない添え書きを外す。それを案 F として足し、最初に開く案にした。
+  開発者の答え（#744、2026-10-25 の2回め）: F は違った。B を土台にし、推定消費カロリーより1日の目安を強くする。2枚のカードが体重の傾向を挟んで離れているのもわかりにくい。
+  それを受けて、目安のカードに棒をまとめる案 G（グラフも同じカード）と H（グラフは今の場所）を足し、最初に開く案を G にした。
   土台は main の画面のコード（コミット d4cd16a の ios/NuTori/Goal/GoalScreen.swift、GoalEnergyChartView.swift と
   ios/NuToriCore/Sources/NuToriCore/Goal/GoalOverview+History.swift）。main には入れない。
   値はすべて作ったもの。開発者の健康データは入れていない。
@@ -122,6 +124,15 @@ svg text{font-family:var(--font)}
 .fl .lb .h{background:repeating-linear-gradient(135deg,var(--tint-soft) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1.2px var(--tint)}
 .fl .gl{color:var(--tint)}
 .fl .rule{grid-column:1 / 4;height:1px;background:var(--sep);margin-bottom:4px}
+
+/* 案 G・H（目安のカードに B の棒をまとめる） */
+.gnum{font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.15}
+.gb{display:grid;grid-template-columns:auto 1fr auto;gap:6px 8px;align-items:center;font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums;margin-top:8px}
+.gb .tr{height:12px;position:relative}
+.gb .tr > div{position:absolute;top:0;bottom:0;border-radius:3px}
+.gb .h{background:repeating-linear-gradient(135deg,var(--tint-soft) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1.2px var(--tint)}
+.gb .gl{grid-column:2 / 4;justify-self:end;color:var(--tint);font-weight:600;margin-top:-2px}
+.divider{height:1px;background:var(--sep);margin:8px 0 2px}
 
 /* 案 D */
 .pair{display:flex;gap:18px;align-items:baseline;flex-wrap:wrap}
@@ -349,6 +360,16 @@ const VARIANTS = [
         <span class="chip">${chip}</span>
         ${ladder}${link}`;
     } },
+  { key:'G', name:'目安のカードに棒をまとめる', short:'1枚に。グラフもこのカードに',
+    rule:['keep','3点たまるまで描かない、のまま。グラフが出たら同じカードの棒の下に描く'], values:['none','新しい値は要らない'],
+    notes:['開発者の答え（#744、2026-10-25 の2回め）を受けた案。B を土台に、強さを逆にする。主役は1日の目安の数字で、推定消費カロリーは棒の横の小さな数字。','「今の1日の目安」と「推定消費カロリーと1日の目安」を1枚のカードにまとめ、体重の傾向を間に挟まない。','グラフが出ると、このカードが縦に伸び、体重の傾向より上に来る。'],
+    guideCard: c => guideWithBars(c, c.drawn),
+    card: () => '' },
+  { key:'H', name:'目安のカードに棒、グラフは今の場所', short:'棒は目安のカード、グラフは下',
+    rule:['keep','3点たまるまで描かない、のまま。グラフが出るまで、下のカードは出さない'], values:['none','新しい値は要らない'],
+    notes:['G と同じく、目安のカードに棒をまとめる。','グラフが出るまでは、体重の傾向の下のカードを出さない。グラフが出たら、今の場所にグラフだけのカードを出す。','グラフの線の端の名前と、上の棒の数字が同じ値になる。'],
+    guideCard: c => guideWithBars(c, false),
+    card: c => c.drawn ? `<h3>推定消費カロリーと1日の目安</h3>${chart(c)}` : '' },
   { key:'D', name:'次の見直しまでを見せる', short:'週の道のり',
     rule:['keep','3点たまるまで描かない、のまま。グラフが出たら、道のりは次の見直しの1行に縮める'], values:['new','次の見直しの日と、見送る予定の週が要る（使い始めて7日の判定はサーバーの決めごと）'],
     notes:['今の値は上に小さく2つ並べ、主役は「はじめ → 見送り → 最初の見直し → …」の週の道のり。','済んだ週は塗った点と値、次の週は輪と「あと n 日」。','次の見直しの日を端末で数えると、7日の見送りの決めごとが端末とサーバーの二重になる。サーバーから日を受け取るか、docs/agents/shared-rules.md に足すかを決める必要がある。'],
@@ -381,27 +402,43 @@ const VARIANTS = [
     } },
 ];
 
+// 案 G・H の「今の1日の目安」のカード。目安を主役にし、推定消費カロリーとの差を同じ目盛り（0 kcal から）の棒で見せる
+function guideWithBars(c, withChart){
+  const lose = c.dir === 'lose';
+  const max = Math.max(c.latest.e, c.latest.g), pe = c.latest.e/max*100, pg = c.latest.g/max*100;
+  const bars = `<div class="gb">
+      <span>推定</span><div class="tr"><div style="left:0;width:${pe}%;background:var(--ink3)"></div>${lose ? '' : `<div class="h" style="left:${pe}%;width:${pg-pe}%"></div>`}</div><span>${n0(c.latest.e)}</span>
+      <span>目安</span><div class="tr"><div style="left:0;width:${pg}%;background:var(--tint)"></div>${lose ? `<div class="h" style="left:${pg}%;width:${pe-pg}%"></div>` : ''}</div><span>${n0(c.latest.g)}</span>
+      <span class="gl">${c.G.gapWord} ${c.G.sign}${n0(c.gap)}</span>
+    </div>`;
+  return `<div class="row"><h3>今の1日の目安</h3><span class="fn">${md(c.latest.day)}から</span></div>
+    <div class="gnum">${kcal(c.latest.g)}</div>
+    <div class="pfc"><span><i style="background:#f07f1a"></i>P ${lose?110:120} g</span><span><i style="background:#15803d"></i>F ${lose?50:65} g</span><span><i style="background:#2c7be5"></i>C ${lose?225:320} g</span></div>
+    ${bars}${withChart ? `<div class="divider"></div>${chart(c, {h:170})}` : ''}${link}`;
+}
+
 // ── 画面 ──
 function phone(v, c){
   const lose = c.dir === 'lose';
+  const energy = v.card(c);
   return `<div class="phone">
     <div class="statusbar"></div>
     <div class="nav"><span class="back">‹ タイムライン</span><span class="t">目標</span><span></span></div>
     <div class="scroll">
       <div class="card"><div class="row"><h3>${c.G.label}</h3><span class="fn">${md(START)}〜${md(DEADLINE)}</span></div>
         <div class="num">${c.G.from} kg → ${c.G.to} kg</div></div>
-      <div class="card"><div class="row"><h3>今の1日の目安</h3><span class="fn">${md(c.latest.day)}から</span></div>
+      ${v.guideCard ? `<div class="card target">${v.guideCard(c)}</div>` : `<div class="card"><div class="row"><h3>今の1日の目安</h3><span class="fn">${md(c.latest.day)}から</span></div>
         <div class="big">${kcal(c.latest.g)}</div>
-        <div class="pfc"><span><i style="background:#f07f1a"></i>P ${lose?110:120} g</span><span><i style="background:#15803d"></i>F ${lose?50:65} g</span><span><i style="background:#2c7be5"></i>C ${lose?225:320} g</span></div></div>
+        <div class="pfc"><span><i style="background:#f07f1a"></i>P ${lose?110:120} g</span><span><i style="background:#15803d"></i>F ${lose?50:65} g</span><span><i style="background:#2c7be5"></i>C ${lose?225:320} g</span></div></div>`}
       <div class="card"><h3>体重の傾向</h3><div class="quiet">（今のまま）</div></div>
-      <div class="card target">${v.card(c)}</div>
+      ${energy ? `<div class="card${v.guideCard ? '' : ' target'}">${energy}</div>` : ''}
       ${c.reviewsDone > 0 ? `<div class="listrow"><span>週の振り返り</span><span class="sp"></span><span class="fn num">${md(add(c.points.at(-1).day,-7))}〜${md(add(c.points.at(-1).day,-1))}</span><span class="chev">›</span></div>` : ''}
     </div></div>`;
 }
 
-let state = { v:'F', sc:'s1', dir:'lose', view:'one' };
+let state = { v:'G', sc:'s1', dir:'lose', view:'one' };
 function readHash(){
-  const m = location.hash.match(/^#([A-F])-(s[1-4])-(lose|gain)$/);
+  const m = location.hash.match(/^#([A-H])-(s[1-4])-(lose|gain)$/);
   if (m) state = { ...state, v:m[1], sc:m[2], dir:m[3] };
 }
 function writeHash(){ history.replaceState(null, '', `#${state.v}-${state.sc}-${state.dir}`); }
