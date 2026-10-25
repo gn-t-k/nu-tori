@@ -27,9 +27,11 @@ extension WeekRecap {
             lastTrendKilograms = records.trendKilograms(onOrBefore: shownDays.upperBound)
         }
 
-        /// 「傾向 73.4 → 72.9 kg」。傾向がまだ無ければ nil
+        /// 「傾向 73.4 → 72.9 kg」。傾向がまだ無いか、傾向の線を引かない週は nil（線と組で読む値なので）
         public var trendText: String? {
-            guard let firstTrendKilograms, let lastTrendKilograms else { return nil }
+            guard case .drawn = trendLine, let firstTrendKilograms, let lastTrendKilograms else {
+                return nil
+            }
             return
                 "傾向 \(GoalText.kilogramsChange(from: firstTrendKilograms, to: lastTrendKilograms))"
         }

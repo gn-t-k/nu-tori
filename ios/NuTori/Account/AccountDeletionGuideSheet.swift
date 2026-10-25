@@ -19,8 +19,9 @@ struct AccountDeletionGuideSheet: View {
                         LabeledContent("使える日", value: guide.usableThroughText)
                     }
                 } footer: {
-                    if guide.renewal == .autoRenewing {
-                        Text("アカウントを削除しても、Apple の請求は続きます。")
+                    switch guide.renewal {
+                    case .autoRenewing: Text("アカウントを削除しても、Apple の請求は続きます。")
+                    case .cancelled: EmptyView()
                     }
                 }
                 Section {

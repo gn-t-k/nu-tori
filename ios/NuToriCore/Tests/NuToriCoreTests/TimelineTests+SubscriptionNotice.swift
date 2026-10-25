@@ -22,7 +22,7 @@ extension TimelineTests {
                     conversation: .none,
                     subscriptionNotices: [
                         SubscriptionNotice(
-                            kind: .freeTrialEndsSoon(lastDay: Self.lastDay),
+                            kind: .freeTrialEndsSoon,
                             day: Self.threeDaysLeftDay),
                         SubscriptionNotice(kind: .freeTrialLastDay, day: Self.lastDay),
                     ]),

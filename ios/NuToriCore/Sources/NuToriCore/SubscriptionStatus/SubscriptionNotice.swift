@@ -15,7 +15,7 @@ public struct SubscriptionNotice: Hashable, Sendable {
 
     public enum Kind: Hashable, Sendable {
         /// 無料体験のあと3日。最後の日の2日前に置く
-        case freeTrialEndsSoon(lastDay: CalendarDay)
+        case freeTrialEndsSoon
         /// 無料体験の最後の日。その日に置く
         case freeTrialLastDay
         /// 無料体験が終わった。最後の日の次の日に置く
@@ -51,7 +51,7 @@ public struct SubscriptionNotice: Hashable, Sendable {
         if case .available(let lastDay) = freeTrial {
             if !isSubscribed {
                 notices.append(
-                    .init(kind: .freeTrialEndsSoon(lastDay: lastDay), day: lastDay.advanced(by: -2))
+                    .init(kind: .freeTrialEndsSoon, day: lastDay.advanced(by: -2))
                 )
                 notices.append(.init(kind: .freeTrialLastDay, day: lastDay))
             }

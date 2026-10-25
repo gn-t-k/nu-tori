@@ -60,7 +60,7 @@ struct SubscriptionNoticeTests {
                 #expect(
                     notices == [
                         SubscriptionNotice(
-                            kind: .freeTrialEndsSoon(lastDay: SubscriptionNoticeTests.lastDay),
+                            kind: .freeTrialEndsSoon,
                             day: SubscriptionNoticeTests.threeDaysLeftDay)
                     ])
             }
@@ -80,7 +80,7 @@ struct SubscriptionNoticeTests {
                 #expect(
                     notices == [
                         SubscriptionNotice(
-                            kind: .freeTrialEndsSoon(lastDay: SubscriptionNoticeTests.lastDay),
+                            kind: .freeTrialEndsSoon,
                             day: SubscriptionNoticeTests.threeDaysLeftDay),
                         SubscriptionNotice(
                             kind: .freeTrialLastDay, day: SubscriptionNoticeTests.lastDay),
@@ -102,7 +102,7 @@ struct SubscriptionNoticeTests {
             func dayAfterLastDay() {
                 #expect(
                     notices.map(\.kind) == [
-                        .freeTrialEndsSoon(lastDay: SubscriptionNoticeTests.lastDay),
+                        .freeTrialEndsSoon,
                         .freeTrialLastDay, .freeTrialEnded,
                     ])
                 #expect(notices.last?.day == SubscriptionNoticeTests.dayAfterLastDay)
@@ -168,7 +168,7 @@ struct SubscriptionNoticeTests {
                 #expect(
                     notices == [
                         SubscriptionNotice(
-                            kind: .freeTrialEndsSoon(lastDay: SubscriptionNoticeTests.lastDay),
+                            kind: .freeTrialEndsSoon,
                             day: SubscriptionNoticeTests.threeDaysLeftDay),
                         SubscriptionNotice(
                             kind: .freeTrialLastDay, day: SubscriptionNoticeTests.lastDay),
@@ -313,7 +313,7 @@ struct SubscriptionNoticeTests {
 
             init() {
                 notice = SubscriptionNotice(
-                    kind: .freeTrialEndsSoon(lastDay: SubscriptionNoticeTests.lastDay),
+                    kind: .freeTrialEndsSoon,
                     day: SubscriptionNoticeTests.threeDaysLeftDay)
             }
 

@@ -110,21 +110,47 @@ struct DishNutrientBreakdownTests {
         }
     }
 
+    /// 内訳に出す15項目に、どれも 1 を持たせた栄養
+    static let everyItem: [Nutrient: Double] = Dictionary(
+        uniqueKeysWithValues: [
+            Nutrient.energyKcal, .proteinG, .fatG, .carbohydrateG, .fiberG, .saltEquivalentG,
+            .calciumMg, .ironMg, .potassiumMg, .magnesiumMg,
+            .vitaminAUg, .vitaminB1Mg, .vitaminB2Mg, .vitaminCMg, .vitaminDUg,
+        ].map { ($0, 1.0) })
+
     @Suite("内訳の15項目をすべての材料が持つとき")
     struct EveryItemKnown {
+        let breakdown: DishNutrientBreakdown
+
+        init() {
+            breakdown = DishNutrientBreakdownTests.breakdown([
+                .fixture(nutrients: DishNutrientBreakdownTests.everyItem),
+                .fixture(nutrients: DishNutrientBreakdownTests.everyItem),
+            ])
+        }
+
         @Test("「以上」と「不明」の意味を書かないこと")
         func noNote() {
-            let items: [Nutrient] = [
-                .energyKcal, .proteinG, .fatG, .carbohydrateG, .fiberG, .saltEquivalentG,
-                .calciumMg, .ironMg, .potassiumMg, .magnesiumMg,
-                .vitaminAUg, .vitaminB1Mg, .vitaminB2Mg, .vitaminCMg, .vitaminDUg,
-            ]
-            let nutrients = Dictionary(uniqueKeysWithValues: items.map { ($0, 1.0) })
-            let breakdown = DishNutrientBreakdownTests.breakdown([
-                .fixture(nutrients: nutrients), .fixture(nutrients: nutrients),
-            ])
-
             #expect(breakdown.note == nil)
+        }
+    }
+
+    @Suite("一部の材料だけ分からない栄養があり、どの材料でも分からない栄養が無いとき")
+    struct PartlyUnknownOnly {
+        let breakdown: DishNutrientBreakdown
+
+        init() {
+            var withoutIron = DishNutrientBreakdownTests.everyItem
+            withoutIron[.ironMg] = nil
+            breakdown = DishNutrientBreakdownTests.breakdown([
+                .fixture(nutrients: DishNutrientBreakdownTests.everyItem),
+                .fixture(nutrients: withoutIron),
+            ])
+        }
+
+        @Test("「以上」の意味だけを書くこと")
+        func note() {
+            #expect(breakdown.note == "「以上」は、一部の材料の値が分からず、分かる分だけを足した値です。")
         }
     }
 

@@ -66,8 +66,7 @@ struct WeeklyReviewScreen: View {
             }
             Section("体重") {
                 WeekRecapWeightChart(recap: shown)
-                // 傾向の線を引かない週は、線と組で読む傾向の値も出さない
-                if case .drawn = shown.weight.trendLine, let trendText = shown.weight.trendText {
+                if let trendText = shown.weight.trendText {
                     Text(trendText)
                         .monospacedDigit()
                 }
