@@ -254,8 +254,6 @@
             case weeklyReview = "weekly-review"
             /// `weeklyReview` に加えて、昨日の 21:00 に目標を達成したと判定した。達成の知らせから立て直す流れを開ける
             case goalAchieved = "goal-achieved"
-            /// `goalAchieved` に加えて、今日の 8:00 に 72.0 kg を保つ目標に立て直した。達成の知らせのボタンは押せない
-            case goalSwitchedAfterAchieved = "goal-switched-after-achieved"
             /// 昨日で無料体験が終わり、サブスクリプション切れ。買うと月額のサブスクリプション中に結びつく
             case subscriptionExpired = "subscription-expired"
         }

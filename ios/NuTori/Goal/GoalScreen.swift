@@ -245,7 +245,6 @@ struct GoalScreen: View {
                         .padding(.vertical, 10)
                         .frame(minHeight: 44)
                         .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("goal-past-goal")
                 }
             }
             .background(
