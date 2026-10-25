@@ -254,165 +254,181 @@ const loopFigure = ({ id }) => {
 </figure>`;
 };
 
-// ---------- 今のページの本文（節ごと） ----------
-const sec = {
-  intro: `<p>nu-tori は、1日に食べる量の目安（1日の目安）を、推定消費カロリーと目標から出し、毎週の記録で見直します。このページでは、その出し方を説明します。</p>`,
-  s1: `<h2>1. 推定消費カロリーは推定です</h2>
-<p>推定消費カロリーは、1日に消費するカロリーを、体重の傾向と食べた量から推定した値です。体の中を測った値ではありません。</p>
-<p>体重の傾向は、体重の記録から日々の増減をならした体重の推移です。食べた量に比べて体重の傾向が減っていれば、食べた量より多く消費していると推定します。</p>`,
-  s1b: `<p>運動の記録やワークアウト、消費したエネルギーの記録は使いません。運動した分も、体重の傾向の動きに表れるからです。</p>`,
-  s2: `<h2>2. 最初の推定消費カロリー</h2>
-<p>初めて目標を立てるときに、次のどちらかで出します。</p>
-<h3>記録が足りるとき: 食べた量と体重の傾向から逆算します</h3>
-<p>今日を除く直前の 28 日の、食べた量と体重から出します。食べた量は、nu-tori を使い始めた日からは nu-tori の食事の記録を、使い始める前の日はヘルスケアの摂取エネルギーを使います。</p>
-<ul><li>食べた量のある日が 14 日以上あること。食べた量がほかの日の中ほどの値の半分に満たない日（1食だけ記録した日など）は、記録の途中とみなして数えません</li><li>体重を記録した日が 4 日以上あり、最初の日から最後の日まで 14 日以上あること</li></ul>
-<p>食べた量の1日の平均から、体重の傾きの分を引いて出します。体重 1 kg の増減を 7,700 kcal とみなし、たとえば体重が1日に 0.1 kg ずつ減っていれば、食べた量の平均に 770 kcal を足した値になります。</p>
-<h3>記録が足りないとき: 身体データから式で出します</h3>
-<p>身長・生年月日（年齢）・性別と、開始の日の体重の傾向から、安静にしているときの消費を Mifflin-St Jeor の式で出し、活動量の係数を掛けます。ヘルスケアから読めない値は、アプリで入れていただきます。</p>
-<ul><li>歩数が読めるとき: 直前 28 日の、歩いた日の平均の歩数で決めます。5,000 歩未満は 1.4、10,000 歩未満は 1.55、それ以上は 1.7</li><li>歩数が読めないとき: 3つから選んでいただきます。ほぼ座り仕事は 1.4、立ち仕事が多いは 1.55、よく動くは 1.7</li></ul>
-<p>身体データと、使い始める前の摂取エネルギーは、この計算にだけ使い、保存しません。</p>`,
-  s3: `<h2>3. 1日の目安</h2>
-<p>1日の目安は、推定消費カロリーから、目標の速さで1日に減らす分を引いたものです。増量では、1日に足す分を足します。</p>
-<p>1日に減らす（足す）分は、期限の日までに目標体重へ届くのに要る体重の変化の速さに、7,700 kcal/kg を掛けて出します。たとえば、体重の傾向が1日に 0.05 kg ずつ減る速さなら、1日に 385 kcal を減らします。維持では、体重の傾向が目標体重の ±0.7 kg の中にあれば、減らしも足しもしません。外れたら、体重の傾向の 1週間に 0.15% の速さで目標体重へ戻す分だけ減らし（足し）ます。</p>
-<p>値は 50 kcal 単位に丸め、次の上限と下限を当てます。</p>
-<ul><li>必要な速さの上限: 1週間に、開始の日の体重の傾向の 0.75%（減量）・0.5%（増量）より速くしません。期限までの日が少なくても、無理な速さにしません</li><li>1日の目安の下限: 1,200 kcal より低くしません</li><li>1週の変化の幅: 毎週の見直しで、前の週の1日の目安から ±150 kcal より大きく変えません</li></ul>`,
-  s4head: `<h2>4. 毎週の見直し</h2>
-<p>毎週、月曜から当てる推定消費カロリーと1日の目安を、その前の週（月曜から日曜）の記録で見直します。</p>`,
-  s4list: `<ol><li>前の週の食べた量の平均と、そのときの推定消費カロリーから、体重の傾向がどれだけ変わるはずだったかを出します</li><li>実際の体重の傾向の変化と比べ、ずれの分だけ推定消費カロリーを動かします。一度に全部は動かさず、食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど大きく動かします</li><li>新しい推定消費カロリーで、上の 3 と同じように1日の目安を出し直します</li></ol>`,
-  s4skip: `<p>次のどれかに当たる週は、見直しを見送り、推定消費カロリーも1日の目安も前の週のままにします。</p>
-<ul><li>使い始めて 7 日に満たない（最初の値を食べた量と体重から逆算したときは当てません）</li><li>その週に体重の記録が無い</li><li>その週に食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li></ul>`,
-  s5: `<h2>5. 記録を続けると、推定が確かになります</h2>
-<p>推定消費カロリーは、体重の傾向と食べた量のずれから直していきます。毎朝の体重と、食事の記録が揃うほど、推定は実際の消費に近づき、1日の目安も合っていきます。</p>
-<p>体重は、毎朝、同じころに量ると、日々の揺れが小さくなります。食事は、食べたものを撮るか書くかして、1日の分をなるべく全部記録してください。</p>`,
-  s6: `<h2>6. 医療の助言ではありません</h2>
-<p>医療の助言ではありません。持病のある方は、医師に相談してください。</p>`,
-};
-
 const persona = `30歳・身長 172 cm・ほぼ座り仕事の男性。使い始める前の4週間は体重計だけ使い、体重の傾向は ${kg1(initial.startingWeightTrendKg)} kg で横ばい。食事は記録していなかったので、最初の推定消費カロリーは式で出します。目標は12週で ${kg1(74.4)} kg`;
 
-// ---------- 案A: 今の本文に図を差し込む ----------
-const variantA = `
-<h1>推定消費カロリーと1日の目安の出し方</h1>
-${sec.intro}
-${sec.s1}
-${trendFigure({ id: "a-trend" })}
-${sec.s1b}
-${sec.s2}
-${sec.s3}
-${sec.s4head}
-${sec.s4list}
-${reviewFigure({ id: "a-review" })}
-${reviewEquation()}
-${sec.s4skip}
-<h2>5. 例: ある人の4週間</h2>
-<p class="persona">${persona}。</p>
-<p>式で出した推定消費カロリーは ${kcal(initial.kcal)} kcal、1日の目安は ${kcal(initial.guideKcal)} kcal でした。毎週の見直しで、次のように動きます。</p>
-${weeksFigure({ id: "a-weeks" })}
-<p>体重が減ると、消費も減ります。見直しをせずに同じ量を食べ続けると、減り方はだんだん緩くなり、やがて止まります。</p>
-${plateauFigure({ id: "a-plateau" })}
-${sec.s5.replace("<h2>5.", "<h2>6.")}
-${sec.s6.replace("<h2>6.", "<h2>7.")}
-`;
+// ---------- ミントのピラミッドで組み直した2案 ----------
+// どちらも、導入を状況（S）→ 複雑化（C）→ 問い（Q）で書き、その直後に答え（A）を置く。
+// 答えを支える要点（キーライン）を、漏れなく重ならず並べ、見出しは話題の名前でなく、言いたいことの文にする
 
-// ---------- 案B: 架空の1人の4週間を追う ----------
-const weekCard = (r, i) => {
-  const limited = r.limitHits.includes("weekly_change");
-  const k = gainOf(r);
-  const dir =
-    Math.abs(r.deviationKg) < 0.02
-      ? "ほぼ予想どおり"
-      : r.deviationKg < 0
-        ? "予想より減らなかった"
-        : "予想より減った";
-  const weekStart = addDaysIso(r.reviewedMonday, -7);
-  return `
-<section class="week">
-  <h3>${i + 1}週目 <span class="week-dates">${md(weekStart)}〜${md(addDaysIso(r.reviewedMonday, -1))}</span></h3>
-  <dl class="week-facts">
-    <div><dt>食べた量</dt><dd>${kcal(r.averageEnergyIntakeKcal)} kcal</dd></div>
-    <div><dt>予想した動き</dt><dd>${signedKg(r.predictedWeightChangeKg)} kg</dd></div>
-    <div><dt>実際の動き</dt><dd>${signedKg(r.actualWeightChangeKg)} kg</dd></div>
+// 試作だけの、文書の骨組みの表示
+const structurePanel = ({ s, c, q, a, axis, keyLine }) => `
+<details class="proto-structure" open>
+  <summary>PROTOTYPE: この案の骨組み</summary>
+  <dl>
+    <div><dt>状況</dt><dd>${s}</dd></div>
+    <div><dt>複雑化</dt><dd>${c}</dd></div>
+    <div><dt>問い</dt><dd>${q}</dd></div>
+    <div><dt>答え</dt><dd><strong>${a}</strong></dd></div>
   </dl>
-  <div class="bars" aria-hidden="true">
-    ${barPair(r)}
-  </div>
-  <p>${dir}（ずれ ${kg2(r.deviationKg)} kg）。${i === 0 ? "体重の傾向は水分の揺れで少し上がりました。" : ""}動かす割合は ${k}${k > 0.25 ? `（同じ向きのずれが${Math.round(k / 0.25)}週続いたので大きく）` : i > 0 ? "（ずれの向きが変わったので小さく戻す）" : ""}。</p>
-  <p class="week-result">推定消費カロリー ${kcal(r.previousExpenditureKcal)} → <strong>${kcal(r.expenditureKcal)} kcal</strong><br>1日の目安 ${kcal(r.previousGuideKcal)} → <strong>${kcal(r.guideKcal)} kcal</strong>${limited ? '<span class="note">前の週から 150 kcal までしか変えない決まりで止めました</span>' : ""}</p>
-</section>`;
-};
-// 0 を真ん中に、減りは左、増えは右へ伸ばす。±0.5 kg で端
-const bar = (v, cls) =>
-  `<span class="bar ${cls} ${v < 0 ? "neg" : "pos"} w${Math.round(Math.min(Math.abs(v) / 0.5, 1) * 50)}"></span>`;
-const barPair = (r) => {
-  return `
-<div class="bar-row"><span class="bar-name">予想</span><span class="bar-track">${bar(r.predictedWeightChangeKg, "predicted-bar")}</span></div>
-<div class="bar-row"><span class="bar-name">実際</span><span class="bar-track">${bar(r.actualWeightChangeKg, "actual-bar")}</span></div>
-<div class="bar-row bar-axis"><span></span><span class="bar-axis-labels"><span>減る</span><span>0</span><span>増える</span></span></div>`;
+  <p class="proto-axis">答えに読み手が返す問い「${axis}」に、要点で答える</p>
+  <ol>${keyLine.map((k) => `<li>${k}</li>`).join("")}</ol>
+</details>`;
+
+const keyLineNav = (items) =>
+  `<ol class="key-line">${items.map(([id, text]) => `<li><a href="#${id}">${text}</a></li>`).join("")}</ol>`;
+
+const rules = {
+  backCalculated: `<p>今日を除く直前の 28 日の、食べた量と体重から出します。食べた量は、nu-tori を使い始めた日からは nu-tori の食事の記録を、使い始める前の日はヘルスケアの摂取エネルギーを使います。</p>
+<ul><li>食べた量のある日が 14 日以上あること。食べた量がほかの日の中ほどの値の半分に満たない日（1食だけ記録した日など）は、記録の途中とみなして数えません</li><li>体重を記録した日が 4 日以上あり、最初の日から最後の日まで 14 日以上あること</li></ul>
+<p>食べた量の1日の平均から、体重の傾きの分を引いて出します。体重 1 kg の増減を 7,700 kcal とみなし、たとえば体重が1日に 0.1 kg ずつ減っていれば、食べた量の平均に 770 kcal を足した値になります。</p>`,
+  formula: `<p>身長・生年月日（年齢）・性別と、開始の日の体重の傾向から、安静にしているときの消費を Mifflin-St Jeor の式で出し、活動量の係数を掛けます。ヘルスケアから読めない値は、アプリで入れていただきます。</p>
+<ul><li>歩数が読めるとき: 直前 28 日の、歩いた日の平均の歩数で決めます。5,000 歩未満は 1.4、10,000 歩未満は 1.55、それ以上は 1.7</li><li>歩数が読めないとき: 3つから選んでいただきます。ほぼ座り仕事は 1.4、立ち仕事が多いは 1.55、よく動くは 1.7</li></ul>
+<p>身体データと、使い始める前の摂取エネルギーは、この計算にだけ使い、保存しません。</p>`,
+  pace: `<p>1日に減らす（足す）分は、期限の日までに目標体重へ届くのに要る体重の変化の速さに、7,700 kcal/kg を掛けて出します。たとえば、体重の傾向が1日に 0.05 kg ずつ減る速さなら、1日に 385 kcal を減らします。増量では、1日に足す分を足します。維持では、体重の傾向が目標体重の ±0.7 kg の中にあれば、減らしも足しもしません。外れたら、体重の傾向の 1週間に 0.15% の速さで目標体重へ戻す分だけ減らし（足し）ます。</p>`,
+  limits: `<p>値は 50 kcal 単位に丸め、次の上限と下限を当てます。</p>
+<ul><li>必要な速さの上限: 1週間に、開始の日の体重の傾向の 0.75%（減量）・0.5%（増量）より速くしません。期限までの日が少なくても、無理な速さにしません</li><li>1日の目安の下限: 1,200 kcal より低くしません</li><li>1週の変化の幅: 毎週の見直しで、前の週の1日の目安から ±150 kcal より大きく変えません</li></ul>`,
+  review: `<ol><li>前の週（月曜から日曜）の食べた量の平均と、そのときの推定消費カロリーから、体重の傾向がどれだけ変わるはずだったかを出します</li><li>実際の体重の傾向の変化と比べ、ずれの分だけ推定消費カロリーを動かします。一度に全部は動かさず、食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど大きく動かします</li><li>新しい推定消費カロリーで、1日の目安を出し直します</li></ol>`,
+  skip: `<p>次のどれかに当たる週は、見直しを見送り、推定消費カロリーも1日の目安も前の週のままにします。</p>
+<ul><li>使い始めて 7 日に満たない（最初の値を食べた量と体重から逆算したときは当てません）</li><li>その週に体重の記録が無い</li><li>その週に食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li></ul>`,
+  trend: `<p>体重の傾向は、体重の記録から日々の増減をならした体重の推移です。運動の記録やワークアウト、消費したエネルギーの記録は使いません。運動した分も、体重の傾向の動きに表れるからです。</p>`,
 };
 
-const variantB = `
+const howToRecord = `<p>毎朝の体重と、食事の記録が揃うほど、推定は本当の消費に近づき、1日の目安も合っていきます。</p>
+<ul><li>体重は、毎朝、同じころに量ってください。日々の揺れが小さくなります</li><li>食事は、食べたものを撮るか書くかして、1日の分をなるべく全部記録してください。1食だけの日は、見直しに数えません</li></ul>`;
+
+const medical = `<h2>医療の助言ではありません</h2>
+<p>持病のある方は、医師に相談してください。</p>`;
+
+const exampleIntro = `<p class="persona">例: ${persona}。式の値は ${kcal(initial.kcal)} kcal、1日の目安は ${kcal(initial.guideKcal)} kcal でした。この人の本当の消費は 2,150 kcal だったとします（nu-tori には見えない値）。</p>`;
+
+// ---------- 案D: 手順のピラミッド（どうやって？に、手順の順で答える） ----------
+const variantD = `
+${structurePanel({
+  s: "1日の目安は、消費カロリーから目標の速さで減らす分を引いた値",
+  c: "消費カロリーは測れない。人によって数百 kcal 違い、体重が減れば消費も減る",
+  q: "nu-tori は、どうやって自分に合った目安を出し続けるのか",
+  a: "毎週の記録で、予想と実際の体重の動きのずれから、推定消費カロリーを直す。記録を続けるほど、目安は体に合っていく",
+  axis: "どうやって？",
+  keyLine: [
+    "最初の推定を、記録か身体データから出す",
+    "毎週、ずれから推定を直す",
+    "直した推定から、1日の目安を出す",
+  ],
+})}
 <h1>推定消費カロリーと1日の目安の出し方</h1>
-${sec.intro}
-<p>決まりを読む前に、架空の1人が使い始めてからの4週間を追います。数字は、nu-tori が実際に使っている決まりで計算しました。</p>
-<h2>ある人の4週間</h2>
-<p class="persona">${persona}。</p>
-<section class="week week-zero">
-  <h3>使い始めた日 <span class="week-dates">${md(days[0].calendarDay)}（月）</span></h3>
-  <p>身長・年齢・性別と体重の傾向から、式で推定消費カロリーを <strong>${kcal(initial.kcal)} kcal</strong> と出しました。12週で ${kg1(initial.startingWeightTrendKg - 74.4)} kg 減らすのに1日 ${kcal(initial.kcal - initial.guideKcal)} kcal ほど減らし、1日の目安は <strong>${kcal(initial.guideKcal)} kcal</strong>。式の値は、同じ体格の人の平均です。この人の本当の消費は分かりません。</p>
-</section>
-<h3 class="figure-title">毎朝の体重は揺れます</h3>
-${trendFigure({ id: "b-trend" })}
-${reviews.map(weekCard).join("")}
-<h3 class="figure-title">4週間で、推定は本当の消費に近づきました</h3>
-${weeksFigure({ id: "b-weeks" })}
-<h3 class="figure-title">体重が減ると、消費も減ります</h3>
-<p>この人が4週目の ${kcal(reviews.at(-1).guideKcal)} kcal を、見直さずに食べ続けたとします。</p>
-${plateauFigure({ id: "b-plateau" })}
-<p>毎週の体重と食べた量のずれを読み、推定消費カロリーを直し続けるのが、nu-tori の見直しです。</p>
-<h2>決まりの詳細</h2>
-<details><summary>推定消費カロリーは推定です</summary>${sec.s1.replace(/<h2>.*?<\/h2>/, "")}${sec.s1b}</details>
-<details><summary>最初の推定消費カロリー</summary>${sec.s2.replace(/<h2>.*?<\/h2>/, "")}</details>
-<details><summary>1日の目安</summary>${sec.s3.replace(/<h2>.*?<\/h2>/, "")}</details>
-<details><summary>毎週の見直し</summary>${sec.s4head.replace(/<h2>.*?<\/h2>/, "")}${sec.s4list}${sec.s4skip}</details>
-<details><summary>記録を続けると、推定が確かになります</summary>${sec.s5.replace(/<h2>.*?<\/h2>/, "")}</details>
-${sec.s6}
+<p>目標を立てると、nu-tori は1日に食べる量の目安（1日の目安）を出します。1日の目安は、1日に消費するカロリーから、目標の速さで減らす分を引いた値です。</p>
+<p>ところが、1日に消費するカロリーは測れません。同じ身長・体重・年齢でも、人によって数百 kcal 違います。体重が減れば、消費も減ります。</p>
+<div class="answer"><p><strong>そこで nu-tori は、毎週の体重と食事の記録から、消費カロリーを推定し直します。</strong>食べた量から予想した体重の動きと、実際の体重の傾向がずれたら、ずれの分だけ推定を直します。記録を続けるほど、1日の目安はあなたの体に合っていきます。</p></div>
+${loopFigure({ id: "d-loop" })}
+<p>出し方は、次の3つの段です。</p>
+${keyLineNav([
+  ["d-1", "最初の推定消費カロリーは、記録か身体データから出します"],
+  ["d-2", "毎週、予想と実際の体重の動きのずれから、推定を直します"],
+  ["d-3", "1日の目安は、直した推定から、目標の速さで減らす分を引いて出します"],
+])}
+
+<h2 id="d-1">1. 最初の推定消費カロリーは、記録か身体データから出します</h2>
+<p>初めて目標を立てるとき、記録が足りれば記録から逆算し、足りなければ身長・年齢・性別から式で出します。式の値は、同じ体格の人の平均なので、あなたの本当の消費とずれていることがあります。ずれは、次の毎週の見直しで直します。</p>
+<h3>記録が足りるときは、食べた量と体重の傾向から逆算します</h3>
+${rules.backCalculated}
+<h3>記録が足りないときは、身体データから式で出します</h3>
+${rules.formula}
+
+<h2 id="d-2">2. 毎週、予想と実際の体重の動きのずれから、推定を直します</h2>
+<p>毎週月曜に、前の週（月曜から日曜）の記録で見直します。予想した動きと実際の動きを比べ、ずれの一部ずつ推定を動かします。くり返すと、推定は本当の消費に近づきます。</p>
+<h3>体重は、日々の揺れをならした傾向で見ます</h3>
+${trendFigure({ id: "d-trend" })}
+${rules.trend}
+<h3>食べた量から予想した動きと、実際の傾向を比べます</h3>
+${reviewFigure({ id: "d-review" })}
+<h3>ずれの一部ずつ、推定を動かします</h3>
+${reviewEquation()}
+<p>一度に全部は動かしません。食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど、大きく動かします。</p>
+<h3>くり返すと、推定は本当の消費に近づきます</h3>
+${exampleIntro}
+${weeksFigure({ id: "d-weeks" })}
+<h3>記録が少ない週は、見直しを見送ります</h3>
+${rules.skip}
+
+<h2 id="d-3">3. 1日の目安は、直した推定から、目標の速さで減らす分を引いて出します</h2>
+<p>推定を直すたびに、1日の目安も出し直します。体重が減ると消費も減るので、目安もそれに合わせて下がっていきます。</p>
+<h3>減らす分は、期限までに目標体重へ届く速さから出します</h3>
+${rules.pace}
+<h3>無理な速さや急な変化にならないよう、上限と下限を当てます</h3>
+${rules.limits}
+<h3>見直さずに同じ量を食べ続けると、減り方が緩くなっていきます</h3>
+${plateauFigure({ id: "d-plateau" })}
+
+<h2>推定を確かにするために、毎朝の体重と1日分の食事を記録してください</h2>
+${howToRecord}
+${medical}
 `;
 
-// ---------- 案C: 流れの図を先に、各段を図で読む ----------
-const variantC = `
+// ---------- 案E: 理由のピラミッド（目安が外れていたら？に、理由で答える） ----------
+const variantE = `
+${structurePanel({
+  s: "1日の目安は、推定消費カロリーから目標の速さで減らす分を引いた値",
+  c: "最初の推定は、同じ体格の人の平均。本当の消費と数百 kcal ずれていることがある",
+  q: "最初の目安が外れていたら、どうなるのか",
+  a: "外れていても、目安は記録で毎週直るので、使い続けるほど合っていく",
+  axis: "なぜそう言える？",
+  keyLine: [
+    "ずれの分だけ直すので、本当の消費に近づく（正しさ）",
+    "体重が減っても直し続けるので、目安がずれていかない（変化への追従）",
+    "一度に大きく変えないので、揺れに振り回されない（安定）",
+  ],
+})}
 <h1>推定消費カロリーと1日の目安の出し方</h1>
-${sec.intro}
-${loopFigure({ id: "c-loop" })}
-<p>推定消費カロリーは、体重の傾向と食べた量から推定した値です。体の中を測った値ではありません。予想した体重の動きと実際の動きがずれたら、推定のほうを直します。図の段を、ひとつずつ見ていきます。</p>
-<h2>体重の傾向: 日々の揺れをならします</h2>
-${trendFigure({ id: "c-trend" })}
-<p>運動の記録やワークアウト、消費したエネルギーの記録は使いません。運動した分も、体重の傾向の動きに表れるからです。</p>
-<h2>ずれ: 予想と実際を比べます</h2>
-${reviewFigure({ id: "c-review" })}
-<h2>動かす: ずれの一部ずつ直します</h2>
+<p>目標を立てると、nu-tori は1日に食べる量の目安（1日の目安）を出します。1日の目安は、推定消費カロリーから、目標の速さで減らす分を引いた値です。</p>
+<p>推定消費カロリーの最初の値は、記録が足りなければ、身長・年齢・性別から出した、同じ体格の人の平均です。あなたの本当の消費とは、数百 kcal ずれていることがあります。</p>
+<p>では、最初の目安が外れていたら、どうなるのでしょうか。</p>
+<div class="answer"><p><strong>外れていても、1日の目安はあなたの記録で毎週直るので、使い続けるほど合っていきます。</strong>理由は3つです。</p>
+${keyLineNav([
+  ["e-1", "ずれの分だけ推定を直すので、本当の消費に近づきます"],
+  ["e-2", "体重が減って消費が減っても、毎週直すので、目安がずれていきません"],
+  ["e-3", "一度に大きく変えないので、日々の揺れに振り回されません"],
+])}</div>
+
+<h2 id="e-1">1. ずれの分だけ推定を直すので、本当の消費に近づきます</h2>
+<p>毎週月曜に、前の週の食べた量と推定消費カロリーから、体重の傾向がどれだけ変わるはずだったかを出し、実際の傾向と比べます。予想より減らなければ、推定が高すぎたので下げます。予想より減っていれば、上げます。</p>
+${reviewFigure({ id: "e-review" })}
 ${reviewEquation()}
-<p>一度に全部は動かしません。食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど大きく動かします。これを毎週くり返すと、推定は本当の消費に近づきます。</p>
-${weeksFigure({ id: "c-weeks" })}
-<h2>出し直す: 体重が減ると、消費も減ります</h2>
-<p>体重が減ると消費も減るので、同じ量を食べ続けると、減り方はだんだん緩くなります。毎週の見直しは、この変化にも合わせます。</p>
-${plateauFigure({ id: "c-plateau" })}
-<h2>決まりの詳細</h2>
-${sec.s2.replace("<h2>2. ", '<h3 class="rule-head">').replace("</h2>", "</h3>")}
-${sec.s3.replace("<h2>3. ", '<h3 class="rule-head">').replace("</h2>", "</h3>")}
-<h3 class="rule-head">毎週の見直し</h3>
-${sec.s4head.replace(/<h2>.*?<\/h2>/, "")}${sec.s4list}${sec.s4skip}
-${sec.s5}
-${sec.s6}
+<p>これを毎週くり返すと、最初の値が外れていても、推定は本当の消費に近づきます。</p>
+${exampleIntro}
+${weeksFigure({ id: "e-weeks" })}
+
+<h2 id="e-2">2. 体重が減って消費が減っても、毎週直すので、目安がずれていきません</h2>
+<p>体重が減ると、体を動かすのに要るカロリーも減ります。一度合った目安でも、同じ量を食べ続けると、減り方はだんだん緩くなり、やがて止まります。</p>
+${plateauFigure({ id: "e-plateau" })}
+<p>毎週の見直しは、減った消費に合わせて推定を直し、1日の目安を出し直します。上の例では、4週間で1日の目安が ${kcal(initial.guideKcal)} kcal から ${kcal(reviews.at(-1).guideKcal)} kcal になりました。</p>
+
+<h2 id="e-3">3. 一度に大きく変えないので、日々の揺れに振り回されません</h2>
+<p>体重は水分などで1日に 0.5 kg ほど上下します。nu-tori は、揺れで推定や目安が跳ねないよう、次の4つで抑えます。</p>
+<h3>体重は、日々の揺れをならした傾向で見ます</h3>
+${trendFigure({ id: "e-trend" })}
+${rules.trend}
+<h3>ずれの一部ずつ動かし、確かな週ほど大きく動かします</h3>
+<p>一度に全部は動かしません。食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど、大きく動かします。</p>
+<h3>1日の目安は、1週に ±150 kcal までしか変えません</h3>
+<p>上の例の1週目と2週目は、推定が大きく下がりましたが、1日の目安は 150 kcal ずつ下げるところで止めました。</p>
+<h3>記録が少ない週は、見直しを見送ります</h3>
+${rules.skip}
+
+<h2>推定を確かにするために、毎朝の体重と1日分の食事を記録してください</h2>
+${howToRecord}
+
+<h2>計算の決まり</h2>
+<p>上で説明した計算の、細かい決まりです。</p>
+<details><summary>最初の推定消費カロリー</summary><h3>記録が足りるとき: 食べた量と体重の傾向から逆算します</h3>${rules.backCalculated}<h3>記録が足りないとき: 身体データから式で出します</h3>${rules.formula}</details>
+<details><summary>1日の目安</summary>${rules.pace}${rules.limits}</details>
+<details><summary>毎週の見直し</summary>${rules.review}</details>
+${medical}
 `;
 
 const variants = [
-  { key: "a", name: "今の本文に図を差し込む", body: variantA },
-  { key: "b", name: "1人の4週間を追う", body: variantB },
-  { key: "c", name: "流れの図から読む", body: variantC },
+  { key: "d", name: "手順のピラミッド", body: variantD },
+  { key: "e", name: "理由のピラミッド", body: variantE },
 ];
-
-// 案 B の棒の幅。インラインの style を使わず、5% 刻みのクラスにする（本番の CSP に合わせる）
-const widthClasses = Array.from({ length: 101 }, (_, i) => `.w${i}{width:${i}%}`).join("");
 
 const html = `<title>消費カロリーの説明の試作</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -522,11 +538,23 @@ a { color: var(--primary); }
 .actual-bar { background: var(--primary); }
 .week-result { border-top: 1px solid var(--separator); padding-top: 8px; font-variant-numeric: tabular-nums; }
 .note { display: block; color: var(--on-surface-secondary); font-size: 13px; line-height: 18px; margin-top: 2px; }
-${widthClasses}
 details { background: var(--surface); border-radius: 10px; padding: 0 16px; margin: 0 0 8px; }
 summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
 details[open] { padding-bottom: 8px; }
 .rule-head { margin-top: 28px; }
+.answer { background: var(--surface); border-radius: 12px; padding: 14px 16px; margin: 16px 0 20px; }
+.answer p { margin: 0 0 8px; }
+.answer p:last-child, .answer ol:last-child { margin-bottom: 0; }
+.key-line { padding-left: 1.4em; display: grid; gap: 6px; }
+.key-line a { text-decoration: none; }
+.proto-structure { border: 1px dashed var(--on-surface-tertiary); background: transparent; border-radius: 10px; padding: 0 12px 8px; margin: 0 0 24px; font-size: 13px; line-height: 18px; color: var(--on-surface-secondary); }
+.proto-structure summary { font-weight: 600; min-height: 36px; }
+.proto-structure dl { display: grid; gap: 6px; margin: 0 0 8px; }
+.proto-structure dl div { display: grid; grid-template-columns: 4.5em 1fr; gap: 8px; }
+.proto-structure dt { font-weight: 600; }
+.proto-structure dd { margin: 0; min-width: 0; color: var(--on-surface); }
+.proto-structure ol { margin: 0; color: var(--on-surface); }
+.proto-axis { margin: 0 0 4px; }
 
 /* ---- 試作の切り替え（本番には持ち込まない） ---- */
 .proto-note { max-width: 680px; margin: 0 auto; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); color: var(--on-surface-secondary); font-size: 12px; line-height: 16px; }
@@ -536,9 +564,9 @@ details[open] { padding-bottom: 8px; }
 .switcher-label { padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 </style>
 
-<p class="proto-note">PROTOTYPE（#745）: 「推定消費カロリーと1日の目安の出し方」の見せ方を3案で見比べる試作です。下の帯の ← → で案を切り替えます。数字は架空の1人を、本番のサーバーの決まりで計算した値です。</p>
+<p class="proto-note">PROTOTYPE（#745）: 「推定消費カロリーと1日の目安の出し方」の見せ方をミントのピラミッドで組み直した2案で見比べる試作です。下の帯の ← → で案を切り替えます。数字は架空の1人を、本番のサーバーの決まりで計算した値です。</p>
 <header class="site-header"><a class="site-name" href="#">nu-tori</a></header>
-${variants.map((v) => `<main id="variant-${v.key}" data-name="${v.name}"${v.key === "a" ? "" : " hidden"}>${v.body}</main>`).join("\n")}
+${variants.map((v) => `<main id="variant-${v.key}" data-name="${v.name}"${v.key === variants[0].key ? "" : " hidden"}>${v.body}</main>`).join("\n")}
 <footer class="site-footer">
   <p>医療の助言ではありません。持病のある方は、医師に相談してください。</p>
   <p>nu-tori for iPhone</p>
@@ -551,7 +579,7 @@ ${variants.map((v) => `<main id="variant-${v.key}" data-name="${v.name}"${v.key 
 <script>
 // 試作の切り替えだけ。Artifact では URL のクエリが届かないので、#a・#b・#c で案を選ぶ
 const keys = ${JSON.stringify(variants.map((v) => v.key))};
-let current = keys.includes(location.hash.slice(1)) ? location.hash.slice(1) : "a";
+let current = keys.includes(location.hash.slice(1)) ? location.hash.slice(1) : keys[0];
 const show = (key) => {
   current = key;
   for (const k of keys) document.getElementById("variant-" + k).hidden = k !== key;

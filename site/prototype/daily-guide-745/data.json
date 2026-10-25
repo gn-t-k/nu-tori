@@ -389,9 +389,7 @@
       "expenditureKcal": 2287,
       "deviationDirection": "negative",
       "guideKcal": 1900,
-      "limitHits": [
-        "weekly_change"
-      ]
+      "limitHits": ["weekly_change"]
     },
     {
       "reviewedMonday": "2026-01-19",
@@ -406,9 +404,7 @@
       "expenditureKcal": 2154,
       "deviationDirection": "negative",
       "guideKcal": 1750,
-      "limitHits": [
-        "weekly_change"
-      ]
+      "limitHits": ["weekly_change"]
     },
     {
       "reviewedMonday": "2026-01-26",
