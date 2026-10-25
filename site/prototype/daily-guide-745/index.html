@@ -77,13 +77,13 @@ a { color: var(--primary); }
 .arrow-head { fill: var(--on-surface-secondary); }
 
 .equation { background: var(--surface); border-radius: 12px; padding: 12px 16px; margin: 0 0 20px; font-size: 15px; line-height: 20px; display: grid; gap: 8px; font-variant-numeric: tabular-nums; }
-.eq-row { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; }
+.eq-row { display: grid; grid-template-columns: 10em 1fr; gap: 8px; }
 .eq-row > * { min-width: 0; }
 .eq-label { color: var(--on-surface-secondary); font-size: 13px; }
 .eq-result { border-top: 1px solid var(--separator); padding-top: 8px; }
 @media (max-width: 420px) { .eq-row { grid-template-columns: 1fr; gap: 0; } }
 
-.persona { color: var(--on-surface-secondary); font-size: 15px; line-height: 20px; }
+
 .figure-title { margin-top: 32px; }
 .week { background: var(--surface); border-radius: 12px; padding: 14px 16px; margin: 12px 0; font-size: 15px; line-height: 21px; }
 .week h3 { margin: 0 0 8px; font-size: 17px; }
@@ -132,201 +132,33 @@ details[open] { padding-bottom: 8px; }
 .switcher-label { padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 </style>
 
-<p class="proto-note">PROTOTYPE（#745）: 「推定消費カロリーと1日の目安の出し方」の見せ方をミントのピラミッドで組み直した2案で見比べる試作です。下の帯の ← → で案を切り替えます。数字は架空の1人を、本番のサーバーの決まりで計算した値です。</p>
+<p class="proto-note">PROTOTYPE（#745）: 「推定消費カロリーと1日の目安の出し方」の見せ方をミントのピラミッドで組み直した案（E）の試作です。数字は架空の1人を、本番のサーバーの決まりで計算した値です。</p>
 <header class="site-header"><a class="site-name" href="#">nu-tori</a></header>
-<main id="variant-d" data-name="手順のピラミッド">
+<main id="variant-e" data-name="理由のピラミッド">
 
 <details class="proto-structure" open>
   <summary>PROTOTYPE: この案の骨組み</summary>
   <dl>
-    <div><dt>状況</dt><dd>1日の目安は、消費カロリーから目標の速さで減らす分を引いた値</dd></div>
-    <div><dt>複雑化</dt><dd>消費カロリーは測れない。人によって数百 kcal 違い、体重が減れば消費も減る</dd></div>
-    <div><dt>問い</dt><dd>nu-tori は、どうやって自分に合った目安を出し続けるのか</dd></div>
-    <div><dt>答え</dt><dd><strong>毎週の記録で、予想と実際の体重の動きのずれから、推定消費カロリーを直す。記録を続けるほど、目安は体に合っていく</strong></dd></div>
-  </dl>
-  <p class="proto-axis">答えに読み手が返す問い「どうやって？」に、要点で答える</p>
-  <ol><li>最初の推定を、記録か身体データから出す</li><li>毎週、ずれから推定を直す</li><li>直した推定から、1日の目安を出す</li></ol>
-</details>
-<h1>推定消費カロリーと1日の目安の出し方</h1>
-<p>目標を立てると、nu-tori は1日に食べる量の目安（1日の目安）を出します。1日の目安は、1日に消費するカロリーから、目標の速さで減らす分を引いた値です。</p>
-<p>ところが、1日に消費するカロリーは測れません。同じ身長・体重・年齢でも、人によって数百 kcal 違います。体重が減れば、消費も減ります。</p>
-<div class="answer"><p><strong>そこで nu-tori は、毎週の体重と食事の記録から、消費カロリーを推定し直します。</strong>食べた量から予想した体重の動きと、実際の体重の傾向がずれたら、ずれの分だけ推定を直します。記録を続けるほど、1日の目安はあなたの体に合っていきます。</p></div>
-
-<figure class="figure figure-loop" id="d-loop">
-  <div class="figure-scroll">
-  <svg viewBox="0 0 360 470" role="img" aria-label="毎週の見直しの流れ">
-    <defs><marker id="d-loop-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
-    <text class="col-label" x="100" y="14" text-anchor="middle">食事の記録から</text>
-    <text class="col-label" x="265" y="14" text-anchor="middle">体重の記録から</text>
-    <rect class="node " x="36" y="24" width="128" height="36" rx="10"/><text class="node-text " x="100" y="47" text-anchor="middle">食べた量</text>
-    <rect class="node " x="196" y="24" width="138" height="36" rx="10"/><text class="node-text " x="265" y="47" text-anchor="middle">毎朝の体重</text>
-    <rect class="node " x="36" y="92" width="128" height="48" rx="10"/><text class="node-text " x="100" y="112" text-anchor="middle">推定消費カロリー</text><text class="node-text " x="100" y="129" text-anchor="middle">との差</text>
-    <rect class="node " x="196" y="92" width="138" height="48" rx="10"/><text class="node-text " x="265" y="112" text-anchor="middle">体重の傾向</text><text class="node-text " x="265" y="129" text-anchor="middle">（揺れをならす）</text>
-    <rect class="node " x="36" y="172" width="128" height="48" rx="10"/><text class="node-text " x="100" y="192" text-anchor="middle">予想した</text><text class="node-text " x="100" y="209" text-anchor="middle">体重の動き</text>
-    <rect class="node " x="196" y="172" width="138" height="48" rx="10"/><text class="node-text " x="265" y="192" text-anchor="middle">実際の</text><text class="node-text " x="265" y="209" text-anchor="middle">体重の動き</text>
-    <path class="arrow" d="M100 60 V90" marker-end="url(#d-loop-head)"/>
-    <path class="arrow" d="M265 60 V90" marker-end="url(#d-loop-head)"/>
-    <path class="arrow" d="M100 140 V170" marker-end="url(#d-loop-head)"/>
-    <path class="arrow" d="M265 140 V170" marker-end="url(#d-loop-head)"/>
-    <rect class="node accent" x="110" y="258" width="150" height="36" rx="10"/><text class="node-text accent" x="185" y="281" text-anchor="middle">ずれ</text>
-    <path class="arrow" d="M100 220 L160 256" marker-end="url(#d-loop-head)"/>
-    <path class="arrow" d="M265 220 L210 256" marker-end="url(#d-loop-head)"/>
-    <rect class="node " x="96" y="326" width="178" height="48" rx="10"/><text class="node-text " x="185" y="346" text-anchor="middle">推定消費カロリーを</text><text class="node-text " x="185" y="363" text-anchor="middle">ずれの分だけ動かす</text>
-    <rect class="node " x="96" y="406" width="178" height="48" rx="10"/><text class="node-text " x="185" y="426" text-anchor="middle">1日の目安を</text><text class="node-text " x="185" y="443" text-anchor="middle">出し直す</text>
-    <path class="arrow" d="M185 294 V324" marker-end="url(#d-loop-head)"/>
-    <path class="arrow" d="M185 374 V404" marker-end="url(#d-loop-head)"/>
-    <path class="arrow loop" d="M96 430 H16 V42 H34" marker-end="url(#d-loop-head)"/>
-    <text class="col-label loop-label" x="56" y="452" text-anchor="middle">次の週へ</text>
-  </svg>
-  </div>
-  <figcaption>毎週月曜に、前の週（月〜日）の記録でこの流れを1回まわします。</figcaption>
-</figure>
-<p>出し方は、次の3つの段です。</p>
-<ol class="key-line"><li><a href="#d-1">最初の推定消費カロリーは、記録か身体データから出します</a></li><li><a href="#d-2">毎週、予想と実際の体重の動きのずれから、推定を直します</a></li><li><a href="#d-3">1日の目安は、直した推定から、目標の速さで減らす分を引いて出します</a></li></ol>
-
-<h2 id="d-1">1. 最初の推定消費カロリーは、記録か身体データから出します</h2>
-<p>初めて目標を立てるとき、記録が足りれば記録から逆算し、足りなければ身長・年齢・性別から式で出します。式の値は、同じ体格の人の平均なので、あなたの本当の消費とずれていることがあります。ずれは、次の毎週の見直しで直します。</p>
-<h3>記録が足りるときは、食べた量と体重の傾向から逆算します</h3>
-<p>今日を除く直前の 28 日の、食べた量と体重から出します。食べた量は、nu-tori を使い始めた日からは nu-tori の食事の記録を、使い始める前の日はヘルスケアの摂取エネルギーを使います。</p>
-<ul><li>食べた量のある日が 14 日以上あること。食べた量がほかの日の中ほどの値の半分に満たない日（1食だけ記録した日など）は、記録の途中とみなして数えません</li><li>体重を記録した日が 4 日以上あり、最初の日から最後の日まで 14 日以上あること</li></ul>
-<p>食べた量の1日の平均から、体重の傾きの分を引いて出します。体重 1 kg の増減を 7,700 kcal とみなし、たとえば体重が1日に 0.1 kg ずつ減っていれば、食べた量の平均に 770 kcal を足した値になります。</p>
-<h3>記録が足りないときは、身体データから式で出します</h3>
-<p>身長・生年月日（年齢）・性別と、開始の日の体重の傾向から、安静にしているときの消費を Mifflin-St Jeor の式で出し、活動量の係数を掛けます。ヘルスケアから読めない値は、アプリで入れていただきます。</p>
-<ul><li>歩数が読めるとき: 直前 28 日の、歩いた日の平均の歩数で決めます。5,000 歩未満は 1.4、10,000 歩未満は 1.55、それ以上は 1.7</li><li>歩数が読めないとき: 3つから選んでいただきます。ほぼ座り仕事は 1.4、立ち仕事が多いは 1.55、よく動くは 1.7</li></ul>
-<p>身体データと、使い始める前の摂取エネルギーは、この計算にだけ使い、保存しません。</p>
-
-<h2 id="d-2">2. 毎週、予想と実際の体重の動きのずれから、推定を直します</h2>
-<p>毎週月曜に、前の週（月曜から日曜）の記録で見直します。予想した動きと実際の動きを比べ、ずれの一部ずつ推定を動かします。くり返すと、推定は本当の消費に近づきます。</p>
-<h3>体重は、日々の揺れをならした傾向で見ます</h3>
-
-<figure class="figure" id="d-trend">
-  <div class="figure-scroll">
-  <svg viewBox="0 0 360 230" role="img" aria-label="毎朝の体重は1日で0.5 kg ほど上下するが、体重の傾向はなめらかに動く">
-    <line class="grid" x1="34" x2="286" y1="171.38461538461507" y2="171.38461538461507"/><text class="tick" x="28" y="175.38461538461507" text-anchor="end">77</text><line class="grid" x1="34" x2="286" y1="99.84615384615377" y2="99.84615384615377"/><text class="tick" x="28" y="103.84615384615377" text-anchor="end">78</text><line class="grid" x1="34" x2="286" y1="28.307692307692463" y2="28.307692307692463"/><text class="tick" x="28" y="32.30769230769246" text-anchor="end">79</text>
-    <line class="marker" x1="120.04878048780489" x2="120.04878048780489" y1="14" y2="200"/><text class="tick" x="124.04878048780489" y="24">使い始めた日</text>
-    <circle class="dot" cx="34.0" cy="49.8" r="2.6"/><circle class="dot" cx="40.1" cy="64.1" r="2.6"/><circle class="dot" cx="46.3" cy="56.9" r="2.6"/><circle class="dot" cx="52.4" cy="78.4" r="2.6"/><circle class="dot" cx="58.6" cy="99.8" r="2.6"/><circle class="dot" cx="64.7" cy="85.5" r="2.6"/><circle class="dot" cx="70.9" cy="71.2" r="2.6"/><circle class="dot" cx="77.0" cy="107.0" r="2.6"/><circle class="dot" cx="83.2" cy="92.7" r="2.6"/><circle class="dot" cx="89.3" cy="78.4" r="2.6"/><circle class="dot" cx="95.5" cy="35.5" r="2.6"/><circle class="dot" cx="101.6" cy="56.9" r="2.6"/><circle class="dot" cx="107.8" cy="85.5" r="2.6"/><circle class="dot" cx="113.9" cy="78.4" r="2.6"/><circle class="dot" cx="120.0" cy="92.7" r="2.6"/><circle class="dot" cx="126.2" cy="64.1" r="2.6"/><circle class="dot" cx="132.3" cy="35.5" r="2.6"/><circle class="dot" cx="138.5" cy="42.6" r="2.6"/><circle class="dot" cx="144.6" cy="71.2" r="2.6"/><circle class="dot" cx="150.8" cy="49.8" r="2.6"/><circle class="dot" cx="156.9" cy="71.2" r="2.6"/><circle class="dot" cx="163.1" cy="49.8" r="2.6"/><circle class="dot" cx="169.2" cy="78.4" r="2.6"/><circle class="dot" cx="175.4" cy="99.8" r="2.6"/><circle class="dot" cx="181.5" cy="71.2" r="2.6"/><circle class="dot" cx="187.7" cy="64.1" r="2.6"/><circle class="dot" cx="193.8" cy="99.8" r="2.6"/><circle class="dot" cx="200.0" cy="92.7" r="2.6"/><circle class="dot" cx="206.1" cy="121.3" r="2.6"/><circle class="dot" cx="212.2" cy="121.3" r="2.6"/><circle class="dot" cx="218.4" cy="114.2" r="2.6"/><circle class="dot" cx="224.5" cy="128.5" r="2.6"/><circle class="dot" cx="230.7" cy="85.5" r="2.6"/><circle class="dot" cx="236.8" cy="99.8" r="2.6"/><circle class="dot" cx="243.0" cy="121.3" r="2.6"/><circle class="dot" cx="249.1" cy="92.7" r="2.6"/><circle class="dot" cx="255.3" cy="121.3" r="2.6"/><circle class="dot" cx="261.4" cy="149.9" r="2.6"/><circle class="dot" cx="267.6" cy="142.8" r="2.6"/><circle class="dot" cx="273.7" cy="157.1" r="2.6"/><circle class="dot" cx="279.9" cy="164.2" r="2.6"/><circle class="dot" cx="286.0" cy="178.5" r="2.6"/>
-    <path class="trend" d="M34.0 64.2 L40.1 64.2 L46.3 63.4 L52.4 64.9 L58.6 68.4 L64.7 70.1 L70.9 70.2 L77.0 73.9 L83.2 75.8 L89.3 76.1 L95.5 72.0 L101.6 70.5 L107.8 72.0 L113.9 72.6 L120.0 74.6 L126.2 73.6 L132.3 69.8 L138.5 67.1 L144.6 67.5 L150.8 65.7 L156.9 66.3 L163.1 64.6 L169.2 66.0 L175.4 69.4 L181.5 69.6 L187.7 69.0 L193.8 72.1 L200.0 74.2 L206.1 78.9 L212.2 83.1 L218.4 86.2 L224.5 90.4 L230.7 90.0 L236.8 90.9 L243.0 94.0 L249.1 93.8 L255.3 96.6 L261.4 101.9 L267.6 106.0 L273.7 111.1 L279.9 116.4 L286.0 122.6"/>
-    <text class="series-label" x="292" y="126.64006348797888">体重の傾向</text>
-    <text class="series-label muted" x="292" y="194.5384615384608">毎朝の体重</text>
-    <text class="tick" x="34" y="220" text-anchor="start">12/22</text>
-    <text class="tick" x="286" y="220" text-anchor="end">2/1</text>
-    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
-  </svg>
-  </div>
-  <figcaption>点は毎朝の体重、線は体重の傾向です。1日で 0.5 kg ほど上下しても、傾向はなめらかに動きます。nu-tori は、傾向のほうの動きを見ます。</figcaption>
-</figure>
-<p>体重の傾向は、体重の記録から日々の増減をならした体重の推移です。運動の記録やワークアウト、消費したエネルギーの記録は使いません。運動した分も、体重の傾向の動きに表れるからです。</p>
-<h3>食べた量から予想した動きと、実際の傾向を比べます</h3>
-
-<figure class="figure" id="d-review">
-  <div class="figure-scroll">
-  <svg viewBox="0 0 360 240" role="img" aria-label="予想した体重の動きと、実際の体重の傾向のずれ">
-    <line class="grid" x1="34" x2="264" y1="201.08233538441766" y2="201.08233538441766"/><text class="tick" x="28" y="205.08233538441766" text-anchor="end">78.0</text><line class="grid" x1="34" x2="264" y1="173.4398483377877" y2="173.4398483377877"/><text class="tick" x="28" y="177.4398483377877" text-anchor="end">78.1</text><line class="grid" x1="34" x2="264" y1="145.79736129115383" y2="145.79736129115383"/><text class="tick" x="28" y="149.79736129115383" text-anchor="end">78.2</text><line class="grid" x1="34" x2="264" y1="118.15487424452388" y2="118.15487424452388"/><text class="tick" x="28" y="122.15487424452388" text-anchor="end">78.3</text><line class="grid" x1="34" x2="264" y1="90.51238719789002" y2="90.51238719789002"/><text class="tick" x="28" y="94.51238719789002" text-anchor="end">78.4</text><line class="grid" x1="34" x2="264" y1="62.869900151260055" y2="62.869900151260055"/><text class="tick" x="28" y="66.86990015126005" text-anchor="end">78.5</text><line class="grid" x1="34" x2="264" y1="35.2274131046301" y2="35.2274131046301"/><text class="tick" x="28" y="39.2274131046301" text-anchor="end">78.6</text>
-    <path class="predicted" d="M34.0 71.3 L264.0 168.5"/>
-    <path class="trend" d="M34.0 71.3 L66.9 64.9 L99.7 70.2 L132.6 83.3 L165.4 84.0 L198.3 81.9 L231.1 93.8 L264.0 101.8"/>
-    <circle class="end" cx="264" cy="168.53626943005116" r="3.5"/>
-    <circle class="end trend-end" cx="264" cy="101.80062534549758" r="3.5"/>
-    <text class="series-label" x="38" y="54.91496928973865">実際の傾向 −0.11 kg</text>
-    <text class="series-label muted" x="132.57142857142856" y="132.9641006661738" text-anchor="middle">予想 −0.35 kg</text>
-    <path class="gap" d="M274 101.80062534549758 h6 V168.53626943005116 h-6"/>
-    <text class="gap-label" x="286" y="133.16844738777436">ずれ</text>
-    <text class="gap-label" x="286" y="149.16844738777436">0.24 kg</text>
-    <text class="tick" x="34" y="230" text-anchor="start">1/11（日）</text>
-    <text class="tick" x="264" y="230" text-anchor="end">1/18（日）</text>
-    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
-  </svg>
-  </div>
-  <figcaption>1月12日〜1月18日の週。食べた量の平均 1,900 kcal と、推定消費カロリー 2,287 kcal の差から予想した動き（点線）より、実際の傾向（実線）は減りませんでした。</figcaption>
-</figure>
-<h3>ずれの一部ずつ、推定を動かします</h3>
-
-<div class="equation">
-  <div class="eq-row"><span class="eq-label">ずれ</span><span class="eq-value">0.24 kg × 7,700 kcal ÷ 7 日 ＝ 1日 266 kcal</span></div>
-  <div class="eq-row"><span class="eq-label">動かす割合</span><span class="eq-value">× 0.5（7日記録・同じ向きのずれが2週続いた）</span></div>
-  <div class="eq-row eq-result"><span class="eq-label">推定消費カロリー</span><span class="eq-value">2,287 → <strong>2,154 kcal</strong></span></div>
-</div>
-<p>一度に全部は動かしません。食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど、大きく動かします。</p>
-<h3>くり返すと、推定は本当の消費に近づきます</h3>
-<p class="persona">例: 30歳・身長 172 cm・ほぼ座り仕事の男性。使い始める前の4週間は体重計だけ使い、体重の傾向は 78.4 kg で横ばい。食事は記録していなかったので、最初の推定消費カロリーは式で出します。目標は12週で 74.4 kg。式の値は 2,399 kcal、1日の目安は 2,050 kcal でした。この人の本当の消費は 2,150 kcal だったとします（nu-tori には見えない値）。</p>
-
-<figure class="figure" id="d-weeks">
-  <div class="figure-scroll">
-  <svg viewBox="0 0 360 250" role="img" aria-label="推定消費カロリーが毎週の見直しで本当の消費に近づき、1日の目安もそれに沿って下がる">
-    <line class="grid" x1="40" x2="276" y1="198.5263157894737" y2="198.5263157894737"/><text class="tick" x="34" y="202.5263157894737" text-anchor="end">1,600</text><line class="grid" x1="40" x2="276" y1="155.57894736842104" y2="155.57894736842104"/><text class="tick" x="34" y="159.57894736842104" text-anchor="end">1,800</text><line class="grid" x1="40" x2="276" y1="112.63157894736842" y2="112.63157894736842"/><text class="tick" x="34" y="116.63157894736842" text-anchor="end">2,000</text><line class="grid" x1="40" x2="276" y1="69.68421052631581" y2="69.68421052631581"/><text class="tick" x="34" y="73.68421052631581" text-anchor="end">2,200</text><line class="grid" x1="40" x2="276" y1="26.73684210526318" y2="26.73684210526318"/><text class="tick" x="34" y="30.73684210526318" text-anchor="end">2,400</text>
-    <path class="truth" d="M40.0 80.4 L87.2 80.9 L134.4 82.2 L181.6 84.3 L228.8 86.5"/>
-    <path class="trend" d="M40.0 27.0 L87.2 27.0 L87.2 51.0 L134.4 51.0 L134.4 79.6 L181.6 79.6 L181.6 95.5 L228.8 95.5 L228.8 94.8 L276.0 94.8"/>
-    <path class="guide" d="M40.0 101.9 L87.2 101.9 L87.2 134.1 L134.4 134.1 L134.4 166.3 L181.6 166.3 L181.6 187.8 L228.8 187.8 L228.8 187.8 L276.0 187.8"/>
-    <text class="value" x="63.6" y="20.951578947368432" text-anchor="middle">2,399</text><text class="value" x="110.80000000000001" y="45.00210526315789" text-anchor="middle">2,287</text><text class="value" x="158" y="73.56210526315789" text-anchor="middle">2,154</text><text class="value" x="205.2" y="89.45263157894736" text-anchor="middle">2,080</text><text class="value" x="252.4" y="88.80842105263157" text-anchor="middle">2,083</text>
-    <text class="value muted" x="63.6" y="116.89473684210526" text-anchor="middle">2,050</text><text class="value muted" x="110.80000000000001" y="149.10526315789474" text-anchor="middle">1,900</text><text class="value muted" x="158" y="181.31578947368422" text-anchor="middle">1,750</text><text class="value muted" x="205.2" y="202.78947368421052" text-anchor="middle">1,650</text><text class="value muted" x="252.4" y="202.78947368421052" text-anchor="middle">1,650</text>
-    <text class="series-label" x="282" y="92.80842105263157">推定消費</text>
-    <text class="series-label" x="282" y="106.80842105263157">カロリー</text>
-    <text class="series-label muted" x="282" y="191.78947368421052">1日の目安</text>
-    <text class="series-label faint" x="232.8" y="64.51594759103233">本当の消費</text>
-    <text class="tick" x="63.6" y="240" text-anchor="middle">1週目</text><text class="tick" x="110.80000000000001" y="240" text-anchor="middle">2週目</text><text class="tick" x="158" y="240" text-anchor="middle">3週目</text><text class="tick" x="205.2" y="240" text-anchor="middle">4週目</text><text class="tick" x="252.4" y="240" text-anchor="middle">5週目</text>
-    <text class="tick" x="34" y="12" text-anchor="end">kcal</text>
-  </svg>
-  </div>
-  <figcaption>架空の1人の例です。「本当の消費」（点線）は、この人の体だけが知っている値として置いた仮定で、nu-tori には見えません。推定消費カロリーは、毎週のずれから本当の消費に近づいていきます。</figcaption>
-</figure>
-<h3>記録が少ない週は、見直しを見送ります</h3>
-<p>次のどれかに当たる週は、見直しを見送り、推定消費カロリーも1日の目安も前の週のままにします。</p>
-<ul><li>使い始めて 7 日に満たない（最初の値を食べた量と体重から逆算したときは当てません）</li><li>その週に体重の記録が無い</li><li>その週に食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li></ul>
-
-<h2 id="d-3">3. 1日の目安は、直した推定から、目標の速さで減らす分を引いて出します</h2>
-<p>推定を直すたびに、1日の目安も出し直します。体重が減ると消費も減るので、目安もそれに合わせて下がっていきます。</p>
-<h3>減らす分は、期限までに目標体重へ届く速さから出します</h3>
-<p>1日に減らす（足す）分は、期限の日までに目標体重へ届くのに要る体重の変化の速さに、7,700 kcal/kg を掛けて出します。たとえば、体重の傾向が1日に 0.05 kg ずつ減る速さなら、1日に 385 kcal を減らします。増量では、1日に足す分を足します。維持では、体重の傾向が目標体重の ±0.7 kg の中にあれば、減らしも足しもしません。外れたら、体重の傾向の 1週間に 0.15% の速さで目標体重へ戻す分だけ減らし（足し）ます。</p>
-<h3>無理な速さや急な変化にならないよう、上限と下限を当てます</h3>
-<p>値は 50 kcal 単位に丸め、次の上限と下限を当てます。</p>
-<ul><li>必要な速さの上限: 1週間に、開始の日の体重の傾向の 0.75%（減量）・0.5%（増量）より速くしません。期限までの日が少なくても、無理な速さにしません</li><li>1日の目安の下限: 1,200 kcal より低くしません</li><li>1週の変化の幅: 毎週の見直しで、前の週の1日の目安から ±150 kcal より大きく変えません</li></ul>
-<h3>見直さずに同じ量を食べ続けると、減り方が緩くなっていきます</h3>
-
-<figure class="figure" id="d-plateau">
-  <div class="figure-scroll">
-  <svg viewBox="0 0 360 220" role="img" aria-label="同じ量を食べ続けると、体重の減り方がだんだん緩くなり、止まっていく">
-    <line class="grid" x1="34" x2="340" y1="174.1818181818182" y2="174.1818181818182"/><text class="tick" x="28" y="178.1818181818182" text-anchor="end">60</text><line class="grid" x1="34" x2="340" y1="134.63636363636363" y2="134.63636363636363"/><text class="tick" x="28" y="138.63636363636363" text-anchor="end">65</text><line class="grid" x1="34" x2="340" y1="95.0909090909091" y2="95.0909090909091"/><text class="tick" x="28" y="99.0909090909091" text-anchor="end">70</text><line class="grid" x1="34" x2="340" y1="55.54545454545456" y2="55.54545454545456"/><text class="tick" x="28" y="59.54545454545456" text-anchor="end">75</text>
-    <path class="trend" d="M34.0 37.4 L45.8 50.3 L57.5 62.0 L69.3 72.6 L81.1 82.2 L92.8 90.9 L104.6 98.8 L116.4 105.9 L128.2 112.4 L139.9 118.3 L151.7 123.6 L163.5 128.4 L175.2 132.8 L187.0 136.8 L198.8 140.4 L210.5 143.6 L222.3 146.6 L234.1 149.2 L245.8 151.7 L257.6 153.9 L269.4 155.9 L281.2 157.7 L292.9 159.3 L304.7 160.8 L316.5 162.1 L328.2 163.3 L340.0 164.4"/>
-    <circle class="end trend-end" cx="187" cy="136.76094564712503" r="3.5"/>
-    <text class="value" x="193" y="124.76094564712503" text-anchor="start">1年で 12.6 kg 減</text>
-    <circle class="end trend-end" cx="340" cy="164.43929833331367" r="3.5"/>
-    <text class="value" x="340" y="150.43929833331367" text-anchor="end">次の1年は 3.5 kg 減</text>
-    <text class="tick" x="34" y="210" text-anchor="start">今</text>
-    <text class="tick" x="187" y="210" text-anchor="middle">1年後</text>
-    <text class="tick" x="340" y="210" text-anchor="end">2年後</text>
-    <text class="tick" x="28" y="12" text-anchor="end">kg</text>
-  </svg>
-  </div>
-  <figcaption>1,650 kcal を見直さずに食べ続けたときの体重の動き（同じ仮定で計算）。体重が減ると消費も減り（この例では 1 kg あたり 1日 27 kcal）、食べた量との差が縮んで、減り方がだんだん緩くなります。nu-tori は毎週の見直しで、この変化に合わせて1日の目安を直します。</figcaption>
-</figure>
-
-<h2>推定を確かにするために、毎朝の体重と1日分の食事を記録してください</h2>
-<p>毎朝の体重と、食事の記録が揃うほど、推定は本当の消費に近づき、1日の目安も合っていきます。</p>
-<ul><li>体重は、毎朝、同じころに量ってください。日々の揺れが小さくなります</li><li>食事は、食べたものを撮るか書くかして、1日の分をなるべく全部記録してください。1食だけの日は、見直しに数えません</li></ul>
-<h2>医療の助言ではありません</h2>
-<p>持病のある方は、医師に相談してください。</p>
-</main>
-<main id="variant-e" data-name="理由のピラミッド" hidden>
-
-<details class="proto-structure" open>
-  <summary>PROTOTYPE: この案の骨組み</summary>
-  <dl>
-    <div><dt>状況</dt><dd>1日の目安は、推定消費カロリーから目標の速さで減らす分を引いた値</dd></div>
-    <div><dt>複雑化</dt><dd>最初の推定は、同じ体格の人の平均。本当の消費と数百 kcal ずれていることがある</dd></div>
-    <div><dt>問い</dt><dd>最初の目安が外れていたら、どうなるのか</dd></div>
-    <div><dt>答え</dt><dd><strong>外れていても、目安は記録で毎週直るので、使い続けるほど合っていく</strong></dd></div>
+    <div><dt>状況</dt><dd>1日の目安は、推定消費カロリーから、目標の速さで体重を減らすために1日に減らす分を引いた値</dd></div>
+    <div><dt>複雑化</dt><dd>記録が足りないとき、最初の推定消費カロリーは同じ体格の人の平均で、本当に消費しているカロリーと数百 kcal ずれることがある</dd></div>
+    <div><dt>問い</dt><dd>最初の1日の目安が外れていたら、どうなるのか</dd></div>
+    <div><dt>答え</dt><dd><strong>外れていても、nu-tori が記録から毎週直すので、目安は使い続けるほど体に合っていく</strong></dd></div>
   </dl>
   <p class="proto-axis">答えに読み手が返す問い「なぜそう言える？」に、要点で答える</p>
-  <ol><li>ずれの分だけ直すので、本当の消費に近づく（正しさ）</li><li>体重が減っても直し続けるので、目安がずれていかない（変化への追従）</li><li>一度に大きく変えないので、揺れに振り回されない（安定）</li></ol>
+  <ol><li>ずれの分だけ直すので、推定が本当の消費に近づく（正しさ）</li><li>体重が減って消費が減っても、毎週直すので、目安が体に合ったまま（変化への追従）</li><li>一度に大きく変えないので、体重の揺れで目安が跳ねない（安定）</li></ol>
 </details>
 <h1>推定消費カロリーと1日の目安の出し方</h1>
-<p>目標を立てると、nu-tori は1日に食べる量の目安（1日の目安）を出します。1日の目安は、推定消費カロリーから、目標の速さで減らす分を引いた値です。</p>
-<p>推定消費カロリーの最初の値は、記録が足りなければ、身長・年齢・性別から出した、同じ体格の人の平均です。あなたの本当の消費とは、数百 kcal ずれていることがあります。</p>
-<p>では、最初の目安が外れていたら、どうなるのでしょうか。</p>
-<div class="answer"><p><strong>外れていても、1日の目安はあなたの記録で毎週直るので、使い続けるほど合っていきます。</strong>理由は3つです。</p>
-<ol class="key-line"><li><a href="#e-1">ずれの分だけ推定を直すので、本当の消費に近づきます</a></li><li><a href="#e-2">体重が減って消費が減っても、毎週直すので、目安がずれていきません</a></li><li><a href="#e-3">一度に大きく変えないので、日々の揺れに振り回されません</a></li></ol></div>
+<p>あなたが目標を立てると、nu-tori は、あなたが1日に食べる量の目安（1日の目安）を出します。1日の目安は、推定消費カロリー（あなたが1日に消費するカロリーを、nu-tori が推定した値）から、1日に減らす分を引いた値です。1日に減らす分は、目標の速さで体重を減らすために、消費するカロリーより少なく食べるカロリーです。</p>
+<p>食事と体重の記録が足りないとき、nu-tori は最初の推定消費カロリーを、あなたの身長・年齢・性別から式で出します。この値は、同じ体格の人の平均です。そのため、あなたが本当に消費しているカロリーとは、数百 kcal ずれていることがあります。</p>
+<p>では、最初の1日の目安が外れていたら、どうなるのでしょうか。</p>
+<div class="answer"><p><strong>最初の1日の目安が外れていても、nu-tori があなたの記録から目安を毎週直すので、使い続けるほど、目安はあなたの体に合っていきます。</strong>そう言える理由は3つです。</p>
+<ol class="key-line"><li><a href="#e-1">nu-tori は体重の予想と実際のずれから推定を直すので、推定は本当の消費に近づきます</a></li><li><a href="#e-2">体重が減って消費が減っても、nu-tori が毎週直すので、目安は体に合ったままです</a></li><li><a href="#e-3">nu-tori は推定と目安を一度に大きく変えないので、体重の揺れで目安が跳ねません</a></li></ol></div>
 
-<h2 id="e-1">1. ずれの分だけ推定を直すので、本当の消費に近づきます</h2>
-<p>毎週月曜に、前の週の食べた量と推定消費カロリーから、体重の傾向がどれだけ変わるはずだったかを出し、実際の傾向と比べます。予想より減らなければ、推定が高すぎたので下げます。予想より減っていれば、上げます。</p>
+<h2 id="e-1">1. nu-tori は体重の予想と実際のずれから推定を直すので、推定は本当の消費に近づきます</h2>
+<p>nu-tori は毎週月曜に、前の週にあなたが食べた量の平均と、その週の推定消費カロリーから、体重の傾向がどれだけ変わるはずだったかを予想します。体重の傾向は、毎朝の体重から日々の揺れをならした値です（3 で説明します）。nu-tori は、この予想を、実際の体重の傾向の変化と比べます。</p>
+<ul><li>体重の傾向が予想より減らなかったなら、推定消費カロリーが高すぎたので、nu-tori は推定を下げます</li><li>体重の傾向が予想より減ったなら、推定消費カロリーが低すぎたので、nu-tori は推定を上げます</li></ul>
+<p>nu-tori は、運動やワークアウトの記録と、消費したエネルギーの記録を使いません。あなたが運動して消費した分も、体重の傾向の動きに表れるからです。</p>
+<p class="persona">ここからは、架空の1人を例に追います。この人は 30 歳・身長 172 cm の男性で、ほぼ座り仕事です。nu-tori を使い始める前の4週間は、体重計で体重だけを量っていて、体重の傾向は 78.4 kg で横ばいでした。食事は記録していなかったので、nu-tori は最初の推定消費カロリーを式で出し、2,399 kcal としました。目標は、12週で 74.4 kg まで減らすことで、最初の1日の目安は 2,050 kcal でした。この人が本当に消費しているカロリーは、2,150 kcal とします。この値は説明のために置いた仮定で、nu-tori には分かりません。</p>
 
 <figure class="figure" id="e-review">
   <div class="figure-scroll">
@@ -346,16 +178,15 @@ details[open] { padding-bottom: 8px; }
     <text class="tick" x="28" y="12" text-anchor="end">kg</text>
   </svg>
   </div>
-  <figcaption>1月12日〜1月18日の週。食べた量の平均 1,900 kcal と、推定消費カロリー 2,287 kcal の差から予想した動き（点線）より、実際の傾向（実線）は減りませんでした。</figcaption>
+  <figcaption>例の人の、1月12日〜18日の週です。この週にこの人が食べた量の平均は 1,900 kcal、その週の推定消費カロリーは 2,287 kcal でした。nu-tori はこの差から、体重の傾向が 0.35 kg 減ると予想しました（点線）。実際の体重の傾向は 0.11 kg しか減らず（実線）、予想とのずれは 0.24 kg でした。</figcaption>
 </figure>
 
 <div class="equation">
-  <div class="eq-row"><span class="eq-label">ずれ</span><span class="eq-value">0.24 kg × 7,700 kcal ÷ 7 日 ＝ 1日 266 kcal</span></div>
-  <div class="eq-row"><span class="eq-label">動かす割合</span><span class="eq-value">× 0.5（7日記録・同じ向きのずれが2週続いた）</span></div>
-  <div class="eq-row eq-result"><span class="eq-label">推定消費カロリー</span><span class="eq-value">2,287 → <strong>2,154 kcal</strong></span></div>
+  <div class="eq-row"><span class="eq-label">ずれを1日あたりのカロリーにする</span><span class="eq-value">約 0.24 kg × 7,700 kcal/kg ÷ 7 日 ＝ 1日 約 266 kcal</span></div>
+  <div class="eq-row"><span class="eq-label">そのうち動かす割合</span><span class="eq-value">× 0.5 ＝ 約 133 kcal（この週は、食事を7日とも記録し、推定が高すぎる向きのずれが2週続いたので）</span></div>
+  <div class="eq-row eq-result"><span class="eq-label">新しい推定消費カロリー</span><span class="eq-value">2,287 kcal − 約 133 kcal ＝ <strong>2,154 kcal</strong></span></div>
 </div>
-<p>これを毎週くり返すと、最初の値が外れていても、推定は本当の消費に近づきます。</p>
-<p class="persona">例: 30歳・身長 172 cm・ほぼ座り仕事の男性。使い始める前の4週間は体重計だけ使い、体重の傾向は 78.4 kg で横ばい。食事は記録していなかったので、最初の推定消費カロリーは式で出します。目標は12週で 74.4 kg。式の値は 2,399 kcal、1日の目安は 2,050 kcal でした。この人の本当の消費は 2,150 kcal だったとします（nu-tori には見えない値）。</p>
+<p>nu-tori がこれを毎週くり返すと、最初の推定消費カロリーが外れていても、推定は本当の消費に近づきます。</p>
 
 <figure class="figure" id="e-weeks">
   <div class="figure-scroll">
@@ -374,11 +205,11 @@ details[open] { padding-bottom: 8px; }
     <text class="tick" x="34" y="12" text-anchor="end">kcal</text>
   </svg>
   </div>
-  <figcaption>架空の1人の例です。「本当の消費」（点線）は、この人の体だけが知っている値として置いた仮定で、nu-tori には見えません。推定消費カロリーは、毎週のずれから本当の消費に近づいていきます。</figcaption>
+  <figcaption>例の人の4週間です。点線の「本当の消費」は、説明のために置いた仮定で、nu-tori には分かりません。nu-tori が毎週ずれから推定を直すにつれて、推定消費カロリーは本当の消費に近づき、1日の目安も下がっていきます。</figcaption>
 </figure>
 
-<h2 id="e-2">2. 体重が減って消費が減っても、毎週直すので、目安がずれていきません</h2>
-<p>体重が減ると、体を動かすのに要るカロリーも減ります。一度合った目安でも、同じ量を食べ続けると、減り方はだんだん緩くなり、やがて止まります。</p>
+<h2 id="e-2">2. 体重が減って消費が減っても、nu-tori が毎週直すので、目安は体に合ったままです</h2>
+<p>あなたの体重が減ると、あなたが1日に消費するカロリーも減ります。体が軽くなるほど、体を保ち、動かすのに要るカロリーが減るからです。そのため、一度は体に合っていた1日の目安でも、同じ量を食べ続けると、体重の減り方はだんだん緩くなり、やがて止まります。</p>
 
 <figure class="figure" id="e-plateau">
   <div class="figure-scroll">
@@ -395,13 +226,13 @@ details[open] { padding-bottom: 8px; }
     <text class="tick" x="28" y="12" text-anchor="end">kg</text>
   </svg>
   </div>
-  <figcaption>1,650 kcal を見直さずに食べ続けたときの体重の動き（同じ仮定で計算）。体重が減ると消費も減り（この例では 1 kg あたり 1日 27 kcal）、食べた量との差が縮んで、減り方がだんだん緩くなります。nu-tori は毎週の見直しで、この変化に合わせて1日の目安を直します。</figcaption>
+  <figcaption>例の人が、4週目の1日の目安 1,650 kcal を、見直さずに2年食べ続けたときの体重です。体重が 1 kg 減るとこの人の消費が1日 27 kcal 減る、と仮定して計算しました。体重が減るほど、消費と食べた量の差が縮み、体重の減り方が緩くなります。</figcaption>
 </figure>
-<p>毎週の見直しは、減った消費に合わせて推定を直し、1日の目安を出し直します。上の例では、4週間で1日の目安が 2,050 kcal から 1,650 kcal になりました。</p>
+<p>nu-tori は、体重が減って消費が減った分も、1 と同じ見直しで毎週推定消費カロリーに反映し、1日の目安を出し直します。そのため、あなたが自分で計算し直さなくても、1日の目安は今の体に合ったままです。</p>
 
-<h2 id="e-3">3. 一度に大きく変えないので、日々の揺れに振り回されません</h2>
-<p>体重は水分などで1日に 0.5 kg ほど上下します。nu-tori は、揺れで推定や目安が跳ねないよう、次の4つで抑えます。</p>
-<h3>体重は、日々の揺れをならした傾向で見ます</h3>
+<h2 id="e-3">3. nu-tori は推定と目安を一度に大きく変えないので、体重の揺れで目安が跳ねません</h2>
+<p>あなたの体重は、体の水分などで1日に 0.5 kg ほど上下します。nu-tori は、この揺れで推定消費カロリーや1日の目安が跳ねないように、次の4つの決まりで変化を抑えます。</p>
+<h3>nu-tori は、日々の揺れをならした体重の傾向を見ます</h3>
 
 <figure class="figure" id="e-trend">
   <div class="figure-scroll">
@@ -417,61 +248,39 @@ details[open] { padding-bottom: 8px; }
     <text class="tick" x="28" y="12" text-anchor="end">kg</text>
   </svg>
   </div>
-  <figcaption>点は毎朝の体重、線は体重の傾向です。1日で 0.5 kg ほど上下しても、傾向はなめらかに動きます。nu-tori は、傾向のほうの動きを見ます。</figcaption>
+  <figcaption>例の人の、毎朝の体重（点）と体重の傾向（線）です。毎朝の体重が1日で 0.5 kg ほど上下しても、体重の傾向はなめらかに動きます。</figcaption>
 </figure>
-<p>体重の傾向は、体重の記録から日々の増減をならした体重の推移です。運動の記録やワークアウト、消費したエネルギーの記録は使いません。運動した分も、体重の傾向の動きに表れるからです。</p>
-<h3>ずれの一部ずつ動かし、確かな週ほど大きく動かします</h3>
-<p>一度に全部は動かしません。食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど、大きく動かします。</p>
-<h3>1日の目安は、1週に ±150 kcal までしか変えません</h3>
-<p>上の例の1週目と2週目は、推定が大きく下がりましたが、1日の目安は 150 kcal ずつ下げるところで止めました。</p>
-<h3>記録が少ない週は、見直しを見送ります</h3>
-<p>次のどれかに当たる週は、見直しを見送り、推定消費カロリーも1日の目安も前の週のままにします。</p>
-<ul><li>使い始めて 7 日に満たない（最初の値を食べた量と体重から逆算したときは当てません）</li><li>その週に体重の記録が無い</li><li>その週に食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li></ul>
+<p>体重の傾向は、毎朝の体重の記録から、日々の増減をならした体重の推移です。nu-tori は、1日ごとの体重ではなく、体重の傾向の動きを予想と比べます。</p>
+<h3>nu-tori は、推定消費カロリーを、ずれの一部ずつ動かします</h3>
+<p>nu-tori は、1週のずれの分を、推定消費カロリーに一度に全部は反映しません。食事を記録した日が多い週ほど、また同じ向きのずれが続いた週ほど、推定を大きく動かします。記録が少ない週や、たまたま体重が揺れた週のずれで、推定が大きく動かないようにするためです。</p>
+<h3>nu-tori は、1日の目安を1週に ±150 kcal までしか変えません</h3>
+<p>nu-tori は、毎週の見直しで、1日の目安を前の週から 150 kcal より大きく上げ下げしません。例の人の1週目と2週目の見直しでは、推定消費カロリーが大きく下がりましたが、nu-tori は1日の目安を 150 kcal ずつ下げるところで止めました。</p>
+<h3>nu-tori は、記録が少ない週の見直しを見送ります</h3>
+<p>nu-tori は、次のどれかに当たる週の見直しを見送り、推定消費カロリーと1日の目安を前の週のままにします。</p>
+<ul><li>あなたが nu-tori を使い始めて 7 日に満たない（最初の推定消費カロリーを、食べた量と体重から逆算したときは、この決まりを当てません）</li><li>その週に、体重の記録が無い</li><li>その週に、食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li></ul>
 
 <h2>推定を確かにするために、毎朝の体重と1日分の食事を記録してください</h2>
-<p>毎朝の体重と、食事の記録が揃うほど、推定は本当の消費に近づき、1日の目安も合っていきます。</p>
-<ul><li>体重は、毎朝、同じころに量ってください。日々の揺れが小さくなります</li><li>食事は、食べたものを撮るか書くかして、1日の分をなるべく全部記録してください。1食だけの日は、見直しに数えません</li></ul>
+<p>毎朝の体重と食事の記録が揃うほど、推定消費カロリーは本当の消費に近づき、1日の目安もあなたの体に合っていきます。</p>
+<ul><li>体重は、毎朝同じころに量ってください。量る時刻がそろうと、日々の揺れが小さくなります</li><li>食事は、食べたものを撮るか書くかして、1日の分をなるべく全部記録してください。1食だけ記録した日を、nu-tori は見直しで数えません</li></ul>
 
 <h2>計算の決まり</h2>
-<p>上で説明した計算の、細かい決まりです。</p>
-<details><summary>最初の推定消費カロリー</summary><h3>記録が足りるとき: 食べた量と体重の傾向から逆算します</h3><p>今日を除く直前の 28 日の、食べた量と体重から出します。食べた量は、nu-tori を使い始めた日からは nu-tori の食事の記録を、使い始める前の日はヘルスケアの摂取エネルギーを使います。</p>
-<ul><li>食べた量のある日が 14 日以上あること。食べた量がほかの日の中ほどの値の半分に満たない日（1食だけ記録した日など）は、記録の途中とみなして数えません</li><li>体重を記録した日が 4 日以上あり、最初の日から最後の日まで 14 日以上あること</li></ul>
-<p>食べた量の1日の平均から、体重の傾きの分を引いて出します。体重 1 kg の増減を 7,700 kcal とみなし、たとえば体重が1日に 0.1 kg ずつ減っていれば、食べた量の平均に 770 kcal を足した値になります。</p><h3>記録が足りないとき: 身体データから式で出します</h3><p>身長・生年月日（年齢）・性別と、開始の日の体重の傾向から、安静にしているときの消費を Mifflin-St Jeor の式で出し、活動量の係数を掛けます。ヘルスケアから読めない値は、アプリで入れていただきます。</p>
-<ul><li>歩数が読めるとき: 直前 28 日の、歩いた日の平均の歩数で決めます。5,000 歩未満は 1.4、10,000 歩未満は 1.55、それ以上は 1.7</li><li>歩数が読めないとき: 3つから選んでいただきます。ほぼ座り仕事は 1.4、立ち仕事が多いは 1.55、よく動くは 1.7</li></ul>
-<p>身体データと、使い始める前の摂取エネルギーは、この計算にだけ使い、保存しません。</p></details>
-<details><summary>1日の目安</summary><p>1日に減らす（足す）分は、期限の日までに目標体重へ届くのに要る体重の変化の速さに、7,700 kcal/kg を掛けて出します。たとえば、体重の傾向が1日に 0.05 kg ずつ減る速さなら、1日に 385 kcal を減らします。増量では、1日に足す分を足します。維持では、体重の傾向が目標体重の ±0.7 kg の中にあれば、減らしも足しもしません。外れたら、体重の傾向の 1週間に 0.15% の速さで目標体重へ戻す分だけ減らし（足し）ます。</p><p>値は 50 kcal 単位に丸め、次の上限と下限を当てます。</p>
-<ul><li>必要な速さの上限: 1週間に、開始の日の体重の傾向の 0.75%（減量）・0.5%（増量）より速くしません。期限までの日が少なくても、無理な速さにしません</li><li>1日の目安の下限: 1,200 kcal より低くしません</li><li>1週の変化の幅: 毎週の見直しで、前の週の1日の目安から ±150 kcal より大きく変えません</li></ul></details>
-<details><summary>毎週の見直し</summary><ol><li>前の週（月曜から日曜）の食べた量の平均と、そのときの推定消費カロリーから、体重の傾向がどれだけ変わるはずだったかを出します</li><li>実際の体重の傾向の変化と比べ、ずれの分だけ推定消費カロリーを動かします。一度に全部は動かさず、食事を記録した日が多い週ほど、同じ向きのずれが続いた週ほど大きく動かします</li><li>新しい推定消費カロリーで、1日の目安を出し直します</li></ol></details>
+<p>ここまでで説明した計算の、細かい決まりです。</p>
+<details><summary>最初の推定消費カロリー</summary><h3>記録が足りるとき: nu-tori は、食べた量と体重の傾向から逆算します</h3><p>nu-tori は、今日を除く直前の 28 日に、あなたが食べた量と、あなたの体重から、推定消費カロリーを逆算します。食べた量には、nu-tori を使い始めた日からは nu-tori の食事の記録を、使い始める前の日はヘルスケアの摂取エネルギーを使います。</p>
+<p>逆算するには、次の2つが要ります。</p>
+<ul><li>食べた量のある日が 14 日以上あること。ただし、食べた量がほかの日の中ほどの値の半分に満たない日（1食だけ記録した日など）は、記録の途中とみなして数えません</li><li>体重を記録した日が 4 日以上あり、最初の日から最後の日まで 14 日以上あること</li></ul>
+<p>推定消費カロリーは、食べた量の1日の平均から、体重の傾向の傾きの分を引いて出します。nu-tori は、体重 1 kg の増減を 7,700 kcal とみなします。たとえば、体重の傾向が1日に 0.1 kg ずつ減っていれば、推定消費カロリーは、食べた量の平均に 770 kcal を足した値になります。</p><h3>記録が足りないとき: nu-tori は、身体データから式で出します</h3><p>nu-tori は、あなたの身長・生年月日（年齢）・性別と、目標を始める日の体重の傾向から、安静にしているときの消費を Mifflin-St Jeor の式で出し、それに活動量の係数を掛けます。ヘルスケアから読めない値は、アプリで入れていただきます。</p>
+<ul><li>ヘルスケアから歩数を読めるとき: nu-tori は係数を、直前 28 日のうち歩いた日の、平均の歩数で決めます。5,000 歩未満なら 1.4、10,000 歩未満なら 1.55、それ以上なら 1.7 です</li><li>歩数を読めないとき: あなたに、次の3つから選んでいただきます。ほぼ座り仕事なら 1.4、立ち仕事が多いなら 1.55、よく動くなら 1.7 です</li></ul>
+<p>nu-tori は、身体データと、使い始める前の摂取エネルギーを、この計算にだけ使い、保存しません。</p></details>
+<details><summary>1日の目安</summary><p>1日の目安は、推定消費カロリーから、目標の速さで体重を減らすために1日に減らすカロリー（1日に減らす分）を引いた値です。増量では、引く代わりに、1日に足す分を足します。</p>
+<p>nu-tori は、1日に減らす（足す）分を、期限の日までに目標体重へ届くのに要る体重の変化の速さに、7,700 kcal/kg を掛けて出します。たとえば、体重の傾向を1日に 0.05 kg ずつ減らす速さなら、1日に減らす分は 385 kcal です。維持では、体重の傾向が目標体重の ±0.7 kg の中にあれば、nu-tori は減らしも足しもしません。体重の傾向がその幅から外れたら、体重の傾向を1週間に 0.15% の速さで目標体重へ戻す分だけ、減らし（足し）ます。</p><p>nu-tori は、1日の目安を 50 kcal 単位に丸め、次の上限と下限を当てます。</p>
+<ul><li>体重を変える速さの上限: 体重を1週間に、目標を始めた日の体重の傾向の 0.75%（減量）・0.5%（増量）より速く変える目安にはしません。期限までの日が少なくても、無理な速さにはしません</li><li>1日の目安の下限: 1日の目安を 1,200 kcal より低くしません</li><li>1週の変化の幅: 毎週の見直しで、1日の目安を前の週から ±150 kcal より大きく変えません</li></ul></details>
+<details><summary>毎週の見直し</summary><p>nu-tori は毎週月曜に、次の順で見直します。</p>
+<ol><li>前の週（月曜から日曜）にあなたが食べた量の平均と、その週の推定消費カロリーから、体重の傾向がどれだけ変わるはずだったかを予想します</li><li>その予想を、実際の体重の傾向の変化と比べ、ずれの分だけ推定消費カロリーを動かします。ずれの分を、一度に全部は動かしません。動かす割合は、0.25 に「その週に食事を記録した日の数 ÷ 7」と「同じ向きのずれが続いた週の数 ＋ 1」を掛けた値で、0.75 を上限にします</li><li>新しい推定消費カロリーで、1日の目安を出し直します</li></ol></details>
+
 <h2>医療の助言ではありません</h2>
-<p>持病のある方は、医師に相談してください。</p>
+<p>このページの内容は、医療の助言ではありません。持病のある方は、医師に相談してください。</p>
 </main>
 <footer class="site-footer">
   <p>医療の助言ではありません。持病のある方は、医師に相談してください。</p>
   <p>nu-tori for iPhone</p>
 </footer>
-<nav class="switcher" aria-label="試作の案の切り替え">
-  <button type="button" id="prev" aria-label="前の案">←</button>
-  <span class="switcher-label" id="label"></span>
-  <button type="button" id="next" aria-label="次の案">→</button>
-</nav>
-<script>
-// 試作の切り替えだけ。Artifact では URL のクエリが届かないので、#a・#b・#c で案を選ぶ
-const keys = ["d","e"];
-let current = keys.includes(location.hash.slice(1)) ? location.hash.slice(1) : keys[0];
-const show = (key) => {
-  current = key;
-  for (const k of keys) document.getElementById("variant-" + k).hidden = k !== key;
-  const main = document.getElementById("variant-" + key);
-  document.getElementById("label").textContent = key.toUpperCase() + "（" + main.dataset.name + "）";
-  try { history.replaceState(null, "", "#" + key); } catch {}
-};
-const step = (n) => { show(keys[(keys.indexOf(current) + n + keys.length) % keys.length]); window.scrollTo(0, 0); };
-document.getElementById("prev").addEventListener("click", () => step(-1));
-document.getElementById("next").addEventListener("click", () => step(1));
-document.addEventListener("keydown", (e) => {
-  if (e.target.closest && e.target.closest("input, textarea, [contenteditable]")) return;
-  if (e.key === "ArrowLeft") step(-1);
-  if (e.key === "ArrowRight") step(1);
-});
-show(current);
-</script>
