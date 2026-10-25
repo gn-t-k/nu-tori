@@ -12,8 +12,8 @@
         let healthAuthorization: UITestHealthStore.Authorization
         let healthLatestKilograms: Double?
         let healthWriteAuthorized: Bool
-        /// 入力欄の「写真」で、選ぶ画面を開かずに選んだことにする写真の枚数。nil なら標準の選ぶ画面を出す
-        let pickedMealPhotoCount: Int?
+        /// 入力欄の「写真」で、選ぶ画面を開かずに選んだことにする写真。nil なら標準の選ぶ画面を出す
+        let pickedPhotos: PickedPhotos?
         /// 締め出しの記憶を置く UserDefaults の名前。同じ名前を渡して開き直すと、前に開いたときの締め出しを覚えている。
         /// nil なら、ほかの記憶と同じく、起動のたびに空から始める
         let lockoutDefaultsName: String?
@@ -39,13 +39,24 @@
                     == "not-yet-requested" ? .notYetRequested : .alreadyRequested,
                 healthLatestKilograms: environment["UI_TEST_HEALTH_LATEST_KG"].flatMap(Double.init),
                 healthWriteAuthorized: environment["UI_TEST_HEALTH_WRITE"] != "denied",
-                pickedMealPhotoCount: environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init),
+                pickedPhotos: environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init).map {
+                    PickedPhotos(
+                        count: $0,
+                        loadingSeconds: environment["UI_TEST_PICKED_PHOTOS_LOADING_SECONDS"]
+                            .flatMap(Double.init) ?? 0)
+                },
                 lockoutDefaultsName: environment["UI_TEST_LOCKOUT_DEFAULTS"],
                 // UI テストは起動の値の TZ でタイムゾーンを決めるので、起動したときのタイムゾーンで止める
                 clock: frozenClock(environment["UI_TEST_NOW"]),
                 dayPassesOnReturn: environment["UI_TEST_DAY_PASSES_ON_RETURN"] != nil,
                 cacheHoldsRecords: environment["UI_TEST_CACHE_HOLDS_RECORDS"] != nil
             )
+        }
+
+        struct PickedPhotos {
+            let count: Int
+            /// 読み終えるまでにかける秒数。読んでいるあいだの仮のカードを確かめるため
+            let loadingSeconds: Double
         }
 
         var appleSignInResult: AppleSignInResult {

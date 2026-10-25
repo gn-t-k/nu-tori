@@ -13,7 +13,8 @@ final class ReopenTimelineAfterDayChangeUITests: XCTestCase {
         continueAfterFailure = false
         app = .launched(
             account: "signed-in", api: "meal-estimation", healthLatestKilograms: nil,
-            pickedPhotoCount: 1, now: .morningBeforeNotice, dayPassesOnReturn: true,
+            pickedPhotos: UITestPickedPhotos(count: 1), now: .morningBeforeNotice,
+            dayPassesOnReturn: true,
             timeZone: "Asia/Tokyo")
         XCTAssertTrue(app.buttons["composer-photos"].waitForExistence(timeout: 5))
         // 使い始めた日（10月5日）を空のままにして、10月6日と7日に食事を並べる

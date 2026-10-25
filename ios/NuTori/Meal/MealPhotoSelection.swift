@@ -7,7 +7,7 @@ enum MealPhotoSelection {
     #if DEBUG
         /// 選ぶ画面を出さず、決まった写真を選んだことにして記録する。UI テストだけが使う
         /// （標準の選ぶ画面はアプリの外のプロセスで動き、`PhotosPickerItem` もテストから作れないため）。
-        /// `pickedAt` は選び終えた時刻
-        case fixed(record: (_ pickedAt: Date) async -> Void)
+        /// `photoCount` は選んだことにする枚数で、読んでいるあいだの仮のカードに出す。`pickedAt` は選び終えた時刻
+        case fixed(photoCount: Int, record: (_ pickedAt: Date) async -> Void)
     #endif
 }

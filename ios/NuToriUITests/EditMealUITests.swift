@@ -12,7 +12,8 @@ final class EditMealUITests: XCTestCase {
         continueAfterFailure = false
         app = .launched(
             account: "signed-in", api: "meal-edit", healthLatestKilograms: nil,
-            pickedPhotoCount: 1, now: .morningBeforeNotice, timeZone: "Asia/Tokyo")
+            pickedPhotos: UITestPickedPhotos(count: 1), now: .morningBeforeNotice,
+            timeZone: "Asia/Tokyo")
         XCTAssertTrue(app.buttons["composer-photos"].waitForExistence(timeout: 5))
     }
 

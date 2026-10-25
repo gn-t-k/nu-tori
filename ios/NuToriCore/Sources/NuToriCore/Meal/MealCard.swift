@@ -128,12 +128,7 @@ public struct MealCard: Hashable, Sendable {
 
     /// カードの上に出す写真の並べ方
     public var photos: Photos {
-        switch meal.photoIds.count {
-        case 0: .none
-        case 1: .single(meal.photoIds[0])
-        // swiftlint:disable:next no_default_in_switch - 写真の数は数で、2枚より多い数をまとめる
-        default: .pair(meal.photoIds[0], meal.photoIds[1], remaining: meal.photoIds.count - 2)
-        }
+        Photos(photoIds: meal.photoIds)
     }
 
     public enum EatenTime: Hashable, Sendable {
@@ -148,6 +143,16 @@ public struct MealCard: Hashable, Sendable {
         case single(UUID)
         /// 2枚を並べる。残りがあれば、2枚目の上にその枚数を重ねる
         case pair(UUID, UUID, remaining: Int)
+
+        /// 写真の並びから、カードの写真の場所の並べ方を決める。写真を読んでいるあいだの仮のカードも、この並べ方で枠を描く
+        public init(photoIds: [UUID]) {
+            switch photoIds.count {
+            case 0: self = .none
+            case 1: self = .single(photoIds[0])
+            // swiftlint:disable:next no_default_in_switch - 写真の数は数で、2枚より多い数をまとめる
+            default: self = .pair(photoIds[0], photoIds[1], remaining: photoIds.count - 2)
+            }
+        }
     }
 }
 
