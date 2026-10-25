@@ -259,7 +259,7 @@ const rules = {
 <ul><li>あなたが nu-tori を使い始めて 7 日に満たない（最初の推定消費カロリーを逆算したときは、この決まりを当てません）</li><li>その週に、体重の記録が無い</li><li>その週に、食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li></ul>`,
 };
 
-const exampleIntro = `<p>Aさんは、30 歳・身長 172 cm・体重 ${kg1(initial.startingWeightTrendKg)} kg の男性で、ほぼ座り仕事です（説明のための、架空の人です）。nu-tori は、Aさんの最初の推定消費カロリーを式で出し、${kcal(initial.kcal)} kcal としました。Aさんの目標は12週で ${kg1(74.4)} kg まで減らすことで、最初の1日の目安は ${kcal(initial.guideKcal)} kcal でした。けれども、Aさんの体が本当に使うカロリーは ${kcal(days[0].trueExpenditureKcal)} kcal でした。この値も説明のための仮定で、nu-tori には分かりません。</p>`;
+const exampleIntro = `<p>Aさんは、30 歳・身長 172 cm・体重 ${kg1(initial.startingWeightTrendKg)} kg の男性で、ほぼ座り仕事です。nu-tori は、Aさんの最初の推定消費カロリーを式で出し、${kcal(initial.kcal)} kcal としました。Aさんの目標は12週で ${kg1(74.4)} kg まで減らすことで、最初の1日の目安は ${kcal(initial.guideKcal)} kcal でした。ここでは、Aさんの体が本当に使うカロリーを ${kcal(days[0].trueExpenditureKcal)} kcal とします。ただ、この本当の値は、Aさん本人にも nu-tori にも分かりません。nu-tori に分かるのは、Aさんが食べた量と、体重の動きだけです。</p>`;
 
 // 例の1週の見直しを、図の説明ではなく本文で語る
 const exampleWeek = (review = reviews[1]) =>
@@ -267,7 +267,7 @@ const exampleWeek = (review = reviews[1]) =>
 
 const variantE = `
 ${structurePanel({
-  s: "nu-tori は、体が1日に使うカロリーを推定し、それより少ない量を1日の目安にする",
+  s: "nu-tori は、体が1日に使うカロリーを推定し、それをもとに1日の目安を出す",
   c: "最初の推定は身長・体重・年齢から出したおおよその値で、筋肉の量やふだんの動きの違いが入らないので、数百 kcal ずれることがある",
   q: "ずれていたら、どうなるのか",
   a: "nu-tori が毎週、体重の記録を見て目安を直すので、使い続けるほど目安は体に合っていく",
@@ -279,7 +279,7 @@ ${structurePanel({
   ],
 })}
 <h1>推定消費カロリーと1日の目安の出し方</h1>
-<p>nu-tori は、あなたの体が1日に使うカロリーを推定します。この値を「推定消費カロリー」と呼びます。nu-tori は、推定消費カロリーより少ない量を、1日の目安にします。</p>
+<p>nu-tori は、あなたの体が1日に使うカロリーを推定します。この値を「推定消費カロリー」と呼びます。やせたいときは推定消費カロリーより少ない量を、体重を増やしたいときは多い量を、nu-tori は1日の目安にします。</p>
 <p>ただ、最初の推定は、あなたの身長・体重・年齢から出した、おおよその値です。筋肉の量やふだんの動きは人によって違うので、最初の推定は、あなたの体と数百 kcal ずれることがあります。</p>
 <div class="answer"><p><strong>ずれていても、nu-tori が毎週あなたの体重の記録を見て、目安を直します。使い続けるほど、目安はあなたの体に合っていきます。</strong></p>
 ${keyLineNav([
