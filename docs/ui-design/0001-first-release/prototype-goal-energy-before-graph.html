@@ -8,6 +8,9 @@
   開発者の答え（#744、2026-10-25）: C を土台に B の棒を組み合わせ、要らない添え書きを外す。それを案 F として足し、最初に開く案にした。
   開発者の答え（#744、2026-10-25 の2回め）: F は違った。B を土台にし、推定消費カロリーより1日の目安を強くする。2枚のカードが体重の傾向を挟んで離れているのもわかりにくい。
   それを受けて、目安のカードに棒をまとめる案 G（グラフも同じカード）と H（グラフは今の場所）を足し、最初に開く案を G にした。
+  開発者の答え（#744、2026-10-25 の3回め）: この画面で見せたいのは「どういう目標か」「目標に対してどう進んでいるか」「間に合わせるためにどう調整しているか」の3つで、
+  それがレイアウトと見た目に表れていない。それを受けて、画面全体を3つの問いで組み直す案 I（3枚を問いの順に）・J（1本の時間軸）・K（残りから目安へ流す）を足し、
+  最初に開く案を I にした。あわせて、どの案でも目標のカードと体重の傾向を今のアプリの形（GoalOverview+Card.swift、GoalWeightChartView.swift）に近づけた。
   土台は main の画面のコード（コミット d4cd16a の ios/NuTori/Goal/GoalScreen.swift、GoalEnergyChartView.swift と
   ios/NuToriCore/Sources/NuToriCore/Goal/GoalOverview+History.swift）。main には入れない。
   値はすべて作ったもの。開発者の健康データは入れていない。
@@ -134,6 +137,15 @@ svg text{font-family:var(--font)}
 .gb .gl{grid-column:2 / 4;justify-self:end;color:var(--tint);font-weight:600;margin-top:-2px}
 .divider{height:1px;background:var(--sep);margin:8px 0 2px}
 
+/* 案 K（体重と日数の2本の道のり） */
+.route{display:grid;grid-template-columns:auto 1fr auto;gap:8px 8px;align-items:center;font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums;margin:6px 0 2px}
+.route .rt{height:10px;position:relative}
+.route .rt > div{position:absolute;top:0;bottom:0;border-radius:3px}
+.route .h{background:repeating-linear-gradient(135deg,var(--tint-soft) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1.2px var(--tint)}
+.route .pin{color:var(--tint);font-weight:600}
+.flow{width:2px;height:18px;margin:4px auto;background:var(--sep);position:relative}
+.flow::after{content:"";position:absolute;left:-4px;bottom:-2px;border:5px solid transparent;border-top-color:var(--sep);border-bottom:0}
+
 /* 案 D */
 .pair{display:flex;gap:18px;align-items:baseline;flex-wrap:wrap}
 .pair div{display:flex;flex-direction:column}
@@ -200,6 +212,11 @@ const GOALS = {
   lose:{ name:'減らす', label:'減量', from:'74.0', to:'70.0', gapWord:'減らす分', sign:'−' },
   gain:{ name:'増やす', label:'増量', from:'58.0', to:'61.0', gapWord:'足す分', sign:'+' },
 };
+// 体重の傾向（作った値）。今日以前の分だけ使う。減量は道筋より先を、増量は道筋より遅れを行く
+const WEIGHTS = {
+  lose:[['2026-10-24',74.0],['2026-10-28',73.7],['2026-11-03',73.4],['2026-11-10',72.9]],
+  gain:[['2026-10-24',58.0],['2026-10-28',58.1],['2026-11-03',58.2],['2026-11-10',58.3]],
+};
 // 見直しは毎週月曜。使い始めて7日に満たない週は見送る（10月26日は見送り）
 const DEFERRED = ['2026-10-26'];
 
@@ -223,9 +240,23 @@ function ctxOf(sc, dir){
   const mondays = mondaysAfter(START, DEADLINE);
   const next = mondays.find(m => m > S.today && !DEFERRED.includes(m));
   const reviewsDone = points.length - 1;
+  const weights = WEIGHTS[dir].filter(([d]) => d <= S.today);
+  const from = +G.from, to = +G.to, trend = weights.at(-1)[1];
+  const total = diff(START, DEADLINE), elapsed = diff(START, S.today);
+  // ペース（Pace.swift の手順を簡単にしたもの）。目標を立てて 14 日たつまでは出ない
+  let pace;
+  if (elapsed < 14) pace = { kind:'pending', text:'間に合うかは、目標を立てて 14 日たつと出ます' };
+  else {
+    const projected = trend + (trend - from) / elapsed * diff(S.today, DEADLINE);
+    const short = dir === 'lose' ? projected - to : to - projected;
+    pace = short <= 0 ? { kind:'onTrack', text:'間に合うペースです' }
+      : { kind:'behind', text:`このままだと期限に ${short.toFixed(1)} kg 届きません` };
+  }
   return { sc, dir, S, G, points, latest, today:S.today, source:S.source, next,
     untilNext: diff(S.today, next), reviewsDone, drawn: points.length >= 3, mondays,
-    gap: Math.abs(latest.g - latest.e) };
+    gap: Math.abs(latest.g - latest.e), weights, from, to, trend,
+    remKg: Math.abs(trend - to).toFixed(1), remDays: diff(S.today, DEADLINE) + 1,
+    wFrac: Math.abs(trend - from) / Math.abs(to - from), tFrac: elapsed / total, pace };
 }
 const sourceShort = c => c.reviewsDone > 0 ? `${md(c.latest.day)}に記録から見直した値`
   : c.source === 'formula' ? '式で出した値' : '記録から逆算した値';
@@ -288,6 +319,73 @@ function chart(c, opts = {}){
 }
 const link = '<div class="link">推定消費カロリーと1日の目安の出し方</div>';
 
+// 体重の傾向のグラフ（今の GoalWeightChartView を写したもの）。開始→目標の道筋は点線、傾向は Primary の線、期限の日に目標体重の印
+function weightLayer(c, x, top, bottom){
+  const vals = [c.from, c.to, ...c.weights.map(w => w[1])];
+  const lo = Math.min(...vals) - .4, hi = Math.max(...vals) + .4;
+  const y = v => top + (bottom - top) * (hi - v) / (hi - lo);
+  let s = `<line x1="${x(START)}" y1="${y(c.from)}" x2="${x(DEADLINE)}" y2="${y(c.to)}" stroke="var(--ink2)" stroke-width="1.2" stroke-dasharray="3 3"/>`;
+  s += `<text x="${x(START)-5}" y="${y(c.from)+3.5}" font-size="10" text-anchor="end" fill="var(--ink2)">${c.G.from}</text>`;
+  s += `<circle cx="${x(DEADLINE)}" cy="${y(c.to)}" r="4.5" fill="var(--surface)" stroke="var(--tint)" stroke-width="2"/>`;
+  s += `<text x="${x(DEADLINE)+8}" y="${y(c.to)+3.5}" font-size="10" fill="var(--tint)" font-weight="600">${c.G.to}</text>`;
+  if (c.weights.length > 1) s += `<polyline points="${c.weights.map(([d,v]) => `${x(d)},${y(v)}`).join(' ')}" fill="none" stroke="var(--tint)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  s += `<circle cx="${x(c.today)}" cy="${y(c.trend)}" r="3.6" fill="var(--tint)"/>`;
+  return s;
+}
+function weightChart(c){
+  const W = 320, H = 150, L = 34, R = 34, T = 10, B = 20;
+  const x = day => L + (W-L-R) * diff(START, day) / diff(START, DEADLINE);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="体重の傾向のグラフ">
+    <line x1="${x(c.today)}" x2="${x(c.today)}" y1="${T}" y2="${H-B}" stroke="var(--ink3)"/>
+    ${weightLayer(c, x, T+4, H-B-4)}
+    <text x="${L}" y="${H-4}" font-size="10" fill="var(--ink2)">${md(START)}</text>
+    <text x="${W-R}" y="${H-4}" font-size="10" text-anchor="end" fill="var(--ink2)">${md(DEADLINE)}</text></svg>`;
+}
+// 案 J の、体重と kcal の2段のグラフ。横軸は同じ（開始の日から期限の日まで）。今日より右は薄く塗る
+function dualChart(c){
+  const W = 320, L = 34, R = 50, wTop = 10, wBot = 112, eTop = 136, eBot = 226, H = 246;
+  const x = day => L + (W-L-R) * diff(START, day) / diff(START, DEADLINE);
+  const tx = x(c.today), endX = x(DEADLINE);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="体重の傾向と、推定消費カロリーと1日の目安の2段のグラフ">`;
+  s += `<rect x="${tx}" y="${wTop}" width="${endX-tx}" height="${wBot-wTop}" fill="var(--fill)" opacity=".5"/>`;
+  s += `<rect x="${tx}" y="${eTop}" width="${endX-tx}" height="${eBot-eTop}" fill="var(--fill)" opacity=".5"/>`;
+  s += weightLayer(c, x, wTop+6, wBot-6);
+  // 下の段: 目安は Primary の階段（今日まで）、推定消費カロリーは灰色の点と線。間を薄く塗る
+  const pts = c.points, vals = pts.flatMap(p => [p.e, p.g]);
+  let lo = Math.min(...vals) - 120, hi = Math.max(...vals) + 120;
+  if (hi - lo < 700){ const m = (hi+lo)/2; lo = m-350; hi = m+350; }
+  const y = v => eTop + 6 + (eBot - eTop - 12) * (hi - v) / (hi - lo);
+  for (let i = 0; i < pts.length; i++){
+    const x1 = x(pts[i].day), x2 = i < pts.length-1 ? x(pts[i+1].day) : tx;
+    if (x2 > x1) s += `<rect x="${x1}" width="${x2-x1}" y="${y(Math.max(pts[i].e,pts[i].g))}" height="${Math.abs(y(pts[i].e)-y(pts[i].g))}" fill="var(--tint-soft)"/>`;
+  }
+  let d = `M${x(pts[0].day)},${y(pts[0].g)}`;
+  for (let i = 1; i < pts.length; i++) d += ` H${x(pts[i].day)} V${y(pts[i].g)}`;
+  d += ` H${Math.max(tx, x(pts.at(-1).day) + 3)}`;
+  s += `<path d="${d}" fill="none" stroke="var(--tint)" stroke-width="2.4" stroke-linejoin="round"/>`;
+  s += `<path d="M${tx},${y(pts.at(-1).g)} H${endX}" fill="none" stroke="var(--tint)" stroke-width="1.2" stroke-dasharray="2 3" opacity=".7"/>`;
+  if (pts.length > 1) s += `<polyline points="${pts.map(p => `${x(p.day)},${y(p.e)}`).join(' ')}" fill="none" stroke="var(--ink3)" stroke-width="1.4"/>`;
+  pts.forEach(p => { s += `<circle cx="${x(p.day)}" cy="${y(p.e)}" r="2.6" fill="var(--ink2)"/>`; });
+  const last = pts.at(-1), above = last.e >= last.g;
+  s += `<text x="${endX+5}" y="${y(last.g)+3.5}" font-size="10" fill="var(--tint)" font-weight="600">${n0(last.g)}</text>`;
+  s += `<text x="${Math.max(tx, x(last.day)) + 6}" y="${y(last.e) + (above ? -5 : 12)}" font-size="10" fill="var(--ink2)">推定 ${n0(last.e)}</text>`;
+  s += `<line x1="${tx}" x2="${tx}" y1="${wTop}" y2="${eBot}" stroke="var(--ink2)" stroke-width="1"/>`;
+  s += `<text x="${L}" y="${H-4}" font-size="10" fill="var(--ink2)">${md(START)}</text>`;
+  s += `<text x="${endX}" y="${H-4}" font-size="10" text-anchor="end" fill="var(--ink2)">${md(DEADLINE)}</text>`;
+  return s + '</svg>';
+}
+// 今のアプリの目標のカード（上の行・大きな1行・下の行）
+const goalSummary = c => `<div class="row"><span class="fn">${c.G.label}　${md(START)}〜${md(DEADLINE)}</span><span class="fn" style="color:var(--tint)">目標を切り替える</span></div>`;
+const goalCard = c => `${goalSummary(c)}<div class="big">${c.G.to} kg まで あと ${c.remKg} kg</div><div class="fn">あと ${c.remDays} 日・${c.pace.text}</div>`;
+const pfc = c => { const lose = c.dir === 'lose'; return `<div class="pfc"><span><i style="background:#f07f1a"></i>P ${lose?110:120} g</span><span><i style="background:#15803d"></i>F ${lose?50:65} g</span><span><i style="background:#2c7be5"></i>C ${lose?225:320} g</span></div>`; };
+// 案 K の、体重と日数の2本の道のり。体重の残りは、目安の棒の「減らす分」と同じ斜線
+function routeBars(c){
+  return `<div class="route">
+    <span>${c.G.from}</span><div class="rt"><div style="left:0;width:${c.wFrac*100}%;background:var(--tint)"></div><div class="h" style="left:${c.wFrac*100}%;right:0"></div></div><span class="pin">${c.G.to} kg</span>
+    <span>${md(START)}</span><div class="rt"><div style="left:0;width:${c.tFrac*100}%;background:var(--ink3)"></div><div style="left:${c.tFrac*100}%;right:0;background:var(--track)"></div></div><span>${md(DEADLINE)}</span>
+  </div>`;
+}
+
 // ── 案 ──
 const VARIANTS = [
   { key:'A', name:'今の形', short:'数字3行と注記',
@@ -301,6 +399,44 @@ const VARIANTS = [
         <div class="num">1日の目安 ${kcal(c.latest.g)}</div>
         <div class="num">1日の目安は推定消費カロリーより ${kcal(Math.abs(d))} ${d < 0 ? '少ない' : '多い'}</div>
         <div class="fn">週ごとの見直しが 2 回たまると、グラフで見せます。</div>${link}`;
+    } },
+  { key:'I', name:'3枚を問いの順に', short:'目標 → 進み → 調整',
+    rule:['keep','3点たまるまで描かない、のまま。グラフが出たら、目安のカードの棒の下に描く'], values:['none','新しい値は要らない（体重の傾向とペースは今も受け取っている）'],
+    notes:['開発者の答え（#744、2026-10-25 の3回め）を受けた案。上から「どういう目標か」「どう進んでいるか」「どう調整しているか」の順に、1問に1枚のカードを当てる。',
+      '目標のカードは、目標そのもの（期限と目標体重）だけにする。「あと何 kg・あと何日・ペース」は体重の傾向のカードへ移し、グラフの上に置く。',
+      '1日の目安のカードを体重の傾向の下へ動かす。進み具合を見たあとに、それを受けた調整として目安が来る。棒とグラフは案 G と同じ。'],
+    screen(c){
+      return `<div class="card target">${goalSummary(c)}<div class="big">${md(DEADLINE)}までに ${c.G.to} kg</div></div>
+        <div class="card target"><h3>体重の傾向</h3>
+          <div class="row"><span class="big">あと ${c.remKg} kg</span><span class="fn">あと ${c.remDays} 日</span></div>
+          <div class="fn">${c.pace.text}</div>${weightChart(c)}</div>
+        <div class="card target">${guideWithBars(c, c.drawn)}</div>`;
+    } },
+  { key:'J', name:'1本の時間軸にそろえる', short:'体重と kcal の2段のグラフ',
+    rule:['change','「3点たまるまで描かない」をやめ、点が1つでも下の段を描く'], values:['none','新しい値は要らない'],
+    notes:['目標の期間を横軸にした2段のグラフを1枚に置く。上の段は体重（目標体重の印と道筋と傾向）で、目標と進みを見せる。下の段は1日の目安の階段で、調整を見せる。',
+      '今日の縦線が2段を貫き、今日より右は薄い。週を追うと、上の段の線と下の段の階段が右へ伸びていく。',
+      '下の段は、1日の目安を Primary の太い階段にし、推定消費カロリーを灰色の点にする。今のグラフ（推定が Primary の線、目安が灰色の破線）と強さが逆になる。',
+      '体重の傾向のカードはこのカードにまとまるので、別には置かない。'],
+    screen(c){
+      return `<div class="card">${goalCard(c)}</div>
+        <div class="card target"><div class="row"><h3>今の1日の目安</h3><span class="fn">${md(c.latest.day)}から</span></div>
+          <div class="gnum">${kcal(c.latest.g)}</div>${pfc(c)}${dualChart(c)}${link}</div>`;
+    } },
+  { key:'K', name:'残りから目安へ流す', short:'道のりの残りと、減らす分を同じ斜線に',
+    rule:['keep','3点たまるまで描かない、のまま。グラフは今の場所に、出てから置く'], values:['none','新しい値は要らない'],
+    notes:['目標のカードと1日の目安を1枚にし、上から下へ「目標と進み → 調整」と流す。',
+      '上は2本の道のり。体重の棒は、済んだ分を塗り、残りを斜線にする。日数の棒は、過ぎた日を塗る。2本の塗りの長さを比べると、間に合うかが見える。',
+      '下の目安の棒の「減らす分（足す分）」に、体重の残りと同じ斜線を使う。残りを埋めるために、毎日この分を減らす（足す）とつながる。',
+      '体重の傾向のグラフと、推定消費カロリーと1日の目安のグラフ（3点たまってから）は、その下に詳しい形として置く。'],
+    screen(c){
+      return `<div class="card target">${goalSummary(c)}
+          <div class="big">${c.G.to} kg まで あと ${c.remKg} kg</div>${routeBars(c)}
+          <div class="fn">あと ${c.remDays} 日・${c.pace.text}</div>
+          <div class="flow" aria-hidden="true"></div>
+          ${guideWithBars(c, false)}</div>
+        <div class="card"><h3>体重の傾向</h3>${weightChart(c)}</div>
+        ${c.drawn ? `<div class="card"><h3>推定消費カロリーと1日の目安</h3>${chart(c)}</div>` : ''}`;
     } },
   { key:'B', name:'推定消費カロリーを主役に', short:'大きな数字と2本の棒',
     rule:['keep','3点たまるまで描かない、のまま。グラフが出ても数字と棒は上に残す'], values:['none','新しい値は要らない（出どころは今受け取っている initialSource）'],
@@ -420,25 +556,24 @@ function guideWithBars(c, withChart){
 // ── 画面 ──
 function phone(v, c){
   const lose = c.dir === 'lose';
-  const energy = v.card(c);
+  const energy = v.card ? v.card(c) : '';
   return `<div class="phone">
     <div class="statusbar"></div>
     <div class="nav"><span class="back">‹ タイムライン</span><span class="t">目標</span><span></span></div>
     <div class="scroll">
-      <div class="card"><div class="row"><h3>${c.G.label}</h3><span class="fn">${md(START)}〜${md(DEADLINE)}</span></div>
-        <div class="num">${c.G.from} kg → ${c.G.to} kg</div></div>
+      ${v.screen ? v.screen(c) : `<div class="card">${goalCard(c)}</div>
       ${v.guideCard ? `<div class="card target">${v.guideCard(c)}</div>` : `<div class="card"><div class="row"><h3>今の1日の目安</h3><span class="fn">${md(c.latest.day)}から</span></div>
         <div class="big">${kcal(c.latest.g)}</div>
         <div class="pfc"><span><i style="background:#f07f1a"></i>P ${lose?110:120} g</span><span><i style="background:#15803d"></i>F ${lose?50:65} g</span><span><i style="background:#2c7be5"></i>C ${lose?225:320} g</span></div></div>`}
-      <div class="card"><h3>体重の傾向</h3><div class="quiet">（今のまま）</div></div>
-      ${energy ? `<div class="card${v.guideCard ? '' : ' target'}">${energy}</div>` : ''}
+      <div class="card"><h3>体重の傾向</h3>${weightChart(c)}</div>
+      ${energy ? `<div class="card${v.guideCard ? '' : ' target'}">${energy}</div>` : ''}`}
       ${c.reviewsDone > 0 ? `<div class="listrow"><span>週の振り返り</span><span class="sp"></span><span class="fn num">${md(add(c.points.at(-1).day,-7))}〜${md(add(c.points.at(-1).day,-1))}</span><span class="chev">›</span></div>` : ''}
     </div></div>`;
 }
 
-let state = { v:'G', sc:'s1', dir:'lose', view:'one' };
+let state = { v:'I', sc:'s1', dir:'lose', view:'one' };
 function readHash(){
-  const m = location.hash.match(/^#([A-H])-(s[1-4])-(lose|gain)$/);
+  const m = location.hash.match(/^#([A-K])-(s[1-4])-(lose|gain)$/);
   if (m) state = { ...state, v:m[1], sc:m[2], dir:m[3] };
 }
 function writeHash(){ history.replaceState(null, '', `#${state.v}-${state.sc}-${state.dir}`); }
