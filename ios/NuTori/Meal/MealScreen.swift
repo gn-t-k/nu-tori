@@ -280,7 +280,7 @@ struct MealScreen: View {
         let note = card.dishListNote
         let items = screenList.dishes
         if note != nil || !items.isEmpty {
-            Section("料理") {
+            Section {
                 if let note {
                     dishListNote(note)
                 }

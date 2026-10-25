@@ -17,13 +17,6 @@ struct GoalEnergyChartView: View {
                     Text(figure)
                         .monospacedDigit()
                 }
-                if let note = chart.note {
-                    Text(note)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .fixedSize(horizontal: false, vertical: true)
-                }
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("goal-energy-figures")

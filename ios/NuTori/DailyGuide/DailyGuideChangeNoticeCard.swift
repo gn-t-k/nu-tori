@@ -50,16 +50,11 @@ struct DailyGuideChangeNoticeCard: View {
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
             }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(notice.reasonText)
-                if let batchText = notice.batchText {
-                    Text(batchText)
-                }
-            }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .monospacedDigit()
-            .fixedSize(horizontal: false, vertical: true)
+            Text(notice.reasonText)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .fixedSize(horizontal: false, vertical: true)
             Button(action: openGoal) {
                 HStack(spacing: 4) {
                     Text("目標")

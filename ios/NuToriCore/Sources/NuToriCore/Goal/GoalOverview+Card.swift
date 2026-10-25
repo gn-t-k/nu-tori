@@ -93,11 +93,11 @@ extension GoalOverview {
             let trend = records.trendKilograms(onOrBefore: today).map {
                 "傾向 \(WeightAmountText.kilograms($0))"
             }
-            let facts = [early, trend].compactMap(\.self).joined(separator: "・")
+            let facts = [early, trend].compactMap(\.self)
             self.init(
                 summary: Self.summary(of: goal),
                 title: "\(WeightAmountText.kilograms(goal.targetWeightKilograms)) を達成しました",
-                detail: (facts.isEmpty ? "" : "\(facts)。") + "次の目標を選ぶまで、今の目標を続けます。",
+                detail: facts.isEmpty ? nil : facts.joined(separator: "・"),
                 lateAchievement: nil, action: .chooseNextGoal,
                 continuingNote: Self.continuingNote(goal))
         }
@@ -168,9 +168,7 @@ extension GoalOverview {
             case .onTrack: "間に合うペースです"
             case .behind(let shortfall, _, _):
                 "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません"
-            case .inconclusive: "間に合うかはまだわかりません"
-            case .pending: "間に合うかは、目標を立てて 14 日たつと出ます"
-            case .unavailable, .maintenance: nil
+            case .inconclusive, .pending, .unavailable, .maintenance: nil
             }
         }
 

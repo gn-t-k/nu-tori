@@ -95,7 +95,6 @@ struct DishScreen: View {
         Section {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 12) {
-                    Text("名前")
                     valueField(
                         TextField("料理の名前", text: draft(.name, shown: contents.dish.name))
                             .submitLabel(.done)
@@ -186,9 +185,10 @@ struct DishScreen: View {
         }
     }
 
-    /// 主な栄養・ミネラル・ビタミン。最後のまとまりの下に、「以上」と「不明」の意味を1回だけ書く
+    /// 主な栄養・ミネラル・ビタミン。最後のまとまりの下に、出ている「以上」と「不明」の意味を1回だけ書く
     @ViewBuilder private var nutrientBreakdown: some View {
-        let groups = DishNutrientBreakdown(contents).groups
+        let breakdown = DishNutrientBreakdown(contents)
+        let groups = breakdown.groups
         ForEach(Array(groups.enumerated()), id: \.element.title) { index, group in
             Section {
                 ForEach(group.rows, id: \.nutrient) { row in
@@ -201,8 +201,8 @@ struct DishScreen: View {
             } header: {
                 Text(group.title)
             } footer: {
-                if index == groups.count - 1 {
-                    Text(DishNutrientBreakdown.note)
+                if index == groups.count - 1, let note = breakdown.note {
+                    Text(note)
                 }
             }
         }

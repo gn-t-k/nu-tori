@@ -4,10 +4,7 @@ struct HealthAccessScreen: View {
     var body: some View {
         List {
             Section {
-                row(
-                    "体重、体脂肪率",
-                    "ほかのアプリで記録した体重を取り込みます。"
-                )
+                Text("体重、体脂肪率")
                 row(
                     "身長、生年月日、性別、歩数、摂取エネルギー",
                     "初めて目標を立てるときに、目標と推定消費カロリーの計算に使い、保存しません。"
@@ -17,7 +14,7 @@ struct HealthAccessScreen: View {
                     .textCase(nil)
             }
             Section {
-                row("体重", "nu-tori で記録した体重。")
+                Text("体重")
                 row("栄養", "エネルギー、P・F・C、ビタミン、ミネラルなど。")
             } header: {
                 Text("書く")

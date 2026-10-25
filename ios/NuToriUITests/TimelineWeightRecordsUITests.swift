@@ -15,7 +15,6 @@ final class TimelineWeightRecordsUITests: XCTestCase {
         XCTAssertTrue(app.staticText(containing: "72.4 kg").waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticText(containing: "71.8 kg").exists)
         XCTAssertTrue(app.staticTexts["Withings"].exists)
-        XCTAssertTrue(app.staticText(containing: "から記録しています").exists)
         XCTAssertTrue(app.buttons["アカウント"].exists)
         XCTAssertFalse(app.staticTexts["記録を読み込んでいます…"].exists)
         attachScreenshot(of: app, named: "取りに行った体重が並んだタイムライン")

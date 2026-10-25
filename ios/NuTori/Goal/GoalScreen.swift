@@ -225,7 +225,7 @@ struct GoalScreen: View {
             .monospacedDigit()
     }
 
-    /// 「減量 9月1日〜11月30日」「74.0 → 70.4 kg」、右に「−3.6 kg」。新しい順。潜らない
+    /// 「減量 9月1日〜11月30日」「74.0 → 70.4 kg」。新しい順。潜らない
     private func pastGoals(_ goals: [GoalOverview.PastGoal]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("過去の目標")
@@ -238,25 +238,14 @@ struct GoalScreen: View {
                         Divider()
                             .padding(.leading)
                     }
-                    // 大きな文字で横に詰めると、期間が日付の途中で折り返すので、横に収まらなければ結果を期間の下に置く
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            pastGoalPeriod(past)
-                            Spacer(minLength: 0)
-                            pastGoalResult(past)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            pastGoalPeriod(past)
-                            pastGoalResult(past)
-                        }
+                    pastGoalPeriod(past)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .monospacedDigit()
-                    .padding(.horizontal)
-                    .padding(.vertical, 10)
-                    .frame(minHeight: 44)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("goal-past-goal")
+                        .monospacedDigit()
+                        .padding(.horizontal)
+                        .padding(.vertical, 10)
+                        .frame(minHeight: 44)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("goal-past-goal")
                 }
             }
             .background(
@@ -274,14 +263,6 @@ struct GoalScreen: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-        }
-    }
-
-    /// 「−3.6 kg」
-    @ViewBuilder private func pastGoalResult(_ past: GoalOverview.PastGoal) -> some View {
-        if let result = past.resultText {
-            Text(result)
-                .foregroundStyle(.secondary)
         }
     }
 }

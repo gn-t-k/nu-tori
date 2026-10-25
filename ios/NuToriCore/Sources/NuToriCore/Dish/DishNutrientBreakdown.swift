@@ -6,10 +6,6 @@ import Foundation
 public struct DishNutrientBreakdown: Hashable, Sendable {
     public let groups: [Group]
 
-    /// 画面の下に1回だけ書く、2つの意味
-    public static let note =
-        "「以上」は、一部の材料の値が分からず、分かる分だけを足した値です。「不明」は、どの材料も値が分からない栄養です。"
-
     public init(_ contents: DishContents) {
         groups = Self.layout.map { title, nutrients in
             Group(
@@ -18,6 +14,17 @@ public struct DishNutrientBreakdown: Hashable, Sendable {
                     Row(nutrient: nutrient, amount: contents.totals[nutrient])
                 })
         }
+    }
+
+    /// 画面の下に1回だけ書く「以上」と「不明」の意味。内訳に出ているものだけを書き、どちらも出ていなければ nil
+    public var note: String? {
+        let rows = groups.flatMap(\.rows)
+        let sentences = [
+            rows.contains { $0.amount.isLowerBound }
+                ? "「以上」は、一部の材料の値が分からず、分かる分だけを足した値です。" : nil,
+            rows.contains(where: \.isUnknown) ? "「不明」は、どの材料も値が分からない栄養です。" : nil,
+        ].compactMap(\.self)
+        return sentences.isEmpty ? nil : sentences.joined()
     }
 
     public struct Group: Hashable, Sendable {

@@ -83,18 +83,15 @@ public struct MealEditOffer: Hashable, Sendable {
             if case .editable = nameAndQuantity { true } else { false }
         }
 
-        /// 名前と量の下の注記。直せないときは、直したときの注記の代わりに、押せない理由を置く。
-        /// 直せるときは、名前の欄を選んでいるか（`editingName`）と、量を直してあるかで替える。
-        /// 量の無い料理は量の欄が無いので、名前の欄を選んでいないときは出さない
+        /// 名前と量の下の注記。直せないときは、押せない理由を置く。
+        /// 直せるときは、名前の欄を選んでいるあいだだけ、推定し直すものを量を直してあるかで替えて書く。
+        /// 量を変えたときに材料が同じ割合で変わることは、すぐ下の材料の値が動くのに任せて書かない
         public func footerNote(editingName: Bool) -> String? {
             guard editsNameAndQuantity else { return "推定が終わると直せます。" }
-            let quantity = contents.dish.quantity
-            if editingName {
-                return quantity?.source == .corrected
-                    ? "名前を変えると、材料を推定し直します。量はそのままです。"
-                    : "名前を変えると、量と材料を推定し直します。"
-            }
-            return quantity == nil ? nil : "量を変えると、材料の量も同じ割合で変わります。"
+            guard editingName else { return nil }
+            return contents.dish.quantity?.source == .corrected
+                ? "名前を変えると、材料を推定し直します。量はそのままです。"
+                : "名前を変えると、量と材料を推定し直します。"
         }
 
         /// 名前と量の見せ方。`quantity` は量の欄で、量の無い料理（足したばかりで、推定し直しが一度も当たっていない料理）は nil

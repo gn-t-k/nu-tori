@@ -79,6 +79,13 @@ struct DishNutrientBreakdownTests {
             #expect(vitaminC.text == "不明")
             #expect(vitaminC.isUnknown)
         }
+
+        @Test("「以上」と「不明」の両方の意味を書くこと")
+        func note() {
+            #expect(
+                breakdown.note
+                    == "「以上」は、一部の材料の値が分からず、分かる分だけを足した値です。「不明」は、どの材料も値が分からない栄養です。")
+        }
     }
 
     @Suite("推定した材料だけの料理のとき")
@@ -95,6 +102,29 @@ struct DishNutrientBreakdownTests {
         func showsUnknownMineralsAndVitamins() {
             #expect(breakdown.groups[1].rows.allSatisfy { $0.text == "不明" })
             #expect(breakdown.groups[2].rows.allSatisfy { $0.text == "不明" })
+        }
+
+        @Test("「不明」の意味だけを書くこと")
+        func note() {
+            #expect(breakdown.note == "「不明」は、どの材料も値が分からない栄養です。")
+        }
+    }
+
+    @Suite("内訳の15項目をすべての材料が持つとき")
+    struct EveryItemKnown {
+        @Test("「以上」と「不明」の意味を書かないこと")
+        func noNote() {
+            let items: [Nutrient] = [
+                .energyKcal, .proteinG, .fatG, .carbohydrateG, .fiberG, .saltEquivalentG,
+                .calciumMg, .ironMg, .potassiumMg, .magnesiumMg,
+                .vitaminAUg, .vitaminB1Mg, .vitaminB2Mg, .vitaminCMg, .vitaminDUg,
+            ]
+            let nutrients = Dictionary(uniqueKeysWithValues: items.map { ($0, 1.0) })
+            let breakdown = DishNutrientBreakdownTests.breakdown([
+                .fixture(nutrients: nutrients), .fixture(nutrients: nutrients),
+            ])
+
+            #expect(breakdown.note == nil)
         }
     }
 
@@ -120,12 +150,5 @@ struct DishNutrientBreakdownTests {
             #expect(try DishNutrientBreakdownTests.text(breakdown, "ビタミンC") == "0 mg")
             #expect(try DishNutrientBreakdownTests.text(breakdown, "ビタミンA") == "45 µg")
         }
-    }
-
-    @Test("画面の下に「以上」と「不明」の意味を1回だけ書くこと")
-    func note() {
-        #expect(
-            DishNutrientBreakdown.note
-                == "「以上」は、一部の材料の値が分からず、分かる分だけを足した値です。「不明」は、どの材料も値が分からない栄養です。")
     }
 }

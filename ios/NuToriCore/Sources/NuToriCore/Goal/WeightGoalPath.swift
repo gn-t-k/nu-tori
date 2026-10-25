@@ -64,11 +64,7 @@ public struct WeightGoalPath: Hashable, Sendable {
             "最近の傾向は \(GoalText.signedKilograms(tenths: actual))／週で、期限に間に合うペースです。"
         case .behind(let shortfall, _, _):
             "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません。"
-        case .inconclusive:
-            "体重の記録が少なく、間に合うかはまだわかりません。"
-        case .pending:
-            "間に合うかは、目標を立てて 14 日たつと出ます。"
-        case .unavailable, .maintenance:
+        case .inconclusive, .pending, .unavailable, .maintenance:
             nil
         }
     }

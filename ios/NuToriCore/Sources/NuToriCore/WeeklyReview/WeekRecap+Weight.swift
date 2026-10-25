@@ -39,14 +39,6 @@ extension WeekRecap {
             "記録 \(recordedDayCount) 日（\(dayCount)日中）"
         }
 
-        /// 傾向の線を引かないときに添える文
-        public var note: String? {
-            switch trendLine {
-            case .drawn: nil
-            case .tooFewRecordedDays: "傾向の線は、記録がたまると引きます"
-            }
-        }
-
         /// 目標の道筋。減量・増量は開始の日の体重の傾向から期限の日の目標体重への直線、維持は目標体重の横の線
         public struct GoalPath: Hashable, Sendable {
             public let firstKilograms: Double

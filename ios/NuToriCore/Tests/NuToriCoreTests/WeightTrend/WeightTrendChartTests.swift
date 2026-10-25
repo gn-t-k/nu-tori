@@ -153,11 +153,6 @@ struct WeightTrendChartTests {
             }
             #expect(line.last?.day == CalendarDay(year: 2026, month: 9, day: 22))
         }
-
-        @Test("添え書きを出さないこと")
-        func hasNoNote() {
-            #expect(chart.note == nil)
-        }
     }
 
     @Suite("使い始めた日が4週の中にあり、その前の記録もあるとき")
@@ -237,11 +232,6 @@ struct WeightTrendChartTests {
         @Test("線を引かないこと")
         func drawsNoLine() {
             #expect(chart.trendLine == .tooFewRecordedDays)
-        }
-
-        @Test("線を引くまでの添え書きを出すこと")
-        func showsNote() {
-            #expect(chart.note == "点は測った体重。記録が増えると、傾向の線を引きます。")
         }
     }
 

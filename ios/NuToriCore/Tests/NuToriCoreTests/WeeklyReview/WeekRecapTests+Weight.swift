@@ -60,7 +60,6 @@ extension WeekRecapTests {
             @Test("傾向の線を引かないこと")
             func skipsTrendLine() {
                 #expect(weight.trendLine == .tooFewRecordedDays)
-                #expect(weight.note == "傾向の線は、記録がたまると引きます")
             }
         }
     }

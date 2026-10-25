@@ -85,8 +85,8 @@ public struct SubscriptionNotice: Hashable, Sendable {
 
     public var body: String {
         switch kind {
-        case .freeTrialEndsSoon(let lastDay):
-            "\(GoalText.monthDay(lastDay))で終わります。そのあとも体重の記録と、これまでの記録の見返しはできます。"
+        case .freeTrialEndsSoon:
+            "そのあとも体重の記録と、これまでの記録の見返しはできます。"
         case .freeTrialLastDay:
             "明日から、撮って記録するにはサブスクリプションが必要です。体重の記録と見返しはそのままできます。"
         case .freeTrialEnded, .subscriptionEnded:

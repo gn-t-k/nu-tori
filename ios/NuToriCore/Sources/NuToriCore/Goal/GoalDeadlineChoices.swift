@@ -11,10 +11,6 @@ public struct GoalDeadlineChoices: Sendable, Equatable {
     /// 1か月後・2か月後・3か月後・6か月後。6か月後が最後の日を越えるときは 26 週後
     public let chips: [Chip]
 
-    /// 選べる幅を週で数えたもの（4〜26週）。幅を書く1行に出す
-    public static let acceptedWeeks =
-        (AcceptedDeadlineDays.minimum / 7)...(AcceptedDeadlineDays.maximum / 7)
-
     public init(startDay: CalendarDay) {
         self.startDay = startDay
         earliestDay = startDay.advanced(by: AcceptedDeadlineDays.minimum - 1)

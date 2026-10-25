@@ -29,7 +29,7 @@ struct DaySummarySheet: View {
                 }
                 Section {
                     if let weight = shown.representativeWeight {
-                        LabeledContent("この日の体重") {
+                        LabeledContent("体重") {
                             VStack(alignment: .trailing) {
                                 Text(WeightAmountText.kilograms(weight.record.kilograms))
                                     .monospacedDigit()
@@ -224,8 +224,6 @@ struct DaySummarySheet: View {
             .padding(.vertical, 8)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("day-food")
-        } header: {
-            Text("食事と栄養")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 // 試作（prototype-goal-setup-look の「決まったあと」）のとおり、まとまりの下の1行目に置く

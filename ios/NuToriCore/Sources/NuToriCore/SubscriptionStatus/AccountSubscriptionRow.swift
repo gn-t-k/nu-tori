@@ -3,8 +3,6 @@ public import Foundation
 /// アカウントの画面の一番上の「サブスクリプション」の行。審査の人も、無料体験中のアカウントでこの行から課金画面に届く
 public struct AccountSubscriptionRow: Equatable, Sendable {
     public let value: String
-    /// 無料体験中だけ持つ
-    public let note: String?
     /// テストユーザーは開かない
     public let opensPaywall: Bool
 
@@ -16,11 +14,9 @@ public struct AccountSubscriptionRow: Equatable, Sendable {
         switch standing {
         case .testUser:
             value = "テストユーザー"
-            note = nil
             opensPaywall = false
-        case .freeTrial(let lastDay, let remainingDays):
+        case .freeTrial(_, let remainingDays):
             value = "無料体験 あと \(remainingDays) 日"
-            note = "無料体験は\(GoalText.monthDay(lastDay))まで。そのあとも体重の記録と、これまでの記録の見返しはできます。"
             opensPaywall = true
         case .subscribed(let plan, let periodEndsAt, let endsAt):
             switch autoRenewal {
@@ -31,11 +27,9 @@ public struct AccountSubscriptionRow: Equatable, Sendable {
                 let renewalDay = CalendarDay(containing: periodEndsAt, in: timeZone)
                 value = "\(plan.name)・\(GoalText.monthDay(renewalDay))に更新"
             }
-            note = nil
             opensPaywall = true
         case .expired:
             value = "サブスクリプション切れ"
-            note = nil
             opensPaywall = true
         }
     }

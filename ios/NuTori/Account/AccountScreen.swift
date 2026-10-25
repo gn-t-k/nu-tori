@@ -30,8 +30,8 @@ struct AccountScreen: View {
                     LabeledContent("ヘルスケア", value: "読む・書く")
                 }
             }
-            Section("通知") {
-                LabeledContent("記録忘れ（体重）", value: notificationPermission?.label ?? "")
+            Section {
+                LabeledContent("記録忘れの通知", value: notificationPermission?.label ?? "")
                     .accessibilityIdentifier("notification-permission")
                 Button {
                     openURL(Self.notificationSettingsURL)
@@ -40,8 +40,8 @@ struct AccountScreen: View {
                     externalLinkLabel("iPhone の設定を開く")
                 }
             }
-            Section("カメラ") {
-                LabeledContent("食事を撮る", value: cameraAccess.label)
+            Section {
+                LabeledContent("カメラ", value: cameraAccess.label)
                     .accessibilityIdentifier("camera-access")
                 externalLink("iPhone の設定を開く", url: Self.appSettingsURL)
             }
@@ -50,7 +50,7 @@ struct AccountScreen: View {
                     // 続けて押すと、先に押した分の保存があとから届き、最後に押した値を上書きしうる
                     .disabled(requestedSendsUsageData != nil)
             } footer: {
-                Text("オフにすると、これから先は送りません。送った分は1年で消えます。")
+                Text("送った分は1年で消えます。")
             }
             Section {
                 externalLink("プライバシーポリシー", url: PublicPages.privacyPolicy)
@@ -78,9 +78,7 @@ struct AccountScreen: View {
                         .accessibilityIdentifier("account-deletion-failure")
                 }
             } footer: {
-                Text(
-                    "食事、体重、目標、会話の記録はすぐに消え、元に戻せません。エラーの報告と利用状況のデータは、最長 90 日で消えます。"
-                )
+                Text("エラーの報告と利用状況のデータは、最長 90 日で消えます。")
             }
             Section {
             } footer: {
@@ -256,10 +254,6 @@ struct AccountScreen: View {
             } else {
                 LabeledContent("サブスクリプション", value: row.value)
                     .accessibilityIdentifier("subscription-row")
-            }
-        } footer: {
-            if let note = row.note {
-                Text(note)
             }
         }
     }

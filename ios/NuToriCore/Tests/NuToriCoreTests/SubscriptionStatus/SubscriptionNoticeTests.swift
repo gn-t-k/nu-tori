@@ -317,12 +317,10 @@ struct SubscriptionNoticeTests {
                     day: SubscriptionNoticeTests.threeDaysLeftDay)
             }
 
-            @Test("最後の日を入れた文と「サブスクリプションを見る」を持つこと")
+            @Test("無料体験のあともできることと「サブスクリプションを見る」を持つこと")
             func threeDaysLeft() {
                 #expect(notice.title == "無料体験はあと 3 日")
-                #expect(
-                    notice.body
-                        == "11月19日で終わります。そのあとも体重の記録と、これまでの記録の見返しはできます。")
+                #expect(notice.body == "そのあとも体重の記録と、これまでの記録の見返しはできます。")
                 #expect(notice.showsSubscriptionButton)
             }
         }

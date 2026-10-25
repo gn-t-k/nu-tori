@@ -93,7 +93,6 @@ extension GoalOverviewTests {
                             "推定消費カロリー 2,250 kcal", "1日の目安 1,900 kcal",
                             "1日の目安は推定消費カロリーより 350 kcal 少ない",
                         ]))
-                #expect(chart?.note == "週ごとの見直しが 2 回たまると、グラフで見せます。")
             }
 
             @Suite("1日の目安が推定消費カロリーより多いとき")
@@ -305,7 +304,6 @@ extension GoalOverviewTests {
         @Test("開始の日から終わった日までの体重の傾向の変化を結果にすること")
         func showsChangeUntilEnded() {
             #expect(pastGoals.first?.weightsText == "72.4 → 70.4 kg")
-            #expect(pastGoals.first?.resultText == "−2.0 kg")
         }
     }
 
@@ -333,7 +331,6 @@ extension GoalOverviewTests {
 
             #expect(past.summary == "減量 10月1日〜12月24日")
             #expect(past.weightsText == "72.4 → 68.4 kg")
-            #expect(past.resultText == "−4.0 kg")
         }
     }
 }

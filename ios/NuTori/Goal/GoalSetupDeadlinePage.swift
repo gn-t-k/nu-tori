@@ -18,13 +18,8 @@ struct GoalSetupDeadlinePage: View {
                     chipButton(chip)
                 }
             }
-            GoalSetupLabeledRow("期限") {
-                deadlinePicker
-            }
-            Text(rangeText)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            // 選べる幅は DatePicker の幅で伝え、幅の文は添えない
+            deadlinePicker
             GoalSetupFooter(page: content.page, goBack: actions.goBack) {
                 Button("次へ", action: actions.proceedFromDeadline)
                     .buttonStyle(.borderedProminent)
@@ -80,14 +75,6 @@ struct GoalSetupDeadlinePage: View {
             get: { date(of: content.deadline) },
             set: { actions.chooseDeadline(CalendarDay(containing: $0, in: timeZone())) }
         )
-    }
-
-    /// 「10月22日〜4月13日の日を選べます（4〜26週）。」
-    private var rangeText: String {
-        let earliest = GoalSetupDayText.monthDay(content.deadlineChoices.earliestDay)
-        let latest = GoalSetupDayText.monthDay(content.deadlineChoices.latestDay)
-        let weeks = GoalDeadlineChoices.acceptedWeeks
-        return "\(earliest)〜\(latest)の日を選べます（\(weeks.lowerBound)〜\(weeks.upperBound)週）。"
     }
 
     private func date(of day: CalendarDay) -> Date {

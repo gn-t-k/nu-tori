@@ -44,7 +44,7 @@ public struct WeeklyReviewCard: Hashable, Sendable {
     /// まとめて見直したときだけに出す
     public var batchText: String? {
         otherReviewedWeekCount > 0
-            ? "ほかに \(otherReviewedWeekCount) 週を見直しました。‹ で前の週を見られます。" : nil
+            ? "ほかに \(otherReviewedWeekCount) 週を見直しました。" : nil
     }
 
     /// カードのペースの1行。`Pace` が返さない週（期限の日か達成した日を迎えた）は、どちらを迎えたかを出す
