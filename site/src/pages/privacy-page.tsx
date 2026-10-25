@@ -12,7 +12,7 @@ export const privacyPage: SitePage = {
   Content: () => (
     <>
       <h1>nu-tori プライバシーポリシー</h1>
-      <p class="dates">制定日: 2026年9月29日　改定日: 2026年10月24日</p>
+      <p class="dates">制定日: 2026年9月29日　改定日: 2026年10月25日</p>
 
       <p>
         村上玄徳（以下「運営者」）は、iPhone
