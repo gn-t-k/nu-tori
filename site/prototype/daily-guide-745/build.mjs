@@ -286,7 +286,8 @@ ${keyLineNav([
   ["e-1", "体重が予想どおりに減ったかを見て、nu-tori が推定を直します"],
   ["e-2", "やせて体が使うカロリーが減っても、nu-tori が目安を合わせ直します"],
   ["e-3", "体重計の数字が一時的に増えても、nu-tori は目安を大きく変えません"],
-])}</div>
+])}
+<p class="answer-action">あなたがするのは、毎朝同じころに体重を量ることと、食べたものを撮ることだけです。1日の分をなるべく全部記録すると、目安は早くあなたの体に合います。</p></div>
 
 <h2 id="e-1">1. 体重が予想どおりに減ったかを見て、nu-tori が推定を直します</h2>
 <p>nu-tori は毎週月曜に、先週あなたが食べた量から、体重がどれだけ減るはずだったかを予想し、実際の体重と比べます。</p>
@@ -320,9 +321,6 @@ ${trendFigure({ id: "e-trend", caption: "Aさんの、毎朝の体重（点）�
 <h3>nu-tori は、記録が少ない週の見直しを見送ります</h3>
 <p>nu-tori は、体重の記録が無い週と、食事を記録した日が 4 日に満たない週の見直しを見送り、推定消費カロリーと1日の目安を前の週のままにします。</p>
 
-<h2>あなたがするのは、毎朝の体重と食事の記録だけです</h2>
-<ul><li>毎朝、同じころに体重を量ってください</li><li>食べたものを撮ってください。1日の分をなるべく全部記録してください</li></ul>
-<p>記録が揃うほど、目安は早くあなたの体に合います。</p>
 
 <h2>計算の決まり</h2>
 <p>ここからは、ここまでに説明した計算の、細かい決まりです。</p>
@@ -455,6 +453,7 @@ details[open] { padding-bottom: 8px; }
 .answer p { margin: 0 0 8px; }
 .answer p:last-child, .answer ol:last-child { margin-bottom: 0; }
 .key-line { padding-left: 1.4em; display: grid; gap: 6px; }
+.answer-action { border-top: 1px solid var(--separator); padding-top: 10px; margin-top: 12px; }
 .key-line a { text-decoration: none; }
 .proto-structure { border: 1px dashed var(--on-surface-tertiary); background: transparent; border-radius: 10px; padding: 0 12px 8px; margin: 0 0 24px; font-size: 13px; line-height: 18px; color: var(--on-surface-secondary); }
 .proto-structure summary { font-weight: 600; min-height: 36px; }
