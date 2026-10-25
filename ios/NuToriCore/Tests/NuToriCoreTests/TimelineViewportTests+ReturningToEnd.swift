@@ -62,6 +62,26 @@ extension TimelineViewportTests {
             }
         }
 
+        @Suite("遡っているときに、選んだ写真を読んでいるあいだの仮のカードを出したとき")
+        struct PickedPhotosLoadingStarted {
+            var viewport: TimelineViewport
+
+            init() {
+                viewport = TimelineViewportTests.scrolledAway()
+                viewport.pickedPhotosLoadingStarted()
+            }
+
+            @Test("仮のカードが並んでから、一番下へ動かすこと")
+            func scrollsToEndAfterListing() {
+                #expect(viewport.waitingInstructions == [.scroll(to: .end, animated: false)])
+            }
+
+            @Test("そこから、中身が伸びたら一番下を追うこと")
+            func followsFromThere() {
+                #expect(viewport.followsSizeChanges)
+            }
+        }
+
         @Suite("遡っているときに、ほかの端末で足した項目が、足してから1分を過ぎていちばん下に届いたとき")
         struct ItemFromOtherDeviceArrivedAtEnd {
             var viewport: TimelineViewport

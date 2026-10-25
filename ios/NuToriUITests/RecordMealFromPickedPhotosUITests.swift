@@ -14,7 +14,8 @@ final class RecordMealFromPickedPhotosUITests: XCTestCase {
         todayIdentifier = try Self.todayIdentifier()
         app = .launched(
             account: "signed-in", api: "meal-estimation", healthLatestKilograms: nil,
-            pickedPhotoCount: 1, now: Self.now, timeZone: Self.timeZoneIdentifier)
+            pickedPhotos: UITestPickedPhotos(count: 1), now: Self.now,
+            timeZone: Self.timeZoneIdentifier)
         XCTAssertTrue(app.buttons["composer-photos"].waitForExistence(timeout: 5))
     }
 

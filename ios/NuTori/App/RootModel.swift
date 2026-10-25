@@ -489,8 +489,9 @@ final class RootModel {
         }
         await accountSession.capture(
             .mealRecorded(entry: entry, photoCount: originals.count, mealCount: meals.count))
-        // 撮る・選ぶ画面が閉じてタイムラインに戻ってから、栄養の書き込みの許可を求める
-        await health.requestNutritionAuthorizationAfterMealRecorded()
+        // 撮る・選ぶ画面が閉じてタイムラインに戻ってから、栄養の書き込みの許可を求める。
+        // 許可の画面が閉じるまで待たずに返し、写真を読んでいるあいだの仮のカードを、食事のカードが出たらすぐ外せるようにする
+        Task { await health.requestNutritionAuthorizationAfterMealRecorded() }
     }
 
     /// シートを出しているあいだは問い直さない。問うあいだにサインインの画面に替わったら出さない

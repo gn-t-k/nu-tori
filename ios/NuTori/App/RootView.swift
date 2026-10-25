@@ -44,11 +44,15 @@ struct RootView: View {
     /// UI テストは、標準の選ぶ画面を開かずに、決まった写真を選んだことにする
     private var photoSelection: MealPhotoSelection {
         #if DEBUG
-            if let count = UITestLaunch.current?.pickedMealPhotoCount {
-                return .fixed(record: { pickedAt in
-                    await model.recordPickedMeals(
-                        originals: UITestMealPhotos.jpegs(count: count), pickedAt: pickedAt)
-                })
+            if let picked = UITestLaunch.current?.pickedPhotos {
+                return .fixed(
+                    photoCount: picked.count,
+                    record: { pickedAt in
+                        try? await Task.sleep(for: .seconds(picked.loadingSeconds))
+                        await model.recordPickedMeals(
+                            originals: UITestMealPhotos.jpegs(count: picked.count),
+                            pickedAt: pickedAt)
+                    })
             }
         #endif
         return .picker

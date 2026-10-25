@@ -267,7 +267,9 @@ struct TimelineScreen: View {
             guard !items.isEmpty else { return }
             let pickedAt = now()
             pickedPhotos = []
-            Task { await mealActions.recordPickedPhotos(items, pickedAt) }
+            showPickedPhotosLoadingWhileRecording(count: items.count) {
+                await mealActions.recordPickedPhotos(items, pickedAt)
+            }
         }
         .onChange(of: weightEntryPhase) { previous, phase in
             if previous == .showing, phase == .closed {
@@ -310,6 +312,8 @@ struct TimelineScreen: View {
     /// 答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
+    /// 選んだ写真を読んで記録し終えるまで、タイムラインの一番下に出す仮のカード。読み終える前に選び直したら、選んだ回ごとに並べる
+    @State private var loadingPickedPhotos: [PickedPhotosLoading] = []
     /// 見える範囲の規則は NuToriCore の TimelineViewport が持つ。規則は前の出来事を覚えて決めるので、描き直しをまたいで持つために @State に置く。
     /// 次に描いたあとで実行する指示（`waitingInstructions`）も持ち、変わったら動かす口（ScrollViewProxy）のある ScrollViewReader の中で実行する
     @State private var viewport = TimelineViewport()
@@ -402,6 +406,12 @@ struct TimelineScreen: View {
                             ForEach(listedDays, id: \.day) { day in
                                 daySection(day, in: timeline)
                                     .id(day.day)
+                            }
+                            ForEach(loadingPickedPhotos) { loading in
+                                PickedPhotosLoadingCard(photoCount: loading.photoCount)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                    .padding(.top, 8)
+                                    .accessibilityIdentifier("picked-photos-loading")
                             }
                             restartGoalSetupCard
                         }
@@ -735,9 +745,11 @@ struct TimelineScreen: View {
                 case .picker:
                     showsPhotoPicker = true
                 #if DEBUG
-                    case .fixed(let record):
+                    case .fixed(let photoCount, let record):
                         let pickedAt = now()
-                        Task { await record(pickedAt) }
+                        showPickedPhotosLoadingWhileRecording(count: photoCount) {
+                            await record(pickedAt)
+                        }
                 #endif
                 }
             },
@@ -922,6 +934,19 @@ struct TimelineScreen: View {
             page: goalSetupFlow.expandedPage)
     }
 
+    /// 選ぶ画面が閉じたらすぐ仮のカードを出し、遡っていても一番下へ連れていく。記録し終えたら（食事のカードがキャッシュに入ったら）外す
+    private func showPickedPhotosLoadingWhileRecording(
+        count: Int, record: @escaping () async -> Void
+    ) {
+        let loading = PickedPhotosLoading(photoCount: count)
+        loadingPickedPhotos.append(loading)
+        viewport.pickedPhotosLoadingStarted()
+        Task {
+            await record()
+            loadingPickedPhotos.removeAll { $0.id == loading.id }
+        }
+    }
+
     /// 立て直す流れを知らせのボタン（と日のまとめ）から広げているあいだ、タイムラインの一番下に出す目標の設定のカード。
     /// 目標がないあいだは、目標を立てる知らせのカードがその場で広がるので出さない。目標の画面から広げたときは目標の画面にだけ描く
     @ViewBuilder private var restartGoalSetupCard: some View {
@@ -1093,4 +1118,10 @@ private struct GoalSetupScrollKey: Equatable {
     let requests: Int
     /// 広げていなければ nil
     let page: GoalSetupPage?
+}
+
+/// 1回の選ぶ画面で選んだ写真を、読んで記録し終えるまで
+private struct PickedPhotosLoading: Identifiable {
+    let id = UUID()
+    let photoCount: Int
 }
