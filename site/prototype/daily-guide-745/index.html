@@ -156,28 +156,10 @@ details[open] { padding-bottom: 8px; }
 <h2 id="e-1">1. 体重が予想どおりに減ったかを見て、nu-tori が推定を直します</h2>
 <p>nu-tori は毎週月曜に、先週あなたが食べた量から、体重がどれだけ減るはずだったかを予想し、実際の体重と比べます。</p>
 <ul><li>予想ほど減らなかったら、nu-tori は推定を下げます</li><li>予想より減ったら、nu-tori は推定を上げます</li></ul>
-
-<figure class="figure" id="e-weeks">
-  <div class="figure-scroll">
-  <svg viewBox="0 0 360 250" role="img" aria-label="推定消費カロリーが毎週の見直しで本当の消費に近づき、1日の目安もそれに沿って下がる">
-    <line class="grid" x1="40" x2="276" y1="198.5263157894737" y2="198.5263157894737"/><text class="tick" x="34" y="202.5263157894737" text-anchor="end">1,600</text><line class="grid" x1="40" x2="276" y1="155.57894736842104" y2="155.57894736842104"/><text class="tick" x="34" y="159.57894736842104" text-anchor="end">1,800</text><line class="grid" x1="40" x2="276" y1="112.63157894736842" y2="112.63157894736842"/><text class="tick" x="34" y="116.63157894736842" text-anchor="end">2,000</text><line class="grid" x1="40" x2="276" y1="69.68421052631581" y2="69.68421052631581"/><text class="tick" x="34" y="73.68421052631581" text-anchor="end">2,200</text><line class="grid" x1="40" x2="276" y1="26.73684210526318" y2="26.73684210526318"/><text class="tick" x="34" y="30.73684210526318" text-anchor="end">2,400</text>
-    <path class="truth" d="M40.0 80.4 L87.2 80.9 L134.4 82.2 L181.6 84.3 L228.8 86.5"/>
-    <path class="trend" d="M40.0 27.0 L87.2 27.0 L87.2 51.0 L134.4 51.0 L134.4 79.6 L181.6 79.6 L181.6 95.5 L228.8 95.5 L228.8 94.8 L276.0 94.8"/>
-    <path class="guide" d="M40.0 101.9 L87.2 101.9 L87.2 134.1 L134.4 134.1 L134.4 166.3 L181.6 166.3 L181.6 187.8 L228.8 187.8 L228.8 187.8 L276.0 187.8"/>
-    <text class="value" x="63.6" y="20.951578947368432" text-anchor="middle">2,399</text><text class="value" x="110.80000000000001" y="45.00210526315789" text-anchor="middle">2,287</text><text class="value" x="158" y="73.56210526315789" text-anchor="middle">2,154</text><text class="value" x="205.2" y="89.45263157894736" text-anchor="middle">2,080</text><text class="value" x="252.4" y="88.80842105263157" text-anchor="middle">2,083</text>
-    <text class="value muted" x="63.6" y="116.89473684210526" text-anchor="middle">2,050</text><text class="value muted" x="110.80000000000001" y="149.10526315789474" text-anchor="middle">1,900</text><text class="value muted" x="158" y="181.31578947368422" text-anchor="middle">1,750</text><text class="value muted" x="205.2" y="202.78947368421052" text-anchor="middle">1,650</text><text class="value muted" x="252.4" y="202.78947368421052" text-anchor="middle">1,650</text>
-    <text class="series-label" x="282" y="92.80842105263157">推定消費</text>
-    <text class="series-label" x="282" y="106.80842105263157">カロリー</text>
-    <text class="series-label muted" x="282" y="191.78947368421052">1日の目安</text>
-    <text class="series-label faint" x="232.8" y="64.51594759103233">本当の消費</text>
-    <text class="tick" x="63.6" y="240" text-anchor="middle">1週目</text><text class="tick" x="110.80000000000001" y="240" text-anchor="middle">2週目</text><text class="tick" x="158" y="240" text-anchor="middle">3週目</text><text class="tick" x="205.2" y="240" text-anchor="middle">4週目</text><text class="tick" x="252.4" y="240" text-anchor="middle">5週目</text>
-    <text class="tick" x="34" y="12" text-anchor="end">kcal</text>
-  </svg>
-  </div>
-  <figcaption>例: 最初の推定が 2,399 kcal で、本当に使うカロリーが 2,150 kcal（点線）だった人の4週間です。推定消費カロリーは毎週、点線に近づきます。点線は説明のための仮定で、nu-tori には分かりません。</figcaption>
-</figure>
-<details><summary>例の1週を、数字で見る</summary>
-<p class="persona">ここからは、架空の1人を例に追います。この人は 30 歳・身長 172 cm の男性で、ほぼ座り仕事です。nu-tori を使い始める前の4週間は、体重計で体重だけを量っていて、体重の傾向は 78.4 kg で横ばいでした。食事は記録していなかったので、nu-tori は最初の推定消費カロリーを式で出し、2,399 kcal としました。目標は、12週で 74.4 kg まで減らすことで、最初の1日の目安は 2,050 kcal でした。この人が本当に消費しているカロリーは、2,150 kcal とします。この値は説明のために置いた仮定で、nu-tori には分かりません。</p>
+<p>nu-tori は、運動の記録を使いません。運動で使った分も、体重の動きに表れるからです。</p>
+<h3>Aさんの例</h3>
+<p>Aさんは、30 歳・身長 172 cm・体重 78.4 kg の男性で、ほぼ座り仕事です（説明のための、架空の人です）。nu-tori は、Aさんの最初の推定消費カロリーを式で出し、2,399 kcal としました。Aさんの目標は12週で 74.4 kg まで減らすことで、最初の1日の目安は 2,050 kcal でした。けれども、Aさんの体が本当に使うカロリーは 2,150 kcal でした。この値も説明のための仮定で、nu-tori には分かりません。</p>
+<p>2週目（1月12日〜18日）に、Aさんが食べた量の平均は 1,900 kcal で、その週の推定消費カロリーは 2,287 kcal でした。nu-tori はこの差から、Aさんの体重の傾向（毎朝の体重をならした値。3 で説明します）が 0.35 kg 減ると予想しました。実際の体重の傾向は 0.11 kg しか減らず、予想とのずれは 0.24 kg でした。</p>
 
 <figure class="figure" id="e-review">
   <div class="figure-scroll">
@@ -197,16 +179,36 @@ details[open] { padding-bottom: 8px; }
     <text class="tick" x="28" y="12" text-anchor="end">kg</text>
   </svg>
   </div>
-  <figcaption>例の人の、1月12日〜18日の週です。この週にこの人が食べた量の平均は 1,900 kcal、その週の推定消費カロリーは 2,287 kcal でした。nu-tori はこの差から、体重の傾向が 0.35 kg 減ると予想しました（点線）。実際の体重の傾向は 0.11 kg しか減らず（実線）、予想とのずれは 0.24 kg でした。</figcaption>
+  <figcaption>Aさんの2週目です。点線が nu-tori の予想、実線が実際の体重の傾向です。</figcaption>
 </figure>
+<p>nu-tori は、このずれから、推定消費カロリーを次のように直しました。</p>
 
 <div class="equation">
   <div class="eq-row"><span class="eq-label">ずれを1日あたりのカロリーにする</span><span class="eq-value">約 0.24 kg × 7,700 kcal/kg ÷ 7 日 ＝ 1日 約 266 kcal</span></div>
   <div class="eq-row"><span class="eq-label">そのうち動かす割合</span><span class="eq-value">× 0.5 ＝ 約 133 kcal（この週は、食事を7日とも記録し、推定が高すぎる向きのずれが2週続いたので）</span></div>
   <div class="eq-row eq-result"><span class="eq-label">新しい推定消費カロリー</span><span class="eq-value">2,287 kcal − 約 133 kcal ＝ <strong>2,154 kcal</strong></span></div>
 </div>
-<p>nu-tori は、運動の記録を使いません。運動で使った分も、体重の動きに表れるからです。</p>
-</details>
+<p>nu-tori がこれを毎週くり返すと、Aさんの推定消費カロリーは、Aさんの体が本当に使うカロリー（点線）に近づきます。</p>
+
+<figure class="figure" id="e-weeks">
+  <div class="figure-scroll">
+  <svg viewBox="0 0 360 250" role="img" aria-label="推定消費カロリーが毎週の見直しで本当の消費に近づき、1日の目安もそれに沿って下がる">
+    <line class="grid" x1="40" x2="276" y1="198.5263157894737" y2="198.5263157894737"/><text class="tick" x="34" y="202.5263157894737" text-anchor="end">1,600</text><line class="grid" x1="40" x2="276" y1="155.57894736842104" y2="155.57894736842104"/><text class="tick" x="34" y="159.57894736842104" text-anchor="end">1,800</text><line class="grid" x1="40" x2="276" y1="112.63157894736842" y2="112.63157894736842"/><text class="tick" x="34" y="116.63157894736842" text-anchor="end">2,000</text><line class="grid" x1="40" x2="276" y1="69.68421052631581" y2="69.68421052631581"/><text class="tick" x="34" y="73.68421052631581" text-anchor="end">2,200</text><line class="grid" x1="40" x2="276" y1="26.73684210526318" y2="26.73684210526318"/><text class="tick" x="34" y="30.73684210526318" text-anchor="end">2,400</text>
+    <path class="truth" d="M40.0 80.4 L87.2 80.9 L134.4 82.2 L181.6 84.3 L228.8 86.5"/>
+    <path class="trend" d="M40.0 27.0 L87.2 27.0 L87.2 51.0 L134.4 51.0 L134.4 79.6 L181.6 79.6 L181.6 95.5 L228.8 95.5 L228.8 94.8 L276.0 94.8"/>
+    <path class="guide" d="M40.0 101.9 L87.2 101.9 L87.2 134.1 L134.4 134.1 L134.4 166.3 L181.6 166.3 L181.6 187.8 L228.8 187.8 L228.8 187.8 L276.0 187.8"/>
+    <text class="value" x="63.6" y="20.951578947368432" text-anchor="middle">2,399</text><text class="value" x="110.80000000000001" y="45.00210526315789" text-anchor="middle">2,287</text><text class="value" x="158" y="73.56210526315789" text-anchor="middle">2,154</text><text class="value" x="205.2" y="89.45263157894736" text-anchor="middle">2,080</text><text class="value" x="252.4" y="88.80842105263157" text-anchor="middle">2,083</text>
+    <text class="value muted" x="63.6" y="116.89473684210526" text-anchor="middle">2,050</text><text class="value muted" x="110.80000000000001" y="149.10526315789474" text-anchor="middle">1,900</text><text class="value muted" x="158" y="181.31578947368422" text-anchor="middle">1,750</text><text class="value muted" x="205.2" y="202.78947368421052" text-anchor="middle">1,650</text><text class="value muted" x="252.4" y="202.78947368421052" text-anchor="middle">1,650</text>
+    <text class="series-label" x="282" y="92.80842105263157">推定消費</text>
+    <text class="series-label" x="282" y="106.80842105263157">カロリー</text>
+    <text class="series-label muted" x="282" y="191.78947368421052">1日の目安</text>
+    <text class="series-label faint" x="232.8" y="64.51594759103233">本当の消費</text>
+    <text class="tick" x="63.6" y="240" text-anchor="middle">1週目</text><text class="tick" x="110.80000000000001" y="240" text-anchor="middle">2週目</text><text class="tick" x="158" y="240" text-anchor="middle">3週目</text><text class="tick" x="205.2" y="240" text-anchor="middle">4週目</text><text class="tick" x="252.4" y="240" text-anchor="middle">5週目</text>
+    <text class="tick" x="34" y="12" text-anchor="end">kcal</text>
+  </svg>
+  </div>
+  <figcaption>Aさんの4週間です。推定消費カロリーが毎週直り、1日の目安もそれに合わせて下がります。</figcaption>
+</figure>
 
 <h2 id="e-2">2. やせて体が使うカロリーが減っても、nu-tori が目安を合わせ直します</h2>
 <p>体重が減ると、あなたの体が1日に使うカロリーも減ります。そのため、同じ量を食べ続けると、体重の減り方はだんだん緩くなります。nu-tori は、この分も毎週の見直しで直すので、あなたが計算し直す必要はありません。</p>
@@ -226,7 +228,7 @@ details[open] { padding-bottom: 8px; }
     <text class="tick" x="28" y="12" text-anchor="end">kg</text>
   </svg>
   </div>
-  <figcaption>例の人が、同じ 1,650 kcal を見直さずに2年食べ続けたときの体重です。1年目は 12.6 kg 減りますが、2年目は 3.5 kg しか減りません。</figcaption>
+  <figcaption>Aさんが、同じ 1,650 kcal を見直さずに2年食べ続けたときの体重です。1年目は 12.6 kg 減りますが、2年目は 3.5 kg しか減りません。</figcaption>
 </figure>
 
 <h2 id="e-3">3. 体重計の数字が一時的に増えても、nu-tori は目安を大きく変えません</h2>
@@ -246,7 +248,7 @@ details[open] { padding-bottom: 8px; }
     <text class="tick" x="28" y="12" text-anchor="end">kg</text>
   </svg>
   </div>
-  <figcaption>例の人の、毎朝の体重（点）と体重の傾向（線）です。点が日によって上下しても、線はなめらかに動きます。</figcaption>
+  <figcaption>Aさんの、毎朝の体重（点）と体重の傾向（線）です。点が日によって上下しても、線はなめらかに動きます。</figcaption>
 </figure>
 <details><summary>目安が大きく変わらないようにする決まり</summary>
 <ul><li>nu-tori は、1週のずれの分を、推定消費カロリーに一度に全部は反映しません。食事を記録した日が多い週ほど、また同じ向きのずれが続いた週ほど、大きく動かします</li><li>nu-tori は、1日の目安を、1週に 150 kcal より大きく上げ下げしません</li></ul>

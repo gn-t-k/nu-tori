@@ -249,7 +249,11 @@ const rules = {
 <ul><li>あなたが nu-tori を使い始めて 7 日に満たない（最初の推定消費カロリーを、食べた量と体重から逆算したときは、この決まりを当てません）</li><li>その週に、体重の記録が無い</li><li>その週に、食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li></ul>`,
 };
 
-const exampleIntro = `<p class="persona">ここからは、架空の1人を例に追います。この人は 30 歳・身長 172 cm の男性で、ほぼ座り仕事です。nu-tori を使い始める前の4週間は、体重計で体重だけを量っていて、体重の傾向は ${kg1(initial.startingWeightTrendKg)} kg で横ばいでした。食事は記録していなかったので、nu-tori は最初の推定消費カロリーを式で出し、${kcal(initial.kcal)} kcal としました。目標は、12週で ${kg1(74.4)} kg まで減らすことで、最初の1日の目安は ${kcal(initial.guideKcal)} kcal でした。この人が本当に消費しているカロリーは、${kcal(days[0].trueExpenditureKcal)} kcal とします。この値は説明のために置いた仮定で、nu-tori には分かりません。</p>`;
+const exampleIntro = `<p>Aさんは、30 歳・身長 172 cm・体重 ${kg1(initial.startingWeightTrendKg)} kg の男性で、ほぼ座り仕事です（説明のための、架空の人です）。nu-tori は、Aさんの最初の推定消費カロリーを式で出し、${kcal(initial.kcal)} kcal としました。Aさんの目標は12週で ${kg1(74.4)} kg まで減らすことで、最初の1日の目安は ${kcal(initial.guideKcal)} kcal でした。けれども、Aさんの体が本当に使うカロリーは ${kcal(days[0].trueExpenditureKcal)} kcal でした。この値も説明のための仮定で、nu-tori には分かりません。</p>`;
+
+// 例の1週の見直しを、図の説明ではなく本文で語る
+const exampleWeek = (review = reviews[1]) =>
+  `<p>2週目（${md(addDaysIso(review.reviewedMonday, -7))}〜${Number(addDaysIso(review.reviewedMonday, -1).slice(8))}日）に、Aさんが食べた量の平均は ${kcal(review.averageEnergyIntakeKcal)} kcal で、その週の推定消費カロリーは ${kcal(review.previousExpenditureKcal)} kcal でした。nu-tori はこの差から、Aさんの体重の傾向（毎朝の体重をならした値。3 で説明します）が ${kg2(review.predictedWeightChangeKg)} kg 減ると予想しました。実際の体重の傾向は ${kg2(review.actualWeightChangeKg)} kg しか減らず、予想とのずれは ${kg2(review.deviationKg)} kg でした。</p>`;
 
 const variantE = `
 ${structurePanel({
@@ -277,21 +281,23 @@ ${keyLineNav([
 <h2 id="e-1">1. 体重が予想どおりに減ったかを見て、nu-tori が推定を直します</h2>
 <p>nu-tori は毎週月曜に、先週あなたが食べた量から、体重がどれだけ減るはずだったかを予想し、実際の体重と比べます。</p>
 <ul><li>予想ほど減らなかったら、nu-tori は推定を下げます</li><li>予想より減ったら、nu-tori は推定を上げます</li></ul>
-${weeksFigure({ id: "e-weeks", caption: `例: 最初の推定が ${kcal(initial.kcal)} kcal で、本当に使うカロリーが ${kcal(days[0].trueExpenditureKcal)} kcal（点線）だった人の4週間です。推定消費カロリーは毎週、点線に近づきます。点線は説明のための仮定で、nu-tori には分かりません。` })}
-<details><summary>例の1週を、数字で見る</summary>
-${exampleIntro}
-${reviewFigure({ id: "e-review" })}
-${reviewEquation()}
 <p>nu-tori は、運動の記録を使いません。運動で使った分も、体重の動きに表れるからです。</p>
-</details>
+<h3>Aさんの例</h3>
+${exampleIntro}
+${exampleWeek()}
+${reviewFigure({ id: "e-review", caption: "Aさんの2週目です。点線が nu-tori の予想、実線が実際の体重の傾向です。" })}
+<p>nu-tori は、このずれから、推定消費カロリーを次のように直しました。</p>
+${reviewEquation()}
+<p>nu-tori がこれを毎週くり返すと、Aさんの推定消費カロリーは、Aさんの体が本当に使うカロリー（点線）に近づきます。</p>
+${weeksFigure({ id: "e-weeks", caption: "Aさんの4週間です。推定消費カロリーが毎週直り、1日の目安もそれに合わせて下がります。" })}
 
 <h2 id="e-2">2. やせて体が使うカロリーが減っても、nu-tori が目安を合わせ直します</h2>
 <p>体重が減ると、あなたの体が1日に使うカロリーも減ります。そのため、同じ量を食べ続けると、体重の減り方はだんだん緩くなります。nu-tori は、この分も毎週の見直しで直すので、あなたが計算し直す必要はありません。</p>
-${plateauFigure({ id: "e-plateau", caption: `例の人が、同じ ${kcal(reviews.at(-1).guideKcal)} kcal を見直さずに2年食べ続けたときの体重です。1年目は ${kg1(plateau[0].trueWeightKg - plateau[13].trueWeightKg)} kg 減りますが、2年目は ${kg1(plateau[13].trueWeightKg - plateau.at(-1).trueWeightKg)} kg しか減りません。` })}
+${plateauFigure({ id: "e-plateau", caption: `Aさんが、同じ ${kcal(reviews.at(-1).guideKcal)} kcal を見直さずに2年食べ続けたときの体重です。1年目は ${kg1(plateau[0].trueWeightKg - plateau[13].trueWeightKg)} kg 減りますが、2年目は ${kg1(plateau[13].trueWeightKg - plateau.at(-1).trueWeightKg)} kg しか減りません。` })}
 
 <h2 id="e-3">3. 体重計の数字が一時的に増えても、nu-tori は目安を大きく変えません</h2>
 <p>外食した翌朝は、体重計の数字が 0.5〜1 kg 増えていることがあります。増えたのは脂肪ではなく、食べた物や体の水分です。nu-tori は、毎朝の数字をならした体重の動き（体重の傾向）を見るので、こうした一時的な増減で目安を大きく変えません。</p>
-${trendFigure({ id: "e-trend", caption: "例の人の、毎朝の体重（点）と体重の傾向（線）です。点が日によって上下しても、線はなめらかに動きます。" })}
+${trendFigure({ id: "e-trend", caption: "Aさんの、毎朝の体重（点）と体重の傾向（線）です。点が日によって上下しても、線はなめらかに動きます。" })}
 <details><summary>目安が大きく変わらないようにする決まり</summary>
 <ul><li>nu-tori は、1週のずれの分を、推定消費カロリーに一度に全部は反映しません。食事を記録した日が多い週ほど、また同じ向きのずれが続いた週ほど、大きく動かします</li><li>nu-tori は、1日の目安を、1週に 150 kcal より大きく上げ下げしません</li></ul>
 ${rules.skip}
