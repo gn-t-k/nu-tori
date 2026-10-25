@@ -1,0 +1,329 @@
+<title>写真を読む待ちの見せ方</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE（捨てるもの）。写真を選ぶ画面が閉じてから食事のカードが出るまでの待ちを、タイムラインでどう見せるか。
+  4つの見せ方を、下のバーか ← → で切り替える。#v1〜#v4 で開ける。
+  色と大きさは DESIGN.md のトークンの写し。
+-->
+<style>
+  :root {
+    --primary: #6155F5;
+    --on-primary: #FFFFFF;
+    --bg: #F2F2F7;
+    --surface: #FFFFFF;
+    --label: #000000;
+    --secondary: rgba(60, 60, 67, 0.6);
+    --tertiary: rgba(60, 60, 67, 0.3);
+    --fill: #EFEFF0;
+    --tile: #E3E3E8;
+    --own: color-mix(in srgb, #6155F5 22%, #FFFFFF);
+    --page: #DCDCE2;
+    --frame: #1C1C1E;
+    --bar-bg: #111114;
+    --bar-fg: #FFFFFF;
+    --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --primary: #6D7CFF; --bg: #000000; --surface: #1C1C1E; --label: #FFFFFF;
+      --secondary: rgba(235, 235, 245, 0.6); --tertiary: rgba(235, 235, 245, 0.3);
+      --fill: #323236; --tile: #2C2C2E; --own: color-mix(in srgb, #6D7CFF 22%, #1C1C1E);
+      --page: #2A2A2E; --frame: #000000; --bar-bg: #F2F2F7; --bar-fg: #000000;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --primary: #6D7CFF; --bg: #000000; --surface: #1C1C1E; --label: #FFFFFF;
+    --secondary: rgba(235, 235, 245, 0.6); --tertiary: rgba(235, 235, 245, 0.3);
+    --fill: #323236; --tile: #2C2C2E; --own: color-mix(in srgb, #6D7CFF 22%, #1C1C1E);
+    --page: #2A2A2E; --frame: #000000; --bar-bg: #F2F2F7; --bar-fg: #000000;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--page); color: var(--label); font-family: var(--font);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 16px 96px;
+  }
+  .layout { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-items: flex-start; }
+  .side { flex: 1 1 280px; max-width: 360px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+  .side h1 { font-size: 20px; margin: 0; text-wrap: balance; }
+  .side p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--secondary); }
+  .panel { background: var(--surface); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+  .panel h2 { font-size: 13px; margin: 0; color: var(--secondary); font-weight: 600; letter-spacing: .04em; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .row select, .row input { font: inherit; }
+  .state { font-variant-numeric: tabular-nums; font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; color: var(--label); }
+  .variant-note { font-size: 14px; line-height: 1.6; }
+  .variant-note b { display: block; margin-bottom: 4px; }
+
+  /* 端末の枠 */
+  .phone { width: 375px; max-width: 100%; height: 720px; background: var(--bg); border: 10px solid var(--frame); border-radius: 44px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+  .nav { padding: 18px 16px 8px; text-align: center; font-weight: 600; font-size: 17px; background: var(--bg); }
+  .strip { display: flex; justify-content: space-around; padding: 4px 8px 10px; font-size: 11px; color: var(--secondary); border-bottom: 0.5px solid var(--tertiary); }
+  .strip span { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .strip i { width: 28px; height: 28px; border-radius: 50%; border: 4.5px solid var(--tile); display: block; }
+  .strip .today i { border-color: var(--primary) var(--tile) var(--tile) var(--tile); }
+  .timeline { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .day { text-align: center; font-size: 13px; color: var(--secondary); }
+  .own { align-self: flex-end; width: 72%; background: var(--own); border-radius: 12px; overflow: hidden; transition: opacity .25s; }
+  .own.undelivered { opacity: .55; }
+  .weight { padding: 12px 16px; display: flex; justify-content: space-between; align-items: baseline; }
+  .weight b { font-size: 22px; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .caption { font-size: 12px; color: var(--secondary); font-variant-numeric: tabular-nums; }
+  .reply { font-size: 17px; line-height: 22px; max-width: 90%; }
+  .meal .photos { display: flex; gap: 2px; }
+  .meal .tile { flex: 1; aspect-ratio: 1; background: var(--tile); position: relative; display: grid; place-items: center; max-width: 100%; }
+  .meal .tile.single { aspect-ratio: 4 / 3; }
+  .meal .tile .more { position: absolute; inset: 0; background: rgba(0,0,0,.4); color: #fff; display: grid; place-items: center; font-size: 22px; }
+  .meal .body { padding: 12px 16px; display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
+  .meal .status { color: var(--secondary); display: flex; align-items: center; gap: 6px; }
+  .appear { animation: appear .25s ease-out; }
+  @keyframes appear { from { opacity: 0; transform: translateY(6px); } }
+
+  /* iOS の回る印に似せたもの */
+  .spinner { width: 18px; height: 18px; border-radius: 50%; flex: none;
+    background: conic-gradient(from 0deg, transparent 0 10%, var(--secondary));
+    -webkit-mask: radial-gradient(farthest-side, transparent 58%, #000 60%);
+    mask: radial-gradient(farthest-side, transparent 58%, #000 60%);
+    animation: spin .9s linear infinite; }
+  .spinner.small { width: 14px; height: 14px; }
+  .spinner.on-fill { background: conic-gradient(from 0deg, transparent 0 10%, var(--primary)); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } .appear { animation: none; } }
+
+  /* 入力欄 */
+  .composer { background: var(--bg); border-top: 0.5px solid var(--tertiary); padding: 8px 12px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .chips { display: flex; gap: 8px; overflow: hidden; min-height: 32px; align-items: center; }
+  .chip { background: var(--surface); border-radius: 999px; height: 32px; padding: 0 12px; display: flex; align-items: center; font-size: 13px; white-space: nowrap; }
+  .loading-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--secondary); width: 100%; }
+  .loading-line .bar { flex: 1; height: 3px; background: var(--fill); border-radius: 2px; overflow: hidden; }
+  .loading-line .bar i { display: block; height: 100%; background: var(--primary); width: 0; transition: width .3s; }
+  .controls { display: flex; gap: 12px; align-items: center; }
+  .circle { width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center; flex: none; font: inherit; cursor: pointer; }
+  .circle.camera { background: var(--primary); color: var(--on-primary); }
+  .circle.photos { background: var(--fill); color: var(--primary); }
+  .circle:disabled { opacity: .6; cursor: default; }
+  .circle svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .field { flex: 1; min-width: 0; height: 36px; border-radius: 18px; background: var(--surface); color: var(--tertiary); display: flex; align-items: center; padding: 0 14px; font-size: 17px; }
+  .note { text-align: center; font-size: 12px; color: var(--secondary); }
+  .tap-hint { position: absolute; left: 66px; bottom: 76px; background: var(--primary); color: var(--on-primary); font-size: 12px; padding: 4px 8px; border-radius: 6px; pointer-events: none; }
+
+  /* 写真を選ぶ画面のまね */
+  .picker { position: absolute; inset: 40px 0 0; background: var(--surface); border-radius: 12px 12px 0 0; transform: translateY(100%); transition: transform .3s ease; display: flex; flex-direction: column; }
+  .picker.open { transform: none; }
+  .picker header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; font-size: 17px; }
+  .picker header button { background: none; border: 0; color: var(--primary); font: inherit; cursor: pointer; padding: 0; }
+  .picker header button.add { font-weight: 600; }
+  .picker .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 0 2px; }
+  .picker .grid div { aspect-ratio: 1; position: relative; }
+  .picker .grid div.sel::after { content: "✓"; position: absolute; right: 4px; bottom: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; display: grid; place-items: center; border: 1.5px solid #fff; }
+
+  /* 切り替えのバー（見せ方の一部ではない） */
+  .switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--bar-bg); color: var(--bar-fg); border-radius: 999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.25); z-index: 20; max-width: calc(100% - 32px); }
+  .switcher button { background: none; border: 0; color: inherit; font: inherit; font-size: 18px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
+  .switcher button:focus-visible, .panel button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .switcher span { font-size: 14px; padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .panel button.run { background: var(--primary); color: var(--on-primary); border: 0; border-radius: 999px; height: 36px; font: inherit; font-weight: 600; cursor: pointer; }
+</style>
+
+<div class="layout">
+  <div class="side">
+    <h1>写真を選んでから食事のカードが出るまで</h1>
+    <p>入力欄の「写真」を押し、選ぶ画面で「追加」を押すと、閉じてから写真を読み終えるまでの待ちが始まります。見せ方を下のバーで切り替えて見比べてください。</p>
+    <div class="panel variant-note" id="variantNote"></div>
+    <div class="panel">
+      <h2>試す条件</h2>
+      <div class="row"><label for="count">選ぶ枚数</label>
+        <select id="count"><option>1</option><option selected>3</option><option>6</option><option>10</option></select></div>
+      <div class="row"><label for="wait">読み終えるまで</label>
+        <select id="wait"><option value="1">1 秒</option><option value="3" selected>3 秒</option><option value="8">8 秒（iCloud から取る）</option></select></div>
+      <div class="row"><label for="split">2つの食事に分かれる</label><input type="checkbox" id="split"></div>
+      <button class="run" id="run" type="button">「写真」から試す</button>
+    </div>
+    <div class="panel">
+      <h2>いまの状態</h2>
+      <div class="state" id="state"></div>
+    </div>
+  </div>
+
+  <div class="phone" id="phone">
+    <div class="nav">10月25日（日）</div>
+    <div class="strip">
+      <span><i></i>月</span><span><i></i>火</span><span><i></i>水</span><span><i></i>木</span><span><i></i>金</span><span><i></i>土</span><span class="today"><i></i>日</span>
+    </div>
+    <div class="timeline" id="timeline">
+      <div class="day">10月25日（日）</div>
+      <div class="own weight"><span class="caption">7:12</span><b>72.4 kg</b></div>
+      <div class="reply">おはようございます。今週は 0.3 kg 下がっています。</div>
+      <div id="slot" style="display:contents"></div>
+    </div>
+    <div class="composer">
+      <div class="chips" id="chips"></div>
+      <div class="controls">
+        <button class="circle camera" type="button" aria-label="撮る"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+        <button class="circle photos" type="button" id="photosButton" aria-label="写真"></button>
+        <div class="field">メッセージ</div>
+      </div>
+      <div class="note">AI が読んで返事をします</div>
+    </div>
+    <div class="tap-hint" id="hint">押して試す</div>
+    <div class="picker" id="picker" aria-hidden="true">
+      <header><button type="button" id="cancel">キャンセル</button><span id="pickerTitle"></span><button type="button" class="add" id="add">追加</button></header>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="見せ方の切り替え">
+  <button type="button" id="prev" aria-label="前の見せ方">←</button>
+  <span id="label"></span>
+  <button type="button" id="next" aria-label="次の見せ方">→</button>
+</div>
+
+<script>
+  const VARIANTS = {
+    v1: { name: "1 仮のカード",
+      note: "<b>1 仮のカード</b>タイムラインの一番下に、選んだ枚数の写真の枠を持つ薄いカードをすぐ出し、読み終えたら本物のカードに置き換える。食事のカードと同じ場所・同じ形なので目で追いやすい。2つの食事に分かれると、1枚のカードが2枚に替わる。" },
+    v2: { name: "2 写真ボタンの回る印",
+      note: "<b>2 写真ボタンの回る印</b>入力欄の「写真」の丸の中を回る印に替え、読み終えるまで押せなくする（DESIGN.md の「押した操作の応答待ち」）。タイムラインには何も足さない。何を待っているかは、押したボタンの場所で伝える。" },
+    v3: { name: "3 入力欄の上の1行",
+      note: "<b>3 入力欄の上の1行</b>プリセットのチップの場所に「写真を読み込んでいます 2/3」と進み具合の線を出す。枚数ごとの進みが見えるので、iCloud から取る長い待ちでも止まっていないと分かる。" },
+    v4: { name: "4 小さな1行",
+      note: "<b>4 小さな1行</b>タイムラインの一番下、自分の記録が出る右側に、回る印と「写真 3枚を読み込んでいます…」の文だけを出す。食事にいくつ分かれるかまだ決まっていないので、カードの形を先取りしない。" },
+  };
+  const KEYS = Object.keys(VARIANTS);
+  const PHOTO_COLORS = ["#C9824A", "#8FA85A", "#D9B36C", "#B5603F", "#E3C28A", "#7E9F6B", "#C99A6A", "#A8743C", "#D7A15E", "#9A8A5A"];
+
+  let variant = KEYS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "v1";
+  let phase = "idle"; // idle → picking → loading → recorded（届いていない）→ delivered（推定中）
+  let loaded = 0;
+  let timers = [];
+  const $ = (id) => document.getElementById(id);
+
+  const photoIcon = '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="12" rx="2"/><path d="M7 4h12a2 2 0 0 1 2 2v10"/><path d="M3 16l4-4 3 3 2-2 5 5"/></svg>';
+  const count = () => Number($("count").value);
+  const waitSeconds = () => Number($("wait").value);
+  const split = () => $("split").checked && count() > 1;
+
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+  function later(ms, fn) { timers.push(setTimeout(fn, ms)); }
+
+  function startPicking() {
+    clearTimers();
+    phase = "picking"; loaded = 0;
+    $("hint").hidden = true;
+    const grid = $("grid"); grid.innerHTML = "";
+    for (let i = 0; i < 24; i++) {
+      const d = document.createElement("div");
+      d.style.background = PHOTO_COLORS[i % PHOTO_COLORS.length];
+      if (i < count()) d.className = "sel";
+      grid.appendChild(d);
+    }
+    $("pickerTitle").textContent = `${count()}枚を選択`;
+    $("picker").classList.add("open");
+    render();
+  }
+
+  function add() {
+    $("picker").classList.remove("open");
+    phase = "loading"; loaded = 0;
+    const per = (waitSeconds() * 1000) / count();
+    // 同時に読むので、読み終える時刻は写真ごとにばらつく
+    for (let i = 1; i <= count(); i++) later(per * i, () => { loaded = i; render(); });
+    later(waitSeconds() * 1000 + 50, () => { phase = "recorded"; render(true); });
+    later(waitSeconds() * 1000 + 1500, () => { phase = "delivered"; render(); });
+    render();
+  }
+
+  function cancel() { $("picker").classList.remove("open"); phase = "idle"; render(); }
+
+  function tiles(n, colored, spinning) {
+    if (n === 1) return `<div class="photos"><div class="tile single" style="${colored ? `background:${PHOTO_COLORS[0]}` : ""}">${spinning ? '<div class="spinner"></div>' : ""}</div></div>`;
+    const more = n > 2 ? `<div class="more">+${n - 2}</div>` : "";
+    return `<div class="photos">
+      <div class="tile" style="${colored ? `background:${PHOTO_COLORS[0]}` : ""}">${spinning ? '<div class="spinner"></div>' : ""}</div>
+      <div class="tile" style="${colored ? `background:${PHOTO_COLORS[1]}` : ""}">${spinning && n === 2 ? '<div class="spinner"></div>' : ""}${more}</div></div>`;
+  }
+
+  function mealCard(n, time, delivered, animate) {
+    const status = delivered ? '<div class="status"><div class="spinner small"></div>推定しています…</div>' : "";
+    return `<div class="own meal ${delivered ? "" : "undelivered"} ${animate ? "appear" : ""}">${tiles(n, true, false)}
+      <div class="body">${status}<span class="caption">${time}</span></div></div>`;
+  }
+
+  function render(animate = false) {
+    const n = count();
+    const slot = $("slot");
+    const chips = $("chips");
+    const button = $("photosButton");
+    const loading = phase === "loading";
+
+    // タイムラインの一番下
+    if (phase === "recorded" || phase === "delivered") {
+      const delivered = phase === "delivered";
+      slot.innerHTML = split()
+        ? mealCard(Math.ceil(n / 2), "11:48", delivered, animate) + mealCard(Math.floor(n / 2), "12:31", delivered, animate)
+        : mealCard(n, "12:31", delivered, animate);
+    } else if (loading && variant === "v1") {
+      slot.innerHTML = `<div class="own meal undelivered appear">${tiles(n, false, true)}
+        <div class="body"><div class="status"><div class="spinner small"></div>写真を読み込んでいます…</div><span class="caption">${n}枚</span></div></div>`;
+    } else if (loading && variant === "v4") {
+      slot.innerHTML = `<div class="appear" style="align-self:flex-end;display:flex;align-items:center;gap:8px;font-size:15px;color:var(--secondary)"><div class="spinner small"></div>写真 ${n}枚を読み込んでいます…</div>`;
+    } else {
+      slot.innerHTML = "";
+    }
+
+    // 入力欄
+    if (loading && variant === "v3") {
+      chips.innerHTML = `<div class="loading-line"><div class="spinner small"></div><span style="white-space:nowrap;font-variant-numeric:tabular-nums">写真を読み込んでいます ${loaded}/${n}</span><div class="bar"><i style="width:${(loaded / n) * 100}%"></i></div></div>`;
+    } else {
+      chips.innerHTML = '<div class="chip">いつもの朝ごはん</div><div class="chip">コーヒー</div><div class="chip">昼の定食</div>';
+    }
+    if (loading && variant === "v2") {
+      button.innerHTML = '<div class="spinner on-fill"></div>';
+      button.disabled = true;
+      button.setAttribute("aria-label", "写真を読み込んでいます");
+    } else {
+      button.innerHTML = photoIcon;
+      button.disabled = phase === "picking";
+      button.setAttribute("aria-label", "写真");
+    }
+
+    $("timeline").scrollTop = $("timeline").scrollHeight;
+    $("label").textContent = VARIANTS[variant].name;
+    $("variantNote").innerHTML = VARIANTS[variant].note;
+    const phaseText = {
+      idle: "待っていない",
+      picking: "写真を選ぶ画面を出している",
+      loading: "写真を読んでいる（カードはまだ無い）",
+      recorded: "カードが出た（まだ届いていないので薄い）",
+      delivered: "サーバーに届いた（推定しています…）",
+    }[phase];
+    $("state").textContent =
+      `見せ方: ${VARIANTS[variant].name}\n段階: ${phaseText}\n読み終えた写真: ${loaded}/${n}\n食事の数: ${phase === "recorded" || phase === "delivered" ? (split() ? 2 : 1) : "まだ決まらない"}`;
+  }
+
+  function setVariant(next) {
+    variant = next;
+    try { history.replaceState(null, "", "#" + variant); } catch (e) {}
+    render();
+  }
+  function step(d) { setVariant(KEYS[(KEYS.indexOf(variant) + d + KEYS.length) % KEYS.length]); }
+
+  $("photosButton").addEventListener("click", startPicking);
+  $("run").addEventListener("click", startPicking);
+  $("add").addEventListener("click", add);
+  $("cancel").addEventListener("click", cancel);
+  $("prev").addEventListener("click", () => step(-1));
+  $("next").addEventListener("click", () => step(1));
+  ["count", "wait", "split"].forEach((id) => $(id).addEventListener("change", () => { clearTimers(); phase = "idle"; loaded = 0; render(); }));
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+    if (e.key === "ArrowLeft") step(-1);
+    if (e.key === "ArrowRight") step(1);
+  });
+  window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (KEYS.includes(h)) { variant = h; render(); } });
+  render();
+</script>
