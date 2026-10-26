@@ -2,25 +2,120 @@ import Charts
 import NuToriCore
 import SwiftUI
 
-/// 推定消費カロリーの線と1日の目安の階段を、1つの kcal のグラフに重ねる（仕様の `gchart` B）。2本の間を薄く塗り、見送った週に「見送り」の印。
-/// 見直した点が3つたまるまでは、グラフの代わりに今の値の数字を出す。グラフの週を押すと、その週の値をグラフの上に出す
+/// 今の1日の目安のカードの、PFC より下（#744 の解決コメント）。推定消費カロリーと1日の目安を 0 kcal からの同じ目盛りの2本の棒で並べ、差を斜線で見せる。
+/// 見直した点が3つたまったら、棒の下に、推定消費カロリーの線と1日の目安の階段を重ねたグラフ（仕様の `gchart` B）を描く
 struct GoalEnergyChartView: View {
     let chart: GoalOverview.EnergyChart
 
     var body: some View {
-        switch chart {
-        case .drawn(let graph):
-            GoalEnergyGraph(graph: graph)
-        case .figures(let figures):
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(figures, id: \.self) { figure in
-                    Text(figure)
-                        .monospacedDigit()
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            GoalEnergyBars(bars: chart.bars)
+            if let graph = chart.graph {
+                Divider()
+                    .padding(.vertical, 4)
+                GoalEnergyGraph(graph: graph)
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("goal-energy-figures")
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("goal-energy-chart")
+    }
+}
+
+/// 推定消費カロリーは灰色、1日の目安は Primary の棒。差（減量は減らす分、増量は足す分）は、短いほうの棒の先に斜線で置く。
+/// DESIGN.md の「グラフ」は Swift Charts で描くが、この棒は軸も目盛りも持たず、名前と数字を棒の上の行に書くので、自前で描く
+private struct GoalEnergyBars: View {
+    let bars: GoalOverview.EnergyChart.Bars
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            // 「推定」「目安」だけでは何のことかわからないので、名前は用語のまま棒の上に書く
+            label("推定消費カロリー", kilocalories: bars.expenditureKilocalories)
+            bar(kilocalories: bars.expenditureKilocalories, color: Color(.tertiaryLabel))
+                .padding(.bottom, 6)
+            label("1日の目安", kilocalories: bars.dailyGuideKilocalories)
+            bar(kilocalories: bars.dailyGuideKilocalories, color: .accentColor)
+            if let gap = bars.gap {
+                // DESIGN.md の Primary は押せるものに使うが、差の文は押せない。それでも Primary で書き、同じ色の斜線がこの差だと結びつける（#744 の試作の案 I）
+                Text(gap)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .monospacedDigit()
+        .padding(.top, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("goal-energy-bars")
+    }
+
+    /// 「推定消費カロリー」「2,160 kcal」。大きな文字で横に収まらなければ、数字を名前の下に置く
+    private func label(_ name: String, kilocalories: Int) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(name)
+                Spacer(minLength: 8)
+                Text(NutritionText.kilocalories(kilocalories))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name)
+                Text(NutritionText.kilocalories(kilocalories))
+            }
+        }
+    }
+
+    /// 0 kcal から `kilocalories` までを塗り、長いほうの棒の先まで届かなければ、残りを斜線にする
+    private func bar(kilocalories: Int, color: Color) -> some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let filled = width * fraction(kilocalories)
+            ZStack(alignment: .leading) {
+                if filled < width {
+                    GoalEnergyHatch()
+                        .frame(width: width - filled)
+                        .offset(x: filled)
+                }
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(color)
+                    .frame(width: filled)
+            }
+        }
+        .frame(height: 12)
+        .accessibilityHidden(true)
+    }
+
+    private func fraction(_ kilocalories: Int) -> CGFloat {
+        let longest = max(bars.expenditureKilocalories, bars.dailyGuideKilocalories)
+        guard longest > 0 else { return 0 }
+        return CGFloat(kilocalories) / CGFloat(longest)
+    }
+}
+
+/// 差の斜線。Primary の細い枠に、薄い Primary の斜めの線
+private struct GoalEnergyHatch: View {
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 3)
+        DiagonalStripes(spacing: 6)
+            .stroke(Color.accentColor.opacity(0.35), lineWidth: 2)
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(Color.accentColor, lineWidth: 1.2))
+    }
+}
+
+/// 左下から右上へ、`spacing` おきに引く斜めの線
+nonisolated private struct DiagonalStripes: Shape {
+    let spacing: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        var x = rect.minX - rect.height
+        while x < rect.maxX {
+            path.move(to: CGPoint(x: x, y: rect.maxY))
+            path.addLine(to: CGPoint(x: x + rect.height, y: rect.minY))
+            x += spacing
+        }
+        return path
     }
 }
 
@@ -89,7 +184,8 @@ private struct GoalEnergyGraph: View {
                         .accessibilityLabel("\(TimelineDayText.label(for: day))の週は、1日の目安をそのままにしました")
                 }
                 if let last = graph.points.last {
-                    // 系列が2本あるので、線の端に名前を添える（DESIGN.md の「グラフ」）
+                    // DESIGN.md の「グラフ」は線の端に名前を添えるが、端には数字だけを置き、名前はグラフの下の凡例に用語のまま書く。
+                    // 「推定」「目安」と縮めると何のことかわからず、用語のままでは端に収まらないため（#744 の解決コメント）
                     PointMark(
                         x: .value("日", offset(of: last.day)),
                         y: .value("kcal", last.expenditureKilocalories)
@@ -99,7 +195,7 @@ private struct GoalEnergyGraph: View {
                         position: .topTrailing, spacing: 2,
                         overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
                     ) {
-                        endLabel("推定 \(NutritionText.kilocalories(last.expenditureKilocalories))")
+                        endLabel(NutritionText.kilocalories(last.expenditureKilocalories))
                     }
                     .accessibilityHidden(true)
                     PointMark(
@@ -111,7 +207,7 @@ private struct GoalEnergyGraph: View {
                         position: .bottomTrailing, spacing: 2,
                         overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
                     ) {
-                        endLabel("目安 \(NutritionText.kilocalories(last.dailyGuideKilocalories))")
+                        endLabel(NutritionText.kilocalories(last.dailyGuideKilocalories))
                     }
                     .accessibilityHidden(true)
                 }
@@ -152,10 +248,40 @@ private struct GoalEnergyGraph: View {
             .padding(.vertical, 8)
             // 目盛りの文字は xxxLarge で止める（体重のグラフと同じ）。値は点の accessibilityValue でも読める
             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            legend
         }
     }
 
     @State private var selectedOffset: Int?
+
+    /// 「● 推定消費カロリー ┄ 1日の目安」。線の端には数字だけを置くので、名前はここに書く
+    private var legend: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 14) { legendItems }
+            VStack(alignment: .leading, spacing: 4) { legendItems }
+        }
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private var legendItems: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 6, height: 6)
+            Text("推定消費カロリー")
+        }
+        HStack(spacing: 6) {
+            Path { path in
+                path.move(to: CGPoint(x: 0, y: 1))
+                path.addLine(to: CGPoint(x: 14, y: 1))
+            }
+            .stroke(Color(.secondaryLabel), style: StrokeStyle(lineWidth: 1.4, dash: [3, 3]))
+            .frame(width: 14, height: 2)
+            Text("1日の目安")
+        }
+    }
 
     private struct StepPoint {
         let offset: Int
@@ -166,7 +292,7 @@ private struct GoalEnergyGraph: View {
     @ViewBuilder private var selectionLine: some View {
         if let selected = selectedPoint {
             Text(
-                "\(TimelineDayText.label(for: selected.day))から　推定 \(NutritionText.kilocalories(selected.expenditureKilocalories))・目安 \(NutritionText.kilocalories(selected.dailyGuideKilocalories))"
+                "\(TimelineDayText.label(for: selected.day))から　推定消費カロリー \(NutritionText.kilocalories(selected.expenditureKilocalories))・1日の目安 \(NutritionText.kilocalories(selected.dailyGuideKilocalories))"
             )
             .font(.footnote)
             .foregroundStyle(.secondary)

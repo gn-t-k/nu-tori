@@ -14,18 +14,18 @@
 
     extension GoalScreen {
         fileprivate enum Sample: CaseIterable {
-            /// 1週目を見直したところ。推定消費カロリーと1日の目安は数字で出す
-            case inProgressFigures
-            /// 3週を見直し、1週を見送った。グラフに見送りの印
+            /// 1週目を見直したところ。今の1日の目安のカードに棒だけを出す
+            case inProgressBars
+            /// 3週を見直し、1週を見送った。棒の下にグラフを描き、見送りの印を付ける
             case inProgressDrawn
-            /// 期限より前に達成した。推定消費カロリーと1日の目安は出さない
+            /// 期限より前に達成した。棒とグラフは出さない
             case achieved
 
             var overview: GoalOverview? {
                 let goal = Goal.sampleWeeklyReviewed
                 let monday = WeeklyReview.sampleMonday
                 switch self {
-                case .inProgressFigures:
+                case .inProgressBars:
                     return overview(
                         goal: goal, guides: [DailyGuide.sampleFirst, .sampleReviewed],
                         estimates: [ExpenditureEstimate.sampleFirst, .sampleReviewed],

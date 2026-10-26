@@ -26,11 +26,11 @@ extension GoalOverviewTests {
                 ).card
             }
 
-            @Test("向きと期間、あと何 kg、あと何日、間に合うペースかを出すこと")
-            func showsProgress() {
+            @Test("向きと期間と、期限の日までの目標体重を出し、進み具合は出さないこと")
+            func showsGoalItself() {
                 #expect(card.summary == "減量 10月1日〜12月24日")
-                #expect(card.title == "68.0 kg まで あと 2.8 kg")
-                #expect(card.detail == "あと 45 日・間に合うペースです")
+                #expect(card.title == "12月24日までに 68.0 kg")
+                #expect(card.detail == nil)
             }
 
             @Test("目標を切り替えられること")
@@ -44,22 +44,6 @@ extension GoalOverviewTests {
                 #expect(
                     card.continuingNote
                         == "今の目標（減量・12月24日までに 68.0 kg）は、新しい目標が決まるまで続きます。")
-            }
-        }
-
-        @Suite("目標を立てて 14 日たっていないとき")
-        struct BeforeFourteenDays {
-            @Test("いつペースが出るかを書くこと")
-            func showsWhenPaceAppears() throws {
-                let card = try #require(
-                    GoalOverviewTests.overview(
-                        today: GoalOverviewTests.day(10, 10), goals: [try .losing()],
-                        weightTrend: GoalOverviewTests.trend([
-                            (GoalOverviewTests.day(10, 10), 71.9)
-                        ]))
-                ).card
-
-                #expect(card.detail == "あと 76 日")
             }
         }
 
