@@ -54,17 +54,25 @@ struct WeeklyReviewScreen: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(topLine.headline)
                             .font(.headline)
-                        if case .sentence(let sentence) = topLine.detail {
+                        switch topLine.detail {
+                        case .sentence(let sentence):
                             Text(sentence)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
+                        case .paceRows:
+                            // 値の行は、太字の行の下に一覧の行として並べる
+                            EmptyView()
                         }
                     }
                     .monospacedDigit()
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("weekly-review-top-line")
-                    if case .paceRows(let rows) = topLine.detail {
+                    switch topLine.detail {
+                    case .sentence:
+                        // 文は太字の行と同じ行に書いた
+                        EmptyView()
+                    case .paceRows(let rows):
                         ForEach(rows, id: \.label) { row in
                             LabeledContent(row.label, value: row.value)
                                 .monospacedDigit()
