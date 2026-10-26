@@ -8,17 +8,12 @@ extension WeekRecap {
         public let firstTrendKilograms: Double?
         /// 並べた最後の日以前で最も新しい体重の傾向。まだ無ければ nil
         public let lastTrendKilograms: Double?
-        /// 体重記録のある日の数
-        public let recordedDayCount: Int
-        /// 並べた日の数
-        public let dayCount: Int
 
         init(
             goal: Goal, shownDays: ClosedRange<CalendarDay>, days: [Day], records: GoalRecords
         ) {
             goalPath = GoalPath(goal: goal, shownDays: shownDays)
-            recordedDayCount = days.count { $0.weightKilograms != nil }
-            dayCount = days.count
+            let recordedDayCount = days.count { $0.weightKilograms != nil }
             trendLine =
                 recordedDayCount < Self.minimumRecordedDays
                 ? .tooFewRecordedDays
@@ -34,11 +29,6 @@ extension WeekRecap {
             }
             return
                 "傾向 \(GoalText.kilogramsChange(from: firstTrendKilograms, to: lastTrendKilograms))"
-        }
-
-        /// 「記録 6 日（7日中）」
-        public var recordText: String {
-            "記録 \(recordedDayCount) 日（\(dayCount)日中）"
         }
 
         /// 目標の道筋。減量・増量は開始の日の体重の傾向から期限の日の目標体重への直線、維持は目標体重の横の線

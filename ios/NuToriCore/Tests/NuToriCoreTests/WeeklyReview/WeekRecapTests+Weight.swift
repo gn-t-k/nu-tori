@@ -35,10 +35,9 @@ extension WeekRecapTests {
                         ]))
             }
 
-            @Test("最初の日から最後の日への傾向と、記録した日数を書くこと")
+            @Test("最初の日から最後の日への傾向を書くこと")
             func summarizesWeek() {
                 #expect(weight.trendText == "傾向 71.4 → 70.9 kg")
-                #expect(weight.recordText == "記録 4 日（7日中）")
             }
         }
 
