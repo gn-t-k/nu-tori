@@ -69,10 +69,14 @@ final class DaySummaryFromRingUITests: XCTestCase {
         attachScreenshot(of: app, named: "日のまとめの体重の行から開いた体重の画面")
 
         historyLink.tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)["weight-history-screen"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticText(containing: "71.0 kg").waitForExistence(timeout: 5))
+        let history = app.descendants(matching: .any)["weight-history-screen"]
+        XCTAssertTrue(history.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "すべての記録")
+        // 最近の記録の5日に入らない、使い始めた日の行まで並ぶ
+        let startedDayRow = history.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS %@", "70.0 kg")
+        ).firstMatch
+        XCTAssertTrue(app.scrollUntilExists(startedDayRow, maxSwipes: 8))
     }
 
     private struct StartedDay {
