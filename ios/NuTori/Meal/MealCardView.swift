@@ -3,10 +3,13 @@ import NuToriCore
 import SwiftUI
 import UIKit
 
-/// タイムラインの食事のカード。写真を上に大きく出し、下に名前の場所（状態の1行）と時刻を置く。文章の食事は写真の場所を持たない。
+/// タイムラインの食事のカード。写真を上に大きく出し、下に名前の場所（状態の1行）を置く。文章の食事は写真の場所を持たない。
 /// カードの地と幅（`OwnRecordCard`）と、右に寄せるのは置く側が付ける。吹き出しにつないだ文章の食事は、かたまりの側が地を付ける
 struct MealCardView: View {
     let card: MealCard
+    /// 名前の下に食べた時刻を書くか。タイムラインのカードは時刻をカードの外に置く（DESIGN.md の own-record-time）ので書かない。
+    /// 吹き出しにつないだ行は、かたまりの外の時刻が送った時刻なので、食べた時刻を書く
+    let showsEatenTime: Bool
     /// カードに描く大きさに縮めた写真。この端末に無ければ取りに行く。取れなければ nil
     let loadPhoto: (_ photoId: UUID) async -> UIImage?
 
@@ -16,10 +19,12 @@ struct MealCardView: View {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
                     namePlace
-                    Text(eatenTimeText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                    if showsEatenTime {
+                        Text(eatenTimeText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
                     if let nutritionText {
                         ItemWrappingLayout(spacing: 8, lineSpacing: 0) {
                             Text(nutritionText.kilocalories).fontWeight(.semibold)

@@ -135,7 +135,7 @@ struct GoalSetupProposalsPage: View {
     }
 }
 
-/// 目標案の「選ぶ」行。左に選んだ印、案の名前（標準には「おすすめ」）と大変さのひとこと、右に目標体重と1日の目安。
+/// 目標案の「選ぶ」行。左に選んだ印、案の名前（標準には「おすすめ」）と目標体重、右に1日の目安と推定消費カロリーとの差（「−400 kcal」）。
 /// 大きな文字では右の値を下に回し、どの文も折り返して全文を出す
 private struct GoalProposalRow: View {
     let proposal: GoalProposals.OfferedProposal
@@ -200,21 +200,23 @@ private struct GoalProposalRow: View {
                                 .strokeBorder(Color(.tertiaryLabel), lineWidth: 0.5))
                 }
             }
-            Text(GoalSetupDifficultyText.difference(proposal.dailyGuideDifferenceKilocalories))
+            Text(WeightAmountText.kilograms(proposal.targetWeightKilograms))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
     private func values(alignment: HorizontalAlignment) -> some View {
         VStack(alignment: alignment, spacing: 2) {
-            Text(WeightAmountText.kilograms(proposal.targetWeightKilograms))
-                .font(.subheadline)
             Text(NutritionText.kilocalories(proposal.dailyGuide.energyKilocalories))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .font(.subheadline.weight(.semibold))
+            Text(
+                GoalSetupDifficultyText.signedDifference(
+                    proposal.dailyGuideDifferenceKilocalories)
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
         }
         .monospacedDigit()
         .fixedSize()

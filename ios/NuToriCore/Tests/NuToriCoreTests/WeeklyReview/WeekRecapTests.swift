@@ -255,12 +255,15 @@ struct WeekRecapTests {
                 line = try #require(recap.topLine)
             }
 
-            @Test("その週の日曜の実際の速さと、期限に届くのに要るペースを並べること")
+            @Test("その週の日曜の実際の速さと、期限に届くのに要るペースを、文でなく値の行で並べること")
             func showsActualAndRequiredPace() {
                 #expect(line.headline == "間に合うペースです")
                 #expect(
-                    line.sentence
-                        == "傾向で1週間に −0.5 kg。期限の12月24日に 68.0 kg へは、1週間に −0.2 kg で届きます。")
+                    line.detail
+                        == .paceRows([
+                            .init(label: "いまのペース", value: "−0.5 kg／週"),
+                            .init(label: "要るペース", value: "−0.2 kg／週"),
+                        ]))
             }
         }
 
@@ -282,12 +285,15 @@ struct WeekRecapTests {
                 line = try #require(recap.topLine)
             }
 
-            @Test("届かない量と、実際の速さと要るペースを並べること")
+            @Test("届かない量と、実際の速さと要るペースの値の行を並べること")
             func showsShortfall() {
                 #expect(line.headline == "このままだと期限に 1.2 kg 届きません")
                 #expect(
-                    line.sentence
-                        == "傾向で1週間に −0.1 kg。期限の12月24日に 68.0 kg へは、1週間に −0.2 kg で届きます。")
+                    line.detail
+                        == .paceRows([
+                            .init(label: "いまのペース", value: "−0.1 kg／週"),
+                            .init(label: "要るペース", value: "−0.2 kg／週"),
+                        ]))
             }
         }
 
@@ -312,7 +318,7 @@ struct WeekRecapTests {
             @Test("言い切らず、記録の日数を書くこと")
             func showsRecordDayCount() {
                 #expect(line.headline == "間に合うかはまだわかりません")
-                #expect(line.sentence == "直近 14 日の体重の記録が 3 日なので、傾向が定まっていません。")
+                #expect(line.detail == .sentence("直近 14 日の体重の記録が 3 日なので、傾向が定まっていません。"))
             }
         }
 
@@ -331,7 +337,7 @@ struct WeekRecapTests {
             @Test("いつペースを出すかを書くこと")
             func showsWhenPaceAppears() {
                 #expect(line.headline == "間に合うかはまだわかりません")
-                #expect(line.sentence == "目標を立てて 14 日たつと出ます。")
+                #expect(line.detail == .sentence("目標を立てて 14 日たつと出ます。"))
             }
         }
 
@@ -350,7 +356,7 @@ struct WeekRecapTests {
 
             @Test("日曜でなく今日で判定すること")
             func judgesToday() {
-                #expect(line.sentence == "目標を立てて 14 日たつと出ます。")
+                #expect(line.detail == .sentence("目標を立てて 14 日たつと出ます。"))
             }
         }
 
@@ -373,7 +379,7 @@ struct WeekRecapTests {
             @Test("その週に起きたことを書くこと")
             func showsAchievement() {
                 #expect(line.headline == "目標に届いた週です")
-                #expect(line.sentence == "11月8日に、体重の傾向が 68.0 kg に届きました。")
+                #expect(line.detail == .sentence("11月8日に、体重の傾向が 68.0 kg に届きました。"))
             }
         }
 
@@ -409,7 +415,7 @@ struct WeekRecapTests {
                 @Test("目標に届いていて、次の目標を選べることを書くこと")
                 func showsReachedAndNextGoal() {
                     #expect(line.headline == "目標に届いています")
-                    #expect(line.sentence == "11月8日に、体重の傾向が 68.0 kg に届きました。次の目標を選べます。")
+                    #expect(line.detail == .sentence("11月8日に、体重の傾向が 68.0 kg に届きました。次の目標を選べます。"))
                 }
             }
 
@@ -428,7 +434,7 @@ struct WeekRecapTests {
                 @Test("次の目標を選べることを書かないこと")
                 func omitsNextGoal() {
                     #expect(line.headline == "目標に届いています")
-                    #expect(line.sentence == "11月8日に、体重の傾向が 68.0 kg に届きました。")
+                    #expect(line.detail == .sentence("11月8日に、体重の傾向が 68.0 kg に届きました。"))
                 }
             }
         }
@@ -452,7 +458,7 @@ struct WeekRecapTests {
             @Test("期限の日の結果を書くこと")
             func showsDeadlineResult() {
                 #expect(line.headline == "期限の週です")
-                #expect(line.sentence == "12月24日の結果は、開始から −4.0 kg・目標まであと 0.4 kg でした。")
+                #expect(line.detail == .sentence("12月24日の結果は、開始から −4.0 kg・目標まであと 0.4 kg でした。"))
             }
         }
 
@@ -481,7 +487,8 @@ struct WeekRecapTests {
                 @Test("保てていると書くこと")
                 func saysKept() {
                     #expect(line.headline == "保てています")
-                    #expect(line.sentence == "体重の傾向は 65.3 kg で、65.0 kg ± 0.7 kg の範囲に入っています。")
+                    #expect(
+                        line.detail == .sentence("体重の傾向は 65.3 kg で、65.0 kg ± 0.7 kg の範囲に入っています。"))
                 }
             }
 
@@ -496,7 +503,8 @@ struct WeekRecapTests {
                 @Test("外れていると書くこと")
                 func saysOutside() {
                     #expect(line.headline == "保てていません")
-                    #expect(line.sentence == "体重の傾向は 65.8 kg で、65.0 kg ± 0.7 kg の範囲から外れています。")
+                    #expect(
+                        line.detail == .sentence("体重の傾向は 65.8 kg で、65.0 kg ± 0.7 kg の範囲から外れています。"))
                 }
             }
         }

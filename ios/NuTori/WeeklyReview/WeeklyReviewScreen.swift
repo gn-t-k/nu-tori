@@ -2,7 +2,7 @@ import NuToriCore
 import SwiftUI
 
 /// 週の振り返り（仕様の「週の振り返り」、`wkform` A の押して進む画面）。上から、週の区切り、一番上のペース、体重、食べた量、
-/// P・F・C の1日の平均、日ごと、次の週の1日の目安を並べる。‹ › で週を送り、日ごとの行を押すとタイムラインのその日に戻る
+/// P・F・C の1日の平均と目安の表、日ごと、次の週の1日の目安を並べる。‹ › で週を送り、日ごとの行を押すとタイムラインのその日に戻る
 struct WeeklyReviewScreen: View {
     /// 開いたところ。‹ › で送ったときも、同じ開いたところで送る
     let entry: ClientUsageEvent.WeeklyReviewEntry
@@ -54,14 +54,30 @@ struct WeeklyReviewScreen: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(topLine.headline)
                             .font(.headline)
-                        Text(topLine.sentence)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        switch topLine.detail {
+                        case .sentence(let sentence):
+                            Text(sentence)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        case .paceRows:
+                            // 値の行は、太字の行の下に一覧の行として並べる
+                            EmptyView()
+                        }
                     }
                     .monospacedDigit()
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("weekly-review-top-line")
+                    switch topLine.detail {
+                    case .sentence:
+                        // 文は太字の行と同じ行に書いた
+                        EmptyView()
+                    case .paceRows(let rows):
+                        ForEach(rows, id: \.label) { row in
+                            LabeledContent(row.label, value: row.value)
+                                .monospacedDigit()
+                        }
+                    }
                 }
             }
             Section("体重") {
@@ -175,34 +191,41 @@ struct WeeklyReviewScreen: View {
         }
     }
 
-    /// 「P たんぱく質 109 / 110 g」。1日の目安がまだ届いていなければ平均だけ
+    /// P・F・C の1日の平均と目安を、列の見出しを付けた表にする。見出しの行が何の値かを言うので、まとまりの見出しは付けない。
+    /// 1日の目安がまだ届いていなければ平均の列だけ
     private func nutrientSection(_ shown: WeekRecap) -> some View {
         Section {
-            ForEach(PFC.allCases, id: \.self) { pfc in
-                LabeledContent {
-                    Text(nutrientText(pfc, shown: shown))
-                        .monospacedDigit()
-                } label: {
-                    HStack(spacing: 6) {
-                        pfc.key
-                        Text("\(pfc.letter) \(pfc.name)")
+            Grid(alignment: .trailing, horizontalSpacing: 16, verticalSpacing: 8) {
+                GridRow {
+                    Color.clear
+                        .gridCellUnsizedAxes([.horizontal, .vertical])
+                    Text(shown.averageFood?.label ?? "平均")
+                    if shown.dailyGuide != nil {
+                        Text("目安")
                     }
                 }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                ForEach(PFC.allCases, id: \.self) { pfc in
+                    Divider()
+                    GridRow {
+                        HStack(spacing: 6) {
+                            pfc.key
+                            Text("\(pfc.letter) \(pfc.name)")
+                        }
+                        .gridColumnAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(shown.averageFood.map { "\(grams(pfc, in: $0)) g" } ?? "—")
+                        if let dailyGuide = shown.dailyGuide {
+                            Text("\(pfc.grams(in: dailyGuide)) g")
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
             }
-        } header: {
-            Text("P・F・C の1日の平均")
-        } footer: {
-            Text(
-                shown.dailyGuide == nil
-                    ? (shown.averageFood?.label ?? "平均")
-                    : "\(shown.averageFood?.label ?? "平均") / 1日の目安")
+            .monospacedDigit()
+            .accessibilityIdentifier("weekly-review-nutrients")
         }
-    }
-
-    private func nutrientText(_ pfc: PFC, shown: WeekRecap) -> String {
-        let average = shown.averageFood.map { "\(grams(pfc, in: $0))" } ?? "—"
-        guard let dailyGuide = shown.dailyGuide else { return "\(average) g" }
-        return "\(average) / \(pfc.grams(in: dailyGuide)) g"
     }
 
     private func grams(_ pfc: PFC, in average: WeekRecap.AverageFood) -> Int {
