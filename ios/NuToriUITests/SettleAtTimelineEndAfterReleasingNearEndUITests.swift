@@ -15,7 +15,8 @@ final class SettleAtTimelineEndAfterReleasingNearEndUITests: XCTestCase {
         continueAfterFailure = false
         app = .launched(
             account: "signed-in", api: "meal-estimation", healthLatestKilograms: nil,
-            pickedPhotoCount: 1, now: .morningBeforeNotice, timeZone: "Asia/Tokyo")
+            pickedPhotos: UITestPickedPhotos(count: 1), now: .morningBeforeNotice,
+            timeZone: "Asia/Tokyo")
         let photos = app.buttons["composer-photos"]
         XCTAssertTrue(photos.waitForExistence(timeout: 5))
         for index in 0..<Self.mealsFillingScreen {

@@ -6,7 +6,7 @@ public import Foundation
 /// 位置を動かす場面は、次の5つ。自分の操作の結果は見せ、ほかから来たもの（返事、知らせ、同期や取り込みで届いた記録）では読んでいる所から動かさない。
 /// - 開く: 一番下から開く（画面が初めの位置を一番下にする）
 /// - 追う: 一番下にいるあいだ、中身が伸びても（返事が伸びる、項目や日が足される）一番下に保つ。指で触れたら止める。止まったとき（アプリが動かして着いたときを含む）は、そこが一番下なら追い、違えば止める。伸びる返事が無くなったときと、送り直したときも、一番下にいればまた追う。遡っているときは追わない。返事はほかから来たもので、送り直した吹き出しと返事は元の時刻の位置にあり、いちばん下には足されない（`followsSizeChanges`）
-/// - 戻す: ユーザーがアプリの中でいちばん下に項目を足したら、遡っていても一番下へ連れていき、そこから追う（`daysChanged`）
+/// - 戻す: ユーザーがアプリの中でいちばん下に項目を足したら、遡っていても一番下へ連れていき、そこから追う（`daysChanged`）。選んだ写真を読んでいるあいだの仮のカードを出したときも同じ（`pickedPhotosLoadingStarted`）
 /// - 着く: 選んだ所へ行く。日のまとめで選んだ日、帯の下の1行の知らせ、通知から開いた知らせか一番下（`dayChosen`・`landingRequested`）。並べていない日なら、その日まで並べてから行く
 /// - 古い日を足す: 並べたいちばん古い日の上端まで遡って止まったら、その前の日を足し、見ていた日を上端に置き直す（`scrollPhaseChanged`）
 public struct TimelineViewport: Equatable, Sendable {
@@ -101,12 +101,14 @@ public struct TimelineViewport: Equatable, Sendable {
             oldestListedDay = listedDays(of: old).first?.day
         }
         guard Timeline.addsItemByUserAtEnd(from: old, to: new, now: now) else { return [] }
-        followsEnd = true
-        landingDay = nil
-        // 足した項目は、並んでからでないと着けない
-        waitingInstructions.append(.scroll(to: .end, animated: false))
+        returnToEnd()
         // 日のまとめを開いていても、足した項目を見せる
         return [.closeDaySummary]
+    }
+
+    /// 写真を選ぶ画面が閉じ、選んだ写真を読んでいるあいだの仮のカードを、タイムラインの一番下に出した
+    public mutating func pickedPhotosLoadingStarted() {
+        returnToEnd()
     }
 
     /// 文章を送り直した・会話として送り直した
@@ -224,6 +226,14 @@ public struct TimelineViewport: Equatable, Sendable {
         if endPosition.isAtEnd {
             followsEnd = true
         }
+    }
+
+    /// 遡っていても一番下へ連れていき、そこから追う
+    private mutating func returnToEnd() {
+        followsEnd = true
+        landingDay = nil
+        // 足した項目は、並んでからでないと着けない
+        waitingInstructions.append(.scroll(to: .end, animated: false))
     }
 
     /// 指で動かしている途中は、一番下でも、並べる日を数え直さない

@@ -8,7 +8,7 @@ extension XCUIApplication {
         healthAuthorization: String = "already-requested",
         healthLatestKilograms: String?,
         healthWrite: String = "authorized",
-        pickedPhotoCount: Int = 0,
+        pickedPhotos: UITestPickedPhotos? = nil,
         lockoutDefaults: String? = nil,
         now: UITestNow = .morningBeforeNotice,
         dayPassesOnReturn: Bool = false,
@@ -25,9 +25,11 @@ extension XCUIApplication {
             app.launchEnvironment["UI_TEST_HEALTH_LATEST_KG"] = healthLatestKilograms
         }
         app.launchEnvironment["UI_TEST_HEALTH_WRITE"] = healthWrite
-        // 入力欄の「写真」で、選ぶ画面を開かずに、この枚数の写真を選んだことにする
-        if pickedPhotoCount > 0 {
-            app.launchEnvironment["UI_TEST_PICKED_PHOTOS"] = String(pickedPhotoCount)
+        // 入力欄の「写真」で、選ぶ画面を開かずに、この枚数の写真を選んだことにし、読み終えるまでにこの秒数をかける
+        if let pickedPhotos {
+            app.launchEnvironment["UI_TEST_PICKED_PHOTOS"] = String(pickedPhotos.count)
+            app.launchEnvironment["UI_TEST_PICKED_PHOTOS_LOADING_SECONDS"] = String(
+                pickedPhotos.loadingSeconds)
         }
         // 同じ名前を渡して開き直すと、前に開いたときの締め出しを覚えている
         if let lockoutDefaults {

@@ -11,7 +11,7 @@ final class OpenWeightAboveMealPhotoUITests: XCTestCase {
         continueAfterFailure = false
         app = .launched(
             account: "signed-in", api: "meal-estimation", healthLatestKilograms: "72.6",
-            pickedPhotoCount: 1, timeZone: nil)
+            pickedPhotos: UITestPickedPhotos(count: 1), timeZone: nil)
         XCTAssertTrue(app.buttons["composer-photos"].waitForExistence(timeout: 5))
         app.recordWeightTwoTenthsLower()
         XCTAssertTrue(weightRow.waitForExistence(timeout: 5))
