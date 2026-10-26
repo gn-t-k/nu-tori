@@ -6,8 +6,8 @@ import PackageDescription
 let package = Package(
     name: "AppDependencies",
     dependencies: [
-        .package(url: "https://github.com/PostHog/posthog-ios.git", exact: "3.92.0"),
-        .package(url: "https://github.com/getsentry/sentry-cocoa.git", exact: "9.30.2"),
+        .package(url: "https://github.com/PostHog/posthog-ios.git", exact: "3.92.4"),
+        .package(url: "https://github.com/getsentry/sentry-cocoa.git", exact: "9.31.0"),
     ],
     targets: []
 )
