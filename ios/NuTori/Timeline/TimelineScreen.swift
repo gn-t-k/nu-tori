@@ -503,14 +503,13 @@ struct TimelineScreen: View {
     @ViewBuilder private func itemView(_ item: Timeline.Item, in timeline: Timeline) -> some View {
         switch item {
         case .weightRecord(let record):
-            let row = WeightRecordRow(record: record)
             NavigationLink(value: record.day) {
-                row
+                WeightRecordRow(record: record)
             }
             .buttonStyle(.plain)
             .undeliveredRecord(timeline.isUndelivered(item))
             .accessibilityIdentifier("weight-row")
-            .ownRecordTime(row.clock)
+            .ownRecordTime(record.clockText)
         case .rejectedWeightLine(let line):
             RejectedLineText(text: line.text, subject: .weightRecord)
         case .meal(let card):

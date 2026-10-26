@@ -33,12 +33,7 @@ struct WeightRecordRow: View {
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            [clock, kilograms, sourceAppName].compactMap(\.self).joined(separator: " "))
-    }
-
-    /// カードの外に置く時刻
-    var clock: String {
-        WeightAmountText.clock(record.clockTime)
+            [record.clockText, kilograms, sourceAppName].compactMap(\.self).joined(separator: " "))
     }
 
     private var kilograms: String {

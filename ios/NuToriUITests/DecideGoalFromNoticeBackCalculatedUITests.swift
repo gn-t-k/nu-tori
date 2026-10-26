@@ -45,7 +45,7 @@ final class DecideGoalFromNoticeBackCalculatedUITests: XCTestCase {
                 "1日の目安 1,850 kcal"))
         attachScreenshot(of: app, named: "目標を決めました")
 
-        // 食べた日の日のまとめは、丸の中に残りを、丸の下に「食べた量 / 目安」を書く
+        // 食べた日の日のまとめは、決めた目標の1日の目安と比べる形になる
         app.composerField.tap()
         app.composerField.typeText("昼は親子丼")
         app.buttons["composer-send"].tap()
@@ -54,7 +54,9 @@ final class DecideGoalFromNoticeBackCalculatedUITests: XCTestCase {
         app.buttons["ring-\(try today())"].tap()
         XCTAssertTrue(app.otherElements["day-summary"].waitForExistence(timeout: 5))
         XCTAssertTrue(
-            app.descendants(matching: .any)["day-food"].label.contains("あと"))
+            waitUntil(
+                app.descendants(matching: .any)["day-food"], matches: "label CONTAINS %@",
+                "/ 1,850 kcal"))
         attachScreenshot(of: app, named: "1日の目安と比べる日のまとめ")
     }
 
@@ -67,7 +69,6 @@ final class DecideGoalFromNoticeBackCalculatedUITests: XCTestCase {
         XCTAssertTrue(maintain.waitForExistence(timeout: 5))
         maintain.tap()
 
-        // 文で書いていた「65.0 kg を保ちます。1日の目安は…です。」を、大きな値と値の行にした
         let maintenance = app.descendants(matching: .any)["goal-setup-maintenance"]
         XCTAssertTrue(maintenance.waitForExistence(timeout: 5))
         XCTAssertTrue(maintenance.label.contains("72.0 kg を保つ"))

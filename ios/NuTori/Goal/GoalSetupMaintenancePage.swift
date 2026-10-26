@@ -2,7 +2,7 @@ import NuToriAPI
 import NuToriCore
 import SwiftUI
 
-/// 維持のページ。大きな「65.0 kg を保つ」と値の行「1日の目安　2,250 kcal」（決めたあとのカードと同じ組み方）と、塗ったボタン「維持で始める」。
+/// 維持のページ。大きな「65.0 kg を保つ」と値の行「1日の目安　2,250 kcal」と、塗ったボタン「維持で始める」。
 /// 値（目標体重は開始の日の体重の傾向）は目標案の要求で受け取り、届くまではその場に回る印を出す
 struct GoalSetupMaintenancePage: View {
     let content: GoalSetupFlowContent
@@ -16,16 +16,10 @@ struct GoalSetupMaintenancePage: View {
                         Text("\(WeightAmountText.kilograms(maintenance.targetWeightKilograms)) を保つ")
                             .font(.title2.weight(.semibold))
                             .fixedSize(horizontal: false, vertical: true)
-                        HStack(alignment: .firstTextBaseline) {
-                            Text("1日の目安")
-                            Spacer(minLength: 12)
-                            Text(
-                                NutritionText.kilocalories(
-                                    maintenance.dailyGuide.energyKilocalories)
-                            )
-                            .fontWeight(.semibold)
-                        }
-                        .font(.subheadline)
+                        GoalSetupValueRow(
+                            label: "1日の目安",
+                            value: NutritionText.kilocalories(
+                                maintenance.dailyGuide.energyKilocalories))
                     }
                     .monospacedDigit()
                     .accessibilityElement(children: .combine)

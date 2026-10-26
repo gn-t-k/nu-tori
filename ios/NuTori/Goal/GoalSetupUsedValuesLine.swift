@@ -73,15 +73,8 @@ struct GoalSetupUsedValuesLine: View {
     /// 「推定消費カロリー　2,250 kcal」。下の案の差（「−400 kcal」）の起点なので、本文の大きさで置く
     private func expenditureRow(_ kilocalories: Int) -> some View {
         VStack(spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("推定消費カロリー")
-                Spacer(minLength: 12)
-                Text(NutritionText.kilocalories(kilocalories))
-                    .fontWeight(.semibold)
-            }
-            .font(.subheadline)
-            .foregroundStyle(Color.primary)
-            .accessibilityElement(children: .combine)
+            GoalSetupValueRow(
+                label: "推定消費カロリー", value: NutritionText.kilocalories(kilocalories))
             Divider()
         }
     }

@@ -39,18 +39,30 @@ struct WeekRecapWeightChart: View {
                 .accessibilityLabel("体重 \(TimelineDayText.label(for: day.day))")
                 .accessibilityValue(WeightAmountText.kilograms(day.kilograms))
             }
-            if let trendEnd = trendDays.last, let goalEnd = goalPathPoints.last {
-                // 系列が2本あるので、線の端に名前を添える（DESIGN.md の「グラフ」）。上にある線の名前を上に、下にある線の名前を下に置く
-                let trendIsAbove = trendEnd.kilograms >= goalEnd.kilograms
-                endLabelMark(
-                    "傾向", offset: offset(of: trendEnd.day), kilograms: trendEnd.kilograms,
-                    above: trendIsAbove)
-                endLabelMark(
-                    "目標", offset: goalEnd.offset, kilograms: goalEnd.kilograms,
-                    above: !trendIsAbove)
-            }
         }
         .chartXScale(domain: -0.5...6.5)
+        // 系列が2本あるので、線の端に名前を添える（DESIGN.md の「グラフ」）。印の annotation は、この画面では描かれなかったので、重ねた層に置く
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plotFrame = proxy.plotFrame {
+                    let origin = geometry[plotFrame].origin
+                    ForEach(endLabels, id: \.name) { label in
+                        if let point = proxy.position(for: (label.offset, label.kilograms)) {
+                            Text(label.name)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .fixedSize()
+                                // 名前の右端を線の端にそろえ、上にある線は上に、下にある線は下に置く
+                                .frame(width: Self.endLabelWidth, alignment: .trailing)
+                                .position(
+                                    x: origin.x + point.x - Self.endLabelWidth / 2,
+                                    y: origin.y + point.y + (label.isAbove ? -10 : 10))
+                        }
+                    }
+                }
+            }
+            .accessibilityHidden(true)
+        }
         .chartYScale(domain: yDomain)
         .chartXAxis { WeekdayAxis.marks(monday: recap.monday) }
         .chartYAxis {
@@ -71,21 +83,27 @@ struct WeekRecapWeightChart: View {
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
-    private func endLabelMark(_ name: String, offset: Int, kilograms: Double, above: Bool)
-        -> some ChartContent
-    {
-        PointMark(x: .value("曜日", offset), y: .value("体重", kilograms))
-            .symbolSize(0)
-            .annotation(
-                position: above ? .topTrailing : .bottomTrailing, spacing: 2,
-                overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
-            ) {
-                Text(name)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize()
-            }
-            .accessibilityHidden(true)
+    private static let endLabelWidth: CGFloat = 60
+
+    private struct EndLabel {
+        let name: String
+        let offset: Int
+        let kilograms: Double
+        let isAbove: Bool
+    }
+
+    /// 傾向と目標の道筋の線の端。線が2本そろう週だけ
+    private var endLabels: [EndLabel] {
+        guard let trendEnd = trendDays.last, let goalEnd = goalPathPoints.last else { return [] }
+        let trendIsAbove = trendEnd.kilograms >= goalEnd.kilograms
+        return [
+            EndLabel(
+                name: "傾向", offset: offset(of: trendEnd.day), kilograms: trendEnd.kilograms,
+                isAbove: trendIsAbove),
+            EndLabel(
+                name: "目標", offset: goalEnd.offset, kilograms: goalEnd.kilograms,
+                isAbove: !trendIsAbove),
+        ]
     }
 
     private struct PathPoint {

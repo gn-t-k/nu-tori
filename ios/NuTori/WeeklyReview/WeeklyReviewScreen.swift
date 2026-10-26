@@ -54,7 +54,7 @@ struct WeeklyReviewScreen: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(topLine.headline)
                             .font(.headline)
-                        if let sentence = topLine.sentence {
+                        if case .sentence(let sentence) = topLine.detail {
                             Text(sentence)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
@@ -64,9 +64,11 @@ struct WeeklyReviewScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("weekly-review-top-line")
-                    ForEach(topLine.paceRows, id: \.label) { row in
-                        LabeledContent(row.label, value: row.value)
-                            .monospacedDigit()
+                    if case .paceRows(let rows) = topLine.detail {
+                        ForEach(rows, id: \.label) { row in
+                            LabeledContent(row.label, value: row.value)
+                                .monospacedDigit()
+                        }
                     }
                 }
             }

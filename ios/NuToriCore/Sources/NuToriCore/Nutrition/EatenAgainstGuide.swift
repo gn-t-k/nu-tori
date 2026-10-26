@@ -5,7 +5,7 @@ public struct EatenAgainstGuide: Hashable, Sendable {
     public let guide: Int
     public let nutrient: Nutrient
 
-    public init(eaten: NutrientAmount, guide: Int, of nutrient: Nutrient = .energyKcal) {
+    public init(eaten: NutrientAmount, guide: Int, of nutrient: Nutrient) {
         self.eaten = eaten
         self.guide = guide
         self.nutrient = nutrient

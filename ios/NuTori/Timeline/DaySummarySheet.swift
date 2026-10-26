@@ -239,7 +239,8 @@ struct DaySummarySheet: View {
             if let dailyGuide {
                 remainderCenter(
                     EatenAgainstGuide(
-                        eaten: eatenKilocalories, guide: dailyGuide.energyKilocalories))
+                        eaten: eatenKilocalories, guide: dailyGuide.energyKilocalories,
+                        of: .energyKcal))
             } else {
                 eatenCenter(eatenKilocalories)
             }
@@ -263,7 +264,6 @@ struct DaySummarySheet: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                        .accessibilityIdentifier("day-summary-eaten-of-guide")
                     }
                 }
                 facts
@@ -291,8 +291,8 @@ struct DaySummarySheet: View {
     }
 
     /// 1日の目安と比べる日の丸の中。上から「あと / 1,199 / kcal」、超えた日は「超過 / 120 / kcal」
-    private func remainderCenter(_ kilocalories: EatenAgainstGuide) -> some View {
-        let remainder = kilocalories.remainder
+    private func remainderCenter(_ againstGuide: EatenAgainstGuide) -> some View {
+        let remainder = againstGuide.remainder
         return VStack(spacing: 0) {
             if let lead = remainder.lead {
                 ringCenterCaption(lead)

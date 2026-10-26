@@ -9,7 +9,7 @@ struct MealCardView: View {
     let card: MealCard
     /// 名前の下に食べた時刻を書くか。タイムラインのカードは時刻をカードの外に置く（DESIGN.md の own-record-time）ので書かない。
     /// 吹き出しにつないだ行は、かたまりの外の時刻が送った時刻なので、食べた時刻を書く
-    var showsEatenTime = true
+    let showsEatenTime: Bool
     /// カードに描く大きさに縮めた写真。この端末に無ければ取りに行く。取れなければ nil
     let loadPhoto: (_ photoId: UUID) async -> UIImage?
 
