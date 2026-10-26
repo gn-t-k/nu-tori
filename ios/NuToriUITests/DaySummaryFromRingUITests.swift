@@ -64,9 +64,10 @@ final class DaySummaryFromRingUITests: XCTestCase {
         XCTAssertTrue(app.otherElements["day-summary"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["weight-screen"].waitForExistence(timeout: 5))
         // 記録のある日が22日あるので、最近の記録は5日に絞り、その先へ潜る行を置く
-        let historyLink = app.buttons["weight-history-link"]
-        XCTAssertTrue(historyLink.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "日のまとめの体重の行から開いた体重の画面")
+        let historyLink = app.buttons["weight-history-link"]
+        XCTAssertTrue(app.scrollUntilExists(historyLink))
+        attachScreenshot(of: app, named: "最近の記録の5日とすべての記録への行")
 
         historyLink.tap()
         let history = app.descendants(matching: .any)["weight-history-screen"]
