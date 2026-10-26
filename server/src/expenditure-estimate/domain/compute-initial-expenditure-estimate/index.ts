@@ -1,3 +1,4 @@
+export { computeActivityFactor } from "./compute-activity-factor";
 export {
   computeInitialExpenditureEstimate,
   FormulaInputsMissingError,
