@@ -7,17 +7,17 @@
     "ts-pattern": "5.9.2"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "1.4.5",
+    "@cloudflare/vitest-plugin": "1.4.7",
     "@hono/vite-ssg": "0.3.3",
     "@tsconfig/strictest": "2.0.8",
     "@types/node": "26.6.5",
-    "oxfmt": "0.73.0",
-    "oxlint": "1.88.0",
-    "oxlint-tsgolint": "7.0.2004",
+    "oxfmt": "0.74.0",
+    "oxlint": "1.89.0",
+    "oxlint-tsgolint": "7.0.2005",
     "typescript": "7.0.2",
-    "vite": "8.3.4",
+    "vite": "8.3.5",
     "vitest": "4.1.12",
-    "wrangler": "4.151.2"
+    "wrangler": "4.152.0"
   },
   "packageManager": "pnpm@12.6.0"
 }
