@@ -76,30 +76,13 @@ struct TimelineScreen: View {
                         }
                     }
             }
+            // 行き先の中身を body に書き並べると、式の型を決めきれずにビルドが止まるので、関数に分ける
             .navigationDestination(for: CalendarDay.self) { day in
-                WeightScreen(
-                    day: day,
-                    records: records,
-                    firstDay: firstDay,
-                    today: today,
-                    trendChart: WeightTrendChart(
-                        weightRecords: records,
-                        trend: weightTrend,
-                        firstDay: firstDay,
-                        today: today,
-                        goal: currentGoal?.goal
-                    ),
-                    rejectedLines: rejectedLines,
-                    capture: capture,
-                    saveWeight: saveWeight,
-                    startGoalSetup: loaded.flatMap(goalSetupStarter(in:)).map { start in
-                        { start(.weightScreen) }
-                    },
-                    goalPath: WeightGoalPath(
-                        status: goalStatus, today: today, records: goalRecords),
-                    // 体重の画面の上に積むので、戻るは「‹ 体重」
-                    openGoalScreen: { openGoalScreen(from: .weightScreen) }
-                )
+                weightScreen(on: day, loaded: loaded)
+            }
+            .navigationDestination(for: WeightHistoryRoute.self) { _ in
+                WeightHistoryScreen(
+                    rows: RecentWeightRecords(weightRecords: records, firstDay: firstDay).all)
             }
             .navigationDestination(for: WeeklyReviewRoute.self) { route in
                 WeeklyReviewScreen(
@@ -126,25 +109,7 @@ struct TimelineScreen: View {
                     })
             }
             .navigationDestination(for: MealRoute.self) { route in
-                MealDestination(card: meals.first { $0.meal.id == route.mealId }) { card in
-                    MealScreen(
-                        card: card,
-                        now: now,
-                        capture: capture,
-                        actions: mealActions,
-                        returnToTimeline: {
-                            navigationPath = NavigationPath()
-                        },
-                        openPaywall: { openPaywall(from: .awaitingMeal) },
-                        rejectedLines: rejectedLines,
-                        confirmsDeletion: false,
-                        confirmsLastDishDeletion: false,
-                        addingDish: false,
-                        sentText: card.meal.sentTextId.flatMap { sentTextId in
-                            conversation.sentTexts.first { $0.id == sentTextId }
-                        }
-                    )
-                }
+                mealScreen(route)
             }
             .background(Color(.systemGroupedBackground))
             .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -193,25 +158,7 @@ struct TimelineScreen: View {
             .paywallSheet($paywallRequest, actions: paywallActions)
             .sheet(isPresented: summaryPresented) {
                 if let summaryDay, let loaded {
-                    DaySummarySheet(
-                        timeline: loaded, day: summaryDay, weightRecords: records,
-                        weightTrend: weightTrend, goalRecords: goalRecords, today: today,
-                        startGoalSetup: goalSetupStarter(in: loaded).map { start in
-                            { start(.daySummary) }
-                        },
-                        weekRecapTitle: { weekRecap(monday: $0.startOfWeek)?.title },
-                        openGoalScreen: { openGoalScreen(from: .daySummary) },
-                        openWeeklyReview: { openWeeklyReview(weekOf: $0, from: .daySummary) },
-                        openNextGoal: { nextGoal in
-                            switch nextGoal {
-                            case .choose: openGoalSetup(from: .chooseNextGoal)
-                            case .set: openGoalSetup(from: .setNextGoal)
-                            }
-                        },
-                        onSeeOnTimeline: { chosen in
-                            self.summaryDay = nil
-                            viewport.dayChosen(chosen, in: loaded.days)
-                        })
+                    daySummarySheet(on: summaryDay, loaded: loaded)
                 }
             }
         }
@@ -960,6 +907,82 @@ struct TimelineScreen: View {
     /// 今の目標の状態
     private var goalStatus: GoalStatus {
         GoalStatus(currentGoal: currentGoal?.goal, goals: goals)
+    }
+
+    /// 日のまとめのシート。帯の日を押すと出す
+    private func daySummarySheet(on day: CalendarDay, loaded: Timeline) -> some View {
+        DaySummarySheet(
+            timeline: loaded, day: day, weightRecords: records,
+            weightTrend: weightTrend, goalRecords: goalRecords, today: today,
+            startGoalSetup: goalSetupStarter(in: loaded).map { start in
+                { start(.daySummary) }
+            },
+            weekRecapTitle: { weekRecap(monday: $0.startOfWeek)?.title },
+            openWeightScreen: { shown in
+                summaryDay = nil
+                navigationPath.append(shown)
+            },
+            openGoalScreen: { openGoalScreen(from: .daySummary) },
+            openWeeklyReview: { openWeeklyReview(weekOf: $0, from: .daySummary) },
+            openNextGoal: { nextGoal in
+                switch nextGoal {
+                case .choose: openGoalSetup(from: .chooseNextGoal)
+                case .set: openGoalSetup(from: .setNextGoal)
+                }
+            },
+            onSeeOnTimeline: { chosen in
+                self.summaryDay = nil
+                viewport.dayChosen(chosen, in: loaded.days)
+            })
+    }
+
+    /// 食事の画面。タイムラインの食事のカードと、返事が指す食事から潜る
+    private func mealScreen(_ route: MealRoute) -> some View {
+        MealDestination(card: meals.first { $0.meal.id == route.mealId }) { card in
+            MealScreen(
+                card: card,
+                now: now,
+                capture: capture,
+                actions: mealActions,
+                returnToTimeline: {
+                    navigationPath = NavigationPath()
+                },
+                openPaywall: { openPaywall(from: .awaitingMeal) },
+                rejectedLines: rejectedLines,
+                confirmsDeletion: false,
+                confirmsLastDishDeletion: false,
+                addingDish: false,
+                sentText: card.meal.sentTextId.flatMap { sentTextId in
+                    conversation.sentTexts.first { $0.id == sentTextId }
+                }
+            )
+        }
+    }
+
+    /// 体重の画面。タイムラインの体重のカードと、日のまとめの体重の行から潜る
+    private func weightScreen(on day: CalendarDay, loaded: Timeline?) -> some View {
+        WeightScreen(
+            day: day,
+            records: records,
+            firstDay: firstDay,
+            trendChart: WeightTrendChart(
+                weightRecords: records,
+                trend: weightTrend,
+                firstDay: firstDay,
+                today: today,
+                goal: currentGoal?.goal
+            ),
+            rejectedLines: rejectedLines,
+            capture: capture,
+            saveWeight: saveWeight,
+            startGoalSetup: loaded.flatMap(goalSetupStarter(in:)).map { start in
+                { start(.weightScreen) }
+            },
+            goalPath: WeightGoalPath(
+                status: goalStatus, today: today, records: goalRecords),
+            // 体重の画面の上に積むので、戻るは「‹ 体重」
+            openGoalScreen: { openGoalScreen(from: .weightScreen) }
+        )
     }
 
     /// 目標の画面を、タイムラインの上に押して進む。目標がないときは開かない。日のまとめから開くときは、シートを閉じてから進む

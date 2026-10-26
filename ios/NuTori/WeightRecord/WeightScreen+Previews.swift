@@ -9,7 +9,6 @@
                 day: WeightScreen.Sample.day,
                 records: sample.records,
                 firstDay: sample.startedDay,
-                today: .sampleToday,
                 trendChart: WeightTrendChart(
                     weightRecords: sample.records,
                     trend: sample.trend,

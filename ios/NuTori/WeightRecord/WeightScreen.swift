@@ -5,7 +5,6 @@ struct WeightScreen: View {
     let day: CalendarDay
     let records: [WeightRecord]
     let firstDay: CalendarDay
-    let today: CalendarDay
     /// 最近4週の傾向のグラフ。点はキャッシュの記録からその場で出し、線は同期で届いた傾向から引く
     let trendChart: WeightTrendChart
     /// 体重と食事の受け付けなかった1行。この画面は体重の1行だけを出す
@@ -41,22 +40,18 @@ struct WeightScreen: View {
                         .accessibilityIdentifier("weight-screen-start-goal-setup")
                 }
             }
-            if !recent.sinceFirstDay.isEmpty {
+            if !recent.latest.isEmpty {
                 Section {
-                    ForEach(recent.sinceFirstDay, id: \.record.id) { row in
+                    ForEach(recent.latest, id: \.record.id) { row in
                         recentRow(row)
+                    }
+                    // 古い日は1段深い一覧に置き、この画面の長さを保つ
+                    if recent.hasMore {
+                        NavigationLink("すべての記録", value: WeightHistoryRoute())
+                            .accessibilityIdentifier("weight-history-link")
                     }
                 } header: {
                     Text("最近の記録")
-                }
-            }
-            if !recent.beforeFirstDay.isEmpty {
-                Section {
-                    ForEach(recent.beforeFirstDay, id: \.record.id) { row in
-                        beforeFirstDayRow(row)
-                    }
-                } header: {
-                    Text("使い始める前（ヘルスケア）")
                 }
             }
         }
@@ -127,7 +122,7 @@ struct WeightScreen: View {
     }
 
     private var recent: RecentWeightRecords {
-        RecentWeightRecords(weightRecords: records, firstDay: firstDay, today: today)
+        RecentWeightRecords(weightRecords: records, firstDay: firstDay)
     }
 
     @ViewBuilder private var dayGroup: some View {
@@ -224,19 +219,6 @@ struct WeightScreen: View {
         }
     }
 
-    private func beforeFirstDayRow(_ row: RepresentativeWeight) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(TimelineDayText.label(for: row.day))
-            Text(WeightAmountText.kilograms(row.record.kilograms))
-                .monospacedDigit()
-            Text(sourceAppName(row.record))
-                .font(.footnote)
-        }
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
-        .accessibilityElement(children: .combine)
-    }
-
     private func weightField(prominent: Bool) -> some View {
         TextField("体重", text: draftText)
             .keyboardType(.decimalPad)
@@ -281,15 +263,6 @@ struct WeightScreen: View {
     private func shownNumber(_ kilograms: Double) -> String {
         let tenths = Int((kilograms * 10).rounded())
         return "\(tenths / 10).\(abs(tenths) % 10)"
-    }
-
-    private func sourceAppName(_ record: WeightRecord) -> String {
-        switch record.inputSource {
-        case .manual:
-            "手で記録"
-        case .imported(let source):
-            source.appName
-        }
     }
 
     private var draftText: Binding<String> {
