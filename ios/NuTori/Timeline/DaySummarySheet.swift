@@ -13,6 +13,8 @@ struct DaySummarySheet: View {
     let startGoalSetup: (() -> Void)?
     /// 週の振り返りの行に書く週（「9月21日〜27日（途中）」）。その週を含む目標が無ければ nil で、行を出さない
     let weekRecapTitle: (CalendarDay) -> String?
+    /// シートを閉じ、その日の体重の画面をタイムラインの上に押して進む
+    let openWeightScreen: (CalendarDay) -> Void
     /// シートを閉じ、タイムラインの上に押して進む
     let openGoalScreen: () -> Void
     /// 見ている日を含む週を開く。シートを閉じ、タイムラインの上に押して進む
@@ -28,22 +30,7 @@ struct DaySummarySheet: View {
                     foodSection(shown)
                 }
                 Section {
-                    if let weight = shown.representativeWeight {
-                        LabeledContent("この日の体重") {
-                            VStack(alignment: .trailing) {
-                                Text(WeightAmountText.kilograms(weight.record.kilograms))
-                                    .monospacedDigit()
-                                    .contentTransition(.numericText())
-                                if weight.otherRecordCount > 0 {
-                                    Text("ほか\(weight.otherRecordCount)件")
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    } else {
-                        Text("記録なし")
-                    }
+                    weightRow(shown.representativeWeight)
                     if let speed = WeightTrendSpeed(
                         on: shownDay, trend: weightTrend, weightRecords: weightRecords)
                     {
@@ -91,6 +78,7 @@ struct DaySummarySheet: View {
         weightTrend: WeightTrend?, goalRecords: GoalRecords, today: CalendarDay,
         startGoalSetup: (() -> Void)?,
         weekRecapTitle: @escaping (CalendarDay) -> String?,
+        openWeightScreen: @escaping (CalendarDay) -> Void,
         openGoalScreen: @escaping () -> Void,
         openWeeklyReview: @escaping (CalendarDay) -> Void,
         openNextGoal: @escaping (DaySummaryGoal.NextGoal) -> Void,
@@ -103,6 +91,7 @@ struct DaySummarySheet: View {
         self.today = today
         self.startGoalSetup = startGoalSetup
         self.weekRecapTitle = weekRecapTitle
+        self.openWeightScreen = openWeightScreen
         self.openGoalScreen = openGoalScreen
         self.openWeeklyReview = openWeeklyReview
         self.openNextGoal = openNextGoal
@@ -116,6 +105,35 @@ struct DaySummarySheet: View {
     /// 丸の中の kcal の大きさに合わせて、丸と輪の太さも大きくする
     @ScaledMetric(relativeTo: .title2) private var ringDiameter: CGFloat = 128
     @ScaledMetric(relativeTo: .title2) private var ringLineWidth: CGFloat = 14
+
+    /// 「体重　72.4 kg ›」。記録の無い日も、その日の体重の画面へ潜れる
+    private func weightRow(_ weight: RepresentativeWeight?) -> some View {
+        Button {
+            openWeightScreen(shownDay)
+        } label: {
+            disclosureRow {
+                LabeledContent("体重") {
+                    if let weight {
+                        VStack(alignment: .trailing) {
+                            Text(WeightAmountText.kilograms(weight.record.kilograms))
+                                .monospacedDigit()
+                                .contentTransition(.numericText())
+                            if weight.otherRecordCount > 0 {
+                                Text("ほか\(weight.otherRecordCount)件")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
+                        Text("記録なし")
+                    }
+                }
+                .foregroundStyle(Color.primary)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("day-summary-weight")
+    }
 
     /// 体重と同じまとまりに、目標の行（下に小さな文）、達成・期限・期限後の維持の紫の行、週の振り返りの行を足す
     @ViewBuilder private func goalRows(_ goal: DaySummaryGoal) -> some View {
@@ -143,7 +161,7 @@ struct DaySummarySheet: View {
 
     /// 名前の下に小さな文を書き、右端に「›」を置く行
     private func disclosureRow(title: String, detail: String?) -> some View {
-        HStack(spacing: 12) {
+        disclosureRow {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .foregroundStyle(Color.primary)
@@ -156,6 +174,13 @@ struct DaySummarySheet: View {
                 }
             }
             Spacer(minLength: 0)
+        }
+    }
+
+    /// 中身の右端に「›」を置く、押して潜る行
+    private func disclosureRow(@ViewBuilder content: () -> some View) -> some View {
+        HStack(spacing: 12) {
+            content()
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))
@@ -224,8 +249,6 @@ struct DaySummarySheet: View {
             .padding(.vertical, 8)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("day-food")
-        } header: {
-            Text("食事と栄養")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 // 試作（prototype-goal-setup-look の「決まったあと」）のとおり、まとまりの下の1行目に置く

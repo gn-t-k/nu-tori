@@ -26,12 +26,6 @@ struct AccountSubscriptionRowTests {
             #expect(row.value == "無料体験 あと 10 日")
         }
 
-        @Test("最後の日と、そのあとにできることを注記にすること")
-        func note() {
-            #expect(
-                row.note == "無料体験は10月30日まで。そのあとも体重の記録と、これまでの記録の見返しはできます。")
-        }
-
         @Test("押すと課金画面を開くこと")
         func opensPaywall() {
             #expect(row.opensPaywall)
@@ -53,11 +47,6 @@ struct AccountSubscriptionRowTests {
         @Test("月額と、端末のタイムゾーンでの期限の日を更新日にすること")
         func value() {
             #expect(row.value == "月額・11月20日に更新")
-        }
-
-        @Test("注記を置かないこと")
-        func noNote() {
-            #expect(row.note == nil)
         }
 
         @Test("押すと課金画面を開くこと")

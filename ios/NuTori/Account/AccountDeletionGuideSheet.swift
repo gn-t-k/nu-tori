@@ -21,7 +21,7 @@ struct AccountDeletionGuideSheet: View {
                 } footer: {
                     switch guide.renewal {
                     case .autoRenewing: Text("アカウントを削除しても、Apple の請求は続きます。")
-                    case .cancelled: Text("これから先の請求はありません。")
+                    case .cancelled: EmptyView()
                     }
                 }
                 Section {

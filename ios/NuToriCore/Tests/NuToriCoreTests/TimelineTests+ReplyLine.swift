@@ -128,7 +128,7 @@ extension TimelineTests {
             @Test("提供元が受け付けなかったら、時間をおいて送り直すよう促す1行に送り直すを添えること")
             func showsBadRequest() throws {
                 let line = try Self.line(.failed(.badRequest))
-                #expect(line?.text == "今は返事を作れません。時間をおいて送り直してください")
+                #expect(line?.text == "今は返事を作れません")
                 #expect(line?.resendReason == .failed(.badRequest))
             }
         }

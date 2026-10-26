@@ -94,12 +94,6 @@ public struct WeekRecap: Hashable, Sendable {
         "\(GoalText.directionName(goal.direction))の\(weekNumber)週目"
     }
 
-    /// 目標を立てた週に、食べた量の下に添える文。見直しは立てた日より前を含めた月〜日を使うので、平均が見直しと一致しないため
-    public var firstWeekNote: String? {
-        guard goal.startedDay > monday else { return nil }
-        return "1日の目安の見直しには、\(GoalText.dayRange(monday, monday.advanced(by: 6)))の 7 日の記録を使っています。"
-    }
-
     /// 日ごとの行と、食べた量の棒・体重の点
     public struct Day: Hashable, Sendable {
         public let day: CalendarDay

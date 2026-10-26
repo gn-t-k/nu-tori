@@ -178,9 +178,7 @@ extension GoalOverview {
                 case .onTrack: "間に合うペースです"
                 case .behind(let shortfall, _, _):
                     "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません"
-                case .inconclusive: "間に合うかはまだわかりません"
-                case .pending: "間に合うかは、目標を立てて 14 日たつと出ます"
-                case .unavailable, .maintenance: nil
+                case .inconclusive, .pending, .unavailable, .maintenance: nil
                 }
             }
         }
@@ -220,14 +218,6 @@ extension GoalOverview {
         public var weightsText: String? {
             endWeightKilograms.map {
                 GoalText.kilogramsChange(from: goal.startingWeightTrendKilograms, to: $0)
-            }
-        }
-
-        /// 結果の「−3.6 kg」
-        public var resultText: String? {
-            endWeightKilograms.map {
-                GoalText.signedKilograms(
-                    tenths: GoalText.tenths($0 - goal.startingWeightTrendKilograms))
             }
         }
     }

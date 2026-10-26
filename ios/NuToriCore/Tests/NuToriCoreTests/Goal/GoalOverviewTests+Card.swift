@@ -88,7 +88,7 @@ extension GoalOverviewTests {
             func showsAchievement() {
                 #expect(card.summary == "減量 10月1日〜12月24日")
                 #expect(card.title == "68.0 kg を達成しました")
-                #expect(card.detail == "期限より 46 日早い・傾向 67.8 kg。次の目標を選ぶまで、今の目標を続けます。")
+                #expect(card.detail == "期限より 46 日早い・傾向 67.8 kg")
             }
 
             @Test("次の目標を選べること")

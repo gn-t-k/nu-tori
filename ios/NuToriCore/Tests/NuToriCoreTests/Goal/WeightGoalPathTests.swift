@@ -95,9 +95,9 @@ struct WeightGoalPathTests {
                         weightRecords: try DaySummaryGoalTests.morningRecords([10])))
             }
 
-            @Test("間に合うかはまだわからないと書くこと")
-            func showsInconclusive() {
-                #expect(path.note == "体重の記録が少なく、間に合うかはまだわかりません。")
+            @Test("ペースの注記を出さないこと")
+            func showsNoNote() {
+                #expect(path.note == nil)
             }
         }
     }

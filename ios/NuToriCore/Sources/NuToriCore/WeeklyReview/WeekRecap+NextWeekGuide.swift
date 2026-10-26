@@ -23,8 +23,6 @@ extension WeekRecap {
             guard let guideOfWeek,
                 let review = records.weeklyReviews.first(where: { $0.effectiveDay == nextMonday })
             else { return nil }
-            let previous = NutritionText.number(
-                .exactly(Double(guideOfWeek.energyKilocalories)), of: .energyKcal)
             switch review.outcome {
             case .deferred(let reason, _):
                 let because: String
@@ -44,7 +42,7 @@ extension WeekRecap {
                 }
                 self.init(
                     energyKilocalories: guideOfWeek.energyKilocalories, changeKilocalories: nil,
-                    sentence: "\(previous) kcal のままです。\(because)")
+                    sentence: because)
             case .reviewed(_, let guideId, let mainReason):
                 guard let guide = records.dailyGuides.first(where: { $0.id == guideId }),
                     let goal = records.goals.first(where: { $0.id == guide.goalId }),
@@ -57,12 +55,10 @@ extension WeekRecap {
                 let limits = guide.limitHits.map {
                     Self.limitSentence($0, direction: goal.direction)
                 }
-                let current = NutritionText.kilocalories(guide.energyKilocalories)
                 self.init(
                     energyKilocalories: guide.energyKilocalories,
                     changeKilocalories: guide.energyKilocalories - guideOfWeek.energyKilocalories,
-                    sentence: "\(previous) → \(current)。\(reason.text)推移は目標で見られます。"
-                        + limits.joined())
+                    sentence: reason.text + limits.joined())
             }
         }
 

@@ -255,10 +255,10 @@ extension GoalOverviewTests {
                 ).weightChart
             }
 
-            @Test("あと何日と、いつペースが出るかを書くこと")
-            func showsWhenPaceAppears() {
+            @Test("あと何日を出し、ペースの文は出さないこと")
+            func showsRemainingDaysWithoutPace() {
                 #expect(chart.progress?.remainingDays == "あと 76 日")
-                #expect(chart.progress?.pace == "間に合うかは、目標を立てて 14 日たつと出ます")
+                #expect(chart.progress?.pace == nil)
             }
         }
 
@@ -379,7 +379,6 @@ extension GoalOverviewTests {
         @Test("開始の日から終わった日までの体重の傾向の変化を結果にすること")
         func showsChangeUntilEnded() {
             #expect(pastGoals.first?.weightsText == "72.4 → 70.4 kg")
-            #expect(pastGoals.first?.resultText == "−2.0 kg")
         }
     }
 
@@ -407,7 +406,6 @@ extension GoalOverviewTests {
 
             #expect(past.summary == "減量 10月1日〜12月24日")
             #expect(past.weightsText == "72.4 → 68.4 kg")
-            #expect(past.resultText == "−4.0 kg")
         }
     }
 }
