@@ -70,8 +70,6 @@ struct WeeklyReviewScreen: View {
                     Text(trendText)
                         .monospacedDigit()
                 }
-                Text(shown.weight.recordText)
-                    .monospacedDigit()
             }
             foodSection(shown)
             nutrientSection(shown)

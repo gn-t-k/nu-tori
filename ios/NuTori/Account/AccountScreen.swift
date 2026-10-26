@@ -27,7 +27,8 @@ struct AccountScreen: View {
                 NavigationLink {
                     HealthAccessScreen()
                 } label: {
-                    LabeledContent("ヘルスケア", value: "読む・書く")
+                    // 何を読み・書きするかは、潜った先の見出しに主語と目的語をつけて書く
+                    Text("ヘルスケア")
                 }
             }
             Section {
@@ -50,7 +51,11 @@ struct AccountScreen: View {
                     // 続けて押すと、先に押した分の保存があとから届き、最後に押した値を上書きしうる
                     .disabled(requestedSendsUsageData != nil)
             } footer: {
-                Text("送った分は1年で消えます。")
+                // オンにすると記録の中身まで送られると思われないよう、送らないものをここで言い切り、一覧はポリシーに任せる
+                Text(
+                    PublicPages.linkedText(
+                        "開いた画面や操作の回数などを送ります。写真・文章・体重や食事の値は送りません。送った分は1年で消えます。[送るもの](\(PublicPages.usageData))"
+                    ))
             }
             Section {
                 externalLink("プライバシーポリシー", url: PublicPages.privacyPolicy)

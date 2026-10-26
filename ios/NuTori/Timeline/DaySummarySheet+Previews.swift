@@ -14,7 +14,8 @@
                 WeekRecap(weekOf: day, today: .sampleToday, records: sample.goalRecords, meals: [])?
                     .title
             },
-            openGoalScreen: {}, openWeeklyReview: { _ in }, openNextGoal: { _ in },
+            openWeightScreen: { _ in }, openGoalScreen: {}, openWeeklyReview: { _ in },
+            openNextGoal: { _ in },
             onSeeOnTimeline: { _ in })
     }
 

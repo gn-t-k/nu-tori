@@ -10,14 +10,14 @@ struct HealthAccessScreen: View {
                     "初めて目標を立てるときに、目標と推定消費カロリーの計算に使い、保存しません。"
                 )
             } header: {
-                Text("読む")
+                Text("ヘルスケアから読み込むもの")
                     .textCase(nil)
             }
             Section {
                 Text("体重")
                 row("栄養", "エネルギー、P・F・C、ビタミン、ミネラルなど。")
             } header: {
-                Text("書く")
+                Text("ヘルスケアに書き込むもの")
                     .textCase(nil)
             } footer: {
                 Text("変えるときは、iPhone の「設定」の「プライバシーとセキュリティ」か、ヘルスケアアプリで変えられます。")
