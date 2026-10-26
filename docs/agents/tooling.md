@@ -107,6 +107,15 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - Mac で確かめるときは `scripts/production-alerts sentry --dry-run`。GitHub に書かず、作る Issue の題とコメントする先だけを出す
 - 公開のリポジトリでは、60 日動きが無いと定期実行が止まる。止まったら Actions の画面で入れ直す
 
+## `nu-tori.app` からメールを送る
+
+`nu-tori.app` のメールは Google Workspace で受けて送る（#649 の「メールの窓口」。DNS の値と理由は #651 の解決コメント）。DNS は Cloudflare のダッシュボードで手で置き、リポジトリには宣言を持たない。
+
+- `@nu-tori.app` を差出人にして送る道具（メルマガ、自動返信、Worker からのメールなど）を足すときは、同じ作業で、その道具を SPF と DKIM に足す
+  - SPF: `v=spf1` で始まる TXT レコードは1つだけにし（2つあると SPF が失敗する）、そのレコードに道具の `include:` を書き足す。中で DNS を引くのは 10 回まで
+  - DKIM: 道具が示す `<セレクタ>._domainkey` のレコードを新しく置く。Google の `google._domainkey` には触らない
+- 足し忘れは DNS の値からは分からず、受け取った側で DMARC に通らなくなって初めて出る。最初の報告は 24 時間ほどで届くので、道具を足した PR の本文（PR が無いときは、道具を足した Issue のコメント）に、24 時間後に Cloudflare の DMARC Management（`nu-tori.app` → Email → DMARC Management）でその送り元が SPF・DKIM に通っているかを見るよう書き、開発者に頼む
+
 ## CI
 
 - CI は変わったパスでジョブを分け、main のルールセットでは `check.yml` の `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行い、文書（`*.md`）だけの変更ではジョブを飛ばす。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る。どのパスがどの対象に当たるかの決まりは `scripts/check` に1か所だけ置き、`changes` のジョブは PR の差分を `scripts/check --pick-targets` に渡す。比べる範囲と、差分が取れないときにすべてを確かめることは、呼ぶ側が決める。必須にしないワークフロー（デプロイ、`ios-ui-test.yml`）は `paths` で飛ばしてよい
