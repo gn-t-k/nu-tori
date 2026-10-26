@@ -10,7 +10,8 @@
   それを受けて、目安のカードに棒をまとめる案 G（グラフも同じカード）と H（グラフは今の場所）を足し、最初に開く案を G にした。
   開発者の答え（#744、2026-10-25 の3回め）: この画面で見せたいのは「どういう目標か」「目標に対してどう進んでいるか」「間に合わせるためにどう調整しているか」の3つで、
   それがレイアウトと見た目に表れていない。それを受けて、画面全体を3つの問いで組み直す案 I（3枚を問いの順に）・J（1本の時間軸）・K（残りから目安へ流す）を足し、
-  最初に開く案を I にした。あわせて、どの案でも目標のカードと体重の傾向を今のアプリの形（GoalOverview+Card.swift、GoalWeightChartView.swift）に近づけた。
+  最初に開く案を I にした。
+  開発者の答え（#744、2026-10-26）: I にする。棒の「推定」「目安」だけでは何のことかわからない。それを受けて、案 I の棒の名前を「推定消費カロリー」「1日の目安」と用語のまま棒の上に書き、グラフも線の端は数字だけにして名前は下の凡例に書いた。あわせて、どの案でも目標のカードと体重の傾向を今のアプリの形（GoalOverview+Card.swift、GoalWeightChartView.swift）に近づけた。
   土台は main の画面のコード（コミット d4cd16a の ios/NuTori/Goal/GoalScreen.swift、GoalEnergyChartView.swift と
   ios/NuToriCore/Sources/NuToriCore/Goal/GoalOverview+History.swift）。main には入れない。
   値はすべて作ったもの。開発者の健康データは入れていない。
@@ -135,6 +136,11 @@ svg text{font-family:var(--font)}
 .gb .tr > div{position:absolute;top:0;bottom:0;border-radius:3px}
 .gb .h{background:repeating-linear-gradient(135deg,var(--tint-soft) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1.2px var(--tint)}
 .gb .gl{grid-column:2 / 4;justify-self:end;color:var(--tint);font-weight:600;margin-top:-2px}
+.gf{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums;margin-top:10px}
+.gf .tr{height:12px;position:relative;margin-bottom:6px}
+.gf .tr > div{position:absolute;top:0;bottom:0;border-radius:3px}
+.gf .h{background:repeating-linear-gradient(135deg,var(--tint-soft) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1.2px var(--tint)}
+.gf .gl{align-self:flex-end;color:var(--tint);font-weight:600;margin-top:-4px}
 .divider{height:1px;background:var(--sep);margin:8px 0 2px}
 
 /* 案 K（体重と日数の2本の道のり） */
@@ -296,8 +302,9 @@ function chart(c, opts = {}){
       + `<text x="${x(d)+3}" y="${T+8}" font-size="9" fill="var(--ink2)">見送り</text>`; });
   // 線の端の名前
   const last = pts.at(-1), lx = x(last.day) + 6, above = last.e >= last.g;
-  s += `<text x="${lx}" y="${y(last.e) + (above ? -6 : 12)}" font-size="10" fill="var(--ink2)">推定 ${n0(last.e)}</text>`;
-  s += `<text x="${lx}" y="${y(last.g) + (above ? 12 : -6)}" font-size="10" fill="var(--ink2)">目安 ${n0(last.g)}</text>`;
+  // opts.legend: 端には数字だけ置き、名前はグラフの下の凡例に用語のまま書く（案 I）
+  s += `<text x="${lx}" y="${y(last.e) + (above ? -6 : 12)}" font-size="10" fill="var(--ink2)">${opts.legend ? '' : '推定 '}${n0(last.e)}</text>`;
+  s += `<text x="${lx}" y="${y(last.g) + (above ? 12 : -6)}" font-size="10" fill="var(--ink2)">${opts.legend ? '' : '目安 '}${n0(last.g)}</text>`;
   if (opts.frameAlways){
     s += `<line x1="${x(c.today)}" x2="${x(c.today)}" y1="${T}" y2="${H-B}" stroke="var(--ink3)"/>`;
     s += `<rect x="${x(c.today)}" y="${T}" width="${endX - x(c.today)}" height="${H-B-T}" fill="var(--fill)" opacity=".45"/>`;
@@ -410,7 +417,7 @@ const VARIANTS = [
         <div class="card target"><h3>体重の傾向</h3>
           <div class="row"><span class="big">あと ${c.remKg} kg</span><span class="fn">あと ${c.remDays} 日</span></div>
           <div class="fn">${c.pace.text}</div>${weightChart(c)}</div>
-        <div class="card target">${guideWithBars(c, c.drawn)}</div>`;
+        <div class="card target">${guideWithBars(c, c.drawn, true)}</div>`;
     } },
   { key:'J', name:'1本の時間軸にそろえる', short:'体重と kcal の2段のグラフ',
     rule:['change','「3点たまるまで描かない」をやめ、点が1つでも下の段を描く'], values:['none','新しい値は要らない'],
@@ -539,10 +546,17 @@ const VARIANTS = [
 ];
 
 // 案 G・H の「今の1日の目安」のカード。目安を主役にし、推定消費カロリーとの差を同じ目盛り（0 kcal から）の棒で見せる
-function guideWithBars(c, withChart){
+function guideWithBars(c, withChart, fullLabels){
   const lose = c.dir === 'lose';
   const max = Math.max(c.latest.e, c.latest.g), pe = c.latest.e/max*100, pg = c.latest.g/max*100;
-  const bars = `<div class="gb">
+  // 案 I: 「推定」「目安」だけでは何のことかわからないので、用語のまま棒の上に書く
+  const bars = fullLabels ? `<div class="gf">
+      <div class="row"><span>推定消費カロリー</span><span>${kcal(c.latest.e)}</span></div>
+      <div class="tr"><div style="left:0;width:${pe}%;background:var(--ink3)"></div>${lose ? '' : `<div class="h" style="left:${pe}%;width:${pg-pe}%"></div>`}</div>
+      <div class="row"><span>1日の目安</span><span>${kcal(c.latest.g)}</span></div>
+      <div class="tr"><div style="left:0;width:${pg}%;background:var(--tint)"></div>${lose ? `<div class="h" style="left:${pg}%;width:${pe-pg}%"></div>` : ''}</div>
+      <span class="gl">${c.G.gapWord} ${c.G.sign}${n0(c.gap)} kcal</span>
+    </div>` : `<div class="gb">
       <span>推定</span><div class="tr"><div style="left:0;width:${pe}%;background:var(--ink3)"></div>${lose ? '' : `<div class="h" style="left:${pe}%;width:${pg-pe}%"></div>`}</div><span>${n0(c.latest.e)}</span>
       <span>目安</span><div class="tr"><div style="left:0;width:${pg}%;background:var(--tint)"></div>${lose ? `<div class="h" style="left:${pg}%;width:${pe-pg}%"></div>` : ''}</div><span>${n0(c.latest.g)}</span>
       <span class="gl">${c.G.gapWord} ${c.G.sign}${n0(c.gap)}</span>
@@ -550,7 +564,8 @@ function guideWithBars(c, withChart){
   return `<div class="row"><h3>今の1日の目安</h3><span class="fn">${md(c.latest.day)}から</span></div>
     <div class="gnum">${kcal(c.latest.g)}</div>
     <div class="pfc"><span><i style="background:#f07f1a"></i>P ${lose?110:120} g</span><span><i style="background:#15803d"></i>F ${lose?50:65} g</span><span><i style="background:#2c7be5"></i>C ${lose?225:320} g</span></div>
-    ${bars}${withChart ? `<div class="divider"></div>${chart(c, {h:170})}` : ''}${link}`;
+    ${bars}${withChart ? `<div class="divider"></div>${chart(c, {h:170, legend:fullLabels})}${fullLabels
+      ? '<div class="fn"><span style="color:var(--tint)">●</span> 推定消費カロリー　┄ 1日の目安</div>' : ''}` : ''}${link}`;
 }
 
 // ── 画面 ──
