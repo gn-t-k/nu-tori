@@ -221,20 +221,28 @@ struct DaySummarySheet: View {
         }
     }
 
-    /// 1日の目安と比べる日は、丸は一周を目安にして食べた分だけ進み、P・F・C を「食べた量 / 目安」にし、目安の kcal を添える。
-    /// 比べない日（目標を立てる前の日）は、丸は P・F・C の割合で一周し、食べた量だけを書く。丸の中はどちらも食べた kcal。
+    /// 1日の目安と比べる日は、丸は一周を目安にして食べた分だけ進み、丸の中に残り（超えた日は超過）、丸の下に「食べた量 / 目安」を書き、
+    /// P・F・C の行に「食べた量 / 目安」と右端を目安にしたバーを置く。
+    /// 比べない日（目標を立てる前の日）は、丸は P・F・C の割合で一周し、丸の中に食べた kcal、P・F・C に食べた量だけを書く。
     /// 大きな文字では、丸を文字に合わせて広げ、丸の下に値を並べる
     private func foodSection(_ day: Timeline.Day) -> some View {
         let food = day.food
         let dailyGuide = day.dailyGuide
         let dayRing = day.ring
+        let eatenKilocalories = food.figures?.totals[.energyKcal] ?? .unknown
         let ring = DayRingView(
             arcs: dayRing.arcs, exceedsDailyGuide: dayRing.exceedsDailyGuide,
             diameter: ringDiameter, lineWidth: ringLineWidth,
             background: Color(.secondarySystemGroupedBackground)
         )
         .overlay {
-            ringCenter(food.figures)
+            if let dailyGuide {
+                remainderCenter(
+                    EatenAgainstGuide(
+                        eaten: eatenKilocalories, guide: dailyGuide.energyKilocalories))
+            } else {
+                eatenCenter(eatenKilocalories)
+            }
         }
         // 名前と値の途中で改行させないため、1行でも横に収まらなければ3行とも値を名前の下に置く。行ごとに決めると、値の位置が行によってずれる
         let facts = ViewThatFits(in: .horizontal) {
@@ -243,42 +251,69 @@ struct DaySummarySheet: View {
         }
         return Section {
             foodLayout {
-                ring
+                VStack(spacing: 8) {
+                    ring
+                    if let dailyGuide {
+                        Text(
+                            NutritionText.amount(
+                                eatenKilocalories, of: .energyKcal,
+                                guide: dailyGuide.energyKilocalories)
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .accessibilityIdentifier("day-summary-eaten-of-guide")
+                    }
+                }
                 facts
             }
             .padding(.vertical, 8)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("day-food")
         } footer: {
-            VStack(alignment: .leading, spacing: 4) {
-                // 試作（prototype-goal-setup-look の「決まったあと」）のとおり、まとまりの下の1行目に置く
-                if let dailyGuide {
-                    Text(
-                        "1日の目安 \(NutritionText.kilocalories(dailyGuide.energyKilocalories))"
-                    )
-                    .monospacedDigit()
-                    .accessibilityIdentifier("day-summary-daily-guide")
-                }
-                ForEach(food.notes, id: \.self) { note in
-                    Text(note)
+            if !food.notes.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(food.notes, id: \.self) { note in
+                        Text(note)
+                    }
                 }
             }
         }
     }
 
-    /// 丸の中の kcal。推定が済んだ食事の kcal が無ければ「—」
-    private func ringCenter(_ figures: DayFood.Figures?) -> some View {
-        let kilocalories = figures?.totals[.energyKcal] ?? .unknown
-        return VStack(spacing: 0) {
-            Text(NutritionText.number(kilocalories, of: .energyKcal))
-                .font(.title2)
-                .fontWeight(.semibold)
-                .monospacedDigit()
-                .contentTransition(.numericText())
-            Text(NutritionText.unit(kilocalories, of: .energyKcal))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    /// 比べない日の丸の中。食べた kcal で、推定が済んだ食事の kcal が無ければ「—」
+    private func eatenCenter(_ kilocalories: NutrientAmount) -> some View {
+        VStack(spacing: 0) {
+            ringCenterNumber(NutritionText.number(kilocalories, of: .energyKcal))
+            ringCenterCaption(NutritionText.unit(kilocalories, of: .energyKcal))
         }
+    }
+
+    /// 1日の目安と比べる日の丸の中。上から「あと / 1,199 / kcal」、超えた日は「超過 / 120 / kcal」
+    private func remainderCenter(_ kilocalories: EatenAgainstGuide) -> some View {
+        let remainder = kilocalories.remainder
+        return VStack(spacing: 0) {
+            if let lead = remainder.lead {
+                ringCenterCaption(lead)
+            }
+            ringCenterNumber(remainder.number)
+            ringCenterCaption(remainder.unit)
+        }
+    }
+
+    private func ringCenterNumber(_ number: String) -> some View {
+        Text(number)
+            .font(.title2)
+            .fontWeight(.semibold)
+            .monospacedDigit()
+            .contentTransition(.numericText())
+    }
+
+    private func ringCenterCaption(_ caption: String) -> some View {
+        Text(caption)
+            .font(.caption)
+            .foregroundStyle(.secondary)
     }
 
     private enum PFCFactLayout {
@@ -299,6 +334,8 @@ struct DaySummarySheet: View {
         }
     }
 
+    /// 目安と比べる日は「33 / 90 g」とバーを置き、「あと N g」は書かない（3行並ぶとうるさいため）。
+    /// 目安を超えた行は、バーを右端まで満たし、数を太字にする（色では分けない）
     @ViewBuilder
     private func pfcFact(
         _ pfc: PFC, figures: DayFood.Figures?, dailyGuide: DailyGuide?, layout: PFCFactLayout
@@ -310,29 +347,50 @@ struct DaySummarySheet: View {
                 .foregroundStyle(.secondary)
         }
         let eaten = figures?.totals[pfc.nutrient] ?? .unknown
+        let againstGuide = dailyGuide.map {
+            EatenAgainstGuide(eaten: eaten, guide: pfc.grams(in: $0), of: pfc.nutrient)
+        }
         let amount = Text(
             dailyGuide.map {
                 NutritionText.amount(eaten, of: pfc.nutrient, guide: pfc.grams(in: $0))
             } ?? NutritionText.amount(eaten, of: pfc.nutrient)
         )
         .font(.subheadline)
-        .fontWeight(.semibold)
+        .fontWeight(againstGuide.map { $0.exceedsGuide ? .bold : .regular } ?? .semibold)
         .monospacedDigit()
         .contentTransition(.numericText())
-        switch layout {
-        case .valueBesideName:
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                name.fixedSize()
-                Spacer(minLength: 0)
-                amount.fixedSize()
-            }
-        case .valueBelowName:
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 4) {
+            switch layout {
+            case .valueBesideName:
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    name.fixedSize()
+                    Spacer(minLength: 0)
+                    amount.fixedSize()
+                }
+            case .valueBelowName:
                 name
                 amount
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            if let againstGuide {
+                guideBar(againstGuide, color: pfc.color)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// 右端を目安にした細いバー。超えた分は描かない（数の太字で示す）
+    private func guideBar(_ againstGuide: EatenAgainstGuide, color: Color) -> some View {
+        Capsule()
+            .fill(Color(.systemGray5))
+            .frame(height: 4)
+            .overlay(alignment: .leading) {
+                GeometryReader { proxy in
+                    Capsule()
+                        .fill(color)
+                        .frame(width: proxy.size.width * againstGuide.filledFraction)
+                }
+            }
+            .accessibilityHidden(true)
     }
 
     // 見ている日は並べる範囲の中だけ動き、days はその範囲のすべての日を持つ

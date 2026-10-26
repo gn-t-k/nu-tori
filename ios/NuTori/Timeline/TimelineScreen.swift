@@ -503,19 +503,20 @@ struct TimelineScreen: View {
     @ViewBuilder private func itemView(_ item: Timeline.Item, in timeline: Timeline) -> some View {
         switch item {
         case .weightRecord(let record):
+            let row = WeightRecordRow(record: record)
             NavigationLink(value: record.day) {
-                WeightRecordRow(record: record)
+                row
             }
             .buttonStyle(.plain)
             .undeliveredRecord(timeline.isUndelivered(item))
             .accessibilityIdentifier("weight-row")
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .ownRecordTime(row.clock)
         case .rejectedWeightLine(let line):
             RejectedLineText(text: line.text, subject: .weightRecord)
         case .meal(let card):
             // どの状態のカードも、押すと食事の画面へ潜る
             NavigationLink(value: MealRoute(mealId: card.meal.id)) {
-                MealCardView(card: card) { photoId in
+                MealCardView(card: card, showsEatenTime: false) { photoId in
                     await mealActions.loadPhoto(card.meal.id, photoId)
                 }
                 .modifier(OwnRecordCard())
@@ -523,7 +524,7 @@ struct TimelineScreen: View {
             .buttonStyle(.plain)
             .undeliveredRecord(timeline.isUndelivered(item))
             .accessibilityIdentifier("meal-card")
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .ownRecordTime(card.eatenTimeText)
         case .rejectedMealLine(let line):
             RejectedLineText(text: line.text, subject: .meal)
         case .sentText(let bubble):

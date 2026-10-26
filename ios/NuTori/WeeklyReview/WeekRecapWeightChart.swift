@@ -3,7 +3,7 @@ import NuToriCore
 import SwiftUI
 
 /// 週の振り返りの体重の段のグラフ。横軸は月〜日、目標の道筋は点線、傾向は Primary の線、記録は灰色の点（DESIGN.md の「グラフ」）。
-/// 記録が4日未満の週は傾向の線を引かない
+/// 線が2本あるときは、線の端に「傾向」「目標」と添える。記録が4日未満の週は傾向の線を引かない
 struct WeekRecapWeightChart: View {
     let recap: WeekRecap
 
@@ -39,6 +39,16 @@ struct WeekRecapWeightChart: View {
                 .accessibilityLabel("体重 \(TimelineDayText.label(for: day.day))")
                 .accessibilityValue(WeightAmountText.kilograms(day.kilograms))
             }
+            if let trendEnd = trendDays.last, let goalEnd = goalPathPoints.last {
+                // 系列が2本あるので、線の端に名前を添える（DESIGN.md の「グラフ」）。上にある線の名前を上に、下にある線の名前を下に置く
+                let trendIsAbove = trendEnd.kilograms >= goalEnd.kilograms
+                endLabelMark(
+                    "傾向", offset: offset(of: trendEnd.day), kilograms: trendEnd.kilograms,
+                    above: trendIsAbove)
+                endLabelMark(
+                    "目標", offset: goalEnd.offset, kilograms: goalEnd.kilograms,
+                    above: !trendIsAbove)
+            }
         }
         .chartXScale(domain: -0.5...6.5)
         .chartYScale(domain: yDomain)
@@ -59,6 +69,23 @@ struct WeekRecapWeightChart: View {
         .padding(.vertical, 8)
         // 目盛りの文字は xxxLarge で止める。高さを文字に合わせて伸ばすと、曜日が重なって読めないため（WeightTrendChartView と同じ）。値は点の accessibilityValue でも読める
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+
+    private func endLabelMark(_ name: String, offset: Int, kilograms: Double, above: Bool)
+        -> some ChartContent
+    {
+        PointMark(x: .value("曜日", offset), y: .value("体重", kilograms))
+            .symbolSize(0)
+            .annotation(
+                position: above ? .topTrailing : .bottomTrailing, spacing: 2,
+                overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
+            ) {
+                Text(name)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+            }
+            .accessibilityHidden(true)
     }
 
     private struct PathPoint {

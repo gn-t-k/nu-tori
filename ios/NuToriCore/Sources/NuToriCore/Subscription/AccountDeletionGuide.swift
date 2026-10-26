@@ -33,10 +33,8 @@ public struct AccountDeletionGuide: Sendable, Equatable {
         return "\(day)に \(displayPrice)"
     }
 
-    /// 1つめの段（解約する）の文
-    public var cancellationStepText: String {
-        "サブスクリプションを解約する。解約しても、\(GoalText.monthDay(renewsOn))まで使えます。"
-    }
+    /// 自動更新中の「使える日」。解約しても次の更新日まで使える。「11月7日まで」
+    public var usableIfCancelledText: String { "\(GoalText.monthDay(renewsOn))まで" }
 
     /// 解約したあとの「使える日」。「11月18日まで」
     public var usableThroughText: String { "\(GoalText.monthDay(usableThrough))まで" }

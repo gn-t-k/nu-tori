@@ -66,8 +66,11 @@
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
                     answerSentText: Self.answer(sentText:), sentTextAnswerPulls: 5)
             case .goalSetup:
+                // 目標を決めたあとに食事の文章を送ると、日のまとめで1日の目安と比べる形を見られる
                 return .init(
                     records: [todaysManualWeight], startedOn: today,
+                    estimatedDishes: Self.oyakodon(mealId:),
+                    answerSentText: Self.answer(sentText:),
                     goalSetup: goalSetupAnswers(today: today))
             case .weeklyReview:
                 return weeklyReview(.reviewed)
