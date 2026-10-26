@@ -397,12 +397,6 @@ struct TimelineScreen: View {
                         Spacer(minLength: 0)
                         // 並べる日を新しいほうに絞り、遅れて読む並び（LazyVStack）にしない。理由は TimelineViewport
                         VStack(alignment: .leading) {
-                            if let startedDay, listedDays.first?.day == timeline.days.first?.day {
-                                Text("\(TimelineDayText.label(for: startedDay))から記録しています")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
                             ForEach(listedDays, id: \.day) { day in
                                 daySection(day, in: timeline)
                                     .id(day.day)
@@ -723,11 +717,12 @@ struct TimelineScreen: View {
             Task { await capture(.unansweredNoticeLineTapped) }
         } label: {
             UnansweredNoticeLineLabel(text: "今日の体重がまだです") {
-                Text("見る")
+                Image(systemName: "chevron.right")
             }
         }
         .buttonStyle(.plain)
         .padding([.horizontal, .top])
+        .accessibilityLabel("今日の体重がまだです")
         .accessibilityIdentifier("unanswered-notice-line")
     }
 

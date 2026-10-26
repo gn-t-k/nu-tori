@@ -72,16 +72,6 @@ public struct WeightTrendChart: Hashable, Sendable {
         return lower...upper
     }
 
-    /// グラフの下に添える文。線を引くまでだけ出す
-    public var note: String? {
-        switch trendLine {
-        case .drawn:
-            nil
-        case .tooFewRecordedDays:
-            "点は測った体重。記録が増えると、傾向の線を引きます。"
-        }
-    }
-
     public struct Point: Hashable, Sendable {
         public let day: CalendarDay
         public let kilograms: Double

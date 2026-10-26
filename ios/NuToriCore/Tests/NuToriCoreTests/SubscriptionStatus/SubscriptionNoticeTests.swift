@@ -60,7 +60,7 @@ struct SubscriptionNoticeTests {
                 #expect(
                     notices == [
                         SubscriptionNotice(
-                            kind: .freeTrialEndsSoon(lastDay: SubscriptionNoticeTests.lastDay),
+                            kind: .freeTrialEndsSoon,
                             day: SubscriptionNoticeTests.threeDaysLeftDay)
                     ])
             }
@@ -80,7 +80,7 @@ struct SubscriptionNoticeTests {
                 #expect(
                     notices == [
                         SubscriptionNotice(
-                            kind: .freeTrialEndsSoon(lastDay: SubscriptionNoticeTests.lastDay),
+                            kind: .freeTrialEndsSoon,
                             day: SubscriptionNoticeTests.threeDaysLeftDay),
                         SubscriptionNotice(
                             kind: .freeTrialLastDay, day: SubscriptionNoticeTests.lastDay),
@@ -102,7 +102,7 @@ struct SubscriptionNoticeTests {
             func dayAfterLastDay() {
                 #expect(
                     notices.map(\.kind) == [
-                        .freeTrialEndsSoon(lastDay: SubscriptionNoticeTests.lastDay),
+                        .freeTrialEndsSoon,
                         .freeTrialLastDay, .freeTrialEnded,
                     ])
                 #expect(notices.last?.day == SubscriptionNoticeTests.dayAfterLastDay)
@@ -168,7 +168,7 @@ struct SubscriptionNoticeTests {
                 #expect(
                     notices == [
                         SubscriptionNotice(
-                            kind: .freeTrialEndsSoon(lastDay: SubscriptionNoticeTests.lastDay),
+                            kind: .freeTrialEndsSoon,
                             day: SubscriptionNoticeTests.threeDaysLeftDay),
                         SubscriptionNotice(
                             kind: .freeTrialLastDay, day: SubscriptionNoticeTests.lastDay),
@@ -313,16 +313,14 @@ struct SubscriptionNoticeTests {
 
             init() {
                 notice = SubscriptionNotice(
-                    kind: .freeTrialEndsSoon(lastDay: SubscriptionNoticeTests.lastDay),
+                    kind: .freeTrialEndsSoon,
                     day: SubscriptionNoticeTests.threeDaysLeftDay)
             }
 
-            @Test("最後の日を入れた文と「サブスクリプションを見る」を持つこと")
+            @Test("無料体験のあともできることと「サブスクリプションを見る」を持つこと")
             func threeDaysLeft() {
                 #expect(notice.title == "無料体験はあと 3 日")
-                #expect(
-                    notice.body
-                        == "11月19日で終わります。そのあとも体重の記録と、これまでの記録の見返しはできます。")
+                #expect(notice.body == "そのあとも体重の記録と、これまでの記録の見返しはできます。")
                 #expect(notice.showsSubscriptionButton)
             }
         }

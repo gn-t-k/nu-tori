@@ -74,10 +74,6 @@ extension Timeline {
         return DailyGuideChangeNotice(
             review: latest, dailyGuide: guide,
             changeKilocalories: guide.energyKilocalories - previousGuide.energyKilocalories,
-            reason: reason,
-            batch: batch.count > 1
-                ? DailyGuideChangeNotice.Batch(
-                    firstWeekMonday: first.effectiveDay.advanced(by: -7), weekCount: batch.count)
-                : nil)
+            reason: reason)
     }
 }

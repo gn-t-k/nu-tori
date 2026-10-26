@@ -66,12 +66,7 @@ struct WeeklyReviewScreen: View {
             }
             Section("体重") {
                 WeekRecapWeightChart(recap: shown)
-                if let note = shown.weight.note {
-                    Text(note)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("weekly-review-trend-note")
-                } else if let trendText = shown.weight.trendText {
+                if let trendText = shown.weight.trendText {
                     Text(trendText)
                         .monospacedDigit()
                 }
@@ -179,12 +174,6 @@ struct WeeklyReviewScreen: View {
                 }
                 .monospacedDigit()
             }
-            if let firstWeekNote = shown.firstWeekNote {
-                Text(firstWeekNote)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
         }
     }
 
@@ -259,10 +248,6 @@ struct WeeklyReviewScreen: View {
                 .accessibilityIdentifier(
                     "weekly-review-day-\(TimelineDayText.startedOn(for: day.day))")
             }
-        } header: {
-            Text("日ごと")
-        } footer: {
-            Text("押すと、タイムラインのその日に戻ります。")
         }
     }
 

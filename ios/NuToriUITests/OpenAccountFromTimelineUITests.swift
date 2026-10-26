@@ -16,7 +16,7 @@ final class OpenAccountFromTimelineUITests: XCTestCase {
         app.buttons["ヘルスケア、読む・書く"].tap()
         XCTAssertTrue(app.navigationBars["ヘルスケア"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticText(containing: "体重、体脂肪率").exists)
-        XCTAssertTrue(app.staticText(containing: "nu-tori で記録した体重。").exists)
+        XCTAssertTrue(app.staticText(containing: "エネルギー、P・F・C").exists)
         attachScreenshot(of: app, named: "ヘルスケアの読み書き")
     }
 

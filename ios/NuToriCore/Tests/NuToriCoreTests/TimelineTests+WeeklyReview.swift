@@ -112,7 +112,6 @@ extension TimelineTests {
             func noticeSaysExpenditureDecreased() throws {
                 let notice = try #require(WeeklyReviewScene.changeNotice(in: timeline))
                 #expect(notice.reasonText == "推定消費カロリーが 2,190 から 2,140 kcal に下がったためです。")
-                #expect(notice.batchText == nil)
             }
 
             @Test("帯の下の1行に出さないこと")
@@ -205,7 +204,7 @@ extension TimelineTests {
             @Test("カードに、ほかに見直した週の数を出すこと")
             func cardSaysOtherWeeks() throws {
                 let card = try #require(WeeklyReviewScene.card(in: timeline))
-                #expect(card.batchText == "ほかに 2 週を見直しました。‹ で前の週を見られます。")
+                #expect(card.batchText == "ほかに 2 週を見直しました。")
             }
 
             @Test("変わった量は、まとめた最初の週の前の1日の目安と比べること")
@@ -218,12 +217,6 @@ extension TimelineTests {
             func reasonUsesLatestMainReason() throws {
                 let notice = try #require(WeeklyReviewScene.changeNotice(in: timeline))
                 #expect(notice.reasonText == "体重が予定より早く減っているので、1日の目安を推定消費カロリーに近づけたためです。")
-            }
-
-            @Test("変更の知らせに、まとめた週の始まりと数を出すこと")
-            func noticeSaysBatch() throws {
-                let notice = try #require(WeeklyReviewScene.changeNotice(in: timeline))
-                #expect(notice.batchText == "9月28日からの 3 週分の見直しをまとめた値です。")
             }
         }
 

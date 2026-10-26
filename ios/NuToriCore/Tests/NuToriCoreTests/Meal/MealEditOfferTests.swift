@@ -259,12 +259,10 @@ struct MealEditOfferTests {
             #expect(fixture.dishIds.allSatisfy { fixture.offer.rowDeletion(of: $0) == .dish })
         }
 
-        @Test("待っていない料理の画面では、名前と量を直せて、量を変えたときの注記を添えること")
+        @Test("待っていない料理の画面では、名前と量を直せて、名前の欄を選ぶまで注記を添えないこと")
         func editsNotWaitingDish() {
             #expect(fixture.notWaiting.editsNameAndQuantity)
-            #expect(
-                fixture.notWaiting.footerNote(editingName: false)
-                    == "量を変えると、材料の量も同じ割合で変わります。")
+            #expect(fixture.notWaiting.footerNote(editingName: false) == nil)
         }
 
         @Test("推定し直しを待っている料理（まだ送れていない・推定中・翌日に推定）の画面では、名前と量の欄を押せなくして推定が終わると直せることを添えること")
@@ -365,12 +363,10 @@ struct MealEditOfferTests {
             #expect(fixture.dishIds.allSatisfy { fixture.offer.rowDeletion(of: $0) == .dish })
         }
 
-        @Test("待っていない料理の画面では、名前と量を直せて、量を変えたときの注記を添えること")
+        @Test("待っていない料理の画面では、名前と量を直せて、名前の欄を選ぶまで注記を添えないこと")
         func editsNotWaitingDish() {
             #expect(fixture.notWaiting.editsNameAndQuantity)
-            #expect(
-                fixture.notWaiting.footerNote(editingName: false)
-                    == "量を変えると、材料の量も同じ割合で変わります。")
+            #expect(fixture.notWaiting.footerNote(editingName: false) == nil)
         }
 
         @Test("推定し直しを待っている料理（まだ送れていない・推定中・翌日に推定）の画面では、名前と量の欄を押せなくして推定が終わると直せることを添えること")
@@ -426,12 +422,10 @@ struct MealEditOfferTests {
             #expect(fixture.dishIds.allSatisfy { fixture.offer.rowDeletion(of: $0) == .dish })
         }
 
-        @Test("待っていない料理の画面では、名前と量を直せて、量を変えたときの注記を添えること")
+        @Test("待っていない料理の画面では、名前と量を直せて、名前の欄を選ぶまで注記を添えないこと")
         func editsNotWaitingDish() {
             #expect(fixture.notWaiting.editsNameAndQuantity)
-            #expect(
-                fixture.notWaiting.footerNote(editingName: false)
-                    == "量を変えると、材料の量も同じ割合で変わります。")
+            #expect(fixture.notWaiting.footerNote(editingName: false) == nil)
         }
 
         @Test("推定し直しを待っている料理（まだ送れていない・推定中・翌日に推定）の画面では、名前と量の欄を押せなくして推定が終わると直せることを添えること")
@@ -591,9 +585,9 @@ struct MealEditOfferTests {
                     quantity: MealEditOfferTests.estimatedQuantity)
             }
 
-            @Test("名前の欄を選んでいなければ、量を変えると材料も同じ割合で変わることを書くこと")
-            func describesProportionalChange() {
-                #expect(screen.footerNote(editingName: false) == "量を変えると、材料の量も同じ割合で変わります。")
+            @Test("名前の欄を選んでいなければ、注記を添えないこと")
+            func noNoteWithoutEditingName() {
+                #expect(screen.footerNote(editingName: false) == nil)
             }
 
             @Test("名前の欄を選んでいれば、量と材料を推定し直すことを書くこと")

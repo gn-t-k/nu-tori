@@ -59,7 +59,7 @@ public final class GoalSetupFlow {
     public internal(set) var selectedPace: GoalProposals.Pace?
     public internal(set) var customTargetWeight: CustomTargetWeight?
     public internal(set) var decision: Decision = .idle
-    /// ページの中で電波が届かなかった要求。「ここまでの答えは残してあります。…」と「もう一度試す」を出す
+    /// ページの中で電波が届かなかった要求。「インターネットにつながると、…」と「もう一度試す」を出す
     public internal(set) var unreachableRequest: UnreachableRequest?
     /// 決めずに新しい案が返った。「新しい体重で計算し直しました。」を添える
     public internal(set) var showsRecalculated = false

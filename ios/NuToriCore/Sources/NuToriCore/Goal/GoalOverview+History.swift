@@ -52,14 +52,6 @@ extension GoalOverview {
                     }.sorted()))
         }
 
-        /// 数字を出すときに添える文
-        public var note: String? {
-            switch self {
-            case .drawn: nil
-            case .figures: "週ごとの見直しが 2 回たまると、グラフで見せます。"
-            }
-        }
-
         /// 「1日の目安は推定消費カロリーより 350 kcal 少ない」
         private static func balanceText(of point: Point) -> String {
             let difference = point.dailyGuideKilocalories - point.expenditureKilocalories
@@ -161,14 +153,6 @@ extension GoalOverview {
         public var weightsText: String? {
             endWeightKilograms.map {
                 GoalText.kilogramsChange(from: goal.startingWeightTrendKilograms, to: $0)
-            }
-        }
-
-        /// 結果の「−3.6 kg」
-        public var resultText: String? {
-            endWeightKilograms.map {
-                GoalText.signedKilograms(
-                    tenths: GoalText.tenths($0 - goal.startingWeightTrendKilograms))
             }
         }
     }

@@ -26,18 +26,10 @@ struct WeightScreen: View {
                 ForEach(otherRecords, id: \.id) { record in
                     otherRecordRow(record)
                 }
-            } footer: {
-                Text("この日の最初の記録を、この日の体重として使います。")
             }
             Section {
                 WeightTrendChartView(chart: trendChart)
                     .padding(.vertical, 8)
-            } header: {
-                Text("最近4週の傾向")
-            } footer: {
-                if let note = trendChart.note {
-                    Text(note)
-                }
             }
             if let goalPath {
                 goalPathSection(goalPath)
@@ -65,8 +57,6 @@ struct WeightScreen: View {
                     }
                 } header: {
                     Text("使い始める前（ヘルスケア）")
-                } footer: {
-                    Text("使い始める前の体重は、目標と1日の目安の計算に使います。")
                 }
             }
         }
@@ -119,8 +109,6 @@ struct WeightScreen: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("weight-goal-link")
-        } header: {
-            Text("目標までの道のり")
         } footer: {
             if let note = path.note {
                 Text(note)

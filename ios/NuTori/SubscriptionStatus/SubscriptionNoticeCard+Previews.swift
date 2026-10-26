@@ -26,7 +26,7 @@
                 return switch self {
                 case .freeTrialEndsSoon:
                     SubscriptionNotice(
-                        kind: .freeTrialEndsSoon(lastDay: today.advanced(by: 2)), day: today)
+                        kind: .freeTrialEndsSoon, day: today)
                 case .freeTrialLastDay:
                     SubscriptionNotice(kind: .freeTrialLastDay, day: today)
                 case .freeTrialEnded:
