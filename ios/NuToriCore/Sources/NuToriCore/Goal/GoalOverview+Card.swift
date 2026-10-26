@@ -1,11 +1,11 @@
 extension GoalOverview {
-    /// 今の目標のカード。目標の状態ごとに、上の行・大きな1行・下の行・ボタンを分ける
+    /// 今の目標のカード。目標の状態ごとに、上の行・大きな1行・下の行・ボタンを分ける。減量・増量の進行中は、目標そのもの（期限の日と目標体重）だけを書く
     public struct Card: Hashable, Sendable {
         /// 上の行。「減量 9月1日〜11月30日」「維持 9月1日から・期限なし」
         public let summary: String
         /// 大きな1行
         public let title: String
-        /// 下の行。維持で体重の傾向がまだ無ければ nil
+        /// 下の行。減量・増量の進行中と、維持で体重の傾向がまだ無いときは nil
         public let detail: String?
         /// 期限が来たあとに達成したときだけ足す1行
         public let lateAchievement: String?
@@ -62,25 +62,13 @@ extension GoalOverview {
                     continuingNote: Self.continuingNote(goal))
                 return
             }
-            let target = WeightAmountText.kilograms(goal.targetWeightKilograms)
-            let progress = GoalProgress(goal: goal, today: today, weightTrend: records.weightTrend)
-            let remainingKilograms: String? =
-                if case .weightChange(let tenths, _) = progress {
-                    " あと \(GoalText.kilograms(tenths: tenths))"
-                } else { nil }
-            let remainingDays = max(today.distance(to: weightChange.deadlineDay) + 1, 0)
-            let pace = Pace(
-                judgedDay: today, goal: goal, achievedDay: goal.achievement?.achievedDay,
-                weightTrend: records.weightTrend,
-                weightRecordDays: records.weightRecords.map(\.day)
-            ).flatMap(Self.paceText)
+            // あと何 kg・あと何日・ペースは、体重の傾向のカードに置く（`WeightChart.Progress`）
             self.init(
                 summary: Self.summary(of: goal),
-                title: "\(target) まで\(remainingKilograms ?? "")",
-                detail: (["あと \(remainingDays) 日"] + [pace].compactMap(\.self)).joined(
-                    separator: "・"),
-                lateAchievement: nil, action: .switchGoal, continuingNote: Self.continuingNote(goal)
-            )
+                title:
+                    "\(GoalText.monthDay(weightChange.deadlineDay))までに \(WeightAmountText.kilograms(goal.targetWeightKilograms))",
+                detail: nil, lateAchievement: nil, action: .switchGoal,
+                continuingNote: Self.continuingNote(goal))
         }
 
         private init(achieved goal: Goal, today: CalendarDay, records: GoalRecords) {
@@ -160,18 +148,6 @@ extension GoalOverview {
             else { return nil }
             return
                 "傾向 \(WeightAmountText.kilograms(trend))・\(isWithinBand ? "保てています" : "保てていません")"
-        }
-
-        /// 減量・増量の進行中の下の行に添えるペース。返さないときは添えない
-        private static func paceText(_ pace: Pace) -> String? {
-            switch pace {
-            case .onTrack: "間に合うペースです"
-            case .behind(let shortfall, _, _):
-                "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません"
-            case .inconclusive: "間に合うかはまだわかりません"
-            case .pending: "間に合うかは、目標を立てて 14 日たつと出ます"
-            case .unavailable, .maintenance: nil
-            }
         }
 
         public enum Action: Hashable, Sendable {
