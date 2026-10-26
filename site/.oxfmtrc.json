@@ -1,4 +1,8 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": ["worker-configuration.d.ts", "dist"]
+  "ignorePatterns": [
+    "worker-configuration.d.ts",
+    "dist",
+    "src/pages/daily-guide/daily-guide-example.json"
+  ]
 }
