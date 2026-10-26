@@ -27,7 +27,8 @@ struct AccountScreen: View {
                 NavigationLink {
                     HealthAccessScreen()
                 } label: {
-                    LabeledContent("ヘルスケア", value: "読む・書く")
+                    // 何を読み・書きするかは、潜った先の見出しに主語と目的語をつけて書く
+                    Text("ヘルスケア")
                 }
             }
             Section {
