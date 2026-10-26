@@ -111,7 +111,7 @@ struct DaySummarySheet: View {
         Button {
             openWeightScreen(shownDay)
         } label: {
-            HStack(spacing: 12) {
+            disclosureRow {
                 LabeledContent("体重") {
                     if let weight {
                         VStack(alignment: .trailing) {
@@ -129,12 +129,7 @@ struct DaySummarySheet: View {
                     }
                 }
                 .foregroundStyle(Color.primary)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
             }
-            .contentShape(Rectangle())
-            .accessibilityElement(children: .combine)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("day-summary-weight")
@@ -166,7 +161,7 @@ struct DaySummarySheet: View {
 
     /// 名前の下に小さな文を書き、右端に「›」を置く行
     private func disclosureRow(title: String, detail: String?) -> some View {
-        HStack(spacing: 12) {
+        disclosureRow {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .foregroundStyle(Color.primary)
@@ -179,6 +174,13 @@ struct DaySummarySheet: View {
                 }
             }
             Spacer(minLength: 0)
+        }
+    }
+
+    /// 中身の右端に「›」を置く、押して潜る行
+    private func disclosureRow(@ViewBuilder content: () -> some View) -> some View {
+        HStack(spacing: 12) {
+            content()
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color(.tertiaryLabel))

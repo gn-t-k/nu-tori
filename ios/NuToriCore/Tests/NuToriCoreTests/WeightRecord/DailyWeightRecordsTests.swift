@@ -1,14 +1,14 @@
 import NuToriCore
 import Testing
 
-@Suite("最近の記録")
-struct RecentWeightRecordsTests {
+@Suite("日ごとの体重の記録")
+struct DailyWeightRecordsTests {
     @Suite("記録のある日が6日のとき")
     struct SixDays {
-        let recent: RecentWeightRecords
+        let recent: DailyWeightRecords
 
         init() throws {
-            recent = RecentWeightRecords(
+            recent = DailyWeightRecords(
                 weightRecords: try (19...24).map { day in
                     try .manual(72.4, at: "2026-09-\(day)T07:12:00+09:00", in: "Asia/Tokyo")
                 },
@@ -35,10 +35,10 @@ struct RecentWeightRecordsTests {
 
     @Suite("記録のある日が5日のとき")
     struct FiveDays {
-        let recent: RecentWeightRecords
+        let recent: DailyWeightRecords
 
         init() throws {
-            recent = RecentWeightRecords(
+            recent = DailyWeightRecords(
                 weightRecords: try (20...24).map { day in
                     try .manual(72.4, at: "2026-09-\(day)T07:12:00+09:00", in: "Asia/Tokyo")
                 },
@@ -56,12 +56,12 @@ struct RecentWeightRecordsTests {
     @Suite("1日に複数の記録がある日を含むとき")
     struct DaysWithSeveralRecords {
         let earliestOnTuesday: WeightRecord
-        let recent: RecentWeightRecords
+        let recent: DailyWeightRecords
 
         init() throws {
             earliestOnTuesday = try .imported(
                 72.7, at: "2026-09-22T06:48:00+09:00", in: "Asia/Tokyo")
-            recent = RecentWeightRecords(
+            recent = DailyWeightRecords(
                 weightRecords: [
                     try .manual(72.8, at: "2026-09-22T07:12:00+09:00", in: "Asia/Tokyo"),
                     try .manual(72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo"),
@@ -89,10 +89,10 @@ struct RecentWeightRecordsTests {
 
     @Suite("使い始める前の記録があるとき")
     struct RecordsBeforeFirstDay {
-        let recent: RecentWeightRecords
+        let recent: DailyWeightRecords
 
         init() throws {
-            recent = RecentWeightRecords(
+            recent = DailyWeightRecords(
                 weightRecords: [
                     try .imported(72.9, at: "2026-09-19T06:48:00+09:00", in: "Asia/Tokyo"),
                     try .imported(72.7, at: "2026-09-22T06:48:00+09:00", in: "Asia/Tokyo"),

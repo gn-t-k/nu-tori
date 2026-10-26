@@ -5,7 +5,7 @@
     #Preview("状態ごと", arguments: WeightHistoryScreen.Sample.allCases) { sample in
         NavigationStack {
             WeightHistoryScreen(
-                rows: RecentWeightRecords(
+                rows: DailyWeightRecords(
                     weightRecords: sample.records, firstDay: WeightHistoryScreen.Sample.firstDay
                 ).all)
         }

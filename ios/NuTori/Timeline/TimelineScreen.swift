@@ -82,7 +82,7 @@ struct TimelineScreen: View {
             }
             .navigationDestination(for: WeightHistoryRoute.self) { _ in
                 WeightHistoryScreen(
-                    rows: RecentWeightRecords(weightRecords: records, firstDay: firstDay).all)
+                    rows: DailyWeightRecords(weightRecords: records, firstDay: firstDay).all)
             }
             .navigationDestination(for: WeeklyReviewRoute.self) { route in
                 WeeklyReviewScreen(

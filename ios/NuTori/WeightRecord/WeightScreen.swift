@@ -121,8 +121,8 @@ struct WeightScreen: View {
         Array(sameDayRecords.dropFirst())
     }
 
-    private var recent: RecentWeightRecords {
-        RecentWeightRecords(weightRecords: records, firstDay: firstDay)
+    private var recent: DailyWeightRecords {
+        DailyWeightRecords(weightRecords: records, firstDay: firstDay)
     }
 
     @ViewBuilder private var dayGroup: some View {
