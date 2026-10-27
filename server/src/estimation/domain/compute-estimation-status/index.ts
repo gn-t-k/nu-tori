@@ -1,4 +1,1 @@
-export {
-  computeEstimationStatus,
-  type ScheduledEstimationStatus,
-} from "./compute-estimation-status";
+export { computeEstimationStatus } from "./compute-estimation-status";
