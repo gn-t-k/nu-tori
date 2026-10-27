@@ -1,6 +1,6 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { generateRecordId } from "../../domain/record-id";
 import { createAppleRefreshTokenStore } from "../../auth/create-apple-refresh-token-store";
 import { createAuthentication } from "../../auth/create-authentication";
@@ -12,6 +12,7 @@ import {
 import { mockRevokeAppleRefreshTokenOk } from "../../auth/revoke-apple-refresh-token/revoke-apple-refresh-token.mock";
 import { mockAppleKeysEndpointOk, signAppleIdToken } from "../../auth/testing";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
+import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { hashAppleSub } from "../../subscription/d1/testing/hash-apple-sub";
 import { app } from "../app";
 import { pullSyncChanges, type PullResult } from "../sync-routes/testing/pull-sync-changes";
@@ -236,13 +237,7 @@ describe("サインイン", () => {
     });
   });
 
-  // 時計は先の時刻にする。サインインは課金の確かめの時刻にアラームを張るので、過ぎた時刻だとアラームがひとりでに動き、
-  // テストの実行環境ではアラームが記録と一緒に戻らないため、終わったあとの片付けが止まることがある
   describe("使い始めた日", () => {
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
     describe("端末のタイムゾーンが届いたとき", () => {
       let appleUserId: string;
       let timeZone: string;
@@ -251,7 +246,7 @@ describe("サインイン", () => {
         timeZone = "Asia/Tokyo";
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
-        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-09-29T20:00:00Z") });
+        useFakeClock(Date.parse("2030-09-29T20:00:00Z"));
       });
 
       test("そのタイムゾーンでの日付を使い始めた日にすること", async () => {
@@ -270,7 +265,7 @@ describe("サインイン", () => {
         appleUserId = generateRecordId();
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
-        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-09-29T20:00:00Z") });
+        useFakeClock(Date.parse("2030-09-29T20:00:00Z"));
       });
 
       test("UTC の日付を使い始めた日にし、タイムゾーンは空のままにすること", async () => {
@@ -291,7 +286,7 @@ describe("サインイン", () => {
         timeZone = "Tokyo/Nowhere";
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
-        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-09-29T20:00:00Z") });
+        useFakeClock(Date.parse("2030-09-29T20:00:00Z"));
       });
 
       test("届かなかったときと同じに扱い、サインインを受け付けること", async () => {
@@ -313,7 +308,7 @@ describe("サインイン", () => {
         secondTimeZone = "America/Los_Angeles";
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
-        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-09-29T20:00:00Z") });
+        useFakeClock(Date.parse("2030-09-29T20:00:00Z"));
         ({ accountId } = await signInTestAccount(appleUserId, { timeZone: "Asia/Tokyo" }));
         vi.setSystemTime(new Date("2030-10-05T03:00:00Z"));
       });
@@ -335,7 +330,7 @@ describe("サインイン", () => {
         appleUserId = generateRecordId();
         timeZone = "Asia/Tokyo";
         mockAppleKeysEndpointOk();
-        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-09-29T20:00:00Z") });
+        useFakeClock(Date.parse("2030-09-29T20:00:00Z"));
         mockExchangeAppleAuthorizationCodeError(new AppleAuthorizationCodeRejectedError());
         await signInWithApple(appleUserId);
         vi.setSystemTime(new Date("2030-10-05T03:00:00Z"));
@@ -378,17 +373,12 @@ const pullFreeTrial = async (sessionToken: string) => {
   return changes.findLast(({ kind }) => kind === "subscription_status")?.record["freeTrial"];
 };
 
-// 時計は先の時刻にする（理由は上の「使い始めた日」）
 describe("サインインの画面で見せた規約の版", () => {
   beforeEach(() => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-10-21T09:00:00Z") });
+    useFakeClock(Date.parse("2030-10-21T09:00:00Z"));
   });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   describe("版が届いたとき", () => {
     test("サインインの画面での、その版への同意を残すこと", async () => {
       const { accountId } = await signInTestAccount(generateRecordId(), {
