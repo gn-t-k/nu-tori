@@ -87,7 +87,7 @@ public enum UserEdit: Sendable {
         }
     }
 
-    /// 編集を書いたあとの後始末。書いた結果が `Outcome.unwritten` なら、どれもしない。
+    /// 編集の後始末。`replacedRecordId` は書く前に当てる。書いた結果が `Outcome.unwritten` なら、残りはどれもしない。
     /// 書いたら、いつも送り待ちから作る見え方を出す。まだ届いていない記録として、その場で薄く描くため
     public struct Aftermath: Equatable, Sendable {
         /// 書く前に、受け付けなかった1行を消す記録。作る編集は nil

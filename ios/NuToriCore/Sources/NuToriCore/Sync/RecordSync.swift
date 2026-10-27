@@ -180,7 +180,7 @@ public actor RecordSync {
             await reflection.recordReplacing(id: recordId)
         }
         let written = try await write(edit, with: engine, in: timeZone)
-        guard case .written = written.outcome else { return written.outcome }
+        guard case .written = written.outcome else { return .unwritten }
         await publishFromPending(engine)
         switch aftermath.followUp {
         case .sync:
@@ -188,7 +188,7 @@ public actor RecordSync {
         case .weightRecorded:
             // 積んだ答えは、このあとの同期で送る
             _ = await noteToMissedWeightRecordWatch(after: .weightRecorded)
-            if let record = written.weightRecord {
+            if case .weightSaved(let record) = written {
                 try? await weightHealthExport.exportWeightRecord(record)
             }
             syncInBackground()
@@ -338,10 +338,19 @@ public actor RecordSync {
         _ = try? await syncAfterInFlight()
     }
 
-    /// 書いた結果と、ヘルスケアに書き出す体重記録
-    private struct Written {
-        let outcome: UserEdit.Outcome
-        var weightRecord: WeightRecord?
+    /// 書いた結果。体重記録は、ヘルスケアに書き出すために持つ
+    private enum Written {
+        case unwritten
+        case written(recordCount: Int)
+        case weightSaved(WeightRecord)
+
+        var outcome: UserEdit.Outcome {
+            switch self {
+            case .unwritten: .unwritten
+            case .written(let recordCount): .written(recordCount: recordCount)
+            case .weightSaved: .written(recordCount: 1)
+            }
+        }
     }
 
     /// 編集を送り待ちとキャッシュに書く。今と同じ値で、書くものが無ければ `.unwritten`
@@ -351,7 +360,7 @@ public actor RecordSync {
         switch edit {
         case .saveWeight(let write):
             let record = try await engine.save(write)
-            return Written(outcome: .written(recordCount: 1), weightRecord: record)
+            return .weightSaved(record)
         case .recordCapturedMeal(let photo, let sentAt):
             let photoId = UUID()
             let takenAt = PhotoTakenTime(
@@ -359,9 +368,7 @@ public actor RecordSync {
             let draft = MealDraft.captured(
                 photoId: photoId, takenAt: takenAt.instant, sentAt: sentAt,
                 deviceTimeZone: timeZone)
-            return Written(
-                outcome: try await recordMeals(
-                    [draft], originals: [photoId: photo.data], with: engine))
+            return try await recordMeals([draft], originals: [photoId: photo.data], with: engine)
         case .recordPickedMeals(let photos, let pickedAt):
             let identified = photos.map { (id: UUID(), photo: $0) }
             let picked = identified.map { photo in
@@ -374,51 +381,50 @@ public actor RecordSync {
             guard !picked.isEmpty,
                 let drafts = try? MealDraft.picked(
                     picked, sentAt: pickedAt, deviceTimeZone: timeZone)
-            else { return Written(outcome: .unwritten) }
-            return Written(
-                outcome: try await recordMeals(
-                    drafts,
-                    originals: Dictionary(
-                        uniqueKeysWithValues: identified.map { ($0.id, $0.photo.data) }),
-                    with: engine))
+            else { return .unwritten }
+            return try await recordMeals(
+                drafts,
+                originals: Dictionary(
+                    uniqueKeysWithValues: identified.map { ($0.id, $0.photo.data) }),
+                with: engine)
         case .correctMealTime(let card, let eatenAt):
             try await engine.correctMealTime(mealId: card.meal.id, eatenAt: eatenAt)
-            return Written(outcome: .written(recordCount: 1))
+            return .written(recordCount: 1)
         case .deleteMeal(let card, _):
             try await engine.deleteMeal(id: card.meal.id)
-            return Written(outcome: .written(recordCount: 1))
+            return .written(recordCount: 1)
         case .addDish(let typedName, let card):
             let dish = try await engine.addDish(named: typedName, toMeal: card.meal.id)
-            return Written(outcome: dish == nil ? .unwritten : .written(recordCount: 1))
+            return dish == nil ? .unwritten : .written(recordCount: 1)
         case .renameDish(let dish, let typedName):
             let renamed = try await engine.renameDish(id: dish.id, to: typedName)
-            return Written(outcome: renamed == dish ? .unwritten : .written(recordCount: 1))
+            return renamed == dish ? .unwritten : .written(recordCount: 1)
         case .correctDishQuantity(let dish, let value):
             let corrected = try await engine.correctDishQuantity(id: dish.id, to: value)
-            return Written(outcome: corrected == dish ? .unwritten : .written(recordCount: 1))
+            return corrected == dish ? .unwritten : .written(recordCount: 1)
         case .correctIngredientQuantity(let ingredient, let quantity):
             let corrected = try await engine.correctIngredientQuantity(
                 id: ingredient.id, to: quantity)
-            return Written(outcome: corrected == ingredient ? .unwritten : .written(recordCount: 1))
+            return corrected == ingredient ? .unwritten : .written(recordCount: 1)
         case .deleteDish(let dish):
             try await engine.deleteDish(id: dish.id)
-            return Written(outcome: .written(recordCount: 1))
+            return .written(recordCount: 1)
         case .sendText(let draft):
             let sentText = try await engine.sendText(draft.text)
-            return Written(outcome: sentText == nil ? .unwritten : .written(recordCount: 1))
+            return sentText == nil ? .unwritten : .written(recordCount: 1)
         case .resendAsConversation(let sentTextId, _):
             try await engine.resendAsConversation(sentTextId: sentTextId)
-            return Written(outcome: .written(recordCount: 1))
+            return .written(recordCount: 1)
         case .resendReply(let sentTextId, _):
             try await engine.resend(sentTextId: sentTextId)
-            return Written(outcome: .written(recordCount: 1))
+            return .written(recordCount: 1)
         }
     }
 
     /// 写真はアプリの中に置いて裏で送り始める。`originals` は写真の ID ごとの元の写真で、どの食事の写真もそろっている
     private func recordMeals(
         _ drafts: [MealDraft], originals: [UUID: Data], with engine: SyncEngine
-    ) async throws -> UserEdit.Outcome {
+    ) async throws -> Written {
         for draft in drafts {
             _ = try await engine.recordMeal(draft, originals: originals)
         }
