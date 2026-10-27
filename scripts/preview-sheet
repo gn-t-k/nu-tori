@@ -1,0 +1,235 @@
+#!/usr/bin/env node
+// SwiftUI のプレビューを、状態ごと・見た目の組み合わせ（ライト、ダーク、AX5 など）ごとに描き、並べた画像を作る（docs/agents/ios-mac.md）
+// Xcode の道具は xcrun mcpbridge で呼ぶ。Xcode は呼んだプロセスの署名でエージェントを見分け、MobileBuildMCP と同じ node なら承認が済んでいる
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const { execFileSync, spawn } = require("node:child_process");
+const { copyFileSync, mkdtempSync, readFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join, relative, resolve } = require("node:path");
+const { createInterface } = require("node:readline");
+
+const variantOverrides = {
+  light: { "Color Scheme": "Light Appearance" },
+  dark: { "Color Scheme": "Dark Appearance" },
+  ax5: { "Dynamic Type": "AX 5" },
+};
+
+const usage = `使い方: scripts/preview-sheet <プレビューのファイル> [--preview <番号>] [--states <番号>,...] [--variants <組み合わせ>,...] [--rows-per-sheet <数>]
+  プレビューのファイル  ios/NuTori/Timeline/DaySummarySheet+Previews.swift のようなリポジトリの中のパス
+  --preview         ファイルの中の何番目の #Preview か（0 から。既定 0）
+  --states          arguments: で状態を並べたプレビューの、描く状態の番号（0 から。既定は全部）
+  --variants        列に並べる見た目。${Object.keys(variantOverrides).join("・")} を + でつなげる（既定 light,dark,ax5）
+  --rows-per-sheet  1枚に並べる状態の数（既定 3。読むときに縮められない大きさに収める）
+並べた画像のパスを1行ずつ出し、最後に個々の画像を置いたフォルダを出す`;
+
+const root = resolve(__dirname, "..");
+
+const main = async () => {
+  const options = parseArguments(process.argv.slice(2));
+  const out = mkdtempSync(join(tmpdir(), "preview-sheet-"));
+  const xcode = await XcodeBridge.start();
+  try {
+    const workspace = await openWorkspace(xcode);
+    const build = await xcode.call("BuildProject", { workspaceIdentifier: workspace });
+    if (build.errors?.length) {
+      throw new ExpectedFailure(`ビルドが通らない: ${build.buildResult}\n${build.fullLogPath}`);
+    }
+
+    const render = (state, variant) =>
+      xcode.call("RenderPreview", {
+        workspaceIdentifier: workspace,
+        sourceFilePath: options.sourceFilePath,
+        previewDefinitionIndexInFile: options.preview,
+        previewVariantOverrides: variant.overrides,
+        ...(state.index === undefined ? {} : { previewCanvasControlOverrides: { groupItemIndex: state.index } }),
+      });
+    // 状態の一覧は、描いてみるまでわからない。描いたのは最初の状態の最初の見た目なので、その升に使う
+    const first = await render({}, options.variants[0]);
+    const groupItems = first.supportedCanvasControlOverrides?.groupItems;
+    if (!groupItems && options.states) {
+      throw new ExpectedFailure("arguments: で状態を並べたプレビューでないので、--states は使えない");
+    }
+    const allStates = groupItems ?? [{ title: first.displayName ?? "preview" }];
+    const states = allStates.filter((item) => !options.states || options.states.includes(item.index));
+    if (states.length === 0) {
+      throw new ExpectedFailure(`--states に合う状態が無い。状態は 0〜${groupItems.length - 1}`);
+    }
+
+    let failed = false;
+    const rows = [];
+    for (const state of states) {
+      const paths = [];
+      for (const variant of options.variants) {
+        const result =
+          state === allStates[0] && variant === options.variants[0] ? first : await render(state, variant);
+        if (result.errors?.length || !result.previewSnapshotPath) {
+          console.error(`${state.title} / ${variant.label} を描けなかった: ${result.errors?.map((e) => e.message).join("\n")}`);
+          failed = true;
+          paths.push("-");
+          continue;
+        }
+        // 返るファイル名は秒までの時刻なので、次に描いたものに上書きされる前に写す
+        // 状態の名前は arguments: の値の書き方しだいで / などを含むので、ファイル名には番号を使う
+        const path = join(out, `${String(rows.length).padStart(2, "0")}-${variant.label}.png`);
+        copyFileSync(result.previewSnapshotPath, path);
+        paths.push(path);
+      }
+      rows.push({ label: state.title, paths });
+    }
+
+    for (let start = 0; start < rows.length; start += options.rowsPerSheet) {
+      const sheet = join(out, `sheet-${start / options.rowsPerSheet + 1}.png`);
+      const rowArguments = rows
+        .slice(start, start + options.rowsPerSheet)
+        .flatMap((row) => ["--row", row.label, ...row.paths]);
+      execFileSync(
+        join(root, "scripts/tile-images"),
+        ["--out", sheet, "--columns", options.variants.map((v) => v.label).join(","), ...rowArguments],
+        { stdio: ["ignore", "ignore", "inherit"] },
+      );
+      console.log(sheet);
+    }
+    console.log(`個々の画像: ${out}`);
+    if (failed) process.exitCode = 1;
+  } finally {
+    xcode.close();
+  }
+};
+
+const parseArguments = (args) => {
+  const options = { preview: 0, states: null, rowsPerSheet: 3 };
+  let file;
+  let variantLabels = ["light", "dark", "ax5"];
+  for (let i = 0; i < args.length; i++) {
+    const value = args[i + 1];
+    switch (args[i]) {
+      case "--preview":
+        options.preview = toInteger(value, 0);
+        i++;
+        break;
+      case "--states":
+        options.states = value?.split(",").map((n) => toInteger(n, 0)) ?? failWithUsage();
+        i++;
+        break;
+      case "--variants":
+        variantLabels = value?.split(",") ?? failWithUsage();
+        i++;
+        break;
+      case "--rows-per-sheet":
+        options.rowsPerSheet = toInteger(value, 1);
+        i++;
+        break;
+      default:
+        if (file !== undefined || args[i].startsWith("--")) failWithUsage();
+        file = args[i];
+    }
+  }
+  if (file === undefined) failWithUsage();
+  // Xcode のプロジェクトの中では、ios/NuTori/... が NuTori/NuTori/... になる
+  const fromIos = relative(join(root, "ios"), resolve(file));
+  if (fromIos.startsWith("..")) throw new ExpectedFailure(`ios/ の外のファイル: ${file}`);
+  options.sourceFilePath = `NuTori/${fromIos}`;
+  options.variants = variantLabels.map((label) => ({ label, overrides: toOverrides(label) }));
+  return options;
+};
+
+const toInteger = (value, min) => {
+  const integer = Number(value);
+  if (!Number.isInteger(integer) || integer < min) failWithUsage();
+  return integer;
+};
+
+const toOverrides = (label) =>
+  Object.assign(
+    {},
+    ...label.split("+").map((name) => {
+      const overrides = variantOverrides[name];
+      if (!overrides) throw new ExpectedFailure(`知らない見た目: ${name}\n${usage}`);
+      return overrides;
+    }),
+  );
+
+const failWithUsage = () => {
+  throw new ExpectedFailure(usage);
+};
+
+const openWorkspace = async (xcode) => {
+  const opened = await xcode.call("XcodeOpenWorkspace", { path: join(root, "ios/NuTori.xcodeproj") });
+  const workspace = opened.workspaceIdentifier;
+  // UI テストの複製の元が選ばれていると、そのシミュレータを動かしてしまう
+  if (opened.activeRunDestination?.startsWith("nu-tori ui-test")) {
+    const config = readFileSync(join(root, ".mobilebuildmcp/config.yaml"), "utf8");
+    const simulator = config.match(/simulatorName:\s*['"]?([^'"\n]+)/)?.[1];
+    if (!simulator) throw new ExpectedFailure(".mobilebuildmcp/config.yaml に simulatorName が無い");
+    await xcode.call("XcodeSwitchRunDestination", { workspaceIdentifier: workspace, displayTitle: simulator });
+  }
+  return workspace;
+};
+
+// xcrun mcpbridge と、1行に1つの JSON-RPC でやりとりする
+class XcodeBridge {
+  static async start() {
+    if (process.platform !== "darwin") throw new ExpectedFailure("Xcode の道具は macOS でだけ動く");
+    const bridge = new XcodeBridge(spawn("xcrun", ["mcpbridge"], { stdio: ["pipe", "pipe", "inherit"] }));
+    await bridge.request("initialize", {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "nu-tori-preview-sheet", version: "1" },
+    });
+    bridge.send({ jsonrpc: "2.0", method: "notifications/initialized" });
+    return bridge;
+  }
+
+  constructor(child) {
+    this.child = child;
+    this.nextId = 1;
+    this.waiting = new Map();
+    createInterface({ input: child.stdout }).on("line", (line) => {
+      const message = JSON.parse(line);
+      this.waiting.get(message.id)?.(message);
+      this.waiting.delete(message.id);
+    });
+    child.on("exit", (code) => {
+      for (const resolveMessage of this.waiting.values()) {
+        resolveMessage({ error: { message: `xcrun mcpbridge が ${code} で終わった` } });
+      }
+      this.waiting.clear();
+    });
+  }
+
+  send(message) {
+    this.child.stdin.write(`${JSON.stringify(message)}\n`);
+  }
+
+  async request(method, params) {
+    const id = this.nextId++;
+    const message = await new Promise((resolveMessage) => {
+      this.waiting.set(id, resolveMessage);
+      this.send({ jsonrpc: "2.0", id, method, params });
+    });
+    if (message.error) throw new ExpectedFailure(`${method}: ${message.error.message}`);
+    return message.result;
+  }
+
+  async call(name, args) {
+    const result = await this.request("tools/call", { name, arguments: args });
+    const text = result.content?.map((c) => c.text).join("\n") ?? "";
+    if (result.isError) throw new ExpectedFailure(`${name}: ${text}`);
+    return result.structuredContent ?? JSON.parse(text);
+  }
+
+  close() {
+    this.child.stdin.end();
+  }
+}
+
+// 自分で出す文（使い方、道具の失敗）は文だけを、想定外の失敗はスタックと cause まで出す
+class ExpectedFailure extends Error {}
+
+// process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
+main().catch((error) => {
+  console.error(error instanceof ExpectedFailure ? error.message : error);
+  process.exitCode = 1;
+});
