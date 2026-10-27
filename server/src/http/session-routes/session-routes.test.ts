@@ -236,6 +236,8 @@ describe("サインイン", () => {
     });
   });
 
+  // 時計は先の時刻にする。サインインは課金の確かめの時刻にアラームを張るので、過ぎた時刻だとアラームがひとりでに動き、
+  // テストの実行環境ではアラームが記録と一緒に戻らないため、終わったあとの片付けが止まることがある
   describe("使い始めた日", () => {
     afterEach(() => {
       vi.useRealTimers();
@@ -249,14 +251,14 @@ describe("サインイン", () => {
         timeZone = "Asia/Tokyo";
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
-        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-29T20:00:00Z") });
+        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-09-29T20:00:00Z") });
       });
 
       test("そのタイムゾーンでの日付を使い始めた日にすること", async () => {
         const { accountId } = await signInTestAccount(appleUserId, { timeZone });
         expect(await readFirstSignIn(accountId)).toEqual({
-          started_on: "2026-09-30",
-          signed_in_at: new Date("2026-09-29T20:00:00Z").getTime(),
+          started_on: "2030-09-30",
+          signed_in_at: new Date("2030-09-29T20:00:00Z").getTime(),
           time_zone: "Asia/Tokyo",
         });
       });
@@ -268,14 +270,14 @@ describe("サインイン", () => {
         appleUserId = generateRecordId();
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
-        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-29T20:00:00Z") });
+        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-09-29T20:00:00Z") });
       });
 
       test("UTC の日付を使い始めた日にし、タイムゾーンは空のままにすること", async () => {
         const { accountId } = await signInTestAccount(appleUserId);
         expect(await readFirstSignIn(accountId)).toEqual({
-          started_on: "2026-09-29",
-          signed_in_at: new Date("2026-09-29T20:00:00Z").getTime(),
+          started_on: "2030-09-29",
+          signed_in_at: new Date("2030-09-29T20:00:00Z").getTime(),
           time_zone: null,
         });
       });
@@ -289,14 +291,14 @@ describe("サインイン", () => {
         timeZone = "Tokyo/Nowhere";
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
-        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-29T20:00:00Z") });
+        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-09-29T20:00:00Z") });
       });
 
       test("届かなかったときと同じに扱い、サインインを受け付けること", async () => {
         const { accountId } = await signInTestAccount(appleUserId, { timeZone });
         expect(await readFirstSignIn(accountId)).toEqual({
-          started_on: "2026-09-29",
-          signed_in_at: new Date("2026-09-29T20:00:00Z").getTime(),
+          started_on: "2030-09-29",
+          signed_in_at: new Date("2030-09-29T20:00:00Z").getTime(),
           time_zone: null,
         });
       });
@@ -311,16 +313,16 @@ describe("サインイン", () => {
         secondTimeZone = "America/Los_Angeles";
         mockAppleKeysEndpointOk();
         mockExchangeAppleAuthorizationCodeOk();
-        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-29T20:00:00Z") });
+        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-09-29T20:00:00Z") });
         ({ accountId } = await signInTestAccount(appleUserId, { timeZone: "Asia/Tokyo" }));
-        vi.setSystemTime(new Date("2026-10-05T03:00:00Z"));
+        vi.setSystemTime(new Date("2030-10-05T03:00:00Z"));
       });
 
       test("2回目のサインインで変わらないこと", async () => {
         await signInTestAccount(appleUserId, { timeZone: secondTimeZone });
         expect(await readFirstSignIn(accountId)).toEqual({
-          started_on: "2026-09-30",
-          signed_in_at: new Date("2026-09-29T20:00:00Z").getTime(),
+          started_on: "2030-09-30",
+          signed_in_at: new Date("2030-09-29T20:00:00Z").getTime(),
           time_zone: "Asia/Tokyo",
         });
       });
@@ -333,18 +335,18 @@ describe("サインイン", () => {
         appleUserId = generateRecordId();
         timeZone = "Asia/Tokyo";
         mockAppleKeysEndpointOk();
-        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-29T20:00:00Z") });
+        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-09-29T20:00:00Z") });
         mockExchangeAppleAuthorizationCodeError(new AppleAuthorizationCodeRejectedError());
         await signInWithApple(appleUserId);
-        vi.setSystemTime(new Date("2026-10-05T03:00:00Z"));
+        vi.setSystemTime(new Date("2030-10-05T03:00:00Z"));
         mockExchangeAppleAuthorizationCodeOk();
       });
 
       test("次に成功したサインインの日を使い始めた日にすること", async () => {
         const { accountId } = await signInTestAccount(appleUserId, { timeZone });
         expect(await readFirstSignIn(accountId)).toEqual({
-          started_on: "2026-10-05",
-          signed_in_at: new Date("2026-10-05T03:00:00Z").getTime(),
+          started_on: "2030-10-05",
+          signed_in_at: new Date("2030-10-05T03:00:00Z").getTime(),
           time_zone: "Asia/Tokyo",
         });
       });
@@ -376,11 +378,12 @@ const pullFreeTrial = async (sessionToken: string) => {
   return changes.findLast(({ kind }) => kind === "subscription_status")?.record["freeTrial"];
 };
 
+// 時計は先の時刻にする（理由は上の「使い始めた日」）
 describe("サインインの画面で見せた規約の版", () => {
   beforeEach(() => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
-    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-21T09:00:00Z") });
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-10-21T09:00:00Z") });
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -396,7 +399,7 @@ describe("サインインの画面で見せた規約の版", () => {
           id: expect.any(String),
           terms_version: "1",
           agreement_screen: "sign_in",
-          agreed_at: new Date("2026-10-21T09:00:00Z").getTime(),
+          agreed_at: new Date("2030-10-21T09:00:00Z").getTime(),
         },
       ]);
     });
