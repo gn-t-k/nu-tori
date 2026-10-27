@@ -133,11 +133,9 @@ struct MealScreen: View {
         MealScreenList(card: card, rejectedLines: rejectedLines)
     }
 
-    /// 消すとタイムラインに戻る。戻る途中でカードと1日の丸からその分が減る
     private func deleteMealAndReturn() {
-        let deletedAt = now()
-        returnToTimeline()
-        Task { await performEdit(.deleteMeal(card, deletedAt: deletedAt)) }
+        Self.deletingMeal(
+            card, now: now, returnToTimeline: returnToTimeline, performEdit: performEdit)()
     }
 
     /// 「食事を削除」を押すと、押したボタンから確かめる（`confirmationDialog`）
@@ -437,5 +435,20 @@ struct MealScreen: View {
             RejectedMealLinesText(lines: rejected)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+extension MealScreen {
+    /// 食事を消してタイムラインに戻る操作。食事の画面と、そこから潜る料理の画面で使う。
+    /// 戻る途中でカードと1日の丸からその分が減る
+    static func deletingMeal(
+        _ card: MealCard, now: @escaping () -> Date, returnToTimeline: @escaping () -> Void,
+        performEdit: @escaping (UserEdit) async -> Void
+    ) -> () -> Void {
+        {
+            let deletedAt = now()
+            returnToTimeline()
+            Task { await performEdit(.deleteMeal(card, deletedAt: deletedAt)) }
+        }
     }
 }

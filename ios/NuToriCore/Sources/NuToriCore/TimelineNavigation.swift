@@ -1,14 +1,12 @@
 public import Foundation
 
 /// タイムラインの画面の移り方。開いているもの（シート・カメラ・写真を選ぶ画面）と、潜った画面の並びを、出来事を受けて替える。
-/// 移る前に開いているものを閉じるのは `closeAll()` の1か所
+/// 開いているものは `presentation` の1つだけなので、移るときは置き換えるか nil にすれば、ほかは閉じる
 public struct TimelineNavigation: Equatable, Sendable {
     /// 潜った画面の並び。タイムラインに近い順
     public private(set) var path: [Route] = []
     /// 開いている、または開く用意をしているもの。同時には1つだけ
     public private(set) var presentation: Presentation?
-    /// カメラを許可していない人に出す知らせ。ほかを押すか、タイムラインを動かすと消える
-    public private(set) var showsCameraNotice = false
 
     public init() {}
 
@@ -16,22 +14,20 @@ public struct TimelineNavigation: Equatable, Sendable {
     public mutating func receive(_ event: Event, on snapshot: TimelineSnapshot) -> [Effect] {
         switch event {
         case .dayRingTapped(let day):
-            showsCameraNotice = false
             presentation = .daySummary(day)
         case .accountTapped:
-            showsCameraNotice = false
             presentation = .account
         case .paywallRequested(let entry):
-            showsCameraNotice = false
+            hideCameraNotice()
             if let request = snapshot.paywallRequest(from: entry) {
                 presentation = .paywall(request)
             }
         case .goalSetupRequested(let entry):
-            closeAll()
+            presentation = nil
             path = []
             return [.openGoalSetup(entry)]
         case .goalScreenRequested(let entry):
-            showsCameraNotice = false
+            hideCameraNotice()
             guard snapshot.goalOverview != nil else { return [] }
             push(.goalScreen(entry))
         case .weeklyReviewRequested(let day, let entry):
@@ -53,7 +49,7 @@ public struct TimelineNavigation: Equatable, Sendable {
             presentation = nil
             return dismissed.returnsToTimeline ? [.capture(.screen(.timeline))] : []
         case .weightEntryTapped:
-            showsCameraNotice = false
+            hideCameraNotice()
             guard !presentation.isWeightEntry else { return [] }
             presentation = .weightEntry(.preparing)
             return [.prepareWeightEntry]
@@ -71,7 +67,7 @@ public struct TimelineNavigation: Equatable, Sendable {
             recordedInWeightEntry = false
             return [.requestNotificationPermission]
         case .cameraTapped:
-            showsCameraNotice = false
+            hideCameraNotice()
             guard !presentation.isCamera else { return [] }
             presentation = .camera(.preparing)
             return [.prepareCamera]
@@ -80,8 +76,7 @@ public struct TimelineNavigation: Equatable, Sendable {
             presentation = .camera(.showing)
         case .cameraNotPermitted:
             guard presentation == .camera(.preparing) else { return [] }
-            presentation = nil
-            showsCameraNotice = true
+            presentation = .cameraPermissionNotice
             return [.capture(.cameraPermissionNoticeShown)]
         case .cameraUnavailable:
             guard presentation == .camera(.preparing) else { return [] }
@@ -95,26 +90,11 @@ public struct TimelineNavigation: Equatable, Sendable {
             presentation = nil
             return [.capture(.cameraCancelled), .capture(.screen(.timeline))]
         case .photoPickerTapped:
-            showsCameraNotice = false
             presentation = .photoPicker
         case .composerTapped, .timelineScrolled, .timelineLeft:
-            showsCameraNotice = false
+            hideCameraNotice()
         }
         return []
-    }
-
-    /// 体重のシートで記録したか。シートが消えたら通知の許可を求める合図
-    private var recordedInWeightEntry = false
-
-    /// 開いているものを全部閉じてから、今の画面の上に押して進む
-    private mutating func push(_ route: Route) {
-        closeAll()
-        path.append(route)
-    }
-
-    private mutating func closeAll() {
-        showsCameraNotice = false
-        presentation = nil
     }
 
     /// 潜る行き先。行き先の画面は、そのときの表示の値で中身を組む
@@ -137,13 +117,15 @@ public struct TimelineNavigation: Equatable, Sendable {
         case weightEntry(Phase)
         case camera(Phase)
         case photoPicker
+        /// カメラを許可していない人に、入力欄の上に出す知らせ。ほかを押すか、タイムラインを動かすと消える
+        case cameraPermissionNotice
 
         /// 閉じたら、タイムラインに戻ったとして送るもの
         fileprivate var returnsToTimeline: Bool {
             switch self {
             case .weightEntry(.showing), .camera(.showing): true
             case .daySummary, .account, .paywall, .weightEntry(.preparing), .camera(.preparing),
-                .photoPicker:
+                .photoPicker, .cameraPermissionNotice:
                 false
             }
         }
@@ -205,6 +187,22 @@ public struct TimelineNavigation: Equatable, Sendable {
         case openGoalSetup(GoalSetupObservation.Entry)
         case requestNotificationPermission
         case capture(ClientUsageEvent)
+    }
+
+    /// 体重のシートで記録したか。シートが消えたら通知の許可を求める合図
+    private var recordedInWeightEntry = false
+
+    /// 開いているものを閉じてから、今の画面の上に押して進む
+    private mutating func push(_ route: Route) {
+        presentation = nil
+        path.append(route)
+    }
+
+    /// カメラの許可の知らせだけを消す。ほかに開いているものは閉じない
+    private mutating func hideCameraNotice() {
+        if presentation == .cameraPermissionNotice {
+            presentation = nil
+        }
     }
 }
 

@@ -8,10 +8,6 @@ public struct TimelineSnapshot: Sendable {
     public let timeline: Timeline?
     /// 体重の画面とタイムラインで同じ日を使う
     public let firstDay: CalendarDay
-    /// 送り待ちを含む
-    public let weightRecords: [WeightRecord]
-    /// 同期で届いた体重の傾向。体重記録が無ければ nil
-    public let weightTrend: WeightTrend?
     public let rejectedLines: [RejectedLine]
     public let meals: [MealCard]
     /// 送った文章・その状態・返事・見守る要求で受け取っている途中の返事
@@ -46,8 +42,6 @@ public struct TimelineSnapshot: Sendable {
             startedDay: initialPull.startedDay, weightRecords: weightRecords, today: today)
         self.today = today
         self.firstDay = firstDay
-        self.weightRecords = weightRecords
-        self.weightTrend = weightTrend
         self.rejectedLines = rejectedLines
         self.meals = meals
         self.conversation = conversation
@@ -102,6 +96,12 @@ public struct TimelineSnapshot: Sendable {
                 today: today)
         ).weeks
     }
+
+    /// 送り待ちを含む
+    public var weightRecords: [WeightRecord] { goalRecords.weightRecords }
+
+    /// 同期で届いた体重の傾向。体重記録が無ければ nil
+    public var weightTrend: WeightTrend? { goalRecords.weightTrend }
 
     public var weightRecordedToday: Bool {
         weightRecords.contains { $0.day == today }

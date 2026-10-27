@@ -624,7 +624,7 @@ struct TimelineScreen: View {
             requiresSubscription: snapshot.requiresSubscription,
             expandsGoalSetup: goalSetupFlow.expandedPage != nil,
             preparingWeightEntry: navigation.presentation == .weightEntry(.preparing),
-            showsCameraNotice: navigation.showsCameraNotice,
+            showsCameraNotice: navigation.presentation == .cameraPermissionNotice,
             initialDraft: TextDraft.empty,
             onCapture: { send(.cameraTapped) },
             onPickPhotos: {
@@ -833,30 +833,20 @@ struct TimelineScreen: View {
 
     /// 料理の画面。食事の画面の料理の行から潜る
     private func dishScreen(mealId: UUID, dishId: UUID) -> some View {
-        let card = snapshot.mealCard(id: mealId)
-        return DishDestination(
-            offer: card.flatMap {
-                MealEditOffer(card: $0).dishScreen(
-                    dishId: dishId, rejectedLines: snapshot.rejectedLines)
-            }
-        ) { offer in
+        let opened = snapshot.mealCard(id: mealId).flatMap { card in
+            MealEditOffer(card: card)
+                .dishScreen(dishId: dishId, rejectedLines: snapshot.rejectedLines)
+                .map { (card: card, offer: $0) }
+        }
+        return DishDestination(opened: opened) { card, offer in
             DishScreen(
                 offer: offer,
                 performEdit: performEdit,
-                deleteMeal: {
-                    if let card {
-                        deleteMealAndReturn(card)
-                    }
-                },
+                deleteMeal: MealScreen.deletingMeal(
+                    card, now: now, returnToTimeline: { send(.returnedToTimeline) },
+                    performEdit: performEdit),
                 confirmsMealDeletion: false)
         }
-    }
-
-    /// 消すとタイムラインに戻る。戻る途中でカードと1日の丸からその分が減る
-    private func deleteMealAndReturn(_ card: MealCard) {
-        let deletedAt = now()
-        send(.returnedToTimeline)
-        Task { await performEdit(.deleteMeal(card, deletedAt: deletedAt)) }
     }
 
     /// 体重の画面。タイムラインの体重のカードと、日のまとめの体重の行から潜る

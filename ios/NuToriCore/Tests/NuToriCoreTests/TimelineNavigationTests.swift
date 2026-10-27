@@ -4,25 +4,22 @@ import Testing
 
 @Suite("タイムラインの画面の移り方")
 struct TimelineNavigationTests {
-    static let day = CalendarDay(year: 2026, month: 10, day: 29)
-
     @Suite("帯の日を押したとき")
     struct DayRingTapped {
         var navigation: TimelineNavigation
         let snapshot: TimelineSnapshot
+        let day: CalendarDay
 
         init() throws {
+            day = CalendarDay(year: 2026, month: 10, day: 29)
             snapshot = try .fixture()
             navigation = TimelineNavigation()
-            _ = navigation.receive(.cameraTapped, on: snapshot)
-            _ = navigation.receive(.cameraNotPermitted, on: snapshot)
         }
 
-        @Test("カメラの知らせを消し、その日の日のまとめを出すこと")
+        @Test("その日の日のまとめを出すこと")
         mutating func showsDaySummary() {
-            _ = navigation.receive(.dayRingTapped(TimelineNavigationTests.day), on: snapshot)
-            #expect(!navigation.showsCameraNotice)
-            #expect(navigation.presentation == .daySummary(TimelineNavigationTests.day))
+            _ = navigation.receive(.dayRingTapped(day), on: snapshot)
+            #expect(navigation.presentation == .daySummary(day))
         }
     }
 
@@ -32,11 +29,13 @@ struct TimelineNavigationTests {
         struct WithGoal {
             var navigation: TimelineNavigation
             let snapshot: TimelineSnapshot
+            let day: CalendarDay
 
             init() throws {
+                day = CalendarDay(year: 2026, month: 10, day: 29)
                 snapshot = try .fixture(goals: [try Goal.losing()])
                 navigation = TimelineNavigation()
-                _ = navigation.receive(.dayRingTapped(TimelineNavigationTests.day), on: snapshot)
+                _ = navigation.receive(.dayRingTapped(day), on: snapshot)
             }
 
             @Test("目標の画面を求めると、日のまとめを閉じて目標の画面へ潜ること")
@@ -49,7 +48,7 @@ struct TimelineNavigationTests {
             @Test("週の振り返りを求めると、日のまとめを閉じてその週の月曜の振り返りへ潜ること")
             mutating func opensWeeklyReview() {
                 _ = navigation.receive(
-                    .weeklyReviewRequested(weekOf: TimelineNavigationTests.day, .daySummary),
+                    .weeklyReviewRequested(weekOf: day, .daySummary),
                     on: snapshot)
                 #expect(navigation.presentation == nil)
                 #expect(
@@ -62,9 +61,9 @@ struct TimelineNavigationTests {
             @Test("体重の画面を求めると、日のまとめを閉じてその日の体重の画面へ潜ること")
             mutating func opensWeightScreen() {
                 _ = navigation.receive(
-                    .weightScreenRequested(TimelineNavigationTests.day), on: snapshot)
+                    .weightScreenRequested(day), on: snapshot)
                 #expect(navigation.presentation == nil)
-                #expect(navigation.path == [.weightScreen(TimelineNavigationTests.day)])
+                #expect(navigation.path == [.weightScreen(day)])
             }
         }
 
@@ -72,19 +71,21 @@ struct TimelineNavigationTests {
         struct NoGoal {
             var navigation: TimelineNavigation
             let snapshot: TimelineSnapshot
+            let day: CalendarDay
 
             init() throws {
+                day = CalendarDay(year: 2026, month: 10, day: 29)
                 snapshot = try .fixture(notices: [
                     try UnansweredNoticeLineTests.goalSetup(issuedAt: "2026-10-01T09:00:00+09:00")
                 ])
                 navigation = TimelineNavigation()
-                _ = navigation.receive(.dayRingTapped(TimelineNavigationTests.day), on: snapshot)
+                _ = navigation.receive(.dayRingTapped(day), on: snapshot)
             }
 
             @Test("目標の画面を求めても、日のまとめを出したまま潜らないこと")
             mutating func staysOnDaySummary() {
                 _ = navigation.receive(.goalScreenRequested(.daySummary), on: snapshot)
-                #expect(navigation.presentation == .daySummary(TimelineNavigationTests.day))
+                #expect(navigation.presentation == .daySummary(day))
                 #expect(navigation.path.isEmpty)
             }
 
@@ -101,12 +102,14 @@ struct TimelineNavigationTests {
     struct Deep {
         var navigation: TimelineNavigation
         let snapshot: TimelineSnapshot
+        let day: CalendarDay
 
         init() throws {
+            day = CalendarDay(year: 2026, month: 10, day: 29)
             snapshot = try .fixture(goals: [try Goal.losing()])
             navigation = TimelineNavigation()
             _ = navigation.receive(
-                .pathChanged([.weightScreen(TimelineNavigationTests.day)]), on: snapshot)
+                .pathChanged([.weightScreen(day)]), on: snapshot)
             _ = navigation.receive(.goalScreenRequested(.weightScreen), on: snapshot)
         }
 
@@ -114,7 +117,7 @@ struct TimelineNavigationTests {
         func stacksGoalScreen() {
             #expect(
                 navigation.path == [
-                    .weightScreen(TimelineNavigationTests.day), .goalScreen(.weightScreen),
+                    .weightScreen(day), .goalScreen(.weightScreen),
                 ])
         }
 
@@ -215,21 +218,52 @@ struct TimelineNavigationTests {
         @Test("許可されていなければ、開かずに知らせを出し、出したことを送ること")
         mutating func showsNoticeWhenNotPermitted() {
             let notPermitted = navigation.receive(.cameraNotPermitted, on: snapshot)
-            #expect(navigation.presentation == nil)
-            #expect(navigation.showsCameraNotice)
+            #expect(navigation.presentation == .cameraPermissionNotice)
             #expect(notPermitted == [.capture(.cameraPermissionNoticeShown)])
         }
+    }
 
-        @Test("知らせは、タイムラインを動かすと消えること")
-        mutating func hidesNoticeOnScroll() {
+    @Suite("カメラを許可していない知らせを出しているとき")
+    struct CameraPermissionNotice {
+        var navigation: TimelineNavigation
+        let snapshot: TimelineSnapshot
+        let day: CalendarDay
+
+        init() throws {
+            day = CalendarDay(year: 2026, month: 10, day: 29)
+            snapshot = try .fixture()
+            navigation = TimelineNavigation()
+            _ = navigation.receive(.cameraTapped, on: snapshot)
             _ = navigation.receive(.cameraNotPermitted, on: snapshot)
-            _ = navigation.receive(.timelineScrolled, on: snapshot)
-            #expect(!navigation.showsCameraNotice)
         }
 
-        @Test("開いてから取り消すと、閉じて取り消したこととタイムラインを見たことを送ること")
-        mutating func cancels() {
+        @Test("タイムラインを動かすと、知らせを消すこと")
+        mutating func hidesOnScroll() {
+            _ = navigation.receive(.timelineScrolled, on: snapshot)
+            #expect(navigation.presentation == nil)
+        }
+
+        @Test("帯の日を押すと、知らせを消して日のまとめを出すこと")
+        mutating func replacedByDaySummary() {
+            _ = navigation.receive(.dayRingTapped(day), on: snapshot)
+            #expect(navigation.presentation == .daySummary(day))
+        }
+    }
+
+    @Suite("カメラを開いているとき")
+    struct CameraShowing {
+        var navigation: TimelineNavigation
+        let snapshot: TimelineSnapshot
+
+        init() throws {
+            snapshot = try .fixture()
+            navigation = TimelineNavigation()
+            _ = navigation.receive(.cameraTapped, on: snapshot)
             _ = navigation.receive(.cameraReady, on: snapshot)
+        }
+
+        @Test("取り消すと、閉じて取り消したこととタイムラインを見たことを送ること")
+        mutating func cancels() {
             let cancelled = navigation.receive(.cameraCancelled, on: snapshot)
             #expect(navigation.presentation == nil)
             #expect(cancelled == [.capture(.cameraCancelled), .capture(.screen(.timeline))])
