@@ -131,7 +131,7 @@ describe("Anthropic の推定の提供元", () => {
         expect(requests).toHaveLength(1);
         expect(requests[0]).toMatchObject({
           url: "https://api.anthropic.com/v1/messages",
-          apiKey: "test-anthropic-api-key",
+          authorization: "Bearer test-anthropic-api-key",
           body: {
             model: "claude-sonnet-5",
             thinking: { type: "disabled" },
