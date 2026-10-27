@@ -1,9 +1,7 @@
 import Foundation
 import NuToriCore
-import Synchronization
+import NuToriTestSupport
 import Testing
-
-@testable import NuTori
 
 @Suite("ヘルスケアの見張りの登録")
 @MainActor
@@ -11,11 +9,12 @@ struct HealthSyncSessionTests {
     @Suite("許可を求め終えているとき")
     @MainActor
     struct AlreadyRequested {
-        fileprivate let starts = DeliveryStarts()
+        let starts: Tally
         let session: HealthSyncSession
 
         init() throws {
-            session = try makeSession(authorization: .alreadyRequested, starts: starts)
+            starts = Tally()
+            session = try makeSession(requestStatus: .alreadyRequested, starts: starts)
         }
 
         @Test("起動しただけで、見張りを登録すること")
@@ -28,11 +27,12 @@ struct HealthSyncSessionTests {
         @Suite("起動で登録したあと")
         @MainActor
         struct StartedOnLaunch {
-            fileprivate let starts = DeliveryStarts()
+            let starts: Tally
             let session: HealthSyncSession
 
             init() async throws {
-                session = try makeSession(authorization: .alreadyRequested, starts: starts)
+                starts = Tally()
+                session = try makeSession(requestStatus: .alreadyRequested, starts: starts)
                 await session.startDeliveryIfNeeded()
             }
 
@@ -48,11 +48,12 @@ struct HealthSyncSessionTests {
     @Suite("許可をまだ求めていないとき")
     @MainActor
     struct NotYetRequested {
-        fileprivate let starts = DeliveryStarts()
+        let starts: Tally
         let session: HealthSyncSession
 
         init() throws {
-            session = try makeSession(authorization: .notYetRequested, starts: starts)
+            starts = Tally()
+            session = try makeSession(requestStatus: .notYetRequested, starts: starts)
         }
 
         @Test("起動しただけでは、見張りを登録しないこと")
@@ -64,29 +65,15 @@ struct HealthSyncSessionTests {
     }
 }
 
-/// 見張りを登録した回数
-private final class DeliveryStarts: Sendable {
-    var count: Int { value.withLock { $0 } }
-
-    func record() {
-        value.withLock { $0 += 1 }
-    }
-
-    private let value = Mutex(0)
-}
-
 @MainActor
 private func makeSession(
-    authorization: UITestHealthStore.Authorization, starts: DeliveryStarts
+    requestStatus: HealthAuthorizationRequestStatus, starts: Tally
 ) throws -> HealthSyncSession {
-    let session = HealthSyncSession.live(
-        syncStore: try SwiftDataSyncStore(inMemory: true),
-        healthStore: UITestHealthStore(
-            authorization: authorization, latestKilograms: nil, writeAuthorized: true,
-            clock: .live),
-        errorReporting: PlaceholderErrorReportingSession(),
-        startBackgroundDelivery: { _ in starts.record() },
-        clock: .live
+    let healthStore = HealthStoreMock.ok(requestStatus: requestStatus)
+    let session = HealthSyncSession(
+        engine: .fixture(healthStore: healthStore, store: try .ok()),
+        store: healthStore,
+        startBackgroundDelivery: { _ in starts.add() }
     )
     session.bindWakeHandler {}
     return session

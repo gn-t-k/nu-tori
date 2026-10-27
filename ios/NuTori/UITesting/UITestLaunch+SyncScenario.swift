@@ -80,8 +80,6 @@
                 return subscriptionExpired()
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
-            case .accountDeletionUnauthorized:
-                return .init(records: [], startedOn: today, accountDeletion: .sessionExpired)
             }
         }
 
