@@ -1,7 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import { match } from "ts-pattern";
 import { initialExpenditureSources } from "../../expenditure-estimate/domain/expenditure-estimate";
-import type { GoalProposals } from "../../goal/domain/propose-goals-on-basis";
+import type { GoalProposals } from "../../goal/domain/goal-offer";
 import { dailyGuidePlanSchema, toDailyGuidePlan } from "./daily-guide-plan-schema";
 import { proposalPaceSchema } from "./proposal-pace-schema";
 
