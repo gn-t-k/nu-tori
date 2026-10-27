@@ -8,6 +8,7 @@ import { createMealWrite } from "../../meal/http/testing/create-meal-write";
 import { insertEstimationSchedule } from "./testing/insert-estimation-schedule";
 import { beforeEach, describe, expect, test } from "vitest";
 
+// 予定は先の時刻に置く。取りに行く要求のあとにアラームを張り直すので、過ぎた時刻だと、確かめているあいだにアラームがひとりでに動く
 describe("推定の状態の同期", () => {
   let accountId: string;
   let sessionToken: string;
@@ -34,7 +35,7 @@ describe("推定の状態の同期", () => {
   describe("予定があり、まだ推定を始めていないとき", () => {
     beforeEach(async () => {
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1),
+        dueAt: Date.UTC(2030, 9, 1),
         progress: "waiting",
       });
     });
@@ -47,7 +48,7 @@ describe("推定の状態の同期", () => {
   describe("推定を始め、完了も断念もしていないとき", () => {
     beforeEach(async () => {
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1),
+        dueAt: Date.UTC(2030, 9, 1),
         progress: "started",
       });
     });
@@ -60,7 +61,7 @@ describe("推定の状態の同期", () => {
   describe("推定が料理ありで完了したとき", () => {
     beforeEach(async () => {
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1),
+        dueAt: Date.UTC(2030, 9, 1),
         progress: "estimated",
       });
     });
@@ -73,7 +74,7 @@ describe("推定の状態の同期", () => {
   describe("推定が料理なしで完了したとき", () => {
     beforeEach(async () => {
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1),
+        dueAt: Date.UTC(2030, 9, 1),
         progress: "no_dishes",
       });
     });
@@ -86,7 +87,7 @@ describe("推定の状態の同期", () => {
   describe("推定を諦めたとき", () => {
     beforeEach(async () => {
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1),
+        dueAt: Date.UTC(2030, 9, 1),
         progress: "abandoned",
       });
     });
@@ -99,11 +100,11 @@ describe("推定の状態の同期", () => {
   describe("回数切れで見送り、次の日の予定をまだ始めていないとき", () => {
     beforeEach(async () => {
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1, 3),
+        dueAt: Date.UTC(2030, 9, 1, 3),
         progress: "deferred",
       });
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1, 15, 0, 1),
+        dueAt: Date.UTC(2030, 9, 1, 15, 0, 1),
         progress: "waiting",
       });
     });
@@ -116,11 +117,11 @@ describe("推定の状態の同期", () => {
   describe("見送ったあと、次の日の予定から推定を始めたとき", () => {
     beforeEach(async () => {
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1, 3),
+        dueAt: Date.UTC(2030, 9, 1, 3),
         progress: "deferred",
       });
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1, 15, 0, 1),
+        dueAt: Date.UTC(2030, 9, 1, 15, 0, 1),
         progress: "started",
       });
     });
@@ -133,11 +134,11 @@ describe("推定の状態の同期", () => {
   describe("見送ったあと、次の日の予定で推定できたとき", () => {
     beforeEach(async () => {
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1, 3),
+        dueAt: Date.UTC(2030, 9, 1, 3),
         progress: "deferred",
       });
       await insertEstimationSchedule(accountId, mealId, {
-        dueAt: Date.UTC(2026, 9, 1, 15, 0, 1),
+        dueAt: Date.UTC(2030, 9, 1, 15, 0, 1),
         progress: "estimated",
       });
     });

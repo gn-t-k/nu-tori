@@ -45,6 +45,13 @@ export const insertEstimationSchedule = (
       scheduleId,
       schedule.dueAt,
     );
+    // 始めることと最初の試みは同じトランザクションで書くので、試みの無い推定は無い
+    sql.exec(
+      "INSERT INTO estimation_attempts (id, estimation_id, attempted_at) VALUES (?, ?, ?)",
+      generateRecordId(),
+      estimationId,
+      schedule.dueAt,
+    );
     if (schedule.progress === "estimated" || schedule.progress === "no_dishes") {
       sql.exec(
         "INSERT INTO estimation_completions (estimation_id, completed_at, result) VALUES (?, ?, ?)",

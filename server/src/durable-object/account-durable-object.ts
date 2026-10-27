@@ -9,7 +9,9 @@ import type {
   AccountResponse,
   LoggedAccountResponse,
 } from "../account/domain/account-response";
+import { computeNextAlarmAt } from "../domain/compute-next-alarm-at";
 import type { RecordId } from "../domain/record-id";
+import type { RecordKindStores } from "../domain/record-kind-stores";
 import type { SyncClientState } from "../domain/sync-client-state";
 import type { SyncWrite } from "../domain/sync-write";
 import { createEstimationProvider } from "../estimation/durable-object/create-estimation-provider";
@@ -30,7 +32,7 @@ import { createLedgerStore } from "./create-ledger-store";
 import { durableObjectMigrations } from "./durable-object-migrations";
 
 // 受け口は呼ぶたびに accountId を渡す。Sentry の報告に user の ID として付けるため。
-// 要求ごとの処理はアカウントの口（accountRequests）が持ち、ここではストアを組んで渡し、答えのアラームを張り、出来事を利用状況の設定で絞って送る
+// 要求ごとの処理はアカウントの口（accountRequests）が持ち、ここではストアを組んで渡し、要求のあとにアラームを張り直し、出来事を利用状況の設定で絞って送る
 export const AccountDurableObject = instrumentDurableObjectWithSentry(
   createSentryOptions,
   class extends DurableObject<Env> {
@@ -42,13 +44,14 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       applyDurableObjectMigrations(ctx.storage, durableObjectMigrations);
     }
 
-    recordFirstSignIn(
+    async recordFirstSignIn(
       accountId: string,
       signIn: Parameters<typeof accountRequests.recordFirstSignIn>[1],
     ): Promise<void> {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
+        await this.createRecordKindStores(accountId),
         accountRequests.recordFirstSignIn(
           {
             firstSignIn: createFirstSignInStore(drizzle(this.ctx.storage)),
@@ -65,9 +68,11 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
     ) {
       setUser({ id: accountId });
+      const stores = await this.createSyncStores(accountId);
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.pushSyncWrites(await this.createSyncStores(accountId), request, new Date()),
+        stores.records,
+        accountRequests.pushSyncWrites(stores, request, new Date()),
       );
     }
 
@@ -76,25 +81,25 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       request: { clientState: SyncClientState; afterSequence: number },
     ) {
       setUser({ id: accountId });
+      const stores = await this.createSyncStores(accountId);
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.pullSyncChanges(
-          await this.createSyncStores(accountId),
-          request,
-          new Date(),
-        ),
+        stores.records,
+        accountRequests.pullSyncChanges(stores, request, new Date()),
       );
     }
 
     // 失敗は受け口に返す。受け口は 500 にし、要求ごとのログに失敗した段を出す
     async receiveMealPhoto(accountId: string, request: { photoId: RecordId; photo: ArrayBuffer }) {
       setUser({ id: accountId });
-      return this.respond(
+      const records = await this.createRecordKindStores(accountId);
+      return this.respondRearmingAlarm(
         accountId,
+        records,
         await accountRequests.receiveMealPhoto(
           {
             writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
-            records: await this.createRecordKindStores(accountId),
+            records,
             mealPhotoArchive: createMealPhotoArchive(this.env.PHOTOS, accountId),
           },
           request,
@@ -105,11 +110,13 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     async readMealPhoto(accountId: string, photoId: RecordId): Promise<ArrayBuffer | undefined> {
       setUser({ id: accountId });
-      return this.respond(
+      const records = await this.createRecordKindStores(accountId);
+      return this.respondRearmingAlarm(
         accountId,
+        records,
         await accountRequests.readMealPhoto(
           {
-            records: await this.createRecordKindStores(accountId),
+            records,
             mealPhotoArchive: createMealPhotoArchive(this.env.PHOTOS, accountId),
           },
           photoId,
@@ -119,12 +126,11 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     async findLastEstimationAttemptConclusionOfMeal(accountId: string, mealId: RecordId) {
       setUser({ id: accountId });
-      return this.respond(
+      const records = await this.createRecordKindStores(accountId);
+      return this.respondRearmingAlarm(
         accountId,
-        accountRequests.findLastEstimationAttemptConclusionOfMeal(
-          { records: await this.createRecordKindStores(accountId) },
-          mealId,
-        ),
+        records,
+        accountRequests.findLastEstimationAttemptConclusionOfMeal({ records }, mealId),
       );
     }
 
@@ -135,8 +141,9 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     ): Promise<ReadableStream<Uint8Array> | undefined> {
       setUser({ id: accountId });
       const records = await this.createRecordKindStores(accountId);
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
+        records,
         accountRequests.watchReply(
           {
             openReplyStream: (id) => createReplyStream(this.replyWatchers, records, id),
@@ -154,9 +161,11 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       now: Date,
     ) {
       setUser({ id: accountId });
+      const stores = await this.createRecordStores(accountId);
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.previewGoalSetup(await this.createRecordStores(accountId), request, now),
+        stores.records,
+        accountRequests.previewGoalSetup(stores, request, now),
       );
     }
 
@@ -166,9 +175,11 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       now: Date,
     ) {
       setUser({ id: accountId });
+      const stores = await this.createRecordStores(accountId);
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.proposeGoals(await this.createRecordStores(accountId), request, now),
+        stores.records,
+        accountRequests.proposeGoals(stores, request, now),
       );
     }
 
@@ -178,13 +189,11 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       now: Date,
     ) {
       setUser({ id: accountId });
+      const stores = await this.createRecordStores(accountId);
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.assessCustomTargetWeight(
-          await this.createRecordStores(accountId),
-          request,
-          now,
-        ),
+        stores.records,
+        accountRequests.assessCustomTargetWeight(stores, request, now),
       );
     }
 
@@ -195,26 +204,33 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       now: Date,
     ) {
       setUser({ id: accountId });
+      const stores = await this.createRecordStores(accountId);
       return this.respondWithRequestLog(
         accountId,
-        accountRequests.decideGoal(await this.createRecordStores(accountId), request, now),
+        stores.records,
+        accountRequests.decideGoal(stores, request, now),
       );
     }
 
-    findTermsAgreementRequirement(accountId: string) {
+    async findTermsAgreementRequirement(accountId: string) {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
+        await this.createRecordKindStores(accountId),
         accountRequests.findTermsAgreementRequirement({
           termsAgreement: createTermsAgreementStore(drizzle(this.ctx.storage)),
         }),
       );
     }
 
-    agreeToTerms(accountId: string, request: Parameters<typeof accountRequests.agreeToTerms>[1]) {
+    async agreeToTerms(
+      accountId: string,
+      request: Parameters<typeof accountRequests.agreeToTerms>[1],
+    ) {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
+        await this.createRecordKindStores(accountId),
         accountRequests.agreeToTerms(
           { termsAgreement: createTermsAgreementStore(drizzle(this.ctx.storage)) },
           request,
@@ -229,11 +245,13 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       report: Parameters<typeof accountRequests.reportSubscriptionTransaction>[1],
     ) {
       setUser({ id: accountId });
-      return this.respond(
+      const stores = await this.createRecordStores(accountId);
+      return this.respondRearmingAlarm(
         accountId,
+        stores.records,
         accountRequests.reportSubscriptionTransaction(
           {
-            ...(await this.createRecordStores(accountId)),
+            ...stores,
             subscriptionTransaction: createSubscriptionTransactionStore(drizzle(this.ctx.storage)),
           },
           report,
@@ -248,11 +266,13 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       notification: Parameters<typeof accountRequests.receiveAppStoreServerNotification>[1],
     ) {
       setUser({ id: accountId });
-      return this.respond(
+      const stores = await this.createRecordStores(accountId);
+      return this.respondRearmingAlarm(
         accountId,
+        stores.records,
         accountRequests.receiveAppStoreServerNotification(
           {
-            ...(await this.createRecordStores(accountId)),
+            ...stores,
             subscriptionTransaction: createSubscriptionTransactionStore(drizzle(this.ctx.storage)),
           },
           notification,
@@ -263,7 +283,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     async deleteRecords(accountId: string): Promise<void> {
       setUser({ id: accountId });
-      return this.respond(
+      // 消したあとは表も無く、張り直す仕事も無い。アラームは、下の eraseRecords が表と一緒に外す
+      return this.armAlarmAndSendUsageEvents(
         accountId,
         await accountRequests.deleteRecords({
           eraseRecords: async () => {
@@ -271,6 +292,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
             await this.ctx.storage.deleteAll();
           },
         }),
+        async () => {},
       );
     }
 
@@ -283,18 +305,21 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       }
       setUser({ id: accountId });
       const startedAt = Date.now();
-      const ran = await this.respond(
-        accountId,
-        await accountRequests.runAlarm({
-          writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
-          records: await this.createRecordKindStores(accountId),
-          mealPhotoArchive: createMealPhotoArchive(this.env.PHOTOS, accountId),
-          estimationProvider: createEstimationProvider(this.env, accountId),
-          conversationProvider: createConversationProvider(this.env, accountId),
-          replyWatchers: this.replyWatchers,
-          armAlarmAt: (alarmAt) => this.ctx.storage.setAlarm(alarmAt),
-        }),
-      );
+      const response = await accountRequests.runAlarm({
+        writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
+        records: await this.createRecordKindStores(accountId),
+        mealPhotoArchive: createMealPhotoArchive(this.env.PHOTOS, accountId),
+        estimationProvider: createEstimationProvider(this.env, accountId),
+        conversationProvider: createConversationProvider(this.env, accountId),
+        replyWatchers: this.replyWatchers,
+        armAlarmAt: (alarmAt) => this.ctx.storage.setAlarm(alarmAt),
+      });
+      // 要求のあとと違い、Cloudflare のアラームのやり直しに任せた仕事の時刻を除いた、口が出した時刻に張る
+      const ran = await this.armAlarmAndSendUsageEvents(accountId, response, async () => {
+        if (response.result.nextAlarmAt !== undefined) {
+          await this.ctx.storage.setAlarm(response.result.nextAlarmAt);
+        }
+      });
       for (const providerError of ran.providerErrors) {
         captureException(providerError);
       }
@@ -340,25 +365,44 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     // 要求ごとのログに足す値も、結果と一緒に受け口へ返す
     private async respondWithRequestLog<Result>(
       accountId: string,
+      records: RecordKindStores,
       response: LoggedAccountResponse<Result>,
     ): Promise<{ result: Result; requestLog: AccountRequestLog }> {
-      return { result: await this.respond(accountId, response), requestLog: response.requestLog };
+      return {
+        result: await this.respondRearmingAlarm(accountId, records, response),
+        requestLog: response.requestLog,
+      };
     }
 
-    // 答えの時刻に張り、出来事を送ってから、結果を返す。
+    // 受け口の要求のあと、記録を変えたかによらず、仕事の並びから次の時刻を出し直して張る（無ければ外す）。
+    // 要求ごとに張るかを選ぶと、時刻を動かす記録を書いた要求で張り忘れる（#778）
+    private respondRearmingAlarm<Result>(
+      accountId: string,
+      records: RecordKindStores,
+      response: AccountResponse<Result>,
+    ): Promise<Result> {
+      return this.armAlarmAndSendUsageEvents(accountId, response, async () => {
+        const nextAlarmAt = computeNextAlarmAt(records, new Date());
+        if (nextAlarmAt === undefined) {
+          await this.ctx.storage.deleteAlarm();
+        } else {
+          await this.ctx.storage.setAlarm(nextAlarmAt);
+        }
+      });
+    }
+
     // 出来事はどの入口のものもここを通ってアカウントから出るので、送るかどうか（利用状況の設定）はここで1度だけ決める。
     // 設定は、口が答えを出し終えた直後（同じ要求で切り替えた書き込みを当てたあと）に、何も待たずに読む
-    private async respond<Result>(
+    private async armAlarmAndSendUsageEvents<Result>(
       accountId: string,
-      { result, nextAlarmAt, usageEvents }: AccountResponse<Result>,
+      { result, usageEvents }: AccountResponse<Result>,
+      armAlarm: () => Promise<void>,
     ): Promise<Result> {
       const sendableUsageEvents = selectSendableUsageEvents(
         createAccountSettingsStore(drizzle(this.ctx.storage)),
         usageEvents,
       );
-      if (nextAlarmAt !== undefined) {
-        await this.ctx.storage.setAlarm(nextAlarmAt);
-      }
+      await armAlarm();
       await sendUsageEvents(this.env, accountId, sendableUsageEvents);
       return result;
     }

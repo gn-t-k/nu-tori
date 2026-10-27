@@ -101,7 +101,7 @@ export const accountAlarmJobs: readonly AlarmJob<
     advance: (stores, deps) =>
       deleteLeftoverMealPhotoFiles(stores.mealPhoto, deps.archive, new Date()).then(
         () => ({ result: "advanced", report: emptyReport }),
-        // 今に張り直さず Cloudflare のアラームのやり直しに任せる。使い切ったら、次に予定を入れたときに消し直す
+        // 今に張り直さず Cloudflare のアラームのやり直しに任せる。使い切ったら、次の要求のあとに消し直す
         (error: unknown) => ({ result: "left_to_alarm_retry", error, report: emptyReport }),
       ),
     // 消し残しがあれば今すぐ
