@@ -842,9 +842,11 @@ struct TimelineScreen: View {
             DishScreen(
                 offer: offer,
                 performEdit: performEdit,
-                deleteMeal: MealScreen.deletingMeal(
-                    card, now: now, returnToTimeline: { send(.returnedToTimeline) },
-                    performEdit: performEdit),
+                deleteMeal: {
+                    MealScreen.deleteMealAndReturn(
+                        card, now: now, returnToTimeline: { send(.returnedToTimeline) },
+                        performEdit: performEdit)
+                },
                 confirmsMealDeletion: false)
         }
     }

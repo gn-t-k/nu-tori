@@ -134,8 +134,8 @@ struct MealScreen: View {
     }
 
     private func deleteMealAndReturn() {
-        Self.deletingMeal(
-            card, now: now, returnToTimeline: returnToTimeline, performEdit: performEdit)()
+        Self.deleteMealAndReturn(
+            card, now: now, returnToTimeline: returnToTimeline, performEdit: performEdit)
     }
 
     /// 「食事を削除」を押すと、押したボタンから確かめる（`confirmationDialog`）
@@ -439,16 +439,14 @@ struct MealScreen: View {
 }
 
 extension MealScreen {
-    /// 食事を消してタイムラインに戻る操作。食事の画面と、そこから潜る料理の画面で使う。
+    /// 食事を消してタイムラインに戻る。食事の画面と、そこから潜る料理の画面で使う。
     /// 戻る途中でカードと1日の丸からその分が減る
-    static func deletingMeal(
-        _ card: MealCard, now: @escaping () -> Date, returnToTimeline: @escaping () -> Void,
+    static func deleteMealAndReturn(
+        _ card: MealCard, now: () -> Date, returnToTimeline: () -> Void,
         performEdit: @escaping (UserEdit) async -> Void
-    ) -> () -> Void {
-        {
-            let deletedAt = now()
-            returnToTimeline()
-            Task { await performEdit(.deleteMeal(card, deletedAt: deletedAt)) }
-        }
+    ) {
+        let deletedAt = now()
+        returnToTimeline()
+        Task { await performEdit(.deleteMeal(card, deletedAt: deletedAt)) }
     }
 }
