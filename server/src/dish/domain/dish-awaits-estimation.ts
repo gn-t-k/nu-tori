@@ -11,7 +11,6 @@ export const dishAwaitsEstimation = (
     dishEstimationStatus: DishEstimationStatusStore;
   },
   dish: Pick<Dish, "id" | "mealId">,
-  now: Date,
 ): boolean =>
   mealAwaitsEstimation(stores.mealEstimationStatus, dish.mealId) ||
-  dishAwaitsReestimation(stores.dishEstimationStatus, dish.id, now);
+  dishAwaitsReestimation(stores.dishEstimationStatus, dish.id);

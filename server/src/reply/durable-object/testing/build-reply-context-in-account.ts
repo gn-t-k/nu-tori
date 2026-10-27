@@ -61,8 +61,7 @@ export const buildReplyContextInAccount = (
       const scheduleId = `schedule-${meal.id}`;
       const estimationId = `estimation-${meal.id}`;
       // 推定を待つ食事は予定だけ、推定できなかった食事は断念まで、推定の済んだ食事は完了まで書く
-      writeRecordChanges(({ estimationAt }) => {
-        const writes = estimationAt(now);
+      writeRecordChanges(({ estimation: writes }) => {
         writes.scheduleMeal({
           id: scheduleId,
           mealId: meal.id,

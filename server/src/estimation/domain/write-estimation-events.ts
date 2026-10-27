@@ -11,7 +11,7 @@ import { openEstimationEventWrites } from "./open-estimation-event-writes";
 
 // 推定の書き込みの口。推定の予定と結果は、ここを通して書く。
 // run が書いた食事・料理のうち、推定の状態が変わった記録にだけ、書いた順に推定の状態の変更を足す（open-estimation-event-writes.ts）。
-// addChange は、記録の変化を書く入口か、書き込みの決定の commit に渡るもの。now は料理ごとの推定の状態を決める時刻
+// addChange は、記録の変化を書く入口か、書き込みの決定の commit に渡るもの
 export const writeEstimationEvents = <T>(
   stores: {
     meal: MealStore;
@@ -25,10 +25,9 @@ export const writeEstimationEvents = <T>(
   addChange: (
     change: RecordChangeTarget<"meal_estimation_status" | "dish_estimation_status">,
   ) => void,
-  now: Date,
   run: (writes: EstimationWrites) => T,
 ): T => {
-  const { writes, addStatusChanges } = openEstimationEventWrites(stores, addChange, now);
+  const { writes, addStatusChanges } = openEstimationEventWrites(stores, addChange);
   const result = run(writes);
   addStatusChanges();
   return result;

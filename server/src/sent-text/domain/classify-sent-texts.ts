@@ -106,7 +106,7 @@ const recordClassification = (
   result: SentTextClassification,
   classifiedAt: Date,
 ): boolean =>
-  writeRecordChanges(({ addChange, estimationAt, reply }) => {
+  writeRecordChanges(({ addChange, estimation, reply }) => {
     if (stores.sentTextStatus.findClassification(sentText.id) !== undefined) {
       return false;
     }
@@ -135,6 +135,6 @@ const recordClassification = (
     stores.meal.insert(meal);
     addChange({ recordType: "meal", recordId: meal.id });
     // 推定の状態の変更（推定中）は、入口が足す
-    scheduleMealEstimation(stores, estimationAt(classifiedAt), meal, classifiedAt);
+    scheduleMealEstimation(stores, estimation, meal, classifiedAt);
     return true;
   });

@@ -1,4 +1,4 @@
-import { findOngoingEstimationIds } from "../../dish-estimation-status/domain/dish-estimation-schedule";
+import { findOngoingEstimationIds } from "../../dish-estimation-status/domain/find-ongoing-estimation-ids";
 import type { UsageEvent } from "../../domain/usage-event";
 import { computeEstimationEndedEvent } from "./compute-estimation-ended-event";
 import type { EstimationTarget } from "./estimation-target";
