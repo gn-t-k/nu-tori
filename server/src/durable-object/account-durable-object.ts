@@ -284,7 +284,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     async deleteRecords(accountId: string): Promise<void> {
       setUser({ id: accountId });
       // 消したあとは表も無く、張り直す仕事も無い。アラームは、下の eraseRecords が表と一緒に外す
-      return this.sendUsageEventsAndReturn(
+      return this.armAlarmAndSendUsageEvents(
         accountId,
         await accountRequests.deleteRecords({
           eraseRecords: async () => {
@@ -315,7 +315,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         armAlarmAt: (alarmAt) => this.ctx.storage.setAlarm(alarmAt),
       });
       // 要求のあとと違い、Cloudflare のアラームのやり直しに任せた仕事の時刻を除いた、口が出した時刻に張る
-      const ran = await this.sendUsageEventsAndReturn(accountId, response, async () => {
+      const ran = await this.armAlarmAndSendUsageEvents(accountId, response, async () => {
         if (response.result.nextAlarmAt !== undefined) {
           await this.ctx.storage.setAlarm(response.result.nextAlarmAt);
         }
@@ -381,7 +381,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       records: RecordKindStores,
       response: AccountResponse<Result>,
     ): Promise<Result> {
-      return this.sendUsageEventsAndReturn(accountId, response, async () => {
+      return this.armAlarmAndSendUsageEvents(accountId, response, async () => {
         const nextAlarmAt = computeNextAlarmAt(records, new Date());
         if (nextAlarmAt === undefined) {
           await this.ctx.storage.deleteAlarm();
@@ -391,10 +391,9 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       });
     }
 
-    // 渡された張り方でアラームを扱い（張らない入口もある）、出来事を送ってから、結果を返す。
     // 出来事はどの入口のものもここを通ってアカウントから出るので、送るかどうか（利用状況の設定）はここで1度だけ決める。
     // 設定は、口が答えを出し終えた直後（同じ要求で切り替えた書き込みを当てたあと）に、何も待たずに読む
-    private async sendUsageEventsAndReturn<Result>(
+    private async armAlarmAndSendUsageEvents<Result>(
       accountId: string,
       { result, usageEvents }: AccountResponse<Result>,
       armAlarm: () => Promise<void>,
