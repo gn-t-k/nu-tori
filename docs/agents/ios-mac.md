@@ -10,7 +10,7 @@
 
 ## プレビューを並べて確かめる
 
-`scripts/preview-sheet <プレビューのファイル>` は、下の「Xcode の道具」の2〜5を自分で済ませ、プレビューの状態ごとに、ライト・ダーク・AX5 を横に並べた画像を作る。並べた画像のパスを1行ずつと、個々の画像を置いたフォルダを出す。描く状態と見た目の選び方は、引数なしで出る使い方にある。初めて開くワークツリーでは、「Xcode の道具」の2のとおり、開発者に Mac で承認してもらう。
+`scripts/preview-sheet <プレビューのファイル>` は、下の「Xcode の道具」の2〜5を自分で済ませ、プレビューの状態ごとに、ライト・ダーク・AX5 を横に並べた画像を作る。使い方は引数なしで出る。初めて開くワークツリーでは、「Xcode の道具」の2のとおり、開発者に Mac で承認してもらう。
 
 - 読むのは並べた画像から始める。同じ行のライト・ダーク・AX5 で、行や部品の形がそろっているかを見比べる。個々の画像は、並べた画像で怪しいものだけ開く
 - 状態の多い画面や、いくつもの画面を見回るときは、サブエージェントに渡し、崩れていた状態と、その個々の画像のパスだけを返してもらう
@@ -28,7 +28,7 @@ SwiftUI プレビュー（`RenderPreview`）やビルドログ（`GetBuildLog`�
 2. `XcodeOpenWorkspace` に、ワークツリーの `ios/NuTori.xcodeproj` の絶対パスを渡す。返る `workspaceIdentifier` を、以後の道具すべてに渡す。ID は開き直すたびに変わる。Xcode はフォルダごとに承認を求めるので、ワークツリーごとに1回、開発者に Mac で承認してもらう。Remote Control のセッションでは開発者が承認を押せないので、Xcode の道具を使わず `screenshot` で確かめる
 3. 行き先（`XcodeOpenWorkspace` が返す `activeRunDestination`、または `XcodeListRunDestinations`）が `nu-tori ui-test-base`（UI テストの複製の元）なら、`XcodeSwitchRunDestination` で `.mobilebuildmcp/config.yaml` の `simulatorName` の端末に替える。開き直すと戻ることがある
 4. `BuildProject` を1回呼ぶ。ビルドが終わるまで返らないので、パッケージの読み込みもこれで待てる。新しいワークツリーで先に `RenderPreview` を呼ぶと、「Waiting for packages to load」で止まる
-5. `RenderPreview` を呼ぶ。`sourceFilePath` は Xcode のプロジェクトの中のパスで、`NuTori/NuTori/Goal/GoalDecidedCard+Previews.swift` のようにプロジェクトの名前から書く。描いた画像は、返った `previewSnapshotPath` を Read で読む。状態や見た目を見比べるときは、上の `scripts/preview-sheet` を使う
+5. `RenderPreview` を呼ぶ。`sourceFilePath` は Xcode のプロジェクトの中のパスで、`NuTori/NuTori/Goal/GoalDecidedCard+Previews.swift` のようにプロジェクトの名前から書く。描いた画像は、返った `previewSnapshotPath` を Read で読む
 
 ### ファイルを足す
 

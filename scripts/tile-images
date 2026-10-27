@@ -19,10 +19,10 @@ struct Row {
 }
 
 struct Arguments {
-    var out: String?
-    var columns: [String] = []
-    var cellWidth = 300
-    var rows: [Row] = []
+    let out: String
+    let columns: [String]
+    let cellWidth: Int
+    let rows: [Row]
 }
 
 func fail(_ message: String) -> Never {
@@ -31,17 +31,20 @@ func fail(_ message: String) -> Never {
 }
 
 func parse(_ arguments: [String]) -> Arguments {
-    var parsed = Arguments()
+    var out: String?
+    var columns: [String] = []
+    var cellWidth = 300
+    var rows: [Row] = []
     var rest = arguments[...]
     while let flag = rest.popFirst() {
         switch flag {
         case "--out":
-            parsed.out = rest.popFirst()
+            out = rest.popFirst()
         case "--columns":
-            parsed.columns = rest.popFirst()?.split(separator: ",").map(String.init) ?? []
+            columns = rest.popFirst()?.split(separator: ",").map(String.init) ?? []
         case "--cell-width":
             guard let value = rest.popFirst().flatMap({ Int($0) }), value > 0 else { fail(usage) }
-            parsed.cellWidth = value
+            cellWidth = value
         case "--row":
             guard let label = rest.popFirst() else { fail(usage) }
             var paths: [String?] = []
@@ -49,16 +52,16 @@ func parse(_ arguments: [String]) -> Arguments {
                 rest.removeFirst()
                 paths.append(next == "-" ? nil : next)
             }
-            parsed.rows.append(Row(label: label, paths: paths))
+            rows.append(Row(label: label, paths: paths))
         default:
             fail(usage)
         }
     }
-    guard parsed.out != nil, !parsed.columns.isEmpty, !parsed.rows.isEmpty else { fail(usage) }
-    for row in parsed.rows where row.paths.count != parsed.columns.count {
-        fail("\(row.label) の画像が \(row.paths.count) 枚で、列の数 \(parsed.columns.count) と合わない")
+    guard let out, !columns.isEmpty, !rows.isEmpty else { fail(usage) }
+    for row in rows where row.paths.count != columns.count {
+        fail("\(row.label) の画像が \(row.paths.count) 枚で、列の数 \(columns.count) と合わない")
     }
-    return parsed
+    return Arguments(out: out, columns: columns, cellWidth: cellWidth, rows: rows)
 }
 
 func loadImage(_ path: String) -> CGImage? {
@@ -69,8 +72,8 @@ func loadImage(_ path: String) -> CGImage? {
 let arguments = parse(Array(CommandLine.arguments.dropFirst()))
 let images = arguments.rows.map { row in row.paths.map { $0.flatMap(loadImage) } }
 for (row, rowImages) in zip(arguments.rows, images) {
-    for (path, image) in zip(row.paths, rowImages) where path != nil && image == nil {
-        fail("読めない画像: \(path!)")
+    for case let (path?, nil) in zip(row.paths, rowImages) {
+        fail("読めない画像: \(path)")
     }
 }
 
@@ -143,8 +146,8 @@ for ((row, rowImages), rowHeight) in zip(zip(arguments.rows, images), rowHeights
 
 guard let sheet = context.makeImage(),
     let destination = CGImageDestinationCreateWithURL(
-        URL(fileURLWithPath: arguments.out!) as CFURL, UTType.png.identifier as CFString, 1, nil)
-else { fail("\(arguments.out!) に書けない") }
+        URL(fileURLWithPath: arguments.out) as CFURL, UTType.png.identifier as CFString, 1, nil)
+else { fail("\(arguments.out) に書けない") }
 CGImageDestinationAddImage(destination, sheet, nil)
-guard CGImageDestinationFinalize(destination) else { fail("\(arguments.out!) に書けない") }
-print(arguments.out!)
+guard CGImageDestinationFinalize(destination) else { fail("\(arguments.out) に書けない") }
+print(arguments.out)

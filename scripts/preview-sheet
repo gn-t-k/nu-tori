@@ -45,7 +45,7 @@ const main = async () => {
         previewVariantOverrides: variant.overrides,
         ...(state.index === undefined ? {} : { previewCanvasControlOverrides: { groupItemIndex: state.index } }),
       });
-    // 状態の一覧は、描いてみるまでわからない。描いたのは最初の状態の最初の見た目なので、その升に使う
+    // 状態の一覧は、描いてみるまでわからない。状態を渡さずに描いたものは、どの状態かが決まらないので升に使わない
     const first = await render({}, options.variants[0]);
     const groupItems = first.supportedCanvasControlOverrides?.groupItems;
     if (!groupItems && options.states) {
@@ -62,8 +62,7 @@ const main = async () => {
     for (const state of states) {
       const paths = [];
       for (const variant of options.variants) {
-        const result =
-          state === allStates[0] && variant === options.variants[0] ? first : await render(state, variant);
+        const result = await render(state, variant);
         if (result.errors?.length || !result.previewSnapshotPath) {
           console.error(`${state.title} / ${variant.label} を描けなかった: ${result.errors?.map((e) => e.message).join("\n")}`);
           failed = true;
@@ -84,11 +83,16 @@ const main = async () => {
       const rowArguments = rows
         .slice(start, start + options.rowsPerSheet)
         .flatMap((row) => ["--row", row.label, ...row.paths]);
-      execFileSync(
-        join(root, "scripts/tile-images"),
-        ["--out", sheet, "--columns", options.variants.map((v) => v.label).join(","), ...rowArguments],
-        { stdio: ["ignore", "ignore", "inherit"] },
-      );
+      try {
+        execFileSync(
+          join(root, "scripts/tile-images"),
+          ["--out", sheet, "--columns", options.variants.map((v) => v.label).join(","), ...rowArguments],
+          { stdio: ["ignore", "ignore", "inherit"] },
+        );
+      } catch {
+        // 理由は tile-images が stderr に書いている
+        throw new ExpectedFailure(`scripts/tile-images が失敗した: ${sheet}`);
+      }
       console.log(sheet);
     }
     console.log(`個々の画像: ${out}`);
@@ -187,7 +191,15 @@ class XcodeBridge {
     this.nextId = 1;
     this.waiting = new Map();
     createInterface({ input: child.stdout }).on("line", (line) => {
-      const message = JSON.parse(line);
+      let message;
+      try {
+        message = JSON.parse(line);
+      } catch {
+        console.error(`xcrun mcpbridge の JSON でない出力: ${line}`);
+        return;
+      }
+      // mcpbridge から来る要求や知らせ（method を持つ）は、こちらの要求への返事でないので飛ばす
+      if ("method" in message) return;
       this.waiting.get(message.id)?.(message);
       this.waiting.delete(message.id);
     });
