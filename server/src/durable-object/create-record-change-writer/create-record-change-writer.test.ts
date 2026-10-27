@@ -86,8 +86,8 @@ describe("記録の変化を書く入口", () => {
         async (factory) => {
           await factory.meals.create({ id: mealId });
         },
-        ({ addChange, estimationAt }) => {
-          estimationAt(scheduledAt).scheduleMeal({
+        ({ addChange, estimation }) => {
+          estimation.scheduleMeal({
             id: "schedule-1",
             mealId,
             dueAt: scheduledAt,
@@ -145,9 +145,9 @@ describe("記録の変化を書く入口", () => {
         async (factory) => {
           await factory.meals.create({ id: mealId });
         },
-        ({ addChange, estimationAt }) => {
+        ({ addChange, estimation }) => {
           addChange({ recordType: "meal", recordId: mealId });
-          estimationAt(scheduledAt).scheduleMeal({
+          estimation.scheduleMeal({
             id: "schedule-1",
             mealId,
             dueAt: scheduledAt,

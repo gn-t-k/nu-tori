@@ -20,7 +20,7 @@ export const writeReceivedSubscriptionFacts = (
       "estimationSchedule" | "latestTimeZone" | "meal" | "subscriptionStatus" | "firstSignIn"
     >;
   },
-  { addChange, estimationAt }: Pick<RecordChangeWrites, "addChange" | "estimationAt">,
+  { addChange, estimation }: Pick<RecordChangeWrites, "addChange" | "estimation">,
   received: {
     receiptId: RecordId;
     firstSignInId: RecordId;
@@ -44,7 +44,7 @@ export const writeReceivedSubscriptionFacts = (
   addChange({ recordType: "subscription_status", recordId: firstSignInId });
   return {
     // 使えるかを書いた事実で判定するので、事実の行のあとに呼ぶ
-    resumedTargets: resumeHeldEstimations(records, estimationAt(now), now),
+    resumedTargets: resumeHeldEstimations(records, estimation, now),
     usageEvents: createWrittenFactUsageEvents(
       records,
       transaction,

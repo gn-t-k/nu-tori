@@ -1,4 +1,4 @@
-import { findReceivedAtOfEstimation } from "../../dish-estimation-status/domain/dish-estimation-schedule";
+import { findReceivedAtOfEstimation } from "../../dish-estimation-status/domain/find-received-at-of-estimation";
 import type { DishEstimationStatusStore } from "../../dish-estimation-status/domain/dish-estimation-status-store";
 import type { RecordId } from "../../domain/record-id";
 import type { DishStore } from "../../dish/domain/dish-store";

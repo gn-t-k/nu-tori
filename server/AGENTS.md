@@ -70,7 +70,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 変更の並びの表（`record_changes`）に書くのは帳簿だけにする。種類と置き場は、変えた記録を帳簿に渡す
   - 書き込みが、自分の記録のほかに変える記録（食事を消すときの料理など）は、`decide` が返す `addedChanges` に載せる。帳簿は、書き込みの記録の変更のあとに、控えと結ばずに並びの順で足す。`commit` の中で変えた記録が分かる場合（推定の書き込みの口が足す推定の状態の変更）は、`commit` に渡る `addChange` で足す。帳簿は、`addedChanges` のあとに足した順で載せ、同じ記録の変更を最初の1つにまとめる。載せられる種類は `RecordKind` の4つ目の型引数で宣言し、登録簿に無い種類は型検査が止める
   - ほかの種類の記録から計算する種類（体重の傾向、いつもの時刻）は、`RecordKind` の `follows` に元の種類の名前と `afterSourceApplied` を書く。帳簿は、元の種類の書き込みを当て（`applied`）、その変更を並びに載せたあとに、計算する種類を登録簿の順に呼ぶ。計算する種類は、書いたあとの記録を読んで自分の行を書き、変えた記録の ID を返す。元の種類は、計算する種類を知らない（`decide` で、書いたあとの記録をメモリの上で作り直さない）
-  - 端末の書き込みの外（受け口の要求、アラーム）で記録を変えるときは、記録の変化を書く入口（`src/domain/record-change-writer.ts` の `RecordChangeWriter`。Durable Object では `durable-object/create-record-change-writer/` が組み、中身は `domain/write-record-changes-to-stores.ts`）に `run` を渡し、その中で行を書いて、変えた記録を `addChange` で渡す。`run` の書き込みと変更は1つのトランザクションに入り、変更には渡した順に通し番号が付く。推定の予定と結果は `estimationAt(now)`、返事の流れの出来事は `reply` で書き、変わった状態の変更は入口が `run` のあとに足す。流れ（推定・返事・読み分け・写真の受け取り）は帳簿を組まず、入口と、自分が読み書きする置き場だけを受け取る
+  - 端末の書き込みの外（受け口の要求、アラーム）で記録を変えるときは、記録の変化を書く入口（`src/domain/record-change-writer.ts` の `RecordChangeWriter`。Durable Object では `durable-object/create-record-change-writer/` が組み、中身は `domain/write-record-changes-to-stores.ts`）に `run` を渡し、その中で行を書いて、変えた記録を `addChange` で渡す。`run` の書き込みと変更は1つのトランザクションに入り、変更には渡した順に通し番号が付く。推定の予定と結果は `estimation`、返事の流れの出来事は `reply` で書き、変わった状態の変更は入口が `run` のあとに足す。流れ（推定・返事・読み分け・写真の受け取り）は帳簿を組まず、入口と、自分が読み書きする置き場だけを受け取る
 - 書き込みを当てたときに PostHog に送る出来事（食事を受け取った、など）は、`decide` が返す `usageEvents` に載せる。帳簿は、その要求で初めて決めた書き込みの分だけを返し、同じ書き込みの ID が再び届いたときは返さない。送るかどうか（利用状況の設定）は、要求を当て終えたあとの設定で Durable Object が送る前に決める（上の「層」）
 
 ## 推定

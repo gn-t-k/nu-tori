@@ -122,7 +122,7 @@ const decideCreate = (
     // 推定の書き込みの口が足す変更は、同じ記録なので帳簿が1つにまとめる
     commit: (_receiptId, addChange) => {
       store.insert(meal);
-      stores.writeEstimationEvents(addChange, receivedAt, (writes) =>
+      stores.writeEstimationEvents(addChange, (writes) =>
         scheduleMealEstimation(stores, writes, meal, receivedAt),
       );
     },

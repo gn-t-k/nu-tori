@@ -22,9 +22,9 @@ export const advanceSubscriptionCheck = (
   if (check?.isDue !== true) {
     return [];
   }
-  const expiredEvent = writeRecordChanges(({ addChange, estimationAt }) => {
+  const expiredEvent = writeRecordChanges(({ addChange, estimation }) => {
     addChange({ recordType: "subscription_status", recordId: check.firstSignInId });
-    resumeHeldEstimations(stores, estimationAt(now), now);
+    resumeHeldEstimations(stores, estimation, now);
     return findDeadlineExpiredEvent(
       readSubscriptionFacts(stores.subscriptionStatus),
       findSubscriptionTimeZone(stores),

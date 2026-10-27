@@ -61,7 +61,6 @@ export type RecordKindStores = {
     addChange: (
       change: RecordChangeTarget<"meal_estimation_status" | "dish_estimation_status">,
     ) => void,
-    now: Date,
     run: (writes: EstimationWrites) => T,
   ) => T;
   // 返事の流れの出来事を書く口（ドメイン層の writeReplyEvents に、書く置き場を渡したもの）。種類が、書き込みの決定の commit の中で使う。
