@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 ## 1. 集める
 
-- **Issue と PR**：gn-t-k/nu-tori と gn-t-k/nu-tori-ops の両方で `gh api 'repos/<owner>/<repo>/issues?state=open&per_page=100'` を呼ぶ。`pull_request` のあるものは PR として残す。番号、題、ラベル、担当者、`issue_dependencies_summary.blocked_by` を残す。PR は `pulls/<番号>` で先頭のブランチと `mergeable_state` を、`commits/<SHA>/check-runs` で CI を読む
+- **Issue と PR**：gn-t-k/nu-tori と gn-t-k/nu-tori-ops の両方で `gh api --paginate 'repos/<owner>/<repo>/issues?state=open&per_page=100'` を呼ぶ。`pull_request` のあるものは PR として残す。番号、題、本文、ラベル、担当者、`issue_dependencies_summary.blocked_by` を残す。PR は `pulls/<番号>` で先頭のブランチと `mergeable_state` を、`commits/<SHA>/check-runs` で CI を読む
 - **セッション**：`list_sessions` を `mine: true`、`limit: 100` で呼び、`has_more` が false になるまで `after_id` に `last_id` を渡して読む。アーカイブしていないセッションは古いページにも残っているので、最後のページまで読む。結果が大きくファイルに置かれたら、python で `id`・`title`・`session_status`・`status_bucket`・`environment_kind`・`session_context.outcomes` のブランチ・`external_metadata.current_branches`・`post_turn_summary.status_detail` だけを抜き出す。`SESSION_STATUS_ARCHIVED` 以外を**動いているセッション**とする
 
 ## 2. 突き合わせる
