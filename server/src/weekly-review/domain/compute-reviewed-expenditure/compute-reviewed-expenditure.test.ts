@@ -31,9 +31,10 @@ describe("見直した推定消費カロリー", () => {
 
     test("続いた週の数を 0 にして k を 0.25 にし、推定を 60 kcal 上げて、ずれの向きを正にすること", () => {
       expect({
+        gain: reviewed.gain,
         expenditureKcal: reviewed.expenditureKcal,
         deviationDirection: reviewed.deviationDirection,
-      }).toEqual({ expenditureKcal: 2460, deviationDirection: "positive" });
+      }).toEqual({ gain: 0.25, expenditureKcal: 2460, deviationDirection: "positive" });
     });
   });
 
@@ -74,7 +75,10 @@ describe("見直した推定消費カロリー", () => {
 
     test("k を 0.25 × 4 / 7 にすること", () => {
       // 240 kcal × 4 / 7 = 137.1 kcal × 0.25 = 34.3 kcal
-      expect(reviewed.expenditureKcal).toBe(2434);
+      expect({
+        gain: reviewed.gain.toFixed(4),
+        expenditureKcal: reviewed.expenditureKcal,
+      }).toEqual({ gain: "0.1429", expenditureKcal: 2434 });
     });
   });
 
@@ -162,7 +166,7 @@ describe("見直した推定消費カロリー", () => {
 
       test("k を上限の 0.75 で止めること", () => {
         // 続いた週の数は 3 で、0.25 ×（1 + 3）= 1.0 になるところを 0.75 で止める
-        expect(reviewed.expenditureKcal).toBe(2580);
+        expect(reviewed).toMatchObject({ gain: 0.75, expenditureKcal: 2580 });
       });
     });
   });

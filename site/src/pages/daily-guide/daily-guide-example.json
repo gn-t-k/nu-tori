@@ -323,8 +323,8 @@
       "actualWeightChangeKg": -0.4007,
       "deviationKg": 0.0098,
       "deviationKcalPerDay": 10.7,
-      "gain": 0.3,
-      "adjustedKcal": 3.2,
+      "gain": 0.25,
+      "adjustedKcal": 2.7,
       "expenditureKcal": 2083,
       "guideKcal": 1650,
       "limitHits": []
