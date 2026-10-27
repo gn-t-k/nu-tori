@@ -23,18 +23,20 @@ final class CopyAndSelectUtteranceUITests: XCTestCase {
         let sent = "ここまでの食事のフィードバックをください。"
         // Mac の Simulator.app はクリップボードを Mac と同期するので、コピーしてから貼るまでに Mac でコピーされると、その文が貼られる。
         // 違う文が貼られたら、書く欄を空にしてコピーからやり直す。コピーが壊れていれば、どの回も違う文になって落ちる
+        var pasted = false
         for attempt in 1...3 {
-            copyBubble()
+            openBubbleMenu()
             if attempt == 1 {
                 attachScreenshot(of: app, named: "吹き出しの長押しのメニュー")
             }
             app.buttons["コピー"].tap()
-            if pasteIntoComposer(expecting: sent) || attempt == 3 {
+            pasted = pasteIntoComposer(expecting: sent)
+            if pasted {
                 break
             }
             clearComposer()
         }
-        XCTAssertEqual(app.composerField.value as? String, sent)
+        XCTAssertTrue(pasted)
         attachScreenshot(of: app, named: "コピーした文章を貼り付けた書く欄")
     }
 
@@ -53,9 +55,8 @@ final class CopyAndSelectUtteranceUITests: XCTestCase {
         XCTAssertTrue(editMenuItem(["コピー", "Copy"]).waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "選んだ範囲のメニュー")
 
-        // タイムラインの余白（日の見出しの上）を押すと、選び終える
-        app.otherElements["timeline"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
-            .tap()
+        // タイムラインの余白を押すと、選び終える
+        tapTimelineMargin()
         XCTAssertTrue(selectable.waitForNonExistence(timeout: 5))
         XCTAssertTrue(reply.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "選び終えた返事")
@@ -86,8 +87,7 @@ final class CopyAndSelectUtteranceUITests: XCTestCase {
         return false
     }
 
-    /// 吹き出しを長押しして、メニューを出す
-    private func copyBubble() {
+    private func openBubbleMenu() {
         XCTAssertTrue(
             pressUntilMenuAppears(app.element("sent-text-bubble", containing: "フィードバック")))
         XCTAssertTrue(app.buttons["コピー"].exists)
@@ -101,19 +101,22 @@ final class CopyAndSelectUtteranceUITests: XCTestCase {
         let paste = editMenuItem(["ペースト", "Paste"])
         XCTAssertTrue(paste.waitForExistence(timeout: 5))
         paste.tap()
-        let pasted = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", expected), object: app.composerField)
-        return XCTWaiter().wait(for: [pasted], timeout: 5) == .completed
+        return waitUntil(app.composerField, matches: "value == %@", expected, timeout: 5)
     }
 
-    /// 貼った文を消し、タイムラインの余白（日の見出しの上）を押してキーボードを下げ、吹き出しを1回めと同じ位置に戻す
+    /// 貼った文を消し、タイムラインの余白を押してキーボードを下げ、吹き出しを1回めと同じ位置に戻す
     private func clearComposer() {
         let length = (app.composerField.value as? String)?.count ?? 0
         app.composerField.typeText(
-            String(repeating: XCUIKeyboardKey.delete.rawValue, count: length + 2))
+            String(repeating: XCUIKeyboardKey.delete.rawValue, count: length))
+        tapTimelineMargin()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+    }
+
+    /// タイムラインの余白（日の見出しの上）を押す
+    private func tapTimelineMargin() {
         app.otherElements["timeline"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
             .tap()
-        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
     }
 
     private var reply: XCUIElement {
