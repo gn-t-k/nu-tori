@@ -27,11 +27,12 @@ struct AccountScreen: View {
                 NavigationLink {
                     HealthAccessScreen()
                 } label: {
-                    LabeledContent("ヘルスケア", value: "読む・書く")
+                    // 何を読み・書きするかは、潜った先の見出しに主語と目的語をつけて書く
+                    Text("ヘルスケア")
                 }
             }
-            Section("通知") {
-                LabeledContent("記録忘れ（体重）", value: notificationPermission?.label ?? "")
+            Section {
+                LabeledContent("記録忘れの通知", value: notificationPermission?.label ?? "")
                     .accessibilityIdentifier("notification-permission")
                 Button {
                     openURL(Self.notificationSettingsURL)
@@ -40,8 +41,8 @@ struct AccountScreen: View {
                     externalLinkLabel("iPhone の設定を開く")
                 }
             }
-            Section("カメラ") {
-                LabeledContent("食事を撮る", value: cameraAccess.label)
+            Section {
+                LabeledContent("カメラ", value: cameraAccess.label)
                     .accessibilityIdentifier("camera-access")
                 externalLink("iPhone の設定を開く", url: Self.appSettingsURL)
             }
@@ -50,7 +51,11 @@ struct AccountScreen: View {
                     // 続けて押すと、先に押した分の保存があとから届き、最後に押した値を上書きしうる
                     .disabled(requestedSendsUsageData != nil)
             } footer: {
-                Text("オフにすると、これから先は送りません。送った分は1年で消えます。")
+                // オンにすると記録の中身まで送られると思われないよう、送らないものをここで言い切り、一覧はポリシーに任せる
+                Text(
+                    PublicPages.linkedText(
+                        "開いた画面や操作の回数などを送ります。写真・文章・体重や食事の値は送りません。送った分は1年で消えます。[送るもの](\(PublicPages.usageData))"
+                    ))
             }
             Section {
                 externalLink("プライバシーポリシー", url: PublicPages.privacyPolicy)
@@ -78,9 +83,7 @@ struct AccountScreen: View {
                         .accessibilityIdentifier("account-deletion-failure")
                 }
             } footer: {
-                Text(
-                    "食事、体重、目標、会話の記録はすぐに消え、元に戻せません。エラーの報告と利用状況のデータは、最長 90 日で消えます。"
-                )
+                Text("エラーの報告と利用状況のデータは、最長 90 日で消えます。")
             }
             Section {
             } footer: {
@@ -256,10 +259,6 @@ struct AccountScreen: View {
             } else {
                 LabeledContent("サブスクリプション", value: row.value)
                     .accessibilityIdentifier("subscription-row")
-            }
-        } footer: {
-            if let note = row.note {
-                Text(note)
             }
         }
     }

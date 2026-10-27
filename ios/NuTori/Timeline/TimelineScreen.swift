@@ -5,30 +5,12 @@ import SwiftUI
 import UIKit
 
 struct TimelineScreen: View {
-    let records: [WeightRecord]
-    /// 同期で届いた体重の傾向。体重記録が無ければ nil
-    let weightTrend: WeightTrend?
-    let initialPull: InitialPull
-    let today: CalendarDay
+    /// 記録と今日と今から組んだ、描く値の全部。潜った画面と日のまとめにも、ここから渡す
+    let snapshot: TimelineSnapshot
     /// 記録した時刻と、操作にかかった時間を測るための今
     let now: () -> Date
     /// 記録した体重を、どのタイムゾーンの記録にするか
     let timeZone: () -> TimeZone
-    let rejectedLines: [RejectedLine]
-    let meals: [MealCard]
-    /// 答えた知らせも含む
-    let notices: [Notice]
-    /// 閉じた目標も含む。1日の丸と日のまとめを、その日の1日の目安と比べるために引く
-    let goals: [Goal]
-    /// 目標がまだ届いていない1日の目安も含む
-    let dailyGuides: [DailyGuide]
-    /// 指す推定消費カロリー・1日の目安・目標がまだ届いていない見直しも含む
-    let weeklyReviews: [WeeklyReview]
-    let expenditureEstimates: [ExpenditureEstimate]
-    /// 同期で届いたサブスクリプションの状態。まだ届いていなければ nil（知らせを出さず、入力欄も押せるまま）
-    let subscriptionStatus: SubscriptionStatus?
-    /// まだ届いていない記録（薄く描く）
-    let undeliveredRecords: UndeliveredRecords
     let capture: (ClientUsageEvent) async -> Void
     /// 記録忘れの通知を押して開いたときの着き先。着いたら `noteReminderLanded` を呼ぶ
     let reminderLanding: ReminderLanding?
@@ -36,16 +18,12 @@ struct TimelineScreen: View {
     /// 体重を記録したあと。この端末でまだ通知の許可を求めていなければ求める
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
-    let saveWeight: (WeightEntry.Write) async -> Void
-    /// 入力欄から文章を送る。送れるかは書く欄が決め、送れるときだけ呼ぶ
-    let sendText: (TextDraft) async -> Void
+    /// 記録を作る・直す・消す編集を渡す。文章は、送れるかを書く欄が決め、送れるときだけ渡す
+    let performEdit: (UserEdit) async -> Void
     let accountActions: AccountActions
     /// 課金画面を開く（`paywallSheet`）ときに渡す
     let paywallActions: PaywallActions
     let mealActions: MealActions
-    /// 送った文章・その状態・返事・見守る要求で受け取っている途中の返事
-    let conversation: Timeline.Conversation
-    let conversationActions: ConversationActions
     /// タイムライン（目標を立てる知らせのカードと、立て直すあいだの一番下のカード）に描く、目標の設定の流れの形
     let goalSetupFlow: GoalSetupNoticeCard.Flow
     /// 目標の画面の、今の目標のカードの場所に描く、目標の設定の流れの形
@@ -54,18 +32,18 @@ struct TimelineScreen: View {
     let openGoalSetupFlow: (GoalSetupObservation.Entry, GoalSetupSession.Place) async -> Void
 
     var body: some View {
-        let loaded = showsLoading ? nil : timeline()
-        let shownDay = loaded.flatMap { viewport.shownDay(newestDay: $0.newestDay) } ?? today
-        NavigationStack(path: $navigationPath) {
+        let loaded = snapshot.timeline
+        let shownDay =
+            loaded.flatMap { viewport.shownDay(newestDay: $0.newestDay) } ?? snapshot.today
+        NavigationStack(path: path) {
             VStack(spacing: 0) {
                 DayRingStrip(
-                    weeks: stripWeeks(loaded: loaded),
+                    weeks: snapshot.ringWeeks,
                     selectedDay: shownDay,
-                    today: today,
+                    today: snapshot.today,
                     openableDays: loaded?.dayRange
                 ) { day in
-                    showsCameraNotice = false
-                    summaryDay = day
+                    send(.dayRingTapped(day))
                 }
                 Divider()
                 content(loaded: loaded)
@@ -76,75 +54,9 @@ struct TimelineScreen: View {
                         }
                     }
             }
-            .navigationDestination(for: CalendarDay.self) { day in
-                WeightScreen(
-                    day: day,
-                    records: records,
-                    firstDay: firstDay,
-                    today: today,
-                    trendChart: WeightTrendChart(
-                        weightRecords: records,
-                        trend: weightTrend,
-                        firstDay: firstDay,
-                        today: today,
-                        goal: currentGoal?.goal
-                    ),
-                    rejectedLines: rejectedLines,
-                    capture: capture,
-                    saveWeight: saveWeight,
-                    startGoalSetup: loaded.flatMap(goalSetupStarter(in:)).map { start in
-                        { start(.weightScreen) }
-                    },
-                    goalPath: WeightGoalPath(
-                        status: goalStatus, today: today, records: goalRecords),
-                    // 体重の画面の上に積むので、戻るは「‹ 体重」
-                    openGoalScreen: { openGoalScreen(from: .weightScreen) }
-                )
-            }
-            .navigationDestination(for: WeeklyReviewRoute.self) { route in
-                WeeklyReviewScreen(
-                    monday: route.monday, entry: route.entry, recap: weekRecap(monday:),
-                    capture: capture
-                ) { day in
-                    navigationPath = NavigationPath()
-                    if let loaded {
-                        viewport.dayChosen(day, in: loaded.days)
-                    }
-                }
-            }
-            .navigationDestination(for: GoalRoute.self) { route in
-                GoalScreen(
-                    overview: goalOverview, entry: route.entry,
-                    goalSetupFlow: goalScreenGoalSetupFlow,
-                    timeZone: timeZone, recapTitle: { weekRecap(monday: $0)?.title },
-                    capture: capture,
-                    openGoalSetup: { entry in
-                        Task { await openGoalSetupFlow(entry, .goalScreen) }
-                    },
-                    openWeeklyReview: { monday in
-                        openWeeklyReview(weekOf: monday, from: .goalScreen)
-                    })
-            }
-            .navigationDestination(for: MealRoute.self) { route in
-                MealDestination(card: meals.first { $0.meal.id == route.mealId }) { card in
-                    MealScreen(
-                        card: card,
-                        now: now,
-                        capture: capture,
-                        actions: mealActions,
-                        returnToTimeline: {
-                            navigationPath = NavigationPath()
-                        },
-                        openPaywall: { openPaywall(from: .awaitingMeal) },
-                        rejectedLines: rejectedLines,
-                        confirmsDeletion: false,
-                        confirmsLastDishDeletion: false,
-                        addingDish: false,
-                        sentText: card.meal.sentTextId.flatMap { sentTextId in
-                            conversation.sentTexts.first { $0.id == sentTextId }
-                        }
-                    )
-                }
+            // 行き先の中身を body に書き並べると、式の型を決めきれずにビルドが止まるので、関数に分ける
+            .navigationDestination(for: TimelineNavigation.Route.self) { route in
+                destination(route)
             }
             .background(Color(.systemGroupedBackground))
             .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -156,98 +68,81 @@ struct TimelineScreen: View {
             }
             // 体重の画面に潜ったら、戻ったときには知らせを残さない
             .onDisappear {
-                showsCameraNotice = false
+                send(.timelineLeft)
             }
             .navigationTitle(TimelineDayText.label(for: shownDay))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // 左上の目標の入口。目標がないあいだは置かない
-                if let goalLink {
+                if let goalLink = snapshot.goalLink {
                     ToolbarItem(placement: .topBarLeading) {
                         GoalLinkCapsuleButton(capsule: goalLink) {
-                            openGoalScreen(from: .goalLink)
+                            send(.goalScreenRequested(.goalLink))
                         }
                     }
                     // 灰色のカプセルそのものを入口の見た目にするので、ツールバーのガラスの地を重ねない
                     .sharedBackgroundVisibility(.hidden)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: hidingCameraNotice { showsAccount = true }) {
+                    Button {
+                        send(.accountTapped)
+                    } label: {
                         Image(systemName: "person.crop.circle")
                     }
                     .accessibilityLabel("アカウント")
                     .accessibilityIdentifier("account")
                 }
             }
-            .sheet(isPresented: $showsAccount) {
+            .sheet(isPresented: isPresenting(.account)) {
                 NavigationStack {
                     AccountScreenContainer(
                         now: now, timeZone: timeZone, actions: accountActions,
                         paywallActions: paywallActions
                     ) {
-                        showsAccount = false
+                        send(.dismissed(.account))
                     }
                 }
                 .accessibilityIdentifier("account-screen")
             }
-            .paywallSheet($paywallRequest, actions: paywallActions)
+            .paywallSheet(paywallRequest, actions: paywallActions)
             .sheet(isPresented: summaryPresented) {
-                if let summaryDay, let loaded {
-                    DaySummarySheet(
-                        timeline: loaded, day: summaryDay, weightRecords: records,
-                        weightTrend: weightTrend, goalRecords: goalRecords, today: today,
-                        startGoalSetup: goalSetupStarter(in: loaded).map { start in
-                            { start(.daySummary) }
-                        },
-                        weekRecapTitle: { weekRecap(monday: $0.startOfWeek)?.title },
-                        openGoalScreen: { openGoalScreen(from: .daySummary) },
-                        openWeeklyReview: { openWeeklyReview(weekOf: $0, from: .daySummary) },
-                        openNextGoal: { nextGoal in
-                            switch nextGoal {
-                            case .choose: openGoalSetup(from: .chooseNextGoal)
-                            case .set: openGoalSetup(from: .setNextGoal)
-                            }
-                        },
-                        onSeeOnTimeline: { chosen in
-                            self.summaryDay = nil
-                            viewport.dayChosen(chosen, in: loaded.days)
-                        })
+                if case .daySummary(let summaryDay) = navigation.presentation, let loaded {
+                    daySummarySheet(on: summaryDay, loaded: loaded)
                 }
             }
         }
-        // 通知の許可は、記録したシートが閉じてから求める。シートの上に重ねない
         .sheet(
-            isPresented: showsWeightEntry,
+            isPresented: isPresenting(.weightEntry(.showing)),
             onDismiss: {
-                guard recordedInWeightEntry else { return }
-                recordedInWeightEntry = false
-                Task { await requestNotificationPermission() }
+                send(.weightEntryDisappeared)
             }
         ) {
             WeightEntrySheet(
-                records: records,
-                today: today,
+                records: snapshot.weightRecords,
+                today: snapshot.today,
                 now: now,
                 timeZone: timeZone,
                 capture: capture,
                 onRecord: { write in
-                    recordedInWeightEntry = true
-                    weightEntryPhase = .closed
-                    Task { await saveWeight(write) }
+                    send(.weightRecordedInEntry)
+                    Task { await performEdit(.saveWeight(write)) }
                 }
             )
         }
-        .fullScreenCover(isPresented: showsCamera) {
+        .fullScreenCover(isPresented: isPresenting(.camera(.showing))) {
             MealCamera(
                 onUse: { original, exif in
                     let sentAt = now()
                     capturedCount += 1
-                    cameraPhase = .closed
-                    Task { await mealActions.recordCapturedPhoto(original, exif, sentAt) }
+                    send(.photoTaken)
+                    Task {
+                        await performEdit(
+                            .recordCapturedMeal(
+                                MealPhotoOriginal(data: original, exif: exif), sentAt: sentAt))
+                    }
                 },
                 onCancel: {
-                    cameraPhase = .closed
-                    Task { await capture(.cameraCancelled) }
+                    send(.cameraCancelled)
                 }
             )
             .ignoresSafeArea()
@@ -256,7 +151,7 @@ struct TimelineScreen: View {
         .sensoryFeedback(.success, trigger: capturedCount)
         .sensoryFeedback(.success, trigger: noticeRecordedCount)
         .photosPicker(
-            isPresented: $showsPhotoPicker,
+            isPresented: isPresenting(.photoPicker),
             selection: $pickedPhotos,
             maxSelectionCount: MealDraft.maxPhotosPerSelection,
             matching: .images,
@@ -268,45 +163,18 @@ struct TimelineScreen: View {
             let pickedAt = now()
             pickedPhotos = []
             showPickedPhotosLoadingWhileRecording(count: items.count) {
-                await mealActions.recordPickedPhotos(items, pickedAt)
-            }
-        }
-        .onChange(of: weightEntryPhase) { previous, phase in
-            if previous == .showing, phase == .closed {
-                Task { await capture(.screen(.timeline)) }
-            }
-        }
-        .onChange(of: cameraPhase) { previous, phase in
-            if previous == .showing, phase == .closed {
-                Task { await capture(.screen(.timeline)) }
+                let originals = await PickedMealPhotos.originals(of: items)
+                await performEdit(.recordPickedMeals(originals, pickedAt: pickedAt))
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline")
     }
 
-    /// 初回の取得を終えるまでは、記録がそろっていないので並べない
-    enum InitialPull {
-        case inProgress
-        /// 使い始めた日は、サーバーで決まるまで無い
-        case completed(startedDay: CalendarDay?)
-    }
-
-    @State private var showsAccount = false
-    @State private var paywallRequest: PaywallScreenContainer.Request?
-    /// 潜った画面の並び。食事を消したら、料理の画面からでもタイムラインまで戻す
-    @State private var navigationPath = NavigationPath()
-    @State private var weightEntryPhase = WeightEntryPhase.closed
-    /// 体重のシートで記録したか。シートが閉じたら通知の許可を求める合図
-    @State private var recordedInWeightEntry = false
-    /// 日のまとめを出している日
-    @State private var summaryDay: CalendarDay?
-    @State private var cameraPhase = CameraPhase.closed
-    /// カメラを許可していない人に出す知らせ。ほかを押すか、タイムラインを動かすと消える
-    @State private var showsCameraNotice = false
+    /// 開いているシートと潜った画面の並び。移り方の規則は NuToriCore の TimelineNavigation が持つ
+    @State private var navigation = TimelineNavigation()
     /// 「写真を使用」を押した回数。触覚を鳴らす合図
     @State private var capturedCount = 0
-    @State private var showsPhotoPicker = false
     /// 体重の知らせの中で記録した回数。触覚を鳴らす合図
     @State private var noticeRecordedCount = 0
     /// 答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
@@ -322,23 +190,51 @@ struct TimelineScreen: View {
     /// 目標を立てる知らせのカードまで送って広げるよう頼まれた回数。開いているページが同じでも送り直す合図
     @State private var goalSetupScrollRequests = 0
 
-    private var showsCamera: Binding<Bool> {
-        Binding(
-            get: { cameraPhase == .showing },
-            set: { isPresented in
-                if !isPresented {
-                    cameraPhase = .closed
+    /// 移り方に出来事を渡し、頼まれたことをする
+    private func send(_ event: TimelineNavigation.Event) {
+        for effect in navigation.receive(event, on: snapshot) {
+            switch effect {
+            case .prepareWeightEntry:
+                Task {
+                    await prepareWeightEntry()
+                    send(.weightEntryPrepared)
                 }
+            case .prepareCamera:
+                // 初めてのときは、カメラを開く前に iOS の許可の画面で求める
+                Task {
+                    switch await mealActions.prepareCamera() {
+                    case .ready: send(.cameraReady)
+                    case .notPermitted: send(.cameraNotPermitted)
+                    case .noCamera: send(.cameraUnavailable)
+                    }
+                }
+            case .openGoalSetup(let entry):
+                Task {
+                    await openGoalSetupFlow(entry, .timeline)
+                    goalSetupScrollRequests += 1
+                }
+            case .requestNotificationPermission:
+                Task { await requestNotificationPermission() }
+            case .capture(let event):
+                Task { await capture(event) }
             }
+        }
+    }
+
+    private var path: Binding<[TimelineNavigation.Route]> {
+        Binding(
+            get: { navigation.path },
+            set: { send(.pathChanged($0)) }
         )
     }
 
-    private var showsWeightEntry: Binding<Bool> {
+    /// 閉じたら（下へ送った、選ぶ画面で選び終えた）、移り方に知らせる
+    private func isPresenting(_ presentation: TimelineNavigation.Presentation) -> Binding<Bool> {
         Binding(
-            get: { weightEntryPhase == .showing },
+            get: { navigation.presentation == presentation },
             set: { isPresented in
                 if !isPresented {
-                    weightEntryPhase = .closed
+                    send(.dismissed(presentation))
                 }
             }
         )
@@ -346,32 +242,28 @@ struct TimelineScreen: View {
 
     private var summaryPresented: Binding<Bool> {
         Binding(
-            get: { summaryDay != nil },
+            get: {
+                if case .daySummary = navigation.presentation { true } else { false }
+            },
             set: { presented in
-                if !presented {
-                    summaryDay = nil
+                if !presented, case .daySummary(let day) = navigation.presentation {
+                    send(.dismissed(.daySummary(day)))
                 }
             }
         )
     }
 
-    private var showsLoading: Bool {
-        switch initialPull {
-        case .inProgress: true
-        case .completed: false
-        }
-    }
-
-    private var startedDay: CalendarDay? {
-        switch initialPull {
-        case .inProgress: nil
-        case .completed(let startedDay): startedDay
-        }
-    }
-
-    /// 体重の画面とタイムラインで同じ日を使う
-    private var firstDay: CalendarDay {
-        Timeline.firstDay(startedDay: startedDay, weightRecords: records, today: today)
+    private var paywallRequest: Binding<PaywallRequest?> {
+        Binding(
+            get: {
+                if case .paywall(let request) = navigation.presentation { request } else { nil }
+            },
+            set: { request in
+                if request == nil, case .paywall(let opened) = navigation.presentation {
+                    send(.dismissed(.paywall(opened)))
+                }
+            }
+        )
     }
 
     @ViewBuilder private func content(loaded: Timeline?) -> some View {
@@ -397,12 +289,6 @@ struct TimelineScreen: View {
                         Spacer(minLength: 0)
                         // 並べる日を新しいほうに絞り、遅れて読む並び（LazyVStack）にしない。理由は TimelineViewport
                         VStack(alignment: .leading) {
-                            if let startedDay, listedDays.first?.day == timeline.days.first?.day {
-                                Text("\(TimelineDayText.label(for: startedDay))から記録しています")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
                             ForEach(listedDays, id: \.day) { day in
                                 daySection(day, in: timeline)
                                     .id(day.day)
@@ -450,7 +336,7 @@ struct TimelineScreen: View {
                 }
                 .onScrollPhaseChange { oldPhase, phase in
                     if phase != .idle {
-                        showsCameraNotice = false
+                        send(.timelineScrolled)
                     }
                     perform(
                         viewport.scrollPhaseChanged(
@@ -495,7 +381,7 @@ struct TimelineScreen: View {
                 .onChange(of: goalSetupScrollKey) { _, key in
                     guard key.page != nil else { return }
                     // 立て直すときは、タイムラインの一番下のカードを広げているので、下端まで送る
-                    if currentGoal != nil {
+                    if snapshot.currentGoal != nil {
                         withAnimation {
                             proxy.scrollTo(Self.contentId, anchor: .bottom)
                         }
@@ -562,19 +448,19 @@ struct TimelineScreen: View {
     @ViewBuilder private func itemView(_ item: Timeline.Item, in timeline: Timeline) -> some View {
         switch item {
         case .weightRecord(let record):
-            NavigationLink(value: record.day) {
+            NavigationLink(value: TimelineNavigation.Route.weightScreen(record.day)) {
                 WeightRecordRow(record: record)
             }
             .buttonStyle(.plain)
             .undeliveredRecord(timeline.isUndelivered(item))
             .accessibilityIdentifier("weight-row")
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .ownRecordTime(record.clockText)
         case .rejectedWeightLine(let line):
             RejectedLineText(text: line.text, subject: .weightRecord)
         case .meal(let card):
             // どの状態のカードも、押すと食事の画面へ潜る
-            NavigationLink(value: MealRoute(mealId: card.meal.id)) {
-                MealCardView(card: card) { photoId in
+            NavigationLink(value: TimelineNavigation.Route.meal(card.meal.id)) {
+                MealCardView(card: card, showsEatenTime: false) { photoId in
                     await mealActions.loadPhoto(card.meal.id, photoId)
                 }
                 .modifier(OwnRecordCard())
@@ -582,7 +468,7 @@ struct TimelineScreen: View {
             .buttonStyle(.plain)
             .undeliveredRecord(timeline.isUndelivered(item))
             .accessibilityIdentifier("meal-card")
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .ownRecordTime(card.eatenTimeText)
         case .rejectedMealLine(let line):
             RejectedLineText(text: line.text, subject: .meal)
         case .sentText(let bubble):
@@ -590,7 +476,7 @@ struct TimelineScreen: View {
                 bubble: bubble, isUndelivered: timeline.isUndelivered(item),
                 regeneration: replyRegeneration(of: bubble),
                 isMealUndelivered: { timeline.isUndelivered(.meal($0)) },
-                openMeal: { navigationPath.append(MealRoute(mealId: $0.meal.id)) },
+                openMeal: { send(.mealRequested($0.meal.id)) },
                 loadPhoto: mealActions.loadPhoto
             )
         case .rejectedSentTextLine(let line):
@@ -599,7 +485,7 @@ struct TimelineScreen: View {
             ReplyView(
                 reply: reply,
                 openMeal: { card in
-                    navigationPath.append(MealRoute(mealId: card.meal.id))
+                    send(.mealRequested(card.meal.id))
                     Task { await capture(.replyMealOpened) }
                 },
                 loadPhoto: mealActions.loadPhoto
@@ -608,15 +494,15 @@ struct TimelineScreen: View {
         case .notice(let card):
             WeightNoticeCard(
                 card: card,
-                records: records,
-                today: today,
+                records: snapshot.weightRecords,
+                today: snapshot.today,
                 now: now,
                 timeZone: timeZone,
                 capture: capture,
                 onRecord: { write in
                     noticeRecordedCount += 1
                     Task {
-                        await saveWeight(write)
+                        await performEdit(.saveWeight(write))
                         // 知らせの中で記録したときは、記録した直後に通知の許可を求める
                         await requestNotificationPermission()
                     }
@@ -638,16 +524,16 @@ struct TimelineScreen: View {
             }
         case .subscriptionNotice(let notice):
             SubscriptionNoticeCard(notice: notice) {
-                openPaywall(from: .noticeCard)
+                send(.paywallRequested(.noticeCard))
             }
             .id(item.id)
         case .goalSetupNotice(let notice):
             GoalSetupNoticeCard(
                 notice: notice,
-                currentGoal: currentGoal,
+                currentGoal: snapshot.currentGoal,
                 flow: goalSetupFlow,
                 timeZone: timeZone,
-                open: { entry in openGoalSetup(from: entry) }
+                open: { entry in send(.goalSetupRequested(entry)) }
             )
             .id(item.id)
             .background {
@@ -665,17 +551,17 @@ struct TimelineScreen: View {
             }
         case .weeklyReviewCard(let card):
             WeeklyReviewCardView(card: card) {
-                openWeeklyReview(card)
+                send(.weeklyReviewRequested(weekOf: card.days.lowerBound, .weeklyReviewCard))
             }
             .id(item.id)
         case .dailyGuideChangeNotice(let notice):
             DailyGuideChangeNoticeCard(notice: notice) {
-                openGoalScreen(from: .dailyGuideChangeNotice)
+                send(.goalScreenRequested(.dailyGuideChangeNotice))
             }
             .id(item.id)
         case .goalNotice(let notice):
             GoalNoticeCard(notice: notice) { entry in
-                openGoalSetup(from: entry)
+                send(.goalSetupRequested(entry))
             }
             .id(item.id)
         }
@@ -704,7 +590,7 @@ struct TimelineScreen: View {
     /// 帯の下の1行「目標を立てる ›」。押すとカードまで送って広げる
     private var unansweredGoalSetupLine: some View {
         Button {
-            openGoalSetup(from: .unansweredNoticeLine)
+            send(.goalSetupRequested(.unansweredNoticeLine))
         } label: {
             UnansweredNoticeLineLabel(text: "目標を立てる") {
                 Image(systemName: "chevron.right")
@@ -723,29 +609,31 @@ struct TimelineScreen: View {
             Task { await capture(.unansweredNoticeLineTapped) }
         } label: {
             UnansweredNoticeLineLabel(text: "今日の体重がまだです") {
-                Text("見る")
+                Image(systemName: "chevron.right")
             }
         }
         .buttonStyle(.plain)
         .padding([.horizontal, .top])
+        .accessibilityLabel("今日の体重がまだです")
         .accessibilityIdentifier("unanswered-notice-line")
     }
 
     private func composer() -> some View {
         TimelineComposer(
-            weightRecordedToday: records.contains { $0.day == today },
-            requiresSubscription: subscriptionStanding?.isExpired ?? false,
+            weightRecordedToday: snapshot.weightRecordedToday,
+            requiresSubscription: snapshot.requiresSubscription,
             expandsGoalSetup: goalSetupFlow.expandedPage != nil,
-            preparingWeightEntry: weightEntryPhase == .preparing,
-            showsCameraNotice: showsCameraNotice,
+            preparingWeightEntry: navigation.presentation == .weightEntry(.preparing),
+            showsCameraNotice: navigation.presentation == .cameraPermissionNotice,
             initialDraft: TextDraft.empty,
-            onCapture: hidingCameraNotice(openCamera),
-            onPickPhotos: hidingCameraNotice {
+            onCapture: { send(.cameraTapped) },
+            onPickPhotos: {
                 switch mealActions.photoSelection {
                 case .picker:
-                    showsPhotoPicker = true
+                    send(.photoPickerTapped)
                 #if DEBUG
                     case .fixed(let photoCount, let record):
+                        send(.composerTapped)
                         let pickedAt = now()
                         showPickedPhotosLoadingWhileRecording(count: photoCount) {
                             await record(pickedAt)
@@ -753,55 +641,38 @@ struct TimelineScreen: View {
                 #endif
                 }
             },
-            onWeight: hidingCameraNotice {
-                guard weightEntryPhase == .closed else { return }
-                weightEntryPhase = .preparing
-                Task {
-                    await prepareWeightEntry()
-                    weightEntryPhase = .showing
-                }
-            },
+            onWeight: { send(.weightEntryTapped) },
             onPresetTapped: { preset in
-                showsCameraNotice = false
+                send(.composerTapped)
                 Task { await capture(.presetTapped(preset)) }
             },
             onSendText: { draft in
-                showsCameraNotice = false
-                Task { await sendText(draft) }
+                send(.composerTapped)
+                Task { await performEdit(.sendText(draft)) }
             },
-            onOpenPaywall: hidingCameraNotice { openPaywall(from: .composerChip) }
+            onOpenPaywall: { send(.paywallRequested(.composerChip)) }
         )
-    }
-
-    /// 端末の今日でのサブスクリプションの状態。状態がまだ届いていなければ nil
-    private var subscriptionStanding: SubscriptionStanding? {
-        subscriptionStatus.map {
-            SubscriptionStanding(status: $0, now: now(), timeZone: timeZone())
-        }
-    }
-
-    /// 開いたときの状態で課金画面を開く。テストユーザーと、状態がまだ届いていないときは開かない
-    private func openPaywall(from entry: ClientUsageEvent.PaywallEntry) {
-        guard let subscriptionStanding else { return }
-        paywallRequest = PaywallScreenContainer.Request(
-            entry: entry, standing: subscriptionStanding, today: today)
     }
 
     /// サブスクリプション切れのあいだは、返事を作り直す操作を出さない
     private func replyRegeneration(of bubble: SentTextBubble) -> SentTextBubbleView.Regeneration {
-        if subscriptionStanding?.isExpired ?? false {
+        if snapshot.requiresSubscription {
             return .unavailable
         }
         return .available(
             resend: { reason in
                 viewport.textResent()
-                Task { await conversationActions.resend(bubble.sentText.id, reason) }
+                Task {
+                    await performEdit(.resendReply(sentTextId: bubble.sentText.id, reason: reason))
+                }
             },
             resendAsConversation: {
                 viewport.textResent()
                 Task {
-                    await conversationActions.resendAsConversation(
-                        bubble.sentText.id, bubble.meals.count)
+                    await performEdit(
+                        .resendAsConversation(
+                            sentTextId: bubble.sentText.id,
+                            deletedMealCount: bubble.meals.count))
                 }
             })
     }
@@ -822,7 +693,7 @@ struct TimelineScreen: View {
             case .dismissKeyboard:
                 dismissKeyboard()
             case .closeDaySummary:
-                summaryDay = nil
+                send(.daySummaryClosed)
             }
         }
     }
@@ -835,7 +706,7 @@ struct TimelineScreen: View {
         case .goalSetupNoticeBottom(let itemId):
             // カードの日が並ぶのを待つあいだに、目標の設定を閉じた・カードが変わったら送らない
             guard goalSetupFlow.expandedPage != nil,
-                let notice = timeline().goalSetupNotice,
+                let notice = snapshot.timeline?.goalSetupNotice,
                 Timeline.Item.goalSetupNotice(notice).id == itemId
             else { return }
             proxy.scrollTo(itemId, anchor: .bottom)
@@ -846,85 +717,6 @@ struct TimelineScreen: View {
     private func dismissKeyboard() {
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
-
-    /// ほかを押したら、カメラの許可の知らせを消してから動く
-    private func hidingCameraNotice(_ action: @escaping () -> Void) -> () -> Void {
-        {
-            showsCameraNotice = false
-            action()
-        }
-    }
-
-    /// 初めてのときは、カメラを開く前に iOS の許可の画面で求める。許可していなければ、開かずに知らせる
-    private func openCamera() {
-        guard cameraPhase == .closed else { return }
-        cameraPhase = .preparing
-        Task {
-            switch await mealActions.prepareCamera() {
-            case .ready:
-                cameraPhase = .showing
-            case .notPermitted:
-                cameraPhase = .closed
-                showsCameraNotice = true
-                await capture(.cameraPermissionNoticeShown)
-            case .noCamera:
-                cameraPhase = .closed
-            }
-        }
-    }
-
-    /// 読み込み中は、今日の週を空の丸にする。使い始めた日は、取り終えてから入る
-    private func stripWeeks(loaded: Timeline?) -> [RingStrip.Week] {
-        if let loaded {
-            return RingStrip(timeline: loaded).weeks
-        }
-        let monday = today.startOfWeek
-        return RingStrip(
-            timeline: Timeline(
-                input: Timeline.Input(
-                    goalRecords: GoalRecords(
-                        goals: [], dailyGuides: [], expenditureEstimates: [], weeklyReviews: [],
-                        weightTrend: nil, weightRecords: []), rejectedLines: [], meals: [],
-                    notices: [], undelivered: .none, conversation: .none, subscriptionNotices: []),
-                firstDay: monday,
-                today: today)
-        ).weeks
-    }
-
-    private func timeline() -> Timeline {
-        Timeline(
-            input: Timeline.Input(
-                goalRecords: goalRecords, rejectedLines: rejectedLines, meals: meals,
-                notices: notices, undelivered: undeliveredRecords, conversation: conversation,
-                subscriptionNotices: subscriptionStatus.map {
-                    SubscriptionNotice.notices(
-                        status: $0, now: now(), timeZone: timeZone(), firstSignInDay: firstDay)
-                } ?? []),
-            firstDay: firstDay, today: today)
-    }
-
-    private var currentGoal: CurrentGoal? {
-        CurrentGoal(today: today, goals: goals, dailyGuides: dailyGuides)
-    }
-
-    /// 日のまとめと体重の画面の「目標を立てる」。目標が無く、知らせのカードがタイムラインにあるときだけ置く
-    private func goalSetupStarter(in timeline: Timeline)
-        -> ((GoalSetupObservation.Entry) -> Void)?
-    {
-        guard currentGoal == nil, timeline.goalSetupNotice != nil else { return nil }
-        return { entry in openGoalSetup(from: entry) }
-    }
-
-    /// シートを閉じ、潜った画面から戻って、知らせのカードまで送って広げる。途中まで進めていれば同じページから
-    private func openGoalSetup(from entry: GoalSetupObservation.Entry) {
-        showsCameraNotice = false
-        summaryDay = nil
-        navigationPath = NavigationPath()
-        Task {
-            await openGoalSetupFlow(entry, .timeline)
-            goalSetupScrollRequests += 1
-        }
     }
 
     /// 目標の設定を広げているあいだのページ。変わったら、カードの下端まで送る
@@ -950,59 +742,132 @@ struct TimelineScreen: View {
     /// 立て直す流れを知らせのボタン（と日のまとめ）から広げているあいだ、タイムラインの一番下に出す目標の設定のカード。
     /// 目標がないあいだは、目標を立てる知らせのカードがその場で広がるので出さない。目標の画面から広げたときは目標の画面にだけ描く
     @ViewBuilder private var restartGoalSetupCard: some View {
-        if currentGoal != nil, case .expanded(let content, let actions) = goalSetupFlow {
+        if snapshot.currentGoal != nil, case .expanded(let content, let actions) = goalSetupFlow {
             GoalSetupFlowCard(content: content, actions: actions, timeZone: timeZone)
                 .padding(.top, 24)
                 .transition(.opacity)
         }
     }
 
-    /// 左上の目標の入口。目標がないあいだは nil
-    private var goalLink: GoalLinkCapsule? {
-        GoalLinkCapsule(status: goalStatus, today: today, weightTrend: weightTrend)
+    /// 日のまとめのシート。帯の日を押すと出す
+    private func daySummarySheet(on day: CalendarDay, loaded: Timeline) -> some View {
+        let startGoalSetup: (() -> Void)? =
+            snapshot.offersGoalSetup ? { send(.goalSetupRequested(.daySummary)) } : nil
+        return DaySummarySheet(
+            timeline: loaded, day: day, weightRecords: snapshot.weightRecords,
+            weightTrend: snapshot.weightTrend, goalRecords: snapshot.goalRecords,
+            today: snapshot.today,
+            startGoalSetup: startGoalSetup,
+            weekRecapTitle: { snapshot.weekRecap(monday: $0.startOfWeek)?.title },
+            openWeightScreen: { send(.weightScreenRequested($0)) },
+            openGoalScreen: { send(.goalScreenRequested(.daySummary)) },
+            openWeeklyReview: { send(.weeklyReviewRequested(weekOf: $0, .daySummary)) },
+            openNextGoal: { nextGoal in
+                switch nextGoal {
+                case .choose: send(.goalSetupRequested(.chooseNextGoal))
+                case .set: send(.goalSetupRequested(.setNextGoal))
+                }
+            },
+            onSeeOnTimeline: { chosen in
+                send(.daySummaryClosed)
+                viewport.dayChosen(chosen, in: loaded.days)
+            })
     }
 
-    /// 今の目標の状態
-    private var goalStatus: GoalStatus {
-        GoalStatus(currentGoal: currentGoal?.goal, goals: goals)
+    @ViewBuilder private func destination(_ route: TimelineNavigation.Route) -> some View {
+        switch route {
+        case .weightScreen(let day):
+            weightScreen(on: day)
+        case .weightHistory:
+            WeightHistoryScreen(rows: snapshot.weightHistory)
+        case .meal(let mealId):
+            mealScreen(mealId: mealId)
+        case .dish(let mealId, let dishId):
+            dishScreen(mealId: mealId, dishId: dishId)
+        case .goalScreen(let entry):
+            GoalScreen(
+                overview: snapshot.goalOverview, entry: entry,
+                goalSetupFlow: goalScreenGoalSetupFlow,
+                timeZone: timeZone, recapTitle: { snapshot.weekRecap(monday: $0)?.title },
+                capture: capture,
+                openGoalSetup: { entry in
+                    Task { await openGoalSetupFlow(entry, .goalScreen) }
+                },
+                openWeeklyReview: { monday in
+                    send(.weeklyReviewRequested(weekOf: monday, .goalScreen))
+                })
+        case .weeklyReview(let monday, let entry):
+            WeeklyReviewScreen(
+                monday: monday, entry: entry, recap: snapshot.weekRecap(monday:),
+                capture: capture
+            ) { day in
+                send(.returnedToTimeline)
+                if let timeline = snapshot.timeline {
+                    viewport.dayChosen(day, in: timeline.days)
+                }
+            }
+        }
     }
 
-    /// 目標の画面を、タイムラインの上に押して進む。目標がないときは開かない。日のまとめから開くときは、シートを閉じてから進む
-    private func openGoalScreen(from entry: ClientUsageEvent.GoalScreenEntry) {
-        showsCameraNotice = false
-        guard goalOverview != nil else { return }
-        summaryDay = nil
-        navigationPath.append(GoalRoute(entry: entry))
+    /// 食事の画面。タイムラインの食事のカードと、返事が指す食事から潜る
+    private func mealScreen(mealId: UUID) -> some View {
+        MealDestination(card: snapshot.mealCard(id: mealId)) { card in
+            MealScreen(
+                card: card,
+                now: now,
+                capture: capture,
+                actions: mealActions,
+                performEdit: performEdit,
+                returnToTimeline: {
+                    send(.returnedToTimeline)
+                },
+                openPaywall: { send(.paywallRequested(.awaitingMeal)) },
+                rejectedLines: snapshot.rejectedLines,
+                confirmsDeletion: false,
+                confirmsLastDishDeletion: false,
+                addingDish: false,
+                sentText: snapshot.sentText(of: card)
+            )
+        }
     }
 
-    /// 目標の画面の中身。キャッシュの記録から組むので、同期で届くと描き直る
-    private var goalOverview: GoalOverview? {
-        GoalOverview(today: today, records: goalRecords)
+    /// 料理の画面。食事の画面の料理の行から潜る
+    private func dishScreen(mealId: UUID, dishId: UUID) -> some View {
+        let opened = snapshot.mealCard(id: mealId).flatMap { card in
+            MealEditOffer(card: card)
+                .dishScreen(dishId: dishId, rejectedLines: snapshot.rejectedLines)
+                .map { (card: card, offer: $0) }
+        }
+        return DishDestination(opened: opened) { card, offer in
+            DishScreen(
+                offer: offer,
+                performEdit: performEdit,
+                deleteMeal: {
+                    MealScreen.deleteMealAndReturn(
+                        card, now: now, returnToTimeline: { send(.returnedToTimeline) },
+                        performEdit: performEdit)
+                },
+                confirmsMealDeletion: false)
+        }
     }
 
-    /// 振り返りのカードから、その週の週の振り返りを開く
-    private func openWeeklyReview(_ card: WeeklyReviewCard) {
-        openWeeklyReview(weekOf: card.days.lowerBound, from: .weeklyReviewCard)
-    }
-
-    /// 週の振り返りを、タイムラインの上に押して進む。日のまとめから開くときは、シートを閉じてから進む
-    private func openWeeklyReview(
-        weekOf day: CalendarDay, from entry: ClientUsageEvent.WeeklyReviewEntry
-    ) {
-        showsCameraNotice = false
-        summaryDay = nil
-        navigationPath.append(WeeklyReviewRoute(monday: day.startOfWeek, entry: entry))
-    }
-
-    /// 週の振り返りの中身。キャッシュの記録から組むので、同期で届くと描き直る
-    private func weekRecap(monday: CalendarDay) -> WeekRecap? {
-        WeekRecap(weekOf: monday, today: today, records: goalRecords, meals: meals)
-    }
-
-    private var goalRecords: GoalRecords {
-        GoalRecords(
-            goals: goals, dailyGuides: dailyGuides, expenditureEstimates: expenditureEstimates,
-            weeklyReviews: weeklyReviews, weightTrend: weightTrend, weightRecords: records)
+    /// 体重の画面。タイムラインの体重のカードと、日のまとめの体重の行から潜る
+    private func weightScreen(on day: CalendarDay) -> some View {
+        let startGoalSetup: (() -> Void)? =
+            snapshot.offersGoalSetup ? { send(.goalSetupRequested(.weightScreen)) } : nil
+        return WeightScreen(
+            day: day,
+            records: snapshot.weightRecords,
+            firstDay: snapshot.firstDay,
+            trendChart: snapshot.weightTrendChart,
+            rejectedLines: snapshot.rejectedLines,
+            capture: capture,
+            performEdit: performEdit,
+            startGoalSetup: startGoalSetup,
+            goalPath: snapshot.weightGoalPath,
+            // 体重の画面の上に積むので、戻るは「‹ 体重」
+            openGoalScreen: { send(.goalScreenRequested(.weightScreen)) }
+        )
     }
 }
 
@@ -1018,22 +883,6 @@ extension TimelineViewport.ScrollPhase {
         @unknown default: self = .animating
         }
     }
-}
-
-/// 食事の画面へ潜る行き先。画面は、そのときのカードを食事の ID で引いて描く
-nonisolated private struct MealRoute: Hashable {
-    let mealId: UUID
-}
-
-/// 目標の画面へ潜る行き先。画面は、そのときのキャッシュの記録で中身を組む
-nonisolated private struct GoalRoute: Hashable {
-    let entry: ClientUsageEvent.GoalScreenEntry
-}
-
-/// 週の振り返りへ潜る行き先。‹ › で送った週は画面の中で持つ
-nonisolated private struct WeeklyReviewRoute: Hashable {
-    let monday: CalendarDay
-    let entry: ClientUsageEvent.WeeklyReviewEntry
 }
 
 /// 開いている食事が消えたら（ほかの端末で消して同期で届いた）、タイムラインに戻る
@@ -1053,19 +902,6 @@ private struct MealDestination: View {
     }
 
     @Environment(\.dismiss) private var dismiss
-}
-
-private enum WeightEntryPhase: Equatable {
-    case closed
-    case preparing
-    case showing
-}
-
-private enum CameraPhase: Equatable {
-    case closed
-    /// 許可を確かめている（初めてなら、iOS の許可の画面を出している）
-    case preparing
-    case showing
 }
 
 private struct TimelineDayPositionsKey: PreferenceKey {

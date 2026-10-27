@@ -75,7 +75,7 @@ const decideUpdate = (
   if (dish === undefined) {
     throw new Error(`材料の料理が無い: ${current.dishId}`);
   }
-  if (dishAwaitsEstimation(stores, dish, receivedAt)) {
+  if (dishAwaitsEstimation(stores, dish)) {
     return rejectWrite("update", ingredientId, "awaiting_estimation");
   }
   if (!isWithinAcceptedRange("ingredientQuantity", quantity)) {

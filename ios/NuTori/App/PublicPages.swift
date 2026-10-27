@@ -4,9 +4,11 @@ import Foundation
 enum PublicPages {
     static let terms = URL(string: "https://nu-tori.app/terms")!
     static let privacyPolicy = URL(string: "https://nu-tori.app/privacy")!
+    /// プライバシーポリシーの「利用状況」の項（送るものの一覧）
+    static let usageData = URL(string: "https://nu-tori.app/privacy#usage-data")!
     /// 特定商取引法に基づく表記
     static let legal = URL(string: "https://nu-tori.app/legal")!
-    /// 推定消費カロリーと1日の目安の出し方
+    /// 1日の目安が、あなたの体に合っていく仕組み（出し方のページ）
     static let dailyGuide = URL(string: "https://nu-tori.app/daily-guide")!
 
     /// 文の中のリンク（Markdown の `[名前](URL)`）を描ける形にする。`Text` の文字列の Markdown と同じく、改行を残す。

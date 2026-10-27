@@ -25,7 +25,7 @@ extension GoalOverviewTests {
 
         @Suite("見直した点が3つたまったとき")
         struct Drawn {
-            let chart: GoalOverview.EnergyChart?
+            let chart: GoalOverview.EnergyChart
 
             init() throws {
                 let goal = try Goal.losing()
@@ -36,7 +36,7 @@ extension GoalOverviewTests {
                         (GoalOverviewTests.day(10, 12), 2160, 1860),
                         (GoalOverviewTests.day(10, 19), 2140, 1850),
                     ])
-                chart =
+                chart = try #require(
                     GoalOverviewTests.overview(
                         today: GoalOverviewTests.day(10, 28), goals: [goal], dailyGuides: guides,
                         expenditureEstimates: estimates,
@@ -47,35 +47,43 @@ extension GoalOverviewTests {
                                     "2026-10-26T07:00:00+09:00", strategy: .iso8601),
                                 timeZone: goal.timeZone,
                                 outcome: .deferred(reason: .fewMealRecords, goalId: goal.id))
-                        ])?.energyChart
+                        ])?.energyChart)
             }
 
             @Test("当てる始まりの日ごとの点と、見送った週の印で、開始の日から期限の日までを描くこと")
             func drawsPointsAndDeferrals() {
                 #expect(
-                    chart
-                        == .drawn(
-                            GoalOverview.EnergyChart.Graph(
-                                days: GoalOverviewTests.day(10, 1)...GoalOverviewTests.day(12, 24),
-                                points: [
-                                    .init(
-                                        day: GoalOverviewTests.day(10, 1),
-                                        expenditureKilocalories: 2190, dailyGuideKilocalories: 1880),
-                                    .init(
-                                        day: GoalOverviewTests.day(10, 12),
-                                        expenditureKilocalories: 2160, dailyGuideKilocalories: 1860),
-                                    .init(
-                                        day: GoalOverviewTests.day(10, 19),
-                                        expenditureKilocalories: 2140, dailyGuideKilocalories: 1850),
-                                ],
-                                deferredDays: [GoalOverviewTests.day(10, 26)])))
+                    chart.graph
+                        == GoalOverview.EnergyChart.Graph(
+                            days: GoalOverviewTests.day(10, 1)...GoalOverviewTests.day(12, 24),
+                            points: [
+                                .init(
+                                    day: GoalOverviewTests.day(10, 1),
+                                    expenditureKilocalories: 2190, dailyGuideKilocalories: 1880),
+                                .init(
+                                    day: GoalOverviewTests.day(10, 12),
+                                    expenditureKilocalories: 2160, dailyGuideKilocalories: 1860),
+                                .init(
+                                    day: GoalOverviewTests.day(10, 19),
+                                    expenditureKilocalories: 2140, dailyGuideKilocalories: 1850),
+                            ],
+                            deferredDays: [GoalOverviewTests.day(10, 26)]))
+            }
+
+            @Test("グラフの上にも、今の値の棒を出すこと")
+            func keepsBars() {
+                #expect(
+                    chart.bars
+                        == GoalOverview.EnergyChart.Bars(
+                            expenditureKilocalories: 2140, dailyGuideKilocalories: 1850))
             }
         }
 
         @Suite("見直した点が3つ未満のとき")
-        struct Figures {
-            @Test("グラフの代わりに、今の値を数字で出すこと")
-            func showsFigures() throws {
+        struct Bars {
+            let chart: GoalOverview.EnergyChart
+
+            init() throws {
                 let goal = try Goal.losing()
                 let (estimates, guides) = EnergyChart.records(
                     goal,
@@ -83,22 +91,29 @@ extension GoalOverviewTests {
                         (GoalOverviewTests.day(10, 1), 2190, 1880),
                         (GoalOverviewTests.day(10, 5), 2250, 1900),
                     ])
-                let chart = GoalOverviewTests.overview(
-                    today: GoalOverviewTests.day(10, 10), goals: [goal], dailyGuides: guides,
-                    expenditureEstimates: estimates)?.energyChart
-
-                #expect(
-                    chart
-                        == .figures([
-                            "推定消費カロリー 2,250 kcal", "1日の目安 1,900 kcal",
-                            "1日の目安は推定消費カロリーより 350 kcal 少ない",
-                        ]))
-                #expect(chart?.note == "週ごとの見直しが 2 回たまると、グラフで見せます。")
+                chart = try #require(
+                    GoalOverviewTests.overview(
+                        today: GoalOverviewTests.day(10, 10), goals: [goal], dailyGuides: guides,
+                        expenditureEstimates: estimates)?.energyChart)
             }
 
-            @Suite("1日の目安が推定消費カロリーより多いとき")
-            struct Surplus {
-                let chart: GoalOverview.EnergyChart?
+            @Test("グラフを描かないこと")
+            func hidesGraph() {
+                #expect(chart.graph == nil)
+            }
+
+            @Test("今の推定消費カロリーと1日の目安の棒と、減らす分を出すこと")
+            func showsBarsWithDeficit() {
+                #expect(
+                    chart.bars
+                        == GoalOverview.EnergyChart.Bars(
+                            expenditureKilocalories: 2250, dailyGuideKilocalories: 1900))
+                #expect(chart.bars.gap == "減らす分 −350 kcal")
+            }
+
+            @Suite("今日より後に当てる1日の目安が届いているとき")
+            struct FutureGuide {
+                let chart: GoalOverview.EnergyChart
 
                 init() throws {
                     let goal = try Goal.losing()
@@ -106,53 +121,43 @@ extension GoalOverviewTests {
                         goal,
                         [
                             (GoalOverviewTests.day(10, 1), 2190, 1880),
-                            (GoalOverviewTests.day(10, 5), 2600, 2950),
+                            (GoalOverviewTests.day(10, 12), 2250, 1900),
                         ])
-                    chart =
+                    chart = try #require(
                         GoalOverviewTests.overview(
                             today: GoalOverviewTests.day(10, 10), goals: [goal],
                             dailyGuides: guides,
-                            expenditureEstimates: estimates)?.energyChart
+                            expenditureEstimates: estimates)?.energyChart)
                 }
 
-                @Test("多い分を書くこと")
-                func writesSurplus() {
+                @Test("今日に当たっている1日の目安で棒を出すこと")
+                func usesTodaysGuide() {
                     #expect(
-                        chart
-                            == .figures([
-                                "推定消費カロリー 2,600 kcal", "1日の目安 2,950 kcal",
-                                "1日の目安は推定消費カロリーより 350 kcal 多い",
-                            ]))
+                        chart.bars
+                            == GoalOverview.EnergyChart.Bars(
+                                expenditureKilocalories: 2190, dailyGuideKilocalories: 1880))
+                }
+            }
+
+            @Suite("1日の目安が推定消費カロリーより多いとき")
+            struct Surplus {
+                let bars = GoalOverview.EnergyChart.Bars(
+                    expenditureKilocalories: 2600, dailyGuideKilocalories: 2950)
+
+                @Test("足す分を出すこと")
+                func showsSurplus() {
+                    #expect(bars.gap == "足す分 +350 kcal")
                 }
             }
 
             @Suite("1日の目安が推定消費カロリーと同じとき")
             struct Same {
-                let chart: GoalOverview.EnergyChart?
+                let bars = GoalOverview.EnergyChart.Bars(
+                    expenditureKilocalories: 2600, dailyGuideKilocalories: 2600)
 
-                init() throws {
-                    let goal = try Goal.losing()
-                    let (estimates, guides) = EnergyChart.records(
-                        goal,
-                        [
-                            (GoalOverviewTests.day(10, 1), 2190, 1880),
-                            (GoalOverviewTests.day(10, 5), 2600, 2600),
-                        ])
-                    chart =
-                        GoalOverviewTests.overview(
-                            today: GoalOverviewTests.day(10, 10), goals: [goal],
-                            dailyGuides: guides,
-                            expenditureEstimates: estimates)?.energyChart
-                }
-
-                @Test("同じと書くこと")
-                func writesSame() {
-                    #expect(
-                        chart
-                            == .figures([
-                                "推定消費カロリー 2,600 kcal", "1日の目安 2,600 kcal",
-                                "1日の目安は推定消費カロリーと同じ",
-                            ]))
+                @Test("差を出さないこと")
+                func hidesGap() {
+                    #expect(bars.gap == nil)
                 }
             }
         }
@@ -203,6 +208,75 @@ extension GoalOverviewTests {
             ).weightChart
 
             #expect(chart.days == GoalOverviewTests.day(10, 20)...GoalOverviewTests.day(11, 3))
+        }
+
+        @Suite("減量の目標が進行中のとき")
+        struct LosingProgress {
+            let chart: GoalOverview.WeightChart
+
+            init() throws {
+                let records = try [10, 3, 6, 8].map { day in
+                    try WeightRecord.manual(
+                        70.8, at: "2026-11-\(String(format: "%02d", day))T07:00:00+09:00",
+                        in: "Asia/Tokyo")
+                }
+                chart = try #require(
+                    GoalOverviewTests.overview(
+                        today: GoalOverviewTests.day(11, 10), goals: [try .losing()],
+                        weightTrend: GoalOverviewTests.trend([
+                            (GoalOverviewTests.day(10, 27), 71.8),
+                            (GoalOverviewTests.day(11, 10), 70.8),
+                        ]),
+                        weightRecords: records)
+                ).weightChart
+            }
+
+            @Test("あと何 kg、あと何日、間に合うペースかを出すこと")
+            func showsProgress() {
+                #expect(
+                    chart.progress
+                        == GoalOverview.WeightChart.Progress(
+                            remainingKilograms: "あと 2.8 kg", remainingDays: "あと 45 日",
+                            pace: "間に合うペースです"))
+            }
+        }
+
+        @Suite("目標を立てて 14 日たっていないとき")
+        struct BeforeFourteenDays {
+            let chart: GoalOverview.WeightChart
+
+            init() throws {
+                chart = try #require(
+                    GoalOverviewTests.overview(
+                        today: GoalOverviewTests.day(10, 10), goals: [try .losing()],
+                        weightTrend: GoalOverviewTests.trend([
+                            (GoalOverviewTests.day(10, 10), 71.9)
+                        ]))
+                ).weightChart
+            }
+
+            @Test("あと何日を出し、ペースの文は出さないこと")
+            func showsRemainingDaysWithoutPace() {
+                #expect(chart.progress?.remainingDays == "あと 76 日")
+                #expect(chart.progress?.pace == nil)
+            }
+        }
+
+        @Suite("維持の目標が進行中のとき")
+        struct MaintainingProgress {
+            let chart: GoalOverview.WeightChart
+
+            init() throws {
+                chart = try #require(
+                    GoalOverviewTests.overview(
+                        today: GoalOverviewTests.day(11, 3), goals: [try .maintaining()])
+                ).weightChart
+            }
+
+            @Test("進み具合を出さないこと")
+            func hidesProgress() {
+                #expect(chart.progress == nil)
+            }
         }
 
         @Test("期限が来たときは、体重の歩みにすること")
@@ -305,7 +379,6 @@ extension GoalOverviewTests {
         @Test("開始の日から終わった日までの体重の傾向の変化を結果にすること")
         func showsChangeUntilEnded() {
             #expect(pastGoals.first?.weightsText == "72.4 → 70.4 kg")
-            #expect(pastGoals.first?.resultText == "−2.0 kg")
         }
     }
 
@@ -333,7 +406,6 @@ extension GoalOverviewTests {
 
             #expect(past.summary == "減量 10月1日〜12月24日")
             #expect(past.weightsText == "72.4 → 68.4 kg")
-            #expect(past.resultText == "−4.0 kg")
         }
     }
 }

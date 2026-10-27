@@ -5,33 +5,34 @@
 
     #Preview("状態ごと", arguments: TimelineScreen.Sample.allCases) { sample in
         TimelineScreen(
-            records: sample.records,
-            weightTrend: sample.weightTrend,
-            initialPull: sample.initialPull,
-            today: .sampleToday,
+            snapshot: TimelineSnapshot(
+                weightRecords: sample.records,
+                weightTrend: sample.weightTrend,
+                initialPull: sample.initialPull,
+                rejectedLines: sample.rejectedLines,
+                meals: sample.meals,
+                notices: sample.notices,
+                goals: sample.goals,
+                dailyGuides: sample.dailyGuides,
+                weeklyReviews: sample.weeklyReviews,
+                expenditureEstimates: sample.expenditureEstimates,
+                subscriptionStatus: sample.subscriptionStatus,
+                undelivered: sample.undeliveredRecords,
+                conversation: sample.conversation,
+                today: .sampleToday,
+                now: DeviceClock.live.now(),
+                timeZone: DeviceClock.live.timeZone()),
             now: DeviceClock.live.now,
             timeZone: DeviceClock.live.timeZone,
-            rejectedLines: sample.rejectedLines,
-            meals: sample.meals,
-            notices: sample.notices,
-            goals: sample.goals,
-            dailyGuides: sample.dailyGuides,
-            weeklyReviews: sample.weeklyReviews,
-            expenditureEstimates: sample.expenditureEstimates,
-            subscriptionStatus: sample.subscriptionStatus,
-            undeliveredRecords: sample.undeliveredRecords,
             capture: { _ in },
             reminderLanding: nil,
             noteReminderLanded: {},
             requestNotificationPermission: {},
             prepareWeightEntry: {},
-            saveWeight: { _ in },
-            sendText: { _ in },
+            performEdit: { _ in },
             accountActions: .noop,
             paywallActions: .noop,
             mealActions: .noop,
-            conversation: sample.conversation,
-            conversationActions: .noop,
             goalSetupFlow: .notStarted,
             goalScreenGoalSetupFlow: .notStarted,
             openGoalSetupFlow: { _, _ in }
@@ -98,7 +99,7 @@
                     ] : []
             }
 
-            var initialPull: TimelineScreen.InitialPull {
+            var initialPull: TimelineSnapshot.InitialPull {
                 switch self {
                 case .loading: .inProgress
                 case .firstDay: .completed(startedDay: .sampleToday)

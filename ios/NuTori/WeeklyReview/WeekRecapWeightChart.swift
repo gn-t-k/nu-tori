@@ -3,7 +3,7 @@ import NuToriCore
 import SwiftUI
 
 /// 週の振り返りの体重の段のグラフ。横軸は月〜日、目標の道筋は点線、傾向は Primary の線、記録は灰色の点（DESIGN.md の「グラフ」）。
-/// 記録が4日未満の週は傾向の線を引かない
+/// 線が2本あるときは、線の端に「傾向」「目標」と添える。記録が4日未満の週は傾向の線を引かない
 struct WeekRecapWeightChart: View {
     let recap: WeekRecap
 
@@ -41,6 +41,28 @@ struct WeekRecapWeightChart: View {
             }
         }
         .chartXScale(domain: -0.5...6.5)
+        // 系列が2本あるので、線の端に名前を添える（DESIGN.md の「グラフ」）。印の annotation は、この画面では描かれなかったので、重ねた層に置く
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plotFrame = proxy.plotFrame {
+                    let origin = geometry[plotFrame].origin
+                    ForEach(endLabels, id: \.name) { label in
+                        if let point = proxy.position(for: (label.offset, label.kilograms)) {
+                            Text(label.name)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .fixedSize()
+                                // 名前の右端を線の端にそろえ、上にある線は上に、下にある線は下に置く
+                                .frame(width: Self.endLabelWidth, alignment: .trailing)
+                                .position(
+                                    x: origin.x + point.x - Self.endLabelWidth / 2,
+                                    y: origin.y + point.y + (label.isAbove ? -10 : 10))
+                        }
+                    }
+                }
+            }
+            .accessibilityHidden(true)
+        }
         .chartYScale(domain: yDomain)
         .chartXAxis { WeekdayAxis.marks(monday: recap.monday) }
         .chartYAxis {
@@ -59,6 +81,29 @@ struct WeekRecapWeightChart: View {
         .padding(.vertical, 8)
         // 目盛りの文字は xxxLarge で止める。高さを文字に合わせて伸ばすと、曜日が重なって読めないため（WeightTrendChartView と同じ）。値は点の accessibilityValue でも読める
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+
+    private static let endLabelWidth: CGFloat = 60
+
+    private struct EndLabel {
+        let name: String
+        let offset: Int
+        let kilograms: Double
+        let isAbove: Bool
+    }
+
+    /// 傾向と目標の道筋の線の端。線が2本そろう週だけ
+    private var endLabels: [EndLabel] {
+        guard let trendEnd = trendDays.last, let goalEnd = goalPathPoints.last else { return [] }
+        let trendIsAbove = trendEnd.kilograms >= goalEnd.kilograms
+        return [
+            EndLabel(
+                name: "傾向", offset: offset(of: trendEnd.day), kilograms: trendEnd.kilograms,
+                isAbove: trendIsAbove),
+            EndLabel(
+                name: "目標", offset: goalEnd.offset, kilograms: goalEnd.kilograms,
+                isAbove: !trendIsAbove),
+        ]
     }
 
     private struct PathPoint {

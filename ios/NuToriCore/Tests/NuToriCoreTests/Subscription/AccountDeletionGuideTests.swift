@@ -176,9 +176,9 @@ struct AccountDeletionGuideTests {
                 #expect(guide.nextBillingText == "11月7日に ¥8,800")
             }
 
-            @Test("解約の段に、解約しても次の更新日まで使えることを書くこと")
-            func cancellationStep() {
-                #expect(guide.cancellationStepText == "サブスクリプションを解約する。解約しても、11月7日まで使えます。")
+            @Test("自動更新中の使える日を、解約しても使える次の更新日で書くこと")
+            func usableIfCancelled() {
+                #expect(guide.usableIfCancelledText == "11月7日まで")
             }
 
             @Test("解約したあとの使える日を、サブスクリプションの終わりを含む日で書くこと")

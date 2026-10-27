@@ -1,12 +1,31 @@
 extension WeekRecap {
-    /// 一番上の、太字の1行と文。ペースが返らない週（達成した、期限の日を迎えた）は、その週に起きたことを書く
+    /// 一番上の、太字の1行と、その下の文かペースの値の行。ペースが出る週は「いまのペース」「要るペース」の値の行を並べ、
+    /// ペースが返らない週（達成した、期限の日を迎えた）は、その週に起きたことを文で書く
     public struct TopLine: Hashable, Sendable {
         public let headline: String
-        public let sentence: String
+        public let detail: Detail
 
-        public init(headline: String, sentence: String) {
+        public init(headline: String, detail: Detail) {
             self.headline = headline
-            self.sentence = sentence
+            self.detail = detail
+        }
+
+        /// 太字の1行の下に置くもの
+        public enum Detail: Hashable, Sendable {
+            case sentence(String)
+            /// 「いまのペース」「要るペース」の値の行
+            case paceRows([PaceRow])
+        }
+
+        /// 「いまのペース　−0.5 kg／週」
+        public struct PaceRow: Hashable, Sendable {
+            public let label: String
+            public let value: String
+
+            public init(label: String, value: String) {
+                self.label = label
+                self.value = value
+            }
         }
 
         /// 判定に要る体重の傾向がまだ届いていなければ nil
@@ -22,18 +41,18 @@ extension WeekRecap {
             case .onTrack(let actual, let required):
                 self.init(
                     headline: "間に合うペースです",
-                    sentence: Self.paceSentence(goal: goal, actual: actual, required: required))
+                    detail: .paceRows(Self.paceRows(actual: actual, required: required)))
             case .behind(let shortfall, let actual, let required):
                 self.init(
                     headline: "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません",
-                    sentence: Self.paceSentence(goal: goal, actual: actual, required: required))
+                    detail: .paceRows(Self.paceRows(actual: actual, required: required)))
             case .inconclusive(let count):
                 self.init(
                     headline: "間に合うかはまだわかりません",
-                    sentence: "直近 14 日の体重の記録が \(count) 日なので、傾向が定まっていません。")
+                    detail: .sentence("直近 14 日の体重の記録が \(count) 日なので、傾向が定まっていません。"))
             case .pending:
                 self.init(
-                    headline: "間に合うかはまだわかりません", sentence: "目標を立てて 14 日たつと出ます。")
+                    headline: "間に合うかはまだわかりません", detail: .sentence("目標を立てて 14 日たつと出ます。"))
             case .unavailable:
                 self.init(unavailableFor: goal, judgedDay: judgedDay, records: records)
             case .maintenance(let isWithinBand):
@@ -41,9 +60,9 @@ extension WeekRecap {
                 let range = GoalStateText.maintenanceRange(goal)
                 self.init(
                     headline: isWithinBand ? "保てています" : "保てていません",
-                    sentence:
+                    detail: .sentence(
                         "体重の傾向は \(WeightAmountText.kilograms(trend)) で、\(range)\(isWithinBand ? "に入っています。" : "から外れています。")"
-                )
+                    ))
             }
         }
 
@@ -57,12 +76,12 @@ extension WeekRecap {
                 let reached =
                     "\(GoalText.monthDay(achievement.achievedDay))に、体重の傾向が \(WeightAmountText.kilograms(goal.targetWeightKilograms)) に届きました。"
                 if achievement.achievedDay >= judgedDay.startOfWeek {
-                    self.init(headline: "目標に届いた週です", sentence: reached)
+                    self.init(headline: "目標に届いた週です", detail: .sentence(reached))
                 } else {
                     // 次の目標を選ぶまでは、達成した目標が続く。選んだあとの目標の週には、選べるとは書かない
                     self.init(
                         headline: "目標に届いています",
-                        sentence: goal.closure == nil ? "\(reached)次の目標を選べます。" : reached)
+                        detail: .sentence(goal.closure == nil ? "\(reached)次の目標を選べます。" : reached))
                 }
                 return
             }
@@ -70,16 +89,16 @@ extension WeekRecap {
                 "\(GoalText.monthDay(deadline))の結果は、\($0.text) でした。"
             }
             self.init(
-                headline: "期限の週です", sentence: result ?? "\(GoalText.monthDay(deadline))が期限でした。")
+                headline: "期限の週です",
+                detail: .sentence(result ?? "\(GoalText.monthDay(deadline))が期限でした。"))
         }
 
-        /// 「傾向で1週間に −0.5 kg。期限の11月30日に 70.0 kg へは、1週間に −0.3 kg で届きます。」
-        private static func paceSentence(goal: Goal, actual: Int, required: Int) -> String {
-            let deadline = goal.direction.weightChange.map {
-                "期限の\(GoalText.monthDay($0.deadlineDay))"
-            }
-            return
-                "傾向で1週間に \(GoalText.signedKilograms(tenths: actual))。\(deadline ?? "期限")に \(WeightAmountText.kilograms(goal.targetWeightKilograms)) へは、1週間に \(GoalText.signedKilograms(tenths: required)) で届きます。"
+        /// 「いまのペース　−0.5 kg／週」「要るペース　−0.3 kg／週」。いまは体重の傾向の速さ、要るは期限に目標体重へ届く速さ
+        private static func paceRows(actual: Int, required: Int) -> [PaceRow] {
+            [
+                PaceRow(label: "いまのペース", value: "\(GoalText.signedKilograms(tenths: actual))／週"),
+                PaceRow(label: "要るペース", value: "\(GoalText.signedKilograms(tenths: required))／週"),
+            ]
         }
     }
 }

@@ -35,10 +35,9 @@ extension WeekRecapTests {
                         ]))
             }
 
-            @Test("最初の日から最後の日への傾向と、記録した日数を書くこと")
+            @Test("最初の日から最後の日への傾向を書くこと")
             func summarizesWeek() {
                 #expect(weight.trendText == "傾向 71.4 → 70.9 kg")
-                #expect(weight.recordText == "記録 4 日（7日中）")
             }
         }
 
@@ -50,7 +49,9 @@ extension WeekRecapTests {
                 weight = try #require(
                     try WeekRecapTests.recap(
                         weekOf: WeekRecapTests.day(10, 12), today: WeekRecapTests.day(10, 20),
-                        weightTrend: WeekRecapTests.trend([(WeekRecapTests.day(10, 14), 71.0)]),
+                        weightTrend: WeekRecapTests.trend([
+                            (WeekRecapTests.day(10, 5), 71.4), (WeekRecapTests.day(10, 14), 71.0),
+                        ]),
                         weightRecords: try WeekRecapTests.weightRecords(on: [
                             WeekRecapTests.day(10, 14)
                         ]))
@@ -60,7 +61,11 @@ extension WeekRecapTests {
             @Test("傾向の線を引かないこと")
             func skipsTrendLine() {
                 #expect(weight.trendLine == .tooFewRecordedDays)
-                #expect(weight.note == "傾向の線は、記録がたまると引きます")
+            }
+
+            @Test("傾向が届いていても、線と組で読む傾向の値を書かないこと")
+            func hasNoTrendText() {
+                #expect(weight.trendText == nil)
             }
         }
     }

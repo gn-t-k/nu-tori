@@ -1,14 +1,16 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { drizzle } from "drizzle-orm/durable-sqlite";
-import { env } from "cloudflare:workers";
+import { type DurableObject, env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import { mockAccountRequestsOk } from "../account/domain/account-requests.mock";
 import { generateRecordId } from "../domain/record-id";
+import { useFakeClock } from "../estimation/http/testing/use-fake-clock";
 import type { SyncClientState } from "../domain/sync-client-state";
 import { enableUsageEventSending } from "../http/sync-routes/testing/enable-usage-event-sending";
 import { mockSetUserOk } from "../observability/set-user.mock";
 import { mockPostHogCaptureEndpointOk, readPostHogCapturedEvents } from "../observability/testing";
 import { durableObjectTables } from "./durable-object-tables";
+import type { AccountDurableObject } from "./account-durable-object";
 import { getAccountDurableObject } from "./get-account-durable-object";
 import { durableObjectFactory } from "./testing/durable-object-factory";
 
@@ -36,6 +38,59 @@ describe("アカウントの Durable Object", () => {
     test("Sentry の user の ID に付けること", async () => {
       await getAccountDurableObject(env, accountId).recordFirstSignIn(accountId, signIn);
       expect(setUserSpy).toHaveBeenCalledWith({ id: accountId });
+    });
+  });
+
+  describe("東京で 2030-01-01 に最初のサインインを書いたとき", () => {
+    let accountId: string;
+    beforeEach(async () => {
+      accountId = generateRecordId();
+      // 張ったアラームがひとりでに動かないよう、先の時刻にしておく
+      useFakeClock(Date.parse("2030-01-01T03:00:00Z"));
+      await callRecordFirstSignIn(accountId);
+    });
+
+    // 無料体験の最後の日は 2030-01-30 で、あと3日の日は 2030-01-28
+    test("課金の確かめの時刻（無料体験のあと3日の日の始まり）にアラームを張ること", async () => {
+      expect(await readAlarm(accountId)).toBe(Date.parse("2030-01-27T15:00:00Z"));
+    });
+  });
+
+  // アラームは、要求が記録を変えたかによらず、要求のあとにいつも仕事の並びから張り直す
+  describe("要求を受けたとき", () => {
+    let accountId: string;
+    beforeEach(() => {
+      accountId = generateRecordId();
+      // 張ったアラームがひとりでに動かないよう、先の時刻にしておく
+      useFakeClock(Date.parse("2030-01-01T03:00:00Z"));
+      mockAccountRequestsOk();
+    });
+
+    describe("動かす仕事の無いアカウントに、古いアラームが張られているとき", () => {
+      beforeEach(async () => {
+        await armStaleAlarm(accountId);
+      });
+
+      for (const { name, call } of Object.values(requestCalls)) {
+        test(`${name}のあと、アラームを外すこと`, async () => {
+          await call(accountId);
+          expect(await readAlarm(accountId)).toBeNull();
+        });
+      }
+    });
+
+    describe("2030-01-01 に東京で最初のサインインを書き、そのあと古いアラームが張られているとき", () => {
+      beforeEach(async () => {
+        await callRecordFirstSignIn(accountId);
+        await armStaleAlarm(accountId);
+      });
+
+      for (const { name, call } of Object.values(requestCalls)) {
+        test(`${name}のあと、課金の確かめの時刻に張り直すこと`, async () => {
+          await call(accountId);
+          expect(await readAlarm(accountId)).toBe(Date.parse("2030-01-27T15:00:00Z"));
+        });
+      }
     });
   });
 
@@ -309,6 +364,25 @@ const goalSetupSituation = {
   bodyData: undefined,
 };
 
+const callRecordFirstSignIn = (accountId: string) =>
+  getAccountDurableObject(env, accountId).recordFirstSignIn(accountId, {
+    signedInAt: new Date(),
+    timeZone: "Asia/Tokyo",
+    isFreeTrialUsedByEarlierAccount: false,
+    agreedTermsVersion: undefined,
+  });
+
+const readAlarm = (accountId: string) =>
+  runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
+    state.storage.getAlarm(),
+  );
+
+// 仕事の並びのどの時刻とも違う時刻
+const armStaleAlarm = (accountId: string) =>
+  runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
+    state.storage.setAlarm(Date.parse("2030-01-02T00:00:00Z")),
+  );
+
 const callPushSyncWrites = (accountId: string) =>
   getAccountDurableObject(env, accountId).pushSyncWrites(accountId, {
     clientState,
@@ -372,3 +446,89 @@ const runAlarm = async (accountId: string) => {
   await runInDurableObject(stub, (_, state) => state.storage.setAlarm(Date.now() + 3_600_000));
   await runDurableObjectAlarm(stub);
 };
+
+const callReadMealPhoto = (accountId: string) =>
+  getAccountDurableObject(env, accountId).readMealPhoto(accountId, generateRecordId());
+
+const callFindLastEstimationAttemptConclusionOfMeal = (accountId: string) =>
+  getAccountDurableObject(env, accountId).findLastEstimationAttemptConclusionOfMeal(
+    accountId,
+    generateRecordId(),
+  );
+
+const callWatchReply = (accountId: string) =>
+  getAccountDurableObject(env, accountId).watchReply(accountId, generateRecordId());
+
+const callFindTermsAgreementRequirement = (accountId: string) =>
+  getAccountDurableObject(env, accountId).findTermsAgreementRequirement(accountId);
+
+const callAgreeToTerms = (accountId: string) =>
+  getAccountDurableObject(env, accountId).agreeToTerms(accountId, {
+    requestId: generateRecordId(),
+    termsVersion: "unknown",
+  });
+
+// 口を偽物に差し替えて呼ぶので、取引の中身は答えに効かない
+const transaction = {
+  environment: "sandbox",
+  appStoreOriginalTransactionId: "1",
+  appStoreTransactionId: "1",
+  appStoreProductId: "app.nu-tori.subscription.monthly",
+  transactionReason: "purchase",
+  purchasedAt: new Date("2030-01-01T03:00:00Z"),
+  expiresAt: new Date("2030-02-01T03:00:00Z"),
+  appAccountToken: undefined,
+  revokedAt: undefined,
+} as const;
+
+const callReportSubscriptionTransaction = (accountId: string) =>
+  getAccountDurableObject(env, accountId).reportSubscriptionTransaction(accountId, {
+    requestId: generateRecordId(),
+    trigger: "purchase",
+    transaction,
+  });
+
+const callReceiveAppStoreServerNotification = (accountId: string) =>
+  getAccountDurableObject(env, accountId).receiveAppStoreServerNotification(accountId, {
+    notificationUuid: generateRecordId(),
+    notificationType: "DID_RENEW",
+    notificationSubtype: undefined,
+    signedAt: new Date("2030-01-01T03:00:00Z"),
+    transaction,
+    gracePeriodExpiresAt: undefined,
+  });
+
+// 受け口から呼ぶ要求の全部。どの要求のあとでも同じことを確かめるので、要求ごとに書かずに表で回す。
+// Durable Object の入口の名前をキーにして、入口を足したのに表に足し忘れたら型検査で止める。
+// 最初のサインインは書いたあとの時刻を上で確かめ、記録の削除は表ごと消すので張り直さない
+const requestCalls = {
+  pushSyncWrites: { name: "送る要求", call: callPushSyncWrites },
+  pullSyncChanges: { name: "取りに行く要求", call: callPullSyncChanges },
+  receiveMealPhoto: { name: "写真を受け取る要求", call: callReceiveMealPhoto },
+  readMealPhoto: { name: "写真を読む要求", call: callReadMealPhoto },
+  findLastEstimationAttemptConclusionOfMeal: {
+    name: "最後の推定の試みの結論を読む要求",
+    call: callFindLastEstimationAttemptConclusionOfMeal,
+  },
+  watchReply: { name: "見守る要求", call: callWatchReply },
+  previewGoalSetup: { name: "目標の下見の要求", call: callPreviewGoalSetup },
+  proposeGoals: { name: "目標案の要求", call: callProposeGoals },
+  assessCustomTargetWeight: {
+    name: "自分で決める目標体重の要求",
+    call: callAssessCustomTargetWeight,
+  },
+  decideGoal: { name: "目標を決める要求", call: callDecideGoal },
+  findTermsAgreementRequirement: {
+    name: "規約への同意が要るかを読む要求",
+    call: callFindTermsAgreementRequirement,
+  },
+  agreeToTerms: { name: "規約に同意する要求", call: callAgreeToTerms },
+  reportSubscriptionTransaction: { name: "取引の知らせ", call: callReportSubscriptionTransaction },
+  receiveAppStoreServerNotification: {
+    name: "App Store のサーバー通知",
+    call: callReceiveAppStoreServerNotification,
+  },
+} satisfies Record<
+  Exclude<keyof AccountDurableObject, keyof DurableObject | "recordFirstSignIn" | "deleteRecords">,
+  { name: string; call: (accountId: string) => Promise<unknown> }
+>;

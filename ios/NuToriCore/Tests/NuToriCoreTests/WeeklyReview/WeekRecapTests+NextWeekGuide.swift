@@ -3,41 +3,6 @@ import NuToriCore
 import Testing
 
 extension WeekRecapTests {
-    @Suite("1週目の見直しに使った記録")
-    struct FirstWeekNote {
-        @Suite("1週目")
-        struct FirstWeek {
-            let recap: WeekRecap
-
-            init() throws {
-                recap = try #require(
-                    try WeekRecapTests.recap(
-                        weekOf: WeekRecapTests.day(10, 1), today: WeekRecapTests.day(10, 10)))
-            }
-
-            @Test("立てた日より前を含めた月〜日を見直しに使ったと添えること")
-            func notesReviewedWeek() {
-                #expect(recap.firstWeekNote == "1日の目安の見直しには、9月28日〜10月4日の 7 日の記録を使っています。")
-            }
-        }
-
-        @Suite("2週目から")
-        struct LaterWeek {
-            let recap: WeekRecap
-
-            init() throws {
-                recap = try #require(
-                    try WeekRecapTests.recap(
-                        weekOf: WeekRecapTests.day(10, 5), today: WeekRecapTests.day(10, 13)))
-            }
-
-            @Test("添えないこと")
-            func hasNoNote() {
-                #expect(recap.firstWeekNote == nil)
-            }
-        }
-    }
-
     @Suite("次の週の1日の目安")
     struct NextWeekGuide {
         /// 10月12日〜18日の週と、10月19日から当てる見直し。前の1日の目安は既定で 1,880 kcal（推定消費カロリー 2,190 kcal）
@@ -138,7 +103,7 @@ extension WeekRecapTests {
             func explainsExpenditure() {
                 #expect(
                     guide.sentence
-                        == "1,880 → 1,850 kcal。推定消費カロリーが 2,190 から 2,140 kcal に下がったためです。推移は目標で見られます。"
+                        == "推定消費カロリーが 2,190 から 2,140 kcal に下がったためです。"
                 )
             }
         }
@@ -162,7 +127,7 @@ extension WeekRecapTests {
                 func explainsBalance() {
                     #expect(
                         guide.sentence
-                            == "1,880 → 1,750 kcal。期限に間に合うよう、1日の目安を推定消費カロリーよりさらに下げたためです。推移は目標で見られます。"
+                            == "期限に間に合うよう、1日の目安を推定消費カロリーよりさらに下げたためです。"
                     )
                 }
             }
@@ -183,7 +148,7 @@ extension WeekRecapTests {
                 func explainsBalanceDecrease() {
                     #expect(
                         guide.sentence
-                            == "1,880 → 1,900 kcal。体重が予定より早く減っているので、1日の目安を推定消費カロリーに近づけたためです。推移は目標で見られます。"
+                            == "体重が予定より早く減っているので、1日の目安を推定消費カロリーに近づけたためです。"
                     )
                 }
             }
@@ -206,7 +171,7 @@ extension WeekRecapTests {
                 func explainsGainIncrease() {
                     #expect(
                         guide.sentence
-                            == "2,400 → 2,500 kcal。期限に間に合うよう、1日の目安を推定消費カロリーよりさらに上げたためです。推移は目標で見られます。"
+                            == "期限に間に合うよう、1日の目安を推定消費カロリーよりさらに上げたためです。"
                     )
                 }
             }
@@ -229,7 +194,7 @@ extension WeekRecapTests {
                 func explainsGainDecrease() {
                     #expect(
                         guide.sentence
-                            == "2,400 → 2,250 kcal。体重が予定より早く増えているので、1日の目安を推定消費カロリーに近づけたためです。推移は目標で見られます。"
+                            == "体重が予定より早く増えているので、1日の目安を推定消費カロリーに近づけたためです。"
                     )
                 }
             }
@@ -253,7 +218,7 @@ extension WeekRecapTests {
                 func explainsMaintenanceBalance() {
                     #expect(
                         guide.sentence
-                            == "1,880 → 1,800 kcal。体重の傾向が 72.4 kg を上回っているので、1日の目安を推定消費カロリーより下げたためです。推移は目標で見られます。"
+                            == "体重の傾向が 72.4 kg を上回っているので、1日の目安を推定消費カロリーより下げたためです。"
                     )
                 }
             }
@@ -277,7 +242,7 @@ extension WeekRecapTests {
                 func explainsMaintenanceRaise() {
                     #expect(
                         guide.sentence
-                            == "1,880 → 2,500 kcal。体重の傾向が 72.4 kg を下回っているので、1日の目安を推定消費カロリーより上げたためです。推移は目標で見られます。"
+                            == "体重の傾向が 72.4 kg を下回っているので、1日の目安を推定消費カロリーより上げたためです。"
                     )
                 }
             }
@@ -301,7 +266,7 @@ extension WeekRecapTests {
                 func explainsMaintenanceEase() {
                     #expect(
                         guide.sentence
-                            == "1,880 → 2,000 kcal。体重の傾向が 72.4 kg に近づいたので、1日の目安を推定消費カロリーに近づけたためです。推移は目標で見られます。"
+                            == "体重の傾向が 72.4 kg に近づいたので、1日の目安を推定消費カロリーに近づけたためです。"
                     )
                 }
             }
@@ -326,7 +291,7 @@ extension WeekRecapTests {
             func explainsAchievement() {
                 #expect(
                     guide.sentence
-                        == "1,880 → 2,000 kcal。目標に届いたので、1日の目安を推定消費カロリーに近づけていくためです。推移は目標で見られます。")
+                        == "目標に届いたので、1日の目安を推定消費カロリーに近づけていくためです。")
             }
         }
 
@@ -350,7 +315,7 @@ extension WeekRecapTests {
             func explainsMaintenance() {
                 #expect(
                     guide.sentence
-                        == "1,880 → 2,000 kcal。今の体重を保つ目標に切り替えたためです。推移は目標で見られます。")
+                        == "今の体重を保つ目標に切り替えたためです。")
             }
         }
 
@@ -370,7 +335,7 @@ extension WeekRecapTests {
             func explainsLimits() {
                 #expect(
                     guide.sentence
-                        == "1,880 → 1,850 kcal。推定消費カロリーが 2,190 から 2,140 kcal に下がったためです。推移は目標で見られます。1日の目安を1週間に変えるのは 150 kcal までにしています。1週間に減らすのは、体重の 0.75% までにしています。1日の目安は 1,200 kcal より下げません。"
+                        == "推定消費カロリーが 2,190 から 2,140 kcal に下がったためです。1日の目安を1週間に変えるのは 150 kcal までにしています。1週間に減らすのは、体重の 0.75% までにしています。1日の目安は 1,200 kcal より下げません。"
                 )
             }
         }
@@ -405,7 +370,7 @@ extension WeekRecapTests {
 
                 @Test("体重の記録が無かったことを理由にすること")
                 func explainsNoWeight() {
-                    #expect(guide.sentence == "1,880 kcal のままです。体重の記録が無かったためです。")
+                    #expect(guide.sentence == "体重の記録が無かったためです。")
                 }
             }
 
@@ -424,7 +389,7 @@ extension WeekRecapTests {
 
                 @Test("記録した日数を理由にすること")
                 func explainsFewMealRecords() {
-                    #expect(guide.sentence == "1,880 kcal のままです。食事の記録が 3 日だったためです。")
+                    #expect(guide.sentence == "食事の記録が 3 日だったためです。")
                 }
             }
 
@@ -438,7 +403,7 @@ extension WeekRecapTests {
 
                 @Test("そのことを理由にすること")
                 func explainsFirstWeek() {
-                    #expect(guide.sentence == "1,880 kcal のままです。使い始めて7日たっていないためです。")
+                    #expect(guide.sentence == "使い始めて7日たっていないためです。")
                 }
             }
         }

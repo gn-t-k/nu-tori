@@ -2,7 +2,7 @@ import NuToriAPI
 import NuToriCore
 import SwiftUI
 
-/// 目標案の上の1行。逆算できた人は推定消費カロリー、逆算できない人は使った値と「変える」、立て直しは今の推定消費カロリー。
+/// 目標案の上の1行。逆算できた人と立て直しは「推定消費カロリー　2,250 kcal」の値の行、逆算できない人は使った値と「変える」。
 /// 今日の体重の記録が無ければ、使った最後の体重記録の日を添える。値が届くまでは、同じ形の文で場所だけを取る
 struct GoalSetupUsedValuesLine: View {
     /// 目標案が届く前は nil
@@ -17,7 +17,7 @@ struct GoalSetupUsedValuesLine: View {
             if let usedValues {
                 line(usedValues)
             } else {
-                Text(Self.backCalculatedText(2250))
+                expenditureRow(2250)
                     .hidden()
             }
         }
@@ -51,12 +51,15 @@ struct GoalSetupUsedValuesLine: View {
                 }
             }
             .accessibilityIdentifier("goal-setup-used-values")
-        case .backCalculated(let kilocalories):
-            Text([Self.backCalculatedText(kilocalories), weightNote].compactMap(\.self).joined())
-                .accessibilityIdentifier("goal-setup-used-values")
-        case .current(let kilocalories):
-            Text([Self.currentText(kilocalories), weightNote].compactMap(\.self).joined())
-                .accessibilityIdentifier("goal-setup-used-values")
+        case .backCalculated(let kilocalories), .current(let kilocalories):
+            // 最近4週の記録から推定したことは、値の行の名前で足りるので文にしない（#754）
+            VStack(alignment: .leading, spacing: 8) {
+                expenditureRow(kilocalories)
+                if let weightNote {
+                    Text(weightNote)
+                }
+            }
+            .accessibilityIdentifier("goal-setup-used-values")
         }
     }
 
@@ -67,12 +70,13 @@ struct GoalSetupUsedValuesLine: View {
             .accessibilityIdentifier("goal-setup-revise-missing-values")
     }
 
-    private static func backCalculatedText(_ kilocalories: Int) -> String {
-        "最近4週の記録から推定した消費カロリーは、1日に \(NutritionText.kilocalories(kilocalories)) です。"
-    }
-
-    private static func currentText(_ kilocalories: Int) -> String {
-        "今の推定消費カロリーは、1日に \(NutritionText.kilocalories(kilocalories)) です。"
+    /// 「推定消費カロリー　2,250 kcal」。下の案の差（「−400 kcal」）の起点なので、本文の大きさで置く
+    private func expenditureRow(_ kilocalories: Int) -> some View {
+        VStack(spacing: 8) {
+            GoalSetupValueRow(
+                label: "推定消費カロリー", value: NutritionText.kilocalories(kilocalories))
+            Divider()
+        }
     }
 
     /// 「172 cm・35歳・男性・72.4 kg・歩数から」。体重は目標案の計算に使った開始の日の体重の傾向

@@ -13,7 +13,7 @@
             if let offer {
                 DishScreen(
                     offer: offer,
-                    actions: .noop,
+                    performEdit: { _ in },
                     deleteMeal: {},
                     confirmsMealDeletion: sample.confirmsMealDeletion)
             }

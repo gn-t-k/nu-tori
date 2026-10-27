@@ -3,7 +3,7 @@ import NuToriCore
 import SwiftData
 import SwiftUI
 
-/// キャッシュの記録と同期の状態、今日の日付を読んで、タイムラインの画面に渡す
+/// キャッシュの記録と同期の状態、今日と今を読んで、タイムラインの表示の値にして画面に渡す
 struct TimelineScreenContainer: View {
     let clock: DeviceClock
     let rejectedLines: [RejectedLine]
@@ -14,13 +14,11 @@ struct TimelineScreenContainer: View {
     let noteReminderLanded: () -> Void
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
-    let saveWeight: (WeightEntry.Write) async -> Void
-    /// 入力欄から文章を送る。送れるかは書く欄が決め、送れるときだけ呼ぶ
-    let sendText: (TextDraft) async -> Void
+    /// 記録を作る・直す・消す編集を渡す（`RootModel.perform(_:)`）
+    let performEdit: (UserEdit) async -> Void
     /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事
     let replyStreams: [UUID: ReplyStream]
     let goalSetup: GoalSetupSession
-    let conversationActions: ConversationActions
     let accountActions: AccountActions
     let paywallActions: PaywallActions
     let mealActions: MealActions
@@ -28,39 +26,19 @@ struct TimelineScreenContainer: View {
     let holdsMealOriginals: (_ mealId: UUID) async -> Bool
 
     var body: some View {
-        let timeline = timelineRecords
         TimelineScreen(
-            records: cachedRecords.compactMap { $0.weightRecord() },
-            weightTrend: CachedWeightTrendDay.weightTrend(of: cachedWeightTrendDays),
-            initialPull: initialPull,
-            today: clock.today(),
+            snapshot: snapshot,
             now: clock.now,
             timeZone: clock.timeZone,
-            rejectedLines: rejectedLines,
-            meals: timeline.mealCards(
-                recordedOnThisDevice: mealsRecordedHere,
-                unsentDishIds: pendingAppearance.unsentDishIds),
-            notices: cachedNotices.compactMap { $0.notice() },
-            goals: cachedGoals.compactMap { $0.goal() },
-            dailyGuides: cachedDailyGuides.compactMap { $0.dailyGuide() },
-            weeklyReviews: cachedWeeklyReviews.compactMap { $0.record() },
-            expenditureEstimates: cachedExpenditureEstimates.compactMap {
-                $0.expenditureEstimate()
-            },
-            subscriptionStatus: cachedSubscriptionStatuses.first?.subscriptionStatus(),
-            undeliveredRecords: pendingAppearance.undelivered,
             capture: capture,
             reminderLanding: reminderLanding,
             noteReminderLanded: noteReminderLanded,
             requestNotificationPermission: requestNotificationPermission,
             prepareWeightEntry: prepareWeightEntry,
-            saveWeight: saveWeight,
-            sendText: sendText,
+            performEdit: performEdit,
             accountActions: accountActions,
             paywallActions: paywallActions,
             mealActions: mealActions,
-            conversation: timeline.conversation(streams: replyStreams),
-            conversationActions: conversationActions,
             goalSetupFlow: GoalSetupNoticeCard.Flow(
                 goalSetup.flow, on: .timeline, openedOn: goalSetup.place),
             goalScreenGoalSetupFlow: GoalSetupNoticeCard.Flow(
@@ -92,14 +70,38 @@ struct TimelineScreenContainer: View {
     /// 写真の置き場を読み終えるまでは、ほかの端末の食事として見せる
     @State private var mealsRecordedHere: Set<UUID> = []
 
-    private var initialPull: TimelineScreen.InitialPull {
+    /// 行を記録にするだけにし、組むのは `TimelineSnapshot` が行う。読めない行は飛ばす
+    private var snapshot: TimelineSnapshot {
+        let timeline = timelineRecords
+        return TimelineSnapshot(
+            weightRecords: cachedRecords.compactMap { $0.weightRecord() },
+            weightTrend: CachedWeightTrendDay.weightTrend(of: cachedWeightTrendDays),
+            initialPull: initialPull,
+            rejectedLines: rejectedLines,
+            meals: timeline.mealCards(
+                recordedOnThisDevice: mealsRecordedHere,
+                unsentDishIds: pendingAppearance.unsentDishIds),
+            notices: cachedNotices.compactMap { $0.notice() },
+            goals: cachedGoals.compactMap { $0.goal() },
+            dailyGuides: cachedDailyGuides.compactMap { $0.dailyGuide() },
+            weeklyReviews: cachedWeeklyReviews.compactMap { $0.record() },
+            expenditureEstimates: cachedExpenditureEstimates.compactMap {
+                $0.expenditureEstimate()
+            },
+            subscriptionStatus: cachedSubscriptionStatuses.first?.subscriptionStatus(),
+            undelivered: pendingAppearance.undelivered,
+            conversation: timeline.conversation(streams: replyStreams),
+            today: clock.today(), now: clock.now(), timeZone: clock.timeZone())
+    }
+
+    private var initialPull: TimelineSnapshot.InitialPull {
         guard let state = syncStates.first, state.hasCompletedInitialPull else {
             return .inProgress
         }
         return .completed(startedDay: state.startedOn.flatMap(CalendarDay.init(yearMonthDay:)))
     }
 
-    /// 行を記録にするだけにし、種類をまたいで組むのは `TimelineRecords` が行う。読めない行は飛ばす
+    /// 食事のカードと会話を、種類ごとの記録から組む
     private var timelineRecords: TimelineRecords {
         TimelineRecords(
             meals: cachedMeals.compactMap { $0.meal() },

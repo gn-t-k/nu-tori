@@ -30,7 +30,7 @@ export const createRecordKinds = (stores: RecordKindStores, receivedAt: Date) =>
     createAiUtteranceKind(stores.aiUtterance),
     createDailyGuideKind(stores.dailyGuide),
     createDishKind(stores, receivedAt),
-    createDishEstimationStatusKind(stores.dish, stores.dishEstimationStatus, receivedAt),
+    createDishEstimationStatusKind(stores.dish, stores.dishEstimationStatus),
     createExpenditureEstimateKind(stores.expenditureEstimate),
     createGoalKind(stores.goal),
     createIngredientKind(stores, receivedAt),

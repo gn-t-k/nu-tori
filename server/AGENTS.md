@@ -35,8 +35,8 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 機能を第一の軸にする切り方（`src/<機能>/` の下に層を置く）を採らなかった理由は、[コードの置き方を縦に切るか（#153）](https://github.com/gn-t-k/nu-tori/issues/153) にある
 - Durable Object のクラスは `instrumentDurableObjectWithSentry` で包み、Worker と同じ Sentry の設定（`src/observability/create-sentry-options.ts`）を渡す。包まないと、アラームの例外が Sentry に届かない
 - ドメイン層は、実行基盤の型や API に触れない。ドメイン層が要る置き場と外への呼び出し（記録の置き場、写真の控え、LLM の提供元など）は、ドメイン層が型を定め、基盤に固有の層（Durable Object、D1・R2・LLM の提供元・Apple の API への入出力）がそれを実装する
-- 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。入口（受け口の Worker からの要求と、アラーム）ごとの処理は、アカウントの口（`src/account/domain/account-requests.ts` の `accountRequests`）に関数を1つずつ置く。関数は、ドメイン層が型を定めたストア（`AccountStores` のうち要るもの）と要求と今の時刻（要るときだけ）を受け、結果と、次に張るアラームの時刻と、起きた利用状況の出来事（`AccountResponse`）を返す。見直しを起こす要求は、要求ごとのログに足す値（`LoggedAccountResponse` の `requestLog`）も返す。出来事を作るところ（口、流れ、種類）は利用状況の設定を読まない
-- Durable Object のクラスは、`setUser` でアカウント ID を付ける、ストアを組んで口を呼ぶ、返った時刻にアラームを張る、返った出来事を送る、だけをする薄い層にする。送るかどうか（利用状況の設定）は、どの入口の出来事も通る送る前の1か所（`respond` が呼ぶ `selectSendableUsageEvents`）で、口が答えを出し終えた直後の設定で決める。出来事を送る道をほかに作らない。`alarm()` も同じ形にし、ログと Sentry への報告だけを足す。入口を足すときは、口に関数を足してから、Durable Object に同じ形のメソッドを足す
+- 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。入口（受け口の Worker からの要求と、アラーム）ごとの処理は、アカウントの口（`src/account/domain/account-requests.ts` の `accountRequests`）に関数を1つずつ置く。関数は、ドメイン層が型を定めたストア（`AccountStores` のうち要るもの）と要求と今の時刻（要るときだけ）を受け、結果と、起きた利用状況の出来事（`AccountResponse`）を返す。アラームの時刻は返さない（下の「Durable Object のクラス」）。見直しを起こす要求は、要求ごとのログに足す値（`LoggedAccountResponse` の `requestLog`）も返す。出来事を作るところ（口、流れ、種類）は利用状況の設定を読まない
+- Durable Object のクラスは、`setUser` でアカウント ID を付ける、ストアを組んで口を呼ぶ、アラームを張り直す、返った出来事を送る、だけをする薄い層にする。受け口からの要求のあとは、記録を変えたかによらず、`respondRearmingAlarm` がいつも仕事の並びから次の時刻を出し直して張る（無ければ外す）。要求ごとに張るかを選ばない（選ぶと、時刻を動かす記録を書いた要求で張り忘れる。#778）。例外は、表ごと消す記録の削除（Durable Object が渡す `eraseRecords` が表と一緒にアラームも外す）と、アラーム自身（口が出した時刻に張る）。送るかどうか（利用状況の設定）は、どの入口の出来事も通る送る前の1か所（`armAlarmAndSendUsageEvents` が呼ぶ `selectSendableUsageEvents`）で、口が答えを出し終えた直後の設定で決める。出来事を送る道をほかに作らない。`alarm()` も同じ形にし、ログと Sentry への報告だけを足す。入口を足すときは、口に関数を足してから、Durable Object に同じ形のメソッドを足す
 - HTTP の受け口は、記録を読み書きする要求なら、セッションを確かめ、回数の歯止めをかけてから、その人の Durable Object を呼ぶだけにする。まだセッションのないサインインと Apple のサーバー間通知は、受け口の Worker の認証で受ける。アカウントの削除は、受け口の Worker でドメイン層を呼ぶ。Durable Object の中身を消すときも、その Durable Object の入口を呼んで行う
 - 受け口は、Durable Object を呼ぶたびにアカウント ID を渡す。Durable Object の中では、その呼び出しの Sentry の報告に user の ID として付ける
 - 受け口のスキーマは要求の形だけを確かめる。受け付ける値の範囲はドメイン層で確かめる
@@ -70,7 +70,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 変更の並びの表（`record_changes`）に書くのは帳簿だけにする。種類と置き場は、変えた記録を帳簿に渡す
   - 書き込みが、自分の記録のほかに変える記録（食事を消すときの料理など）は、`decide` が返す `addedChanges` に載せる。帳簿は、書き込みの記録の変更のあとに、控えと結ばずに並びの順で足す。`commit` の中で変えた記録が分かる場合（推定の書き込みの口が足す推定の状態の変更）は、`commit` に渡る `addChange` で足す。帳簿は、`addedChanges` のあとに足した順で載せ、同じ記録の変更を最初の1つにまとめる。載せられる種類は `RecordKind` の4つ目の型引数で宣言し、登録簿に無い種類は型検査が止める
   - ほかの種類の記録から計算する種類（体重の傾向、いつもの時刻）は、`RecordKind` の `follows` に元の種類の名前と `afterSourceApplied` を書く。帳簿は、元の種類の書き込みを当て（`applied`）、その変更を並びに載せたあとに、計算する種類を登録簿の順に呼ぶ。計算する種類は、書いたあとの記録を読んで自分の行を書き、変えた記録の ID を返す。元の種類は、計算する種類を知らない（`decide` で、書いたあとの記録をメモリの上で作り直さない）
-  - 端末の書き込みの外（受け口の要求、アラーム）で記録を変えるときは、記録の変化を書く入口（`src/domain/record-change-writer.ts` の `RecordChangeWriter`。Durable Object では `durable-object/create-record-change-writer/` が組み、中身は `domain/write-record-changes-to-stores.ts`）に `run` を渡し、その中で行を書いて、変えた記録を `addChange` で渡す。`run` の書き込みと変更は1つのトランザクションに入り、変更には渡した順に通し番号が付く。推定の予定と結果は `estimationAt(now)`、返事の流れの出来事は `reply` で書き、変わった状態の変更は入口が `run` のあとに足す。流れ（推定・返事・読み分け・写真の受け取り）は帳簿を組まず、入口と、自分が読み書きする置き場だけを受け取る
+  - 端末の書き込みの外（受け口の要求、アラーム）で記録を変えるときは、記録の変化を書く入口（`src/domain/record-change-writer.ts` の `RecordChangeWriter`。Durable Object では `durable-object/create-record-change-writer/` が組み、中身は `domain/write-record-changes-to-stores.ts`）に `run` を渡し、その中で行を書いて、変えた記録を `addChange` で渡す。`run` の書き込みと変更は1つのトランザクションに入り、変更には渡した順に通し番号が付く。推定の予定と結果は `estimation`、返事の流れの出来事は `reply` で書き、変わった状態の変更は入口が `run` のあとに足す。流れ（推定・返事・読み分け・写真の受け取り）は帳簿を組まず、入口と、自分が読み書きする置き場だけを受け取る
 - 書き込みを当てたときに PostHog に送る出来事（食事を受け取った、など）は、`decide` が返す `usageEvents` に載せる。帳簿は、その要求で初めて決めた書き込みの分だけを返し、同じ書き込みの ID が再び届いたときは返さない。送るかどうか（利用状況の設定）は、要求を当て終えたあとの設定で Durable Object が送る前に決める（上の「層」）
 
 ## 推定
@@ -110,6 +110,10 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 成分表のデータファイル（`src/domain/food-composition/food-composition-table.json`）は、文部科学省の本表の Excel から `scripts/build-food-composition-table.ts` が作る。手で書き換えず、成分表の版を上げるときや読み方を直したときに、`server/` で `pnpm exec tsx scripts/build-food-composition-table.ts` を回して作り直す。出典はファイルの `source`
 - 栄養の項目の名前は `shared/nutrients.json`、成分表の列との対応は `src/domain/food-composition/nutrient-source-columns.ts`。項目を足すときは JSON に1行足し、対応を足して、データファイルを作り直す
 
+## 出し方のページの例
+
+- 出し方のページ（`site/src/pages/daily-guide-page.tsx`）の「Aさんの例」の数字（`site/src/pages/daily-guide/daily-guide-example.json`）は、`scripts/print-daily-guide-example.ts` がドメイン層の関数で出す。推定消費カロリー・1日の目安・毎週の見直しの決まりを変えたら、`scripts/check server --fix` で書き出し直し、ページの本文が新しい数字と合うかを読む（筋が変わると、ページの書き出しが止まる）
+
 ## 認証
 
 - 認証は Better Auth に任せる（ADR-0019）。Better Auth の表は D1 の中の認証の置き場に閉じ、ほかの表と Durable Object はアカウント ID だけを見る
@@ -122,10 +126,11 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 ## 目標の設定の要求
 
 - 目標の設定は、同期の外でその場で答える要求で進める。経路は `src/http/goal-setup-routes/`（`/v1/goal-setup/*`）、入口は `src/goal/domain/` の `previewGoalSetup`（目標の下見）・`proposeGoals`（目標案）・`assessCustomTargetWeight`（自分で決める目標体重）で、その人の Durable Object の同じ名前の RPC から呼ぶ。この3つは何も書かない。ただし、目標を決める要求と同じく、答える前にまだ見直していない週を見るので、見直しが要るときだけ週の見直しの行を書く（下の「週の見直し」）
+- 見せる値（目標案、自分で決めた目標体重の評価、維持の目標体重と1日の目安）は `src/goal/domain/goal-offer/` の1か所で出す。目標案・自分で決める目標体重・目標を決める要求の3つの入口はどれもここを通り、目標を決める要求は見せる値を組み直さずに、端末が見せていた値と比べるだけにする（`assessGoalDecision`）
 - どの要求も、計算の元（開始の日、今の目標、開始の日の体重の傾向、推定消費カロリー）を `src/goal/domain/goal-setup-basis/` の `resolveGoalSetupBasis` で要求のたびに出し直す。初めての目標では推定消費カロリーを逆算か式で出し、今の目標があれば今の推定（`ExpenditureEstimateStore.findCurrent`）を使う。目標案から先は同じ module の `resolveCompleteGoalSetupBasis` で、体重記録と推定消費カロリーが揃っていることを確かめ、減量・増量の計算の元（期限までの日数を含む）は `computeWeightChangeGoalInputs` で出す
 - 断る要求（不具合のときだけ届く）は、形の誤りを 400、値の誤り（`GoalSetupRequestRejectedError` の `reason`）を 422 にして、本文の `code` に理由を入れ、受け口が Sentry に送る。エラーには理由と、誤っていた場所だけを持たせ、届いた値を載せない
 - 目標の下見の「減量の案を1つでも出せるか」は、期限を選ぶ前に答えるので、受け付けるいちばん短い期限（`src/goal/domain/accepted-deadline/` の `acceptedDeadlineDays.minimum`）で確かめる
-- 目標を決める要求（`POST /v1/goal-setup/decisions`、入口は `decideGoal`）が目標の行を書く（ほかに書くのは、下の「週の見直し」の、期限後の維持の目標を作る週の見直しを書く口だけ）。記録の変化を書く入口（`RecordChangeWriter`）の `run` の中で、要求の受け取り（`goal_decision_receipts`）を見て、同じ計算の元で計算し直し、端末が見せていた値と同じときだけ、目標を決めたことを書く口（`src/goal/domain/write-goal-decision.ts`。テストは Durable Object の置き場に当てる `src/goal/durable-object/write-goal-decision.test.ts`）で行の組を書く
+- 目標を決める要求（`POST /v1/goal-setup/decisions`、入口は `decideGoal`）が目標の行を書く（ほかに書くのは、下の「週の見直し」の、期限後の維持の目標を作る週の見直しを書く口だけ）。記録の変化を書く入口（`RecordChangeWriter`）の `run` の中で、要求の受け取り（`goal_decision_receipts`）を見て、同じ計算の元で見せる値を出し、端末が見せていた値と同じときだけ、目標を決めたことを書く口（`src/goal/domain/write-goal-decision.ts`。テストは Durable Object の置き場に当てる `src/goal/durable-object/write-goal-decision.test.ts`）で行の組を書く
   - 応答の `status` は3つ: 決めた `decided`、開始の日か見せていた値が違った `recalculated`（目標案の応答と同じ形の新しい案を返し、受け取りを書かない。開始の日がずれて期限が 28〜182 日の外に出たら、受け付けるいちばん近い日に寄せた期限の案を返し、端末はその期限を使い直す）、自分で決めた目標体重を受け付けない `custom_target_weight_rejected`。同じ要求の ID の再送は、書かずに、決めた目標から読み直した記録（`readGoalDecisionRecords`）で `decided` を返す
   - 目標・推定消費カロリー・1日の目安の行は、書く口を通してだけ書く。口は、表で守らない決まり（今の目標をいつも閉じて 0..1 に保つ、開始の日を今の目標より前にしない、推定の始まりは推定の行が無いときだけ、減量・増量で目標体重と開始の日の体重の傾向が等しくない、区分の値が一覧にある）を書く前に確かめて投げ、外部キーが指す行を先に書く
   - 決めたときだけ、PostHog に `goal_decision_recorded` を送る（利用状況の設定に従う。再送では送らない）。体重・目標体重・kcal の値は載せない
@@ -166,7 +171,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 索引は、同期の要求ごとに走る引き方に加え、アラームや推定の開始ごと、記録を受け取るごとに走る引き方にも置く。行が食事の数ほど増え続ける表（予定・推定・試み・料理・材料など）が対象になる。引く道が無いもの（控えから削除の印を引く）や、索引が効かない引き方（待っている予定を、推定も見送りも無いことで出す）には置かない
 - Durable Object のアラームは一度に1つしか張れない。アラームで動かすもの（推定など）は、予定を DB に持ち、いちばん早い予定にアラームを合わせる
   - アラームで動かす仕事（課金、読み分け、推定、返事、写真の控えの消し残しの消し直し）は、「進める」と「次に動く時刻」を対にした値（`src/domain/alarm-job.ts`）にして、1つの並び（`src/domain/account-alarm-jobs.ts`）に置く。アラームで動かすものを足すときは、この並びに足す。アラームは並びの順に進め、エラーは並びで先の仕事のものを報告する
-  - アラーム1回分（仕事を順に進め、次に張る時刻と報告するエラーを決める）は `src/domain/run-account-alarm.ts` が、入口（送る要求と写真の要求）で張るいちばん早い時刻は `src/domain/compute-next-alarm-at.ts` が、どちらもこの並びから出し、どちらもアカウントの口が呼ぶ。Durable Object の `alarm()` は、口から返った時刻に張り、Sentry・PostHog・ログに出し、エラーを投げるだけにする
+  - アラーム1回分（仕事を順に進め、次に張る時刻と報告するエラーを決める）は `src/domain/run-account-alarm.ts` が、要求のあとに張るいちばん早い時刻は `src/domain/compute-next-alarm-at.ts` が、どちらもこの並びから出す。前者はアカウントの口が、後者は Durable Object の `respondRearmingAlarm` が呼ぶ。Durable Object の `alarm()` は、口から返った時刻に張り、Sentry・PostHog・ログに出し、エラーを投げるだけにする
   - 写真の控えの消し直しに失敗したアラームは、消し残しの時刻（今）を除いたいちばん早い時刻に張り直す（今に張り直さず、Cloudflare のアラームのやり直しに任せる）。仕事が `left_to_alarm_retry` を返すと、その仕事の時刻を除く
   - アラームの中のアカウント ID は `ctx.id.name`（`idFromName` で付けた名前）から得る。テストの実行環境でも、張ったアラームはひとりでに動くので、アラームの結果を確かめるテストは `runDurableObjectAlarm` で動かしたうえで `vi.waitFor` で待つ
 - 記録に対しては、全員をまたぐ SQL は書けない。全員をまたぐ分析は、記録を書くときに分析用の出来事を PostHog に送って行う

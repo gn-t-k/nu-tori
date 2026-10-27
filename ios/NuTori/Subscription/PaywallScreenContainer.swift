@@ -1,7 +1,7 @@
 import NuToriCore
 import SwiftUI
 
-/// 課金画面をシートで開く。開いたところと、開いたときの状態を `Request` で受け取る。
+/// 課金画面をシートで開く。開いたところと、開いたときの状態を `PaywallRequest` で受け取る。
 /// 結びついたら閉じ、閉じたら PostHog に StoreKit の結果を送る
 struct PaywallScreenContainer: View {
     let onClose: () -> Void
@@ -28,8 +28,8 @@ struct PaywallScreenContainer: View {
         }
     }
 
-    /// テストユーザーには開かない。開く前に `Request.init` が nil を返す
-    init(request: Request, actions: PaywallActions, onClose: @escaping () -> Void) {
+    /// テストユーザーには開かない。開く前に `PaywallRequest.init` が nil を返す
+    init(request: PaywallRequest, actions: PaywallActions, onClose: @escaping () -> Void) {
         self.content = request.content
         self.storefront = actions.storefront
         self.onClose = onClose
@@ -39,25 +39,6 @@ struct PaywallScreenContainer: View {
                 purchases: actions.purchases, capture: actions.capture))
     }
 
-    /// 課金画面を開く求め。`.sheet(item:)` に渡す
-    struct Request: Identifiable {
-        let entry: ClientUsageEvent.PaywallEntry
-        let standing: SubscriptionStanding
-        let content: PaywallContent
-
-        var id: ClientUsageEvent.PaywallEntry { entry }
-
-        /// テストユーザーなら nil。文は開いたときの状態と今日で決め、開いているあいだに買って状態が変わっても描き替えない
-        init?(
-            entry: ClientUsageEvent.PaywallEntry, standing: SubscriptionStanding, today: CalendarDay
-        ) {
-            guard let content = PaywallContent(standing: standing, today: today) else { return nil }
-            self.entry = entry
-            self.standing = standing
-            self.content = content
-        }
-    }
-
     private let content: PaywallContent
     private let storefront: PaywallStorefront
     @State private var session: PaywallSession
@@ -65,7 +46,7 @@ struct PaywallScreenContainer: View {
 
 extension View {
     /// 課金画面を開く口。`request` に値を入れると開き、閉じると nil に戻す
-    func paywallSheet(_ request: Binding<PaywallScreenContainer.Request?>, actions: PaywallActions)
+    func paywallSheet(_ request: Binding<PaywallRequest?>, actions: PaywallActions)
         -> some View
     {
         sheet(item: request) { opened in

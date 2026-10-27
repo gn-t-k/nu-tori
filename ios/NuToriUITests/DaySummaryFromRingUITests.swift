@@ -5,6 +5,8 @@ import XCTest
 /// 選んだ日の区切りへ動かすと決める規則と、題に出す日を決める規則は NuToriCore の単体テスト（TimelineViewportTests の「一番下へ戻す」と「題と1日の丸の帯に出す日」）が見る。
 /// ここで見るのは SwiftUI の癖: シートが閉じるのと同じ更新で出した指示でも、ScrollViewProxy の scrollTo が、その更新で並べ足した遠い日（21日前。開いたときには並べていない）に着くこと、
 /// 着いたあとの日の区切りの位置（GeometryReader と preference）が届いて、題がその日に変わること
+///
+/// 日のまとめの「体重」の行を押すと、シートが閉じてタイムラインの上に体重の画面が積まれ、「すべての記録」へも潜れることも見る
 @MainActor
 final class DaySummaryFromRingUITests: XCTestCase {
     private var app = XCUIApplication()
@@ -27,17 +29,19 @@ final class DaySummaryFromRingUITests: XCTestCase {
         app.buttons["ring-\(todayIdentifier)"].tap()
 
         XCTAssertTrue(app.otherElements["day-summary"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticText(containing: "72.4 kg").exists)
+        // 体重の行は押せる行なので、値は行のラベルで見る
+        let weightRow = app.buttons["day-summary-weight"]
+        XCTAssertTrue(waitUntil(weightRow, matches: "label CONTAINS %@", "72.4 kg"))
         for _ in 0..<21 {
             app.buttons["前の日"].tap()
         }
-        XCTAssertTrue(app.staticText(containing: "70.0 kg").waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticText(containing: "ほか1件").exists)
+        XCTAssertTrue(waitUntil(weightRow, matches: "label CONTAINS %@", "70.0 kg"))
+        XCTAssertTrue(weightRow.label.contains("ほか1件"))
         XCTAssertFalse(app.buttons["前の日"].isEnabled)
         app.buttons["次の日"].tap()
-        XCTAssertTrue(app.staticText(containing: "記録なし").waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntil(weightRow, matches: "label CONTAINS %@", "記録なし"))
         app.buttons["前の日"].tap()
-        XCTAssertTrue(app.staticText(containing: "70.0 kg").waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntil(weightRow, matches: "label CONTAINS %@", "70.0 kg"))
         attachScreenshot(of: app, named: "使い始めた日のまとめ")
 
         app.buttons["タイムラインでこの日を見る"].tap()
@@ -50,6 +54,30 @@ final class DaySummaryFromRingUITests: XCTestCase {
         XCTAssertTrue(app.staticText(containing: "70.0 kg").isHittable)
         XCTAssertFalse(app.staticText(containing: "72.4 kg").isHittable)
         attachScreenshot(of: app, named: "タイムラインで使い始めた日を見た")
+    }
+
+    func test_日のまとめの体重の行から体重の画面とすべての記録へ潜れること() {
+        app.buttons["ring-\(todayIdentifier)"].tap()
+        XCTAssertTrue(app.otherElements["day-summary"].waitForExistence(timeout: 5))
+
+        app.buttons["day-summary-weight"].tap()
+        XCTAssertTrue(app.otherElements["day-summary"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["weight-screen"].waitForExistence(timeout: 5))
+        // 記録のある日が22日あるので、最近の記録は5日に絞り、その先へ潜る行を置く
+        attachScreenshot(of: app, named: "日のまとめの体重の行から開いた体重の画面")
+        let historyLink = app.buttons["weight-history-link"]
+        XCTAssertTrue(app.scrollUntilExists(historyLink))
+        attachScreenshot(of: app, named: "最近の記録の5日とすべての記録への行")
+
+        historyLink.tap()
+        let history = app.descendants(matching: .any)["weight-history-screen"]
+        XCTAssertTrue(history.waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "すべての記録")
+        // 最近の記録の5日に入らない、使い始めた日の行まで並ぶ
+        let startedDayRow = history.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS %@", "70.0 kg")
+        ).firstMatch
+        XCTAssertTrue(app.scrollUntilExists(startedDayRow, maxSwipes: 8))
     }
 
     private struct StartedDay {

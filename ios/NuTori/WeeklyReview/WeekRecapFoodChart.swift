@@ -2,7 +2,7 @@ import Charts
 import NuToriCore
 import SwiftUI
 
-/// 週の振り返りの食べた量の段のグラフ。日ごとの棒、記録の無い日は「なし」、1日の目安は点線
+/// 週の振り返りの食べた量の段のグラフ。日ごとの棒と、1日の目安の点線。記録の無い日は棒を描かず、読み上げだけ「記録なし」にする
 struct WeekRecapFoodChart: View {
     let recap: WeekRecap
 
@@ -24,11 +24,6 @@ struct WeekRecapFoodChart: View {
                         y: .value("食べた量", 0)
                     )
                     .symbolSize(0)
-                    .annotation(position: .top, spacing: 2) {
-                        Text("なし")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
                     .accessibilityLabel(TimelineDayText.label(for: day.day))
                     .accessibilityValue("記録なし")
                 }

@@ -16,21 +16,11 @@ export const writeRecordChangesToStores = <T>(
     ledgerStore.insertRecordChange({ ...change, writeId: undefined });
   };
   return ledgerStore.transaction(() => {
-    const estimations: ReturnType<typeof openEstimationEventWrites>[] = [];
+    const estimation = openEstimationEventWrites(stores, addChange);
     const result = writeReplyEvents(stores, addChange, (reply) =>
-      run({
-        addChange,
-        estimationAt: (now) => {
-          const estimation = openEstimationEventWrites(stores, addChange, now);
-          estimations.push(estimation);
-          return estimation.writes;
-        },
-        reply,
-      }),
+      run({ addChange, estimation: estimation.writes, reply }),
     );
-    for (const { addStatusChanges } of estimations) {
-      addStatusChanges();
-    }
+    estimation.addStatusChanges();
     return result;
   });
 };

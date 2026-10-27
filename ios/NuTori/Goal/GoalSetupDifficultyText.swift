@@ -17,4 +17,10 @@ enum GoalSetupDifficultyText {
         let side = kilocalories < 0 ? "少ない" : "多い"
         return "推定消費カロリーより \(NutritionText.kilocalories(abs(kilocalories))) \(side)"
     }
+
+    /// 案の行の右の列に置く、1日の目安と推定消費カロリーの差。「−400 kcal」「+300 kcal」「±0 kcal」
+    static func signedDifference(_ kilocalories: Int) -> String {
+        let sign = kilocalories < 0 ? "−" : kilocalories > 0 ? "+" : "±"
+        return sign + NutritionText.kilocalories(abs(kilocalories))
+    }
 }

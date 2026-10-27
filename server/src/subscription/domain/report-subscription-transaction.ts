@@ -85,7 +85,7 @@ export const reportSubscriptionTransaction = (
           firstSignInId,
         ),
       },
-      ...written.resumedTargets.map((target) => readResumedStatus(records, target, now)),
+      ...written.resumedTargets.map((target) => readResumedStatus(records, target)),
     ],
   };
 };
@@ -96,7 +96,6 @@ const readResumedStatus = (
     "meal" | "mealEstimationStatus" | "dish" | "dishEstimationStatus"
   >,
   target: EstimationTarget,
-  now: Date,
 ): ReportedRecord =>
   match(target)
     .returnType<ReportedRecord>()
@@ -114,7 +113,6 @@ const readResumedStatus = (
       current: createDishEstimationStatusKind(
         records.dish,
         records.dishEstimationStatus,
-        now,
       ).readCurrent(dishId),
     }))
     .exhaustive();

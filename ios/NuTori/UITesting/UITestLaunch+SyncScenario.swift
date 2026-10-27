@@ -66,21 +66,20 @@
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
                     answerSentText: Self.answer(sentText:), sentTextAnswerPulls: 5)
             case .goalSetup:
+                // 目標を決めたあとに食事の文章を送ると、日のまとめで1日の目安と比べる形を見られる
                 return .init(
                     records: [todaysManualWeight], startedOn: today,
+                    estimatedDishes: Self.oyakodon(mealId:),
+                    answerSentText: Self.answer(sentText:),
                     goalSetup: goalSetupAnswers(today: today))
             case .weeklyReview:
                 return weeklyReview(.reviewed)
             case .goalAchieved:
                 return weeklyReview(.achieved)
-            case .goalSwitchedAfterAchieved:
-                return weeklyReview(.switchedAfterAchieved)
             case .subscriptionExpired:
                 return subscriptionExpired()
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
-            case .accountDeletionUnauthorized:
-                return .init(records: [], startedOn: today, accountDeletion: .sessionExpired)
             }
         }
 
@@ -419,19 +418,11 @@
         /// 1日の目安は 1,880 kcal から 1,850 kcal に、推定消費カロリーは 2,190 kcal から 2,140 kcal に下がった。
         /// 立て直すときは、目標の設定の4つの要求に答える
         private func weeklyReview(_ progress: WeeklyReviewProgress) -> FakeSyncServer.Scenario {
-            let achieved: Bool
-            let switched: Bool
-            switch progress {
-            case .reviewed:
-                achieved = false
-                switched = false
-            case .achieved:
-                achieved = true
-                switched = false
-            case .switchedAfterAchieved:
-                achieved = true
-                switched = true
-            }
+            let achieved =
+                switch progress {
+                case .reviewed: false
+                case .achieved: true
+                }
             let today = clock.today()
             let monday = today.startOfWeek
             let goalStart = monday.advanced(by: -7)
@@ -456,11 +447,7 @@
                         judgedAt: date(dayOffset: -1, hour: 21, minute: 0),
                         timeZone: clock.timeZone())
                     : nil,
-                deadlineConfirmation: nil,
-                closure: switched
-                    ? .init(
-                        endedOn: day(today), nextGoalId: Self.switchedGoalId, endReason: .switched)
-                    : nil)
+                deadlineConfirmation: nil, closure: nil)
             // 今日の 7:00 にも量った
             let weights = [0, 2, 4, 6, 7].enumerated().map { index, offset in
                 weight(
@@ -509,7 +496,7 @@
                                     trendKilograms: achieved
                                         ? 72.4 - Double($0) * 0.2 : 72.4 - Double($0) * 0.05)
                             })),
-                ] + weights + (switched ? switchedGoal(startedOn: day(today)) : []),
+                ] + weights,
                 startedOn: day(goalStart),
                 goalSetup: goalSetupAnswers(today: day(today)))
         }
@@ -520,35 +507,6 @@
             case reviewed
             /// 昨日の 21:00 に目標を達成したと判定した
             case achieved
-            /// 達成したあと、今日の 8:00 に 72.0 kg を保つ目標に立て直した
-            case switchedAfterAchieved
-        }
-
-        private static let switchedGoalId = fixedId(
-            "66666666-6666-4666-8666-666666666666")
-
-        /// 今日の 8:00 に立て直した、72.0 kg を保つ目標と、その推定消費カロリーと1日の目安
-        private func switchedGoal(startedOn: String) -> [SyncChange] {
-            let estimateId = Self.fixedId("67676767-6767-4767-8767-676767676767")
-            let decidedAt = date(dayOffset: 0, hour: 8, minute: 0)
-            return [
-                .goal(
-                    SyncedGoal(
-                        id: Self.switchedGoalId, startedOn: startedOn,
-                        startingWeightTrendKilograms: 72.0, targetWeightKilograms: 72.0,
-                        decidedAt: decidedAt, timeZone: clock.timeZone(), direction: .maintain,
-                        achievement: nil, deadlineConfirmation: nil, closure: nil)),
-                .expenditureEstimate(
-                    SyncedExpenditureEstimate(
-                        id: estimateId, effectiveOn: startedOn, expenditureKilocalories: 2250,
-                        estimatedAt: decidedAt, initialSource: nil)),
-                .dailyGuide(
-                    SyncedDailyGuide(
-                        id: Self.fixedId("68686868-6868-4868-8868-686868686868"),
-                        goalId: Self.switchedGoalId, expenditureEstimateId: estimateId,
-                        effectiveOn: startedOn, energyKilocalories: 2250, proteinGrams: 115,
-                        fatGrams: 50, carbohydrateGrams: 200, limitHits: [])),
-            ]
         }
 
         private static func fixedId(_ text: String) -> UUID {

@@ -35,7 +35,7 @@ public struct SentTextBubble: Hashable, Sendable {
             case .halted(.subscriptionExpired): "サブスクリプション切れのため、返事をしませんでした"
             case .failed(.retriesExhausted): "返事を作れませんでした"
             // 月の上限かは見分けず、上限は出さない（使う人にできることが無く、1日の上限と取り違える）
-            case .failed(.badRequest): "今は返事を作れません。時間をおいて送り直してください"
+            case .failed(.badRequest): "今は返事を作れません"
             }
         }
 

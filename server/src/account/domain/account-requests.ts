@@ -34,7 +34,8 @@ import type { AccountResponse, LoggedAccountResponse } from "./account-response"
 import type { AccountStores } from "./account-stores";
 
 // アカウントの Durable Object の受け口とアラームの、要求ごとの処理。
-// どれも、張り直すアラームの時刻と、起きた利用状況の出来事を一緒に返す（送るかどうかは Durable Object が送る前に決める）
+// どれも、結果と、起きた利用状況の出来事を一緒に返す（送るかどうかは Durable Object が送る前に決める）。
+// アラームは、要求のあとに Durable Object がいつも仕事の並びから張り直すので、要求ごとには選ばない
 export const accountRequests = {
   // サインインのたびに呼ぶ。サインインの画面で見せた規約の版への同意も、ここで残す
   recordFirstSignIn: (
@@ -61,7 +62,6 @@ export const accountRequests = {
       : { reviewedWeekCount: undefined, usageEvents: [] };
     return {
       result: results,
-      nextAlarmAt: computeNextAlarmAt(stores.records, now),
       usageEvents: [...usageEvents, ...caughtUp.usageEvents],
       requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
     } satisfies LoggedAccountResponse<unknown>;
@@ -83,13 +83,12 @@ export const accountRequests = {
     });
     return {
       result: pulled,
-      nextAlarmAt: undefined,
       usageEvents: [...caughtUp.usageEvents, ...usageEvents],
       requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
     } satisfies LoggedAccountResponse<unknown>;
   },
 
-  // 受け取れなかったら、失敗した段を出来事に載せ、アラームは張り直さない
+  // 受け取れなかったら、失敗した段を出来事に載せる
   receiveMealPhoto: async (
     stores: Pick<AccountStores, "writeRecordChanges" | "records" | "mealPhotoArchive">,
     request: { photoId: RecordId; photo: ArrayBuffer },
@@ -103,7 +102,6 @@ export const accountRequests = {
     );
     return {
       result: received,
-      nextAlarmAt: R.isSuccess(received) ? computeNextAlarmAt(stores.records, now) : undefined,
       usageEvents: R.isFailure(received)
         ? [{ name: "meal_photo_receipt_failed", stage: received.error.stage }]
         : [],
@@ -161,7 +159,6 @@ export const accountRequests = {
         decided,
         R.map(({ decision }) => decision),
       ),
-      nextAlarmAt: undefined,
       usageEvents: [
         ...caughtUp.usageEvents,
         ...(R.isSuccess(decided) ? decided.value.usageEvents : []),
@@ -180,7 +177,7 @@ export const accountRequests = {
     now: Date,
   ) => respond(agreeToTerms(stores.termsAgreement, request, now)),
 
-  // 端末からの取引の知らせ。書いたらサブスクリプションの終わりと再開した推定の時刻が変わるので、アラームを張り直す
+  // 端末からの取引の知らせ
   reportSubscriptionTransaction: (
     stores: Pick<AccountStores, "writeRecordChanges" | "records" | "subscriptionTransaction">,
     report: SubscriptionTransactionReport,
@@ -192,11 +189,7 @@ export const accountRequests = {
       report,
       now,
     );
-    return {
-      result: records,
-      nextAlarmAt: computeNextAlarmAt(stores.records, now),
-      usageEvents,
-    };
+    return { result: records, usageEvents };
   },
 
   // App Store のサーバー通知。案内は受け口が D1 で決めてから呼ぶ
@@ -211,7 +204,7 @@ export const accountRequests = {
       notification,
       now,
     );
-    return { result, nextAlarmAt: computeNextAlarmAt(stores.records, now), usageEvents };
+    return { result, usageEvents };
   },
 
   deleteRecords: async (
@@ -221,7 +214,8 @@ export const accountRequests = {
     return respond(undefined);
   },
 
-  // アラーム1回分。result は、Durable Object が Sentry とログに出し、投げるもの
+  // アラーム1回分。result は、Durable Object が張り、Sentry とログに出し、投げるもの。
+  // 張る時刻は、Cloudflare のアラームのやり直しに任せた仕事の時刻を除くので、要求のあとの張り直しと違い、ここで出す
   runAlarm: async (
     stores: Pick<
       AccountStores,
@@ -234,7 +228,7 @@ export const accountRequests = {
       | "armAlarmAt"
     >,
   ) => {
-    const { nextAlarmAt, usageEvents, ...ran } = await runAccountAlarm(
+    const { usageEvents, ...ran } = await runAccountAlarm(
       stores.writeRecordChanges,
       stores.records,
       {
@@ -245,7 +239,7 @@ export const accountRequests = {
         replyWatchers: stores.replyWatchers,
       },
     );
-    return { result: ran, nextAlarmAt, usageEvents } satisfies AccountResponse<unknown>;
+    return { result: ran, usageEvents } satisfies AccountResponse<unknown>;
   },
 };
 
@@ -277,12 +271,8 @@ const answerGoalSetup = <Request extends { timeZone: string }, Result>(
   };
 };
 
-// 張り直すものも送るものも無い答え
-const respond = <Result>(result: Result): AccountResponse<Result> => ({
-  result,
-  nextAlarmAt: undefined,
-  usageEvents: [],
-});
+// 送るものが無い答え
+const respond = <Result>(result: Result): AccountResponse<Result> => ({ result, usageEvents: [] });
 
 const armNextAlarm = async (
   stores: Pick<AccountStores, "records" | "armAlarmAt">,

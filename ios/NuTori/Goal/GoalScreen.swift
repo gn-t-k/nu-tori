@@ -1,8 +1,8 @@
 import NuToriCore
 import SwiftUI
 
-/// 目標の画面（仕様の「目標の画面」、`gform` A の押して進む画面）。上から、今の目標のカード、今の1日の目安、体重の傾向、
-/// 推定消費カロリーと1日の目安、週の振り返りへの1行、過去の目標を並べる。
+/// 目標の画面（仕様の「目標の画面」、`gform` A の押して進む画面）。「どういう目標か」「どう進んでいるか」「どう調整しているか」の順に1枚ずつ、
+/// 今の目標のカード、体重の傾向、今の1日の目安を並べ、その下に週の振り返りへの1行、過去の目標を並べる（#744 の解決コメント）。
 /// 「目標を切り替える」とカードのボタンでは、カードをその場で目標の設定のカードに変える（`gswitch` A）
 struct GoalScreen: View {
     /// キャッシュの記録から組んだ中身。目標がなければ nil
@@ -53,21 +53,19 @@ struct GoalScreen: View {
             // DESIGN.md の card-gap（12）。カードの間は VStack の間隔で空ける
             VStack(alignment: .leading, spacing: 12) {
                 currentGoal(overview)
-                if let dailyGuide = overview.currentDailyGuide {
-                    dailyGuideCard(dailyGuide, since: overview.currentDailyGuideSince)
-                }
                 if let goal = overview.status.goal {
                     GoalScreenCard(title: overview.weightChart.title) {
+                        if let progress = overview.weightChart.progress {
+                            weightProgress(progress)
+                        }
                         GoalWeightChartView(chart: overview.weightChart, goal: goal)
                     }
                     .accessibilityIdentifier("goal-weight-chart")
                 }
-                if let energyChart = overview.energyChart {
-                    GoalScreenCard(title: "推定消費カロリーと1日の目安") {
-                        GoalEnergyChartView(chart: energyChart)
-                        DailyGuideExplanationLink()
-                    }
-                    .accessibilityIdentifier("goal-energy-chart")
+                if let dailyGuide = overview.currentDailyGuide {
+                    dailyGuideCard(
+                        dailyGuide, since: overview.currentDailyGuideSince,
+                        energyChart: overview.energyChart)
                 }
                 if let recapTitle = recapTitle(overview.recapWeekMonday) {
                     weeklyReviewRow(recapTitle, monday: overview.recapWeekMonday)
@@ -114,8 +112,56 @@ struct GoalScreen: View {
         }
     }
 
-    /// 「今の1日の目安」「9月21日から」、「1,850 kcal」と P・F・C
-    private func dailyGuideCard(_ dailyGuide: DailyGuide, since: String?) -> some View {
+    /// 体重の傾向のグラフの上の「あと 2.8 kg」「あと 45 日」とペースの文
+    private func weightProgress(_ progress: GoalOverview.WeightChart.Progress) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let remainingKilograms = progress.remainingKilograms {
+                // 大きな文字で横に詰めると、日数が途中で折り返すので、横に収まらなければ日数を残りの kg の下に置く
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) {
+                        remainingKilogramsText(remainingKilograms)
+                        Spacer(minLength: 8)
+                        remainingDaysText(progress.remainingDays)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        remainingKilogramsText(remainingKilograms)
+                        remainingDaysText(progress.remainingDays)
+                    }
+                }
+            } else {
+                remainingDaysText(progress.remainingDays)
+            }
+            if let pace = progress.pace {
+                Text(pace)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("goal-weight-progress")
+    }
+
+    /// 「あと 2.8 kg」
+    private func remainingKilogramsText(_ text: String) -> some View {
+        Text(text)
+            .font(.title2)
+            .monospacedDigit()
+    }
+
+    /// 「あと 45 日」
+    private func remainingDaysText(_ text: String) -> some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .monospacedDigit()
+    }
+
+    /// 「今の1日の目安」「9月21日から」、「1,850 kcal」と P・F・C。進行中は、その下に推定消費カロリーとの棒（3点たまったらグラフも）と、出し方のリンク
+    private func dailyGuideCard(
+        _ dailyGuide: DailyGuide, since: String?, energyChart: GoalOverview.EnergyChart?
+    ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             // 大きな文字で横に詰めると、日付の途中で折り返すので、横に収まらなければ日付を見出しの下に置く
             ViewThatFits(in: .horizontal) {
@@ -129,8 +175,10 @@ struct GoalScreen: View {
                     dailyGuideSince(since)
                 }
             }
+            // DESIGN.md の Typography に Title は無いが、下に並べる推定消費カロリーより目立たせ、この画面の調整の主役にするため、
+            // Title（28）の semibold にする（#744 の解決コメント）
             Text(NutritionText.kilocalories(dailyGuide.energyKilocalories))
-                .font(.title2)
+                .font(.title.weight(.semibold))
                 .monospacedDigit()
             // 大きな文字では、P・F・C を縦に並べる（変更の知らせと同じ）
             ViewThatFits(in: .horizontal) {
@@ -140,13 +188,18 @@ struct GoalScreen: View {
             .font(.footnote)
             .foregroundStyle(.secondary)
             .monospacedDigit()
+            if let energyChart {
+                GoalEnergyChartView(chart: energyChart)
+                DailyGuideExplanationLink()
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12)
         )
-        .accessibilityElement(children: .combine)
+        // グラフの週を押せて、リンクも押せるので、1つにまとめず中身を並べる
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("goal-daily-guide")
     }
 
@@ -225,7 +278,7 @@ struct GoalScreen: View {
             .monospacedDigit()
     }
 
-    /// 「減量 9月1日〜11月30日」「74.0 → 70.4 kg」、右に「−3.6 kg」。新しい順。潜らない
+    /// 「減量 9月1日〜11月30日」「74.0 → 70.4 kg」。新しい順。潜らない
     private func pastGoals(_ goals: [GoalOverview.PastGoal]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("過去の目標")
@@ -238,25 +291,13 @@ struct GoalScreen: View {
                         Divider()
                             .padding(.leading)
                     }
-                    // 大きな文字で横に詰めると、期間が日付の途中で折り返すので、横に収まらなければ結果を期間の下に置く
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            pastGoalPeriod(past)
-                            Spacer(minLength: 0)
-                            pastGoalResult(past)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            pastGoalPeriod(past)
-                            pastGoalResult(past)
-                        }
+                    pastGoalPeriod(past)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .monospacedDigit()
-                    .padding(.horizontal)
-                    .padding(.vertical, 10)
-                    .frame(minHeight: 44)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("goal-past-goal")
+                        .monospacedDigit()
+                        .padding(.horizontal)
+                        .padding(.vertical, 10)
+                        .frame(minHeight: 44)
+                        .accessibilityElement(children: .combine)
                 }
             }
             .background(
@@ -274,14 +315,6 @@ struct GoalScreen: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-        }
-    }
-
-    /// 「−3.6 kg」
-    @ViewBuilder private func pastGoalResult(_ past: GoalOverview.PastGoal) -> some View {
-        if let result = past.resultText {
-            Text(result)
-                .foregroundStyle(.secondary)
         }
     }
 }

@@ -27,8 +27,7 @@ export const recordEstimationAttemptOutcome = (
   outcome: EstimationAttemptOutcome,
   endedAt: Date,
 ): UsageEvent[] =>
-  writeRecordChanges(({ addChange, estimationAt }) => {
-    const writes = estimationAt(endedAt);
+  writeRecordChanges(({ addChange, estimation: writes }) => {
     const { estimationId } = attempt;
     writes.recordAttemptResult({ attemptId: attempt.attemptId, endedAt, conclusion: outcome });
     const attemptEnded: UsageEvent = {

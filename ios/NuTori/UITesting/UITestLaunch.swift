@@ -257,7 +257,6 @@
             /// 送った文章を本文で読み分けて答える。食事の文章には推定（親子丼）が届く
             case conversation
             case accountDeletionRateLimited = "account-deletion-rate-limited"
-            case accountDeletionUnauthorized = "account-deletion-unauthorized"
             case appBuildUnsupported = "app-build-unsupported"
             /// 今日 7:12 の体重を置き、目標の設定の4つの要求に答える（逆算できる人の初めての目標）
             case goalSetup = "goal-setup"
@@ -265,8 +264,6 @@
             case weeklyReview = "weekly-review"
             /// `weeklyReview` に加えて、昨日の 21:00 に目標を達成したと判定した。達成の知らせから立て直す流れを開ける
             case goalAchieved = "goal-achieved"
-            /// `goalAchieved` に加えて、今日の 8:00 に 72.0 kg を保つ目標に立て直した。達成の知らせのボタンは押せない
-            case goalSwitchedAfterAchieved = "goal-switched-after-achieved"
             /// 昨日で無料体験が終わり、サブスクリプション切れ。買うと月額のサブスクリプション中に結びつく
             case subscriptionExpired = "subscription-expired"
         }

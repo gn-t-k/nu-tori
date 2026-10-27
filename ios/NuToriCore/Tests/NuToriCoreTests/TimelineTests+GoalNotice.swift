@@ -38,7 +38,7 @@ extension TimelineTests {
                 #expect(notice.headline == "目標を達成しました")
                 #expect(
                     notice.body
-                        == "期限の12月24日より 46 日早く、体重の傾向が 68.0 kg に届きました。次の目標を選ぶまで、今の目標を続けます。")
+                        == "期限の12月24日より 46 日早く、体重の傾向が 68.0 kg に届きました。")
                 #expect(notice.actionTitle == "次の目標を選ぶ")
                 #expect(notice.setupEntry == .chooseNextGoal)
                 #expect(notice.unavailableText == nil)

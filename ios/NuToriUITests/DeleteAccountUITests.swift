@@ -14,7 +14,6 @@ final class DeleteAccountUITests: XCTestCase {
     func test_消したらサインインの画面に戻ること() {
         app.confirmAccountDeletion()
         XCTAssertTrue(app.otherElements["signIn"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["毎朝の体重と、食事の写真だけ。"].exists)
         XCTAssertFalse(app.otherElements["timeline"].exists)
         attachScreenshot(of: app, named: "削除したあとのサインイン")
     }

@@ -1,12 +1,15 @@
 extension GoalOverview {
-    /// 推定消費カロリーの線と1日の目安の階段を重ねたグラフ。見直した点が3つたまるまでは、グラフの代わりに今の値の数字
-    public enum EnergyChart: Hashable, Sendable {
-        case drawn(Graph)
-        /// 「推定消費カロリー 2,250 kcal」「1日の目安 1,900 kcal」「1日の目安は推定消費カロリーより 350 kcal 少ない」
-        case figures([String])
+    /// 今の推定消費カロリーと1日の目安の棒と、見直した点が3つたまってから描く、推定消費カロリーの線と1日の目安の階段を重ねたグラフ
+    public struct EnergyChart: Hashable, Sendable {
+        public let bars: Bars
+        /// 見直した点が3つたまるまでは nil
+        public let graph: Graph?
 
-        /// 減量・増量・維持の進行中と期限後の維持だけで出す。今の目標の1日の目安がまだ届いていなければ nil
-        init?(status: GoalStatus, today: CalendarDay, records: GoalRecords) {
+        /// 減量・増量・維持の進行中と期限後の維持だけで出す。今の1日の目安か、その推定消費カロリーがまだ届いていなければ nil
+        /// - Parameter dailyGuide: 今日に当たっている今の目標の1日の目安（`CurrentGoal.dailyGuide`）
+        init?(
+            status: GoalStatus, today: CalendarDay, dailyGuide: DailyGuide?, records: GoalRecords
+        ) {
             let goal: Goal
             switch status {
             case .inProgress(let current), .maintainingAfterDeadline(let current, _):
@@ -14,6 +17,14 @@ extension GoalOverview {
             case .noGoal, .achievedBeforeDeadline, .deadlineReached:
                 return nil
             }
+            guard let dailyGuide,
+                let estimate = records.expenditureEstimates.first(where: {
+                    $0.id == dailyGuide.expenditureEstimateId
+                })
+            else { return nil }
+            bars = Bars(
+                expenditureKilocalories: estimate.expenditureKilocalories,
+                dailyGuideKilocalories: dailyGuide.energyKilocalories)
             let points = records.dailyGuides
                 .filter { $0.goalId == goal.id }
                 .sorted { $0.effectiveDay < $1.effectiveDay }
@@ -28,44 +39,41 @@ extension GoalOverview {
                         expenditureKilocalories: estimate.expenditureKilocalories,
                         dailyGuideKilocalories: guide.energyKilocalories)
                 }
-            guard let latest = points.last else { return nil }
             guard points.count >= Self.minimumPointsToDraw else {
-                self = .figures([
-                    "推定消費カロリー \(NutritionText.kilocalories(latest.expenditureKilocalories))",
-                    "1日の目安 \(NutritionText.kilocalories(latest.dailyGuideKilocalories))",
-                    Self.balanceText(of: latest),
-                ])
+                graph = nil
                 return
             }
             let days =
                 goal
                 .startedDay...max(
                     goal.startedDay, goal.direction.weightChange?.deadlineDay ?? today)
-            self = .drawn(
-                Graph(
-                    days: days, points: points,
-                    deferredDays: records.weeklyReviews.compactMap { review in
-                        guard case .deferred(_, let goalId) = review.outcome, goalId == goal.id,
-                            days.contains(review.effectiveDay)
-                        else { return nil }
-                        return review.effectiveDay
-                    }.sorted()))
+            graph = Graph(
+                days: days, points: points,
+                deferredDays: records.weeklyReviews.compactMap { review in
+                    guard case .deferred(_, let goalId) = review.outcome, goalId == goal.id,
+                        days.contains(review.effectiveDay)
+                    else { return nil }
+                    return review.effectiveDay
+                }.sorted())
         }
 
-        /// 数字を出すときに添える文
-        public var note: String? {
-            switch self {
-            case .drawn: nil
-            case .figures: "週ごとの見直しが 2 回たまると、グラフで見せます。"
+        /// 0 kcal からの同じ目盛りで並べる、今の推定消費カロリーと1日の目安
+        public struct Bars: Hashable, Sendable {
+            public let expenditureKilocalories: Int
+            public let dailyGuideKilocalories: Int
+
+            public init(expenditureKilocalories: Int, dailyGuideKilocalories: Int) {
+                self.expenditureKilocalories = expenditureKilocalories
+                self.dailyGuideKilocalories = dailyGuideKilocalories
             }
-        }
 
-        /// 「1日の目安は推定消費カロリーより 350 kcal 少ない」
-        private static func balanceText(of point: Point) -> String {
-            let difference = point.dailyGuideKilocalories - point.expenditureKilocalories
-            if difference == 0 { return "1日の目安は推定消費カロリーと同じ" }
-            return
-                "1日の目安は推定消費カロリーより \(NutritionText.kilocalories(abs(difference))) \(difference < 0 ? "少ない" : "多い")"
+            /// 2本の差。「減らす分 −440 kcal」「足す分 +300 kcal」。同じなら nil
+            public var gap: String? {
+                let difference = dailyGuideKilocalories - expenditureKilocalories
+                guard difference != 0 else { return nil }
+                return
+                    "\(difference < 0 ? "減らす分" : "足す分") \(GoalText.signedKilocalories(difference))"
+            }
         }
 
         /// 初めの推定と、見直した2回
@@ -111,6 +119,8 @@ extension GoalOverview {
         public let days: ClosedRange<CalendarDay>
         /// 横軸の中の、届いた傾向の日の値
         public let trend: [WeightTrend.Day]
+        /// グラフの上に書く進み具合。減量・増量の進行中だけ
+        public let progress: Progress?
 
         init(status: GoalStatus, goal: Goal, today: CalendarDay, records: GoalRecords) {
             if case .deadlineReached = status {
@@ -124,6 +134,53 @@ extension GoalOverview {
                     goal.startedDay, goal.direction.weightChange?.deadlineDay ?? today)
             self.days = days
             trend = records.weightTrend?.days.filter { days.contains($0.day) } ?? []
+            progress =
+                if case .inProgress = status {
+                    Progress(goal: goal, today: today, records: records)
+                } else { nil }
+        }
+
+        /// 「あと 2.8 kg」「あと 45 日」「間に合うペースです」
+        public struct Progress: Hashable, Sendable {
+            /// 「あと 2.8 kg」。体重の傾向がまだ無ければ nil
+            public let remainingKilograms: String?
+            /// 「あと 45 日」。今日と期限の日を含める
+            public let remainingDays: String
+            /// 返さないペースでは nil
+            public let pace: String?
+
+            public init(remainingKilograms: String?, remainingDays: String, pace: String?) {
+                self.remainingKilograms = remainingKilograms
+                self.remainingDays = remainingDays
+                self.pace = pace
+            }
+
+            /// 維持の目標は nil
+            init?(goal: Goal, today: CalendarDay, records: GoalRecords) {
+                guard let weightChange = goal.direction.weightChange else { return nil }
+                remainingKilograms =
+                    if case .weightChange(let tenths, _) = GoalProgress(
+                        goal: goal, today: today, weightTrend: records.weightTrend)
+                    {
+                        "あと \(GoalText.kilograms(tenths: tenths))"
+                    } else { nil }
+                remainingDays = "あと \(max(today.distance(to: weightChange.deadlineDay) + 1, 0)) 日"
+                pace = Pace(
+                    judgedDay: today, goal: goal, achievedDay: goal.achievement?.achievedDay,
+                    weightTrend: records.weightTrend,
+                    weightRecordDays: records.weightRecords.map(\.day)
+                ).flatMap(Self.paceText)
+            }
+
+            /// 減量・増量の進行中に書くペース。返さないときは書かない
+            private static func paceText(_ pace: Pace) -> String? {
+                switch pace {
+                case .onTrack: "間に合うペースです"
+                case .behind(let shortfall, _, _):
+                    "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません"
+                case .inconclusive, .pending, .unavailable, .maintenance: nil
+                }
+            }
         }
     }
 
@@ -161,14 +218,6 @@ extension GoalOverview {
         public var weightsText: String? {
             endWeightKilograms.map {
                 GoalText.kilogramsChange(from: goal.startingWeightTrendKilograms, to: $0)
-            }
-        }
-
-        /// 結果の「−3.6 kg」
-        public var resultText: String? {
-            endWeightKilograms.map {
-                GoalText.signedKilograms(
-                    tenths: GoalText.tenths($0 - goal.startingWeightTrendKilograms))
             }
         }
     }

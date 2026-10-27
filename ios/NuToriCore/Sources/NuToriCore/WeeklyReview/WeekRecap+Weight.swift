@@ -8,17 +8,12 @@ extension WeekRecap {
         public let firstTrendKilograms: Double?
         /// 並べた最後の日以前で最も新しい体重の傾向。まだ無ければ nil
         public let lastTrendKilograms: Double?
-        /// 体重記録のある日の数
-        public let recordedDayCount: Int
-        /// 並べた日の数
-        public let dayCount: Int
 
         init(
             goal: Goal, shownDays: ClosedRange<CalendarDay>, days: [Day], records: GoalRecords
         ) {
             goalPath = GoalPath(goal: goal, shownDays: shownDays)
-            recordedDayCount = days.count { $0.weightKilograms != nil }
-            dayCount = days.count
+            let recordedDayCount = days.count { $0.weightKilograms != nil }
             trendLine =
                 recordedDayCount < Self.minimumRecordedDays
                 ? .tooFewRecordedDays
@@ -27,24 +22,13 @@ extension WeekRecap {
             lastTrendKilograms = records.trendKilograms(onOrBefore: shownDays.upperBound)
         }
 
-        /// 「傾向 73.4 → 72.9 kg」。傾向がまだ無ければ nil
+        /// 「傾向 73.4 → 72.9 kg」。傾向がまだ無いか、傾向の線を引かない週は nil（線と組で読む値なので）
         public var trendText: String? {
-            guard let firstTrendKilograms, let lastTrendKilograms else { return nil }
+            guard case .drawn = trendLine, let firstTrendKilograms, let lastTrendKilograms else {
+                return nil
+            }
             return
                 "傾向 \(GoalText.kilogramsChange(from: firstTrendKilograms, to: lastTrendKilograms))"
-        }
-
-        /// 「記録 6 日（7日中）」
-        public var recordText: String {
-            "記録 \(recordedDayCount) 日（\(dayCount)日中）"
-        }
-
-        /// 傾向の線を引かないときに添える文
-        public var note: String? {
-            switch trendLine {
-            case .drawn: nil
-            case .tooFewRecordedDays: "傾向の線は、記録がたまると引きます"
-            }
         }
 
         /// 目標の道筋。減量・増量は開始の日の体重の傾向から期限の日の目標体重への直線、維持は目標体重の横の線

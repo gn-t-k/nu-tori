@@ -1,4 +1,5 @@
 #if DEBUG
+    import NuToriCore
     import SwiftUI
 
     extension EnvironmentValues {

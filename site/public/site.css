@@ -5,6 +5,7 @@
   --surface: #ffffff;
   --on-surface: #000000;
   --on-surface-secondary: rgba(60, 60, 67, 0.6);
+  --on-surface-tertiary: rgba(60, 60, 67, 0.3);
   --separator: rgba(60, 60, 67, 0.29);
   --primary: #6155f5;
 }
@@ -15,6 +16,7 @@
     --surface: #1c1c1e;
     --on-surface: #ffffff;
     --on-surface-secondary: rgba(235, 235, 245, 0.6);
+    --on-surface-tertiary: rgba(235, 235, 245, 0.3);
     --separator: rgba(84, 84, 88, 0.6);
     --primary: #6d7cff;
   }
@@ -153,4 +155,197 @@ td {
   padding: 8px 10px;
   text-align: left;
   vertical-align: top;
+}
+
+/* 出し方のページの、答えと、そこから3つの理由の節へのリンク */
+.answer {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 16px 0 20px;
+}
+
+.answer p {
+  margin: 0 0 8px;
+}
+
+.answer ol:last-child {
+  margin-bottom: 0;
+}
+
+.key-line {
+  display: grid;
+  gap: 6px;
+}
+
+.key-line a {
+  text-decoration: none;
+}
+
+/* 出し方のページの図。SVG の線と文字の色をトークンから取る。文字は Caption 2（11px）だが、viewBox の幅 360 から縮んで描かれるので iPhone の幅では1割ほど小さくなる。ほかのページの class とぶつからないよう、図の中に絞る */
+.figure {
+  margin: 16px 0 20px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px 12px 14px;
+}
+
+.figure-scroll {
+  overflow-x: auto;
+}
+
+.figure svg {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  margin: 0 auto;
+  font-family: inherit;
+}
+
+.figure figcaption {
+  margin-top: 8px;
+  color: var(--on-surface-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.figure .grid {
+  stroke: var(--separator);
+  stroke-width: 0.5;
+  fill: none;
+}
+
+.figure .marker {
+  stroke: var(--on-surface-tertiary);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  fill: none;
+}
+
+.figure .tick {
+  fill: var(--on-surface-secondary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure .dot {
+  fill: var(--on-surface-tertiary);
+  stroke: none;
+}
+
+.figure .trend {
+  stroke: var(--primary);
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.figure .predicted {
+  stroke: var(--on-surface-secondary);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  fill: none;
+}
+
+.figure .guide {
+  stroke: var(--on-surface-secondary);
+  stroke-width: 2;
+  fill: none;
+}
+
+.figure .truth {
+  stroke: var(--on-surface-tertiary);
+  stroke-width: 2;
+  stroke-dasharray: 2 4;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.figure .end {
+  fill: var(--on-surface-secondary);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+
+.figure .trend-end {
+  fill: var(--primary);
+}
+
+.figure .gap {
+  stroke: var(--on-surface);
+  stroke-width: 1.2;
+  fill: none;
+}
+
+.figure .gap-label {
+  fill: var(--on-surface);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure .series-label {
+  fill: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure .value {
+  fill: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure .series-label.muted,
+.figure .value.muted {
+  fill: var(--on-surface-secondary);
+}
+
+.figure .series-label.faint {
+  fill: var(--on-surface-secondary);
+  font-weight: 400;
+}
+
+/* 出し方のページの、ずれから推定消費カロリーを直す計算 */
+.equation {
+  display: grid;
+  gap: 8px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.eq-row {
+  display: grid;
+  grid-template-columns: 10em 1fr;
+  gap: 8px;
+}
+
+.eq-row > * {
+  min-width: 0;
+}
+
+.eq-label {
+  color: var(--on-surface-secondary);
+  font-size: 13px;
+}
+
+.eq-result {
+  border-top: 1px solid var(--separator);
+  padding-top: 8px;
+}
+
+@media (max-width: 420px) {
+  .eq-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
 }

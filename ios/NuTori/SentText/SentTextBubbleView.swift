@@ -22,16 +22,20 @@ struct SentTextBubbleView: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 8) {
             if bubble.meals.isEmpty {
-                HStack(spacing: 0) {
+                // 時刻は短い吹き出しにも寄り添うよう、最大の幅の中で吹き出しのすぐ左に置く
+                HStack(alignment: .bottom, spacing: 6) {
                     Spacer(minLength: 0)
+                    OwnRecordTime(text: sentClock)
                     text
                         .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 18))
                         .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 18))
                         .modifier(textMenu)
                         .undeliveredRecord(isUndelivered)
+                        .accessibilityValue(sentClock)
                         .accessibilityIdentifier("sent-text-bubble")
                 }
                 .modifier(BubbleWidth())
+                .frame(maxWidth: .infinity, alignment: .trailing)
             } else {
                 joinedMeals
                 if case .available(_, let resendAsConversation) = regeneration {
@@ -96,6 +100,7 @@ struct SentTextBubbleView: View {
                 .background(Color.accentColor)
                 .modifier(textMenu)
                 .undeliveredRecord(isUndelivered)
+                .accessibilityValue(sentClock)
                 .accessibilityIdentifier("sent-text-bubble")
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(bubble.meals.enumerated()), id: \.element.meal.id) { index, card in
@@ -112,6 +117,13 @@ struct SentTextBubbleView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .modifier(BubbleWidth())
+        .ownRecordTime(sentClock)
+    }
+
+    /// カードの外に置く、送った時刻。文章は送った日に置くので、日は書かない
+    private var sentClock: String {
+        WeightAmountText.clock(
+            ClockTime(containing: bubble.sentText.sentAt, in: bubble.sentText.timeZone))
     }
 
     /// 文章の食事の行。写真の場所を持たず、文章の食事と分かる手がかりは上の吹き出し
@@ -119,7 +131,7 @@ struct SentTextBubbleView: View {
         Button {
             openMeal(card)
         } label: {
-            MealCardView(card: card) { photoId in
+            MealCardView(card: card, showsEatenTime: true) { photoId in
                 await loadPhoto(card.meal.id, photoId)
             }
             // 行の地はかたまりの側に付くので、地の無いラベルは文字のところしか押せない。› と余白も押せるよう、ラベルの全体を押せる形にする
@@ -177,7 +189,7 @@ struct SentTextBubbleView: View {
     }
 }
 
-/// 吹き出しの最大の幅（画面の 78%）で、右に寄せる
+/// 吹き出しの最大の幅（画面の 78%）。右に寄せるのは置く側が付ける
 private struct BubbleWidth: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -185,6 +197,5 @@ private struct BubbleWidth: ViewModifier {
                 let widthRatio: CGFloat = 0.78
                 return width * widthRatio
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }

@@ -25,7 +25,7 @@ struct AccountScreenContainer: View {
             },
             openPaywall: {
                 guard let standing else { return }
-                paywallRequest = PaywallScreenContainer.Request(
+                paywallRequest = PaywallRequest(
                     entry: .accountRow, standing: standing,
                     today: CalendarDay(containing: now(), in: timeZone()))
             },
@@ -59,5 +59,5 @@ struct AccountScreenContainer: View {
     @State private var notificationPermission: NotificationPermission?
     /// 読み終えるまでは、自動更新がオンのときと同じ形で描く
     @State private var autoRenewal = SubscriptionPurchases.AutoRenewal.unknown
-    @State private var paywallRequest: PaywallScreenContainer.Request?
+    @State private var paywallRequest: PaywallRequest?
 }

@@ -12,6 +12,7 @@
                 now: DeviceClock.live.now,
                 capture: { _ in },
                 actions: sample.holdsPhotos ? .noop : .noopWithoutPhotos,
+                performEdit: { _ in },
                 returnToTimeline: {},
                 openPaywall: {},
                 rejectedLines: sample.rejectedLines(in: card),
