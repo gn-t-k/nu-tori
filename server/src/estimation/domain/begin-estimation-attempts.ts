@@ -55,8 +55,7 @@ export const beginEstimationAttempts = (
   >,
   now: Date,
 ): { attempts: BegunEstimationAttempt[]; usageEvents: UsageEvent[] } =>
-  writeRecordChanges(({ addChange, estimationAt }) => {
-    const writes = estimationAt(now);
+  writeRecordChanges(({ addChange, estimation: writes }) => {
     const attempts: BegunEstimationAttempt[] = [];
     const usageEvents: UsageEvent[] = [];
     const beginAttempt = (estimationId: string, target: EstimationTarget) => {

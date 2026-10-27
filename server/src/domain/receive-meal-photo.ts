@@ -52,7 +52,7 @@ const recordReceipt = (
   photoId: RecordId,
   receivedAt: Date,
 ): void => {
-  writeRecordChanges(({ estimationAt }) => {
+  writeRecordChanges(({ estimation }) => {
     // 同じ写真の要求が、置いているあいだに先に控えたかもしれない
     if (stores.mealPhoto.hasReceipt(photoId)) {
       return;
@@ -61,7 +61,7 @@ const recordReceipt = (
     const mealId = stores.mealPhoto.findMealIdOfPhoto(photoId);
     const meal = mealId === undefined ? undefined : stores.meal.find(mealId);
     if (meal !== undefined) {
-      scheduleMealEstimation(stores, estimationAt(receivedAt), meal, receivedAt);
+      scheduleMealEstimation(stores, estimation, meal, receivedAt);
     }
   });
 };

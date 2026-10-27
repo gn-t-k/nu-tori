@@ -1,7 +1,7 @@
 import type { RecordId } from "../../domain/record-id";
-import type { DishEstimationSchedule } from "./dish-estimation-schedule";
+import type { EstimationSchedule } from "../../estimation/domain/estimation-schedule";
 
 export type DishEstimationStatusStore = {
   // 料理につながっている推定の予定（取り消した予定も）ごとの、予定から先の出来事
-  findSchedulesOfDish: (dishId: RecordId) => DishEstimationSchedule[];
+  findSchedulesOfDish: (dishId: RecordId) => EstimationSchedule[];
 };

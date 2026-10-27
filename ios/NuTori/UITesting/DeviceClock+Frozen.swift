@@ -1,5 +1,6 @@
 #if DEBUG
     import Foundation
+    import NuToriCore
     import Synchronization
     import UIKit
 

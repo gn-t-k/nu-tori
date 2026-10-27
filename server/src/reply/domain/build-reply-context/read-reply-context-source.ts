@@ -47,9 +47,7 @@ export const readReplyContextSource = (
         ? { aiUtterance: stores.aiUtterance.findOfSentText(other.id) }
         : undefined,
     })),
-    meals: stores.meal
-      .findIdsSentOrEatenSince(from)
-      .flatMap((mealId) => readMeal(stores, mealId, now)),
+    meals: stores.meal.findIdsSentOrEatenSince(from).flatMap((mealId) => readMeal(stores, mealId)),
     weightRecords: readWeightRecords(stores, from, now),
     weightTrend: readWeightTrend(stores.weightRecord),
     weightRecordDays: computeDailyRepresentativeWeights(
@@ -74,7 +72,6 @@ const readMeal = (
     "meal" | "mealEstimationStatus" | "dish" | "dishEstimationStatus" | "ingredient"
   >,
   mealId: RecordId,
-  now: Date,
 ): ReplyContextSourceMeal[] => {
   const meal = stores.meal.find(mealId);
   if (meal === undefined) {
@@ -98,7 +95,7 @@ const readMeal = (
         .toSorted((a, b) => a.positionInDish - b.positionInDish || a.id.localeCompare(b.id)),
     }));
   const awaitsDish = dishes.some(({ dish }) =>
-    dishAwaitsReestimation(stores.dishEstimationStatus, dish.id, now),
+    dishAwaitsReestimation(stores.dishEstimationStatus, dish.id),
   );
   return [
     {

@@ -62,7 +62,7 @@ export const createRecordKindStores = (
     estimationSchedule,
     estimation,
     reply: createReplyStore(db),
-    writeEstimationEvents: (addChange, now, run) =>
+    writeEstimationEvents: (addChange, run) =>
       writeEstimationEvents(
         {
           meal,
@@ -74,7 +74,6 @@ export const createRecordKindStores = (
           estimationSchedule,
         },
         addChange,
-        now,
         run,
       ),
     writeReplyEvents: (addChange, run) =>

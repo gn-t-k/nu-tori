@@ -176,7 +176,7 @@ const decideUpdate = (
   ) {
     return rejectWrite("update", dishId, "ingredients_replaced");
   }
-  if (dishAwaitsEstimation(stores, current, receivedAt)) {
+  if (dishAwaitsEstimation(stores, current)) {
     return rejectWrite("update", dishId, "awaiting_estimation");
   }
   if (
@@ -245,7 +245,7 @@ const scheduleReestimation = (
   receivedAt: Date,
   addChange: (change: RecordChangeTarget<AddedRecordType>) => void,
 ): void => {
-  stores.writeEstimationEvents(addChange, receivedAt, (writes) =>
+  stores.writeEstimationEvents(addChange, (writes) =>
     scheduleDishReestimation(stores, writes, dish, receivedAt),
   );
 };

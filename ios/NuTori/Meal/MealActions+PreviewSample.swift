@@ -17,14 +17,8 @@
         ) -> MealActions {
             MealActions(
                 prepareCamera: { .noCamera },
-                recordCapturedPhoto: { _, _, _ in },
-                recordPickedPhotos: { _, _ in },
                 photoSelection: .picker,
-                loadPhoto: loadPhoto,
-                correctMealTime: { _, _ in },
-                deleteMeal: { _, _ in },
-                addDish: { _, _ in },
-                dish: .noop
+                loadPhoto: loadPhoto
             )
         }
     }

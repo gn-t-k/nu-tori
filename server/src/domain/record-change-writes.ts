@@ -7,8 +7,8 @@ import type { RecordChangeTarget } from "./sync-ledger/record-change-target";
 export type RecordChangeWrites = {
   // 記録の行を置き場に書いたら、変えた記録をここに渡す
   addChange: (change: RecordChangeTarget<RecordType>) => void;
-  // 推定の予定と結果を書く。now は料理ごとの推定の状態を決める時刻
-  estimationAt: (now: Date) => EstimationWrites;
+  // 推定の予定と結果を書く
+  estimation: EstimationWrites;
   // 返事の流れの出来事を書く
   reply: ReplyWrites;
 };

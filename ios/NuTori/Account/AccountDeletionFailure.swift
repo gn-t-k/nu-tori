@@ -1,9 +1,6 @@
-enum AccountDeletionFailure {
-    /// 電波が無いときと時間切れ
-    case unreachable
-    /// 回数の歯止め（429）とサーバーの失敗
-    case retryLater
+import NuToriCore
 
+extension AccountDeletionFailure {
     var message: String {
         switch self {
         case .unreachable:

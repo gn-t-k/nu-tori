@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { dishTables } from "../../dish/durable-object/dish-tables";
+import { toEstimationSchedule } from "../../estimation/domain/to-estimation-schedule";
 import { estimationTables } from "../../estimation/durable-object/estimation-tables";
-import type { DishEstimationSchedule } from "../domain/dish-estimation-schedule";
 import type { DishEstimationStatusStore } from "../domain/dish-estimation-status-store";
 
 const { dishEstimationSchedules } = dishTables;
@@ -50,44 +50,5 @@ export const createDishEstimationStatusStore = (
       .leftJoin(estimationAbandonments, eq(estimationAbandonments.estimationId, estimations.id))
       .where(eq(dishEstimationSchedules.dishId, dishId))
       .all()
-      .map(toSchedule),
+      .map(toEstimationSchedule),
 });
-
-const toSchedule = ({
-  scheduleId,
-  dueAt,
-  cancellation,
-  deferral,
-  hold,
-  estimation,
-  completion,
-  abandonment,
-}: {
-  scheduleId: string;
-  dueAt: Date;
-  cancellation: string | null;
-  deferral: string | null;
-  hold: string | null;
-  estimation: string | null;
-  completion: "estimated" | "no_dishes" | null;
-  abandonment: string | null;
-}): DishEstimationSchedule => {
-  const schedule = { scheduleId, dueAt };
-  if (cancellation !== null) {
-    return { ...schedule, progress: "cancelled" };
-  }
-  if (deferral !== null) {
-    return { ...schedule, progress: "deferred" };
-  }
-  if (hold !== null) {
-    return { ...schedule, progress: "held" };
-  }
-  if (estimation === null) {
-    return { ...schedule, progress: "waiting" };
-  }
-  return {
-    ...schedule,
-    progress: completion ?? (abandonment === null ? "estimating" : "abandoned"),
-    estimationId: estimation,
-  };
-};

@@ -36,16 +36,14 @@ struct TimelineScreen: View {
     /// 体重を記録したあと。この端末でまだ通知の許可を求めていなければ求める
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
-    let saveWeight: (WeightEntry.Write) async -> Void
-    /// 入力欄から文章を送る。送れるかは書く欄が決め、送れるときだけ呼ぶ
-    let sendText: (TextDraft) async -> Void
+    /// 記録を作る・直す・消す編集を渡す。文章は、送れるかを書く欄が決め、送れるときだけ渡す
+    let performEdit: (UserEdit) async -> Void
     let accountActions: AccountActions
     /// 課金画面を開く（`paywallSheet`）ときに渡す
     let paywallActions: PaywallActions
     let mealActions: MealActions
     /// 送った文章・その状態・返事・見守る要求で受け取っている途中の返事
     let conversation: Timeline.Conversation
-    let conversationActions: ConversationActions
     /// タイムライン（目標を立てる知らせのカードと、立て直すあいだの一番下のカード）に描く、目標の設定の流れの形
     let goalSetupFlow: GoalSetupNoticeCard.Flow
     /// 目標の画面の、今の目標のカードの場所に描く、目標の設定の流れの形
@@ -180,7 +178,7 @@ struct TimelineScreen: View {
                 onRecord: { write in
                     recordedInWeightEntry = true
                     weightEntryPhase = .closed
-                    Task { await saveWeight(write) }
+                    Task { await performEdit(.saveWeight(write)) }
                 }
             )
         }
@@ -190,7 +188,11 @@ struct TimelineScreen: View {
                     let sentAt = now()
                     capturedCount += 1
                     cameraPhase = .closed
-                    Task { await mealActions.recordCapturedPhoto(original, exif, sentAt) }
+                    Task {
+                        await performEdit(
+                            .recordCapturedMeal(
+                                MealPhotoOriginal(data: original, exif: exif), sentAt: sentAt))
+                    }
                 },
                 onCancel: {
                     cameraPhase = .closed
@@ -215,7 +217,8 @@ struct TimelineScreen: View {
             let pickedAt = now()
             pickedPhotos = []
             showPickedPhotosLoadingWhileRecording(count: items.count) {
-                await mealActions.recordPickedPhotos(items, pickedAt)
+                let originals = await PickedMealPhotos.originals(of: items)
+                await performEdit(.recordPickedMeals(originals, pickedAt: pickedAt))
             }
         }
         .onChange(of: weightEntryPhase) { previous, phase in
@@ -557,7 +560,7 @@ struct TimelineScreen: View {
                 onRecord: { write in
                     noticeRecordedCount += 1
                     Task {
-                        await saveWeight(write)
+                        await performEdit(.saveWeight(write))
                         // 知らせの中で記録したときは、記録した直後に通知の許可を求める
                         await requestNotificationPermission()
                     }
@@ -709,7 +712,7 @@ struct TimelineScreen: View {
             },
             onSendText: { draft in
                 showsCameraNotice = false
-                Task { await sendText(draft) }
+                Task { await performEdit(.sendText(draft)) }
             },
             onOpenPaywall: hidingCameraNotice { openPaywall(from: .composerChip) }
         )
@@ -737,13 +740,17 @@ struct TimelineScreen: View {
         return .available(
             resend: { reason in
                 viewport.textResent()
-                Task { await conversationActions.resend(bubble.sentText.id, reason) }
+                Task {
+                    await performEdit(.resendReply(sentTextId: bubble.sentText.id, reason: reason))
+                }
             },
             resendAsConversation: {
                 viewport.textResent()
                 Task {
-                    await conversationActions.resendAsConversation(
-                        bubble.sentText.id, bubble.meals.count)
+                    await performEdit(
+                        .resendAsConversation(
+                            sentTextId: bubble.sentText.id,
+                            deletedMealCount: bubble.meals.count))
                 }
             })
     }
@@ -944,6 +951,7 @@ struct TimelineScreen: View {
                 now: now,
                 capture: capture,
                 actions: mealActions,
+                performEdit: performEdit,
                 returnToTimeline: {
                     navigationPath = NavigationPath()
                 },
@@ -974,7 +982,7 @@ struct TimelineScreen: View {
             ),
             rejectedLines: rejectedLines,
             capture: capture,
-            saveWeight: saveWeight,
+            performEdit: performEdit,
             startGoalSetup: loaded.flatMap(goalSetupStarter(in:)).map { start in
                 { start(.weightScreen) }
             },

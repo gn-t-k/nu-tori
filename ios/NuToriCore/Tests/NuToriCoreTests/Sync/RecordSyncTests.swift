@@ -28,7 +28,8 @@ struct RecordSyncTests {
                 "送ってすぐと、見守る要求が閉じてすぐに取りに行き、そのあとは3秒おきに取りに行って、5回めで返事を受け取ること",
                 .timeLimit(.minutes(1)))
             func pullsRightAwayThenEveryThreeSeconds() async throws {
-                try await device.recordSync.sendText("こんにちは")
+                _ = try await device.recordSync.perform(
+                    .sendText(TextDraft(text: "こんにちは")), in: .gmt)
                 await device.reflection.finishedSyncs.reaches(2)
                 let pullTimesBeforeWaiting = device.server.pullTimes
                 await device.advance(by: .seconds(3), untilFinishedSyncs: 3)
@@ -47,7 +48,8 @@ struct RecordSyncTests {
 
             @Test("送り待ちを先に保存してから、キャッシュに保存すること")
             func savesPendingBeforeCache() async throws {
-                try await device.recordSync.sendText("こんにちは")
+                _ = try await device.recordSync.perform(
+                    .sendText(TextDraft(text: "こんにちは")), in: .gmt)
 
                 #expect(
                     device.store.saves.prefix(2) == [
@@ -86,7 +88,8 @@ struct RecordSyncTests {
                 "読み分けが届くまで3秒おきに取りに行き、届いたら推定を終えるまで3秒おきに取りに行くこと",
                 .timeLimit(.minutes(1)))
             func followsReplyThenEstimation() async throws {
-                try await device.recordSync.sendText("昼は親子丼")
+                _ = try await device.recordSync.perform(
+                    .sendText(TextDraft(text: "昼は親子丼")), in: .gmt)
                 await device.reflection.finishedSyncs.reaches(2)
                 let mealsBeforeThirdPull = device.store.cache.meals.count
                 await device.advance(by: .seconds(3), untilFinishedSyncs: 3)
