@@ -49,7 +49,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       signIn: Parameters<typeof accountRequests.recordFirstSignIn>[1],
     ): Promise<void> {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
         await this.createRecordKindStores(accountId),
         accountRequests.recordFirstSignIn(
@@ -93,7 +93,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     async receiveMealPhoto(accountId: string, request: { photoId: RecordId; photo: ArrayBuffer }) {
       setUser({ id: accountId });
       const records = await this.createRecordKindStores(accountId);
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
         records,
         await accountRequests.receiveMealPhoto(
@@ -111,7 +111,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     async readMealPhoto(accountId: string, photoId: RecordId): Promise<ArrayBuffer | undefined> {
       setUser({ id: accountId });
       const records = await this.createRecordKindStores(accountId);
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
         records,
         await accountRequests.readMealPhoto(
@@ -127,7 +127,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     async findLastEstimationAttemptConclusionOfMeal(accountId: string, mealId: RecordId) {
       setUser({ id: accountId });
       const records = await this.createRecordKindStores(accountId);
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
         records,
         accountRequests.findLastEstimationAttemptConclusionOfMeal({ records }, mealId),
@@ -141,7 +141,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     ): Promise<ReadableStream<Uint8Array> | undefined> {
       setUser({ id: accountId });
       const records = await this.createRecordKindStores(accountId);
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
         records,
         accountRequests.watchReply(
@@ -214,7 +214,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     async findTermsAgreementRequirement(accountId: string) {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
         await this.createRecordKindStores(accountId),
         accountRequests.findTermsAgreementRequirement({
@@ -228,7 +228,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       request: Parameters<typeof accountRequests.agreeToTerms>[1],
     ) {
       setUser({ id: accountId });
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
         await this.createRecordKindStores(accountId),
         accountRequests.agreeToTerms(
@@ -246,7 +246,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     ) {
       setUser({ id: accountId });
       const stores = await this.createRecordStores(accountId);
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
         stores.records,
         accountRequests.reportSubscriptionTransaction(
@@ -267,7 +267,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     ) {
       setUser({ id: accountId });
       const stores = await this.createRecordStores(accountId);
-      return this.respond(
+      return this.respondRearmingAlarm(
         accountId,
         stores.records,
         accountRequests.receiveAppStoreServerNotification(
@@ -283,8 +283,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     async deleteRecords(accountId: string): Promise<void> {
       setUser({ id: accountId });
-      // 消したあとは表も無く、張り直す仕事も無い。アラームは消す口が外す
-      return this.answer(
+      // 消したあとは表も無く、張り直す仕事も無い。アラームは、下の eraseRecords が表と一緒に外す
+      return this.sendUsageEventsAndReturn(
         accountId,
         await accountRequests.deleteRecords({
           eraseRecords: async () => {
@@ -315,7 +315,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         armAlarmAt: (alarmAt) => this.ctx.storage.setAlarm(alarmAt),
       });
       // 要求のあとと違い、Cloudflare のアラームのやり直しに任せた仕事の時刻を除いた、口が出した時刻に張る
-      const ran = await this.answer(accountId, response, async () => {
+      const ran = await this.sendUsageEventsAndReturn(accountId, response, async () => {
         if (response.result.nextAlarmAt !== undefined) {
           await this.ctx.storage.setAlarm(response.result.nextAlarmAt);
         }
@@ -369,19 +369,19 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       response: LoggedAccountResponse<Result>,
     ): Promise<{ result: Result; requestLog: AccountRequestLog }> {
       return {
-        result: await this.respond(accountId, records, response),
+        result: await this.respondRearmingAlarm(accountId, records, response),
         requestLog: response.requestLog,
       };
     }
 
     // 受け口の要求のあと、記録を変えたかによらず、仕事の並びから次の時刻を出し直して張る（無ければ外す）。
     // 要求ごとに張るかを選ぶと、時刻を動かす記録を書いた要求で張り忘れる（#778）
-    private respond<Result>(
+    private respondRearmingAlarm<Result>(
       accountId: string,
       records: RecordKindStores,
       response: AccountResponse<Result>,
     ): Promise<Result> {
-      return this.answer(accountId, response, async () => {
+      return this.sendUsageEventsAndReturn(accountId, response, async () => {
         const nextAlarmAt = computeNextAlarmAt(records, new Date());
         if (nextAlarmAt === undefined) {
           await this.ctx.storage.deleteAlarm();
@@ -391,10 +391,10 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       });
     }
 
-    // アラームを張り、出来事を送ってから、結果を返す。
+    // 渡された張り方でアラームを扱い（張らない入口もある）、出来事を送ってから、結果を返す。
     // 出来事はどの入口のものもここを通ってアカウントから出るので、送るかどうか（利用状況の設定）はここで1度だけ決める。
     // 設定は、口が答えを出し終えた直後（同じ要求で切り替えた書き込みを当てたあと）に、何も待たずに読む
-    private async answer<Result>(
+    private async sendUsageEventsAndReturn<Result>(
       accountId: string,
       { result, usageEvents }: AccountResponse<Result>,
       armAlarm: () => Promise<void>,

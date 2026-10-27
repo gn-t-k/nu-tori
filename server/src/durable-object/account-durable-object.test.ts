@@ -1,6 +1,6 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { drizzle } from "drizzle-orm/durable-sqlite";
-import { env } from "cloudflare:workers";
+import { type DurableObject, env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import { mockAccountRequestsOk } from "../account/domain/account-requests.mock";
 import { generateRecordId } from "../domain/record-id";
@@ -10,6 +10,7 @@ import { enableUsageEventSending } from "../http/sync-routes/testing/enable-usag
 import { mockSetUserOk } from "../observability/set-user.mock";
 import { mockPostHogCaptureEndpointOk, readPostHogCapturedEvents } from "../observability/testing";
 import { durableObjectTables } from "./durable-object-tables";
+import type { AccountDurableObject } from "./account-durable-object";
 import { getAccountDurableObject } from "./get-account-durable-object";
 import { durableObjectFactory } from "./testing/durable-object-factory";
 
@@ -70,7 +71,7 @@ describe("アカウントの Durable Object", () => {
         await armStaleAlarm(accountId);
       });
 
-      for (const { name, call } of requestCalls) {
+      for (const { name, call } of Object.values(requestCalls)) {
         test(`${name}のあと、アラームを外すこと`, async () => {
           await call(accountId);
           expect(await readAlarm(accountId)).toBeNull();
@@ -84,7 +85,7 @@ describe("アカウントの Durable Object", () => {
         await armStaleAlarm(accountId);
       });
 
-      for (const { name, call } of requestCalls) {
+      for (const { name, call } of Object.values(requestCalls)) {
         test(`${name}のあと、課金の確かめの時刻に張り直すこと`, async () => {
           await call(accountId);
           expect(await readAlarm(accountId)).toBe(Date.parse("2030-01-27T15:00:00Z"));
@@ -497,23 +498,37 @@ const callReceiveAppStoreServerNotification = (accountId: string) =>
     gracePeriodExpiresAt: undefined,
   });
 
-// 受け口から呼ぶ要求の全部。記録を消す要求は、表ごと消すので張り直さない
-const requestCalls: { name: string; call: (accountId: string) => Promise<unknown> }[] = [
-  { name: "送る要求", call: callPushSyncWrites },
-  { name: "取りに行く要求", call: callPullSyncChanges },
-  { name: "写真を受け取る要求", call: callReceiveMealPhoto },
-  { name: "写真を読む要求", call: callReadMealPhoto },
-  {
+// 受け口から呼ぶ要求の全部。どの要求のあとでも同じことを確かめるので、要求ごとに書かずに表で回す。
+// Durable Object の入口の名前をキーにして、入口を足したのに表に足し忘れたら型検査で止める。
+// 最初のサインインは書いたあとの時刻を上で確かめ、記録の削除は表ごと消すので張り直さない
+const requestCalls = {
+  pushSyncWrites: { name: "送る要求", call: callPushSyncWrites },
+  pullSyncChanges: { name: "取りに行く要求", call: callPullSyncChanges },
+  receiveMealPhoto: { name: "写真を受け取る要求", call: callReceiveMealPhoto },
+  readMealPhoto: { name: "写真を読む要求", call: callReadMealPhoto },
+  findLastEstimationAttemptConclusionOfMeal: {
     name: "最後の推定の試みの結論を読む要求",
     call: callFindLastEstimationAttemptConclusionOfMeal,
   },
-  { name: "見守る要求", call: callWatchReply },
-  { name: "目標の下見の要求", call: callPreviewGoalSetup },
-  { name: "目標案の要求", call: callProposeGoals },
-  { name: "自分で決める目標体重の要求", call: callAssessCustomTargetWeight },
-  { name: "目標を決める要求", call: callDecideGoal },
-  { name: "規約への同意が要るかを読む要求", call: callFindTermsAgreementRequirement },
-  { name: "規約に同意する要求", call: callAgreeToTerms },
-  { name: "取引の知らせ", call: callReportSubscriptionTransaction },
-  { name: "App Store のサーバー通知", call: callReceiveAppStoreServerNotification },
-];
+  watchReply: { name: "見守る要求", call: callWatchReply },
+  previewGoalSetup: { name: "目標の下見の要求", call: callPreviewGoalSetup },
+  proposeGoals: { name: "目標案の要求", call: callProposeGoals },
+  assessCustomTargetWeight: {
+    name: "自分で決める目標体重の要求",
+    call: callAssessCustomTargetWeight,
+  },
+  decideGoal: { name: "目標を決める要求", call: callDecideGoal },
+  findTermsAgreementRequirement: {
+    name: "規約への同意が要るかを読む要求",
+    call: callFindTermsAgreementRequirement,
+  },
+  agreeToTerms: { name: "規約に同意する要求", call: callAgreeToTerms },
+  reportSubscriptionTransaction: { name: "取引の知らせ", call: callReportSubscriptionTransaction },
+  receiveAppStoreServerNotification: {
+    name: "App Store のサーバー通知",
+    call: callReceiveAppStoreServerNotification,
+  },
+} satisfies Record<
+  Exclude<keyof AccountDurableObject, keyof DurableObject | "recordFirstSignIn" | "deleteRecords">,
+  { name: string; call: (accountId: string) => Promise<unknown> }
+>;
