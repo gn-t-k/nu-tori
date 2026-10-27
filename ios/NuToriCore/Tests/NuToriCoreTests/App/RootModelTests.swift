@@ -164,4 +164,25 @@ struct RootModelTests {
             #expect(device.model.termsAgreementSheet == nil)
         }
     }
+
+    @MainActor
+    @Suite("アカウントを消そうとして、サーバーがセッションを受け付けなかったとき")
+    struct DeletionSessionExpired {
+        let device: RootModelDevice
+
+        init() async throws {
+            device = try RootModelDevice(
+                scenario: .init(
+                    records: [], startedOn: "2026-09-22", accountDeletion: .sessionExpired))
+            await device.model.open()
+        }
+
+        @Test("サインインし直しの画面に替えること")
+        func showsSignInAgain() async {
+            let failure = await device.model.deleteAccount()
+
+            #expect(failure == nil)
+            #expect(device.model.screen == .signIn(.signInAgain(hasPendingWrites: false), .ready))
+        }
+    }
 }
