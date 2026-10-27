@@ -18,7 +18,7 @@ enum PickedMealPhotos {
             for await loaded in group {
                 originals[loaded.index] = loaded.original
             }
-            return originals.compactMap { $0 }.map(PhotoMetadata.original)
+            return originals.compactMap { $0 }.map(PhotoMetadata.mealPhotoOriginal(readingExifOf:))
         }
     }
 }

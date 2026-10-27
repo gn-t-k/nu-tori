@@ -66,6 +66,8 @@ struct RootModelTests {
         let device: RootModelDevice
         let record: WeightRecord
         let card: MealCard
+        let corrected: WeightRecord
+        let deletedAt: Date
 
         init() async throws {
             let record = try WeightRecord.manual(
@@ -73,6 +75,8 @@ struct RootModelTests {
             let card = try MealCard.fixture(status: .estimated)
             self.record = record
             self.card = card
+            corrected = try #require(record.correction(replacingKilograms: 72.0))
+            deletedAt = try Date("2026-09-22T07:00:00+09:00", strategy: .iso8601)
             device = try RootModelDevice { cache in
                 cache.weightRecordCache.upsert(record)
                 cache.mealCache.upsert(card.meal)
@@ -82,18 +86,14 @@ struct RootModelTests {
         }
 
         @Test("その体重記録を直すと、その記録の1行だけを消すこと")
-        func dropsWeightLineOnCorrection() async throws {
-            let corrected = try #require(record.correction(replacingKilograms: 72.0))
-
+        func dropsWeightLineOnCorrection() async {
             await device.model.perform(.saveWeight(.correct(corrected)))
 
             #expect(device.model.rejectedLines.map(\.recordId) == [card.meal.id])
         }
 
         @Test("その食事を消すと、その食事の1行だけを消し、消したことを PostHog に送ること")
-        func dropsMealLineOnDeletion() async throws {
-            let deletedAt = try Date("2026-09-22T07:00:00+09:00", strategy: .iso8601)
-
+        func dropsMealLineOnDeletion() async {
             await device.model.perform(.deleteMeal(card, deletedAt: deletedAt))
 
             #expect(device.model.rejectedLines.map(\.recordId) == [record.id])

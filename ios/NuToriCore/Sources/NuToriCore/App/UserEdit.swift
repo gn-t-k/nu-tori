@@ -87,7 +87,7 @@ public enum UserEdit: Sendable {
         }
     }
 
-    /// 編集を書いたあとの後始末。書いたものが無ければ（サインインしていない、空の名前、今と同じ値、受け付ける範囲の外）、どれもしない。
+    /// 編集を書いたあとの後始末。書いた結果が `Outcome.unwritten` なら、どれもしない。
     /// 書いたら、いつも送り待ちから作る見え方を出す。まだ届いていない記録として、その場で薄く描くため
     public struct Aftermath: Equatable, Sendable {
         /// 書く前に、受け付けなかった1行を消す記録。作る編集は nil
@@ -145,16 +145,5 @@ public enum UserEdit: Sendable {
         case unwritten
         /// 書いた。`recordCount` は書いた記録の数（食事の記録は食事の数、ほかは 1）
         case written(recordCount: Int)
-    }
-}
-
-/// 撮った・選んだ元の写真と、その付帯情報（読むのはアプリのターゲット）
-public struct MealPhotoOriginal: Sendable {
-    public let data: Data
-    public let exif: PhotoExif
-
-    public init(data: Data, exif: PhotoExif) {
-        self.data = data
-        self.exif = exif
     }
 }

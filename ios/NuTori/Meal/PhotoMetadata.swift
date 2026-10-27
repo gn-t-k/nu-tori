@@ -16,7 +16,7 @@ nonisolated enum PhotoMetadata {
     }
 
     /// 選んだ写真の元のバイトと、そこから読んだ付帯情報
-    static func original(_ data: Data) -> MealPhotoOriginal {
+    static func mealPhotoOriginal(readingExifOf data: Data) -> MealPhotoOriginal {
         MealPhotoOriginal(data: data, exif: exif(ofImageData: data))
     }
 

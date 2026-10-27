@@ -52,7 +52,7 @@ struct RootView: View {
                         await model.perform(
                             .recordPickedMeals(
                                 UITestMealPhotos.jpegs(count: picked.count).map(
-                                    PhotoMetadata.original),
+                                    PhotoMetadata.mealPhotoOriginal(readingExifOf:)),
                                 pickedAt: pickedAt))
                     })
             }
