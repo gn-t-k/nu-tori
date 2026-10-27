@@ -16,6 +16,8 @@ struct MealScreen: View {
     let now: () -> Date
     let capture: (ClientUsageEvent) async -> Void
     let actions: MealActions
+    /// 時刻を直す・食事を消す・料理を足す、料理の画面の編集を渡す。どれも、インターネットにつながらなくても、その場でキャッシュに当たる
+    let performEdit: (UserEdit) async -> Void
     /// 料理の画面にいても、タイムラインまで戻る（食事を消したとき）
     let returnToTimeline: () -> Void
     /// サブスクリプションを待っている食事の「サブスクリプションを見る」。課金画面を開く
@@ -29,7 +31,7 @@ struct MealScreen: View {
                 ) { dishOffer in
                     DishScreen(
                         offer: dishOffer,
-                        actions: actions.dish,
+                        performEdit: performEdit,
                         deleteMeal: deleteMealAndReturn,
                         confirmsMealDeletion: false)
                 }
@@ -43,6 +45,7 @@ struct MealScreen: View {
         now: @escaping () -> Date,
         capture: @escaping (ClientUsageEvent) async -> Void,
         actions: MealActions,
+        performEdit: @escaping (UserEdit) async -> Void,
         returnToTimeline: @escaping () -> Void,
         openPaywall: @escaping () -> Void,
         rejectedLines: [RejectedLine],
@@ -57,6 +60,7 @@ struct MealScreen: View {
         self.now = now
         self.capture = capture
         self.actions = actions
+        self.performEdit = performEdit
         self.returnToTimeline = returnToTimeline
         self.openPaywall = openPaywall
         _confirmsDeletion = State(initialValue: confirmsDeletion)
@@ -148,7 +152,7 @@ struct MealScreen: View {
     private func deleteMealAndReturn() {
         let deletedAt = now()
         returnToTimeline()
-        Task { await actions.deleteMeal(card, deletedAt) }
+        Task { await performEdit(.deleteMeal(card, deletedAt: deletedAt)) }
     }
 
     /// 「食事を削除」を押すと、押したボタンから確かめる（`confirmationDialog`）
@@ -190,7 +194,7 @@ struct MealScreen: View {
         .accessibilityIdentifier("meal-time")
         .onChange(of: eatenAt) { _, chosen in
             guard chosen != card.meal.eatenAt else { return }
-            Task { await actions.correctMealTime(card, chosen) }
+            Task { await performEdit(.correctMealTime(card, eatenAt: chosen)) }
         }
         .onChange(of: card.meal.eatenAt) { _, synced in
             // ほかの端末で直した時刻が届いたときも、ボタンの値をそろえる
@@ -340,7 +344,7 @@ struct MealScreen: View {
             EmptyView()
         case .dish:
             Button(role: .destructive) {
-                Task { await actions.dish.delete(contents.dish) }
+                Task { await performEdit(.deleteDish(contents.dish)) }
             } label: {
                 Label("削除", systemImage: "trash")
             }
@@ -404,7 +408,7 @@ struct MealScreen: View {
         let typed = newDishName
         newDishName = ""
         // 空白だけの名前は足さない。足すかは `SyncEngine.addDish` が決める
-        Task { await actions.addDish(card, typed) }
+        Task { await performEdit(.addDish(named: typed, to: card)) }
     }
 
     /// 料理の行（名前、量、推定の印、kcal と、行の下の待ちの1行）。材料の行は並べず、料理の画面で見せる。

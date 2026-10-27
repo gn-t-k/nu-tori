@@ -18,7 +18,7 @@
                 ),
                 rejectedLines: sample.rejectedLines,
                 capture: { _ in },
-                saveWeight: { _ in },
+                performEdit: { _ in },
                 startGoalSetup: sample.startsGoalSetup ? {} : nil,
                 goalPath: sample.goal.flatMap { goal in
                     WeightGoalPath(

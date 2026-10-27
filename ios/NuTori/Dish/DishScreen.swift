@@ -8,7 +8,8 @@ import SwiftUI
 struct DishScreen: View {
     /// 料理と、出す操作・注記・待ちの1行・受け付けなかった1行。推定の状態はこの画面で見ず、これだけで決める
     let offer: MealEditOffer.DishScreenOffer
-    let actions: DishActions
+    /// 名前・量・材料の量を直す、料理を消す編集を渡す。どれも、インターネットにつながらなくても、その場でキャッシュに当たる
+    let performEdit: (UserEdit) async -> Void
     /// 最後の1品の確かめで「食事を削除」を押したとき。タイムラインに戻り、食事を消す
     let deleteMeal: () -> Void
 
@@ -66,12 +67,12 @@ struct DishScreen: View {
     /// confirmsMealDeletion は開いたときに、最後の1品を消すかの確かめを出しているか
     init(
         offer: MealEditOffer.DishScreenOffer,
-        actions: DishActions,
+        performEdit: @escaping (UserEdit) async -> Void,
         deleteMeal: @escaping () -> Void,
         confirmsMealDeletion: Bool
     ) {
         self.offer = offer
-        self.actions = actions
+        self.performEdit = performEdit
         self.deleteMeal = deleteMeal
         _confirmsMealDeletion = State(initialValue: confirmsMealDeletion)
     }
@@ -216,7 +217,7 @@ struct DishScreen: View {
             EmptyView()
         case .dish:
             deletionButton {
-                Task { await actions.delete(contents.dish) }
+                Task { await performEdit(.deleteDish(contents.dish)) }
             }
         case .mealAfterConfirmation:
             deletionButton {
@@ -254,16 +255,16 @@ struct DishScreen: View {
         Task {
             switch field {
             case .name:
-                await actions.rename(dish, typed)
+                await performEdit(.renameDish(dish, to: typed))
             case .quantity:
                 if let value = QuantityFieldText.value(typed: typed) {
-                    await actions.correctQuantity(dish, value)
+                    await performEdit(.correctDishQuantity(dish, to: value))
                 }
             case .ingredient(let ingredientId):
                 if let ingredient = ingredients.first(where: { $0.id == ingredientId }),
                     let quantity = QuantityFieldText.value(typed: typed)
                 {
-                    await actions.correctIngredientQuantity(ingredient, quantity)
+                    await performEdit(.correctIngredientQuantity(ingredient, to: quantity))
                 }
             }
             // 送っているあいだにまた打ち始めていたら、その打ちかけは残す

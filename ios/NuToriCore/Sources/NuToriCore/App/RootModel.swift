@@ -1,30 +1,32 @@
-import Foundation
-import NuToriCore
-import Observation
+public import Foundation
+public import Observation
 
+/// アプリの流れ。開く・サインインする・サインアウトするで画面を替え、記録忘れの通知から開いた着き先、受け付けなかった1行、
+/// 規約への同意のシートを持つ。画面からの編集は `perform(_:)` の1つの口で受ける
+@MainActor
 @Observable
-final class RootModel {
-    private(set) var screen: Screen = .opening
+public final class RootModel {
+    public private(set) var screen: Screen = .opening
     /// 記録忘れの通知を押して開いたときの着き先。タイムラインが着いたら `noteReminderLanded()` で消す
-    private(set) var reminderLanding: ReminderLanding?
+    public private(set) var reminderLanding: ReminderLanding?
     /// 画面が今日と操作した時刻を読む時計
-    let clock: DeviceClock
+    public let clock: DeviceClock
     /// 目標を立てる知らせのカードが広げる、目標の設定の流れ
-    let goalSetup: GoalSetupSession
+    public let goalSetup: GoalSetupSession
     /// サブスクリプションを買う・復元する、自動更新を読む。課金画面とアカウントの画面が使う
-    let subscriptionPurchases: SubscriptionPurchases
+    public let subscriptionPurchases: SubscriptionPurchases
     /// 送り待ちから作る見え方。まだ届いていない記録はタイムラインで薄く描き、まだ送れていない料理は食事のカードで見せる
-    private(set) var pendingAppearance = PendingAppearance.none
+    public private(set) var pendingAppearance = PendingAppearance.none
     /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事。タイムラインで伸ばして描く
-    private(set) var replyStreams: [UUID: ReplyStream] = [:]
+    public private(set) var replyStreams: [UUID: ReplyStream] = [:]
     /// 規約への同意のシート。出ているあいだは閉じられず、同意を受け付けられたら消す
-    private(set) var termsAgreementSheet: TermsAgreementSheet?
-    var rejectedLines: [RejectedLine] {
+    public private(set) var termsAgreementSheet: TermsAgreementSheet?
+    public var rejectedLines: [RejectedLine] {
         guard case .accepting(let rejected) = rejectionAcceptance else { return [] }
         return rejected.lines
     }
 
-    init(
+    public init(
         accountSession: AccountSession,
         recordSync: RecordSync,
         reflector: RecordSyncReflector,
@@ -61,7 +63,7 @@ final class RootModel {
         }
     }
 
-    func open() async {
+    public func open() async {
         do {
             replaceScreen(with: try await accountSession.destinationOnOpen())
         } catch is CancellationError {
@@ -76,9 +78,7 @@ final class RootModel {
             case .begun: nil
             }
         observationStart = .begun
-        if let tapWhileOpening {
-            Task { await self.openFromReminder(noticeId: tapWhileOpening) }
-        }
+        async let reminderOpened: Void = openFromReminderTappedWhileOpening(tapWhileOpening)
         // 同意が要るかは同期を待たずに問う。電波が無くて問えなければ、次に前面に来たときに問い直す
         async let termsAgreementAsked: Void = askTermsAgreementIfShowingTimeline()
         async let unfinishedTransactionsReported: Void =
@@ -86,15 +86,16 @@ final class RootModel {
         await syncIfShowingTimeline()
         await termsAgreementAsked
         await unfinishedTransactionsReported
+        await reminderOpened
     }
 
     /// 規約への同意のシートを画面に出した
-    func termsAgreementSheetPresented() async {
+    public func termsAgreementSheetPresented() async {
         await termsAgreement.sheetPresented()
     }
 
     /// 同意のシートの「同意して続ける」。その場の要求で同意を送り、受け付けられたらシートを消す
-    func agreeToTerms() async -> TermsAgreementPrompt.AgreeOutcome {
+    public func agreeToTerms() async -> TermsAgreementPrompt.AgreeOutcome {
         guard let sheet = termsAgreementSheet else { return .agreed }
         let outcome = await termsAgreement.agree(to: sheet)
         if outcome == .agreed, termsAgreementSheet == sheet {
@@ -105,7 +106,7 @@ final class RootModel {
 
     /// 記録忘れの通知を押して開いた。ヘルスケアを読み、知らせを出すかを決めてから、
     /// その日の知らせがあればその位置に、無ければ今日のいちばん下に着く
-    func openFromReminder(noticeId: UUID) async {
+    public func openFromReminder(noticeId: UUID) async {
         // 起動して初めて開き終え、観測を始めてから決める。始める前の出来事は送られないため
         switch observationStart {
         case .pending:
@@ -126,12 +127,12 @@ final class RootModel {
         }
     }
 
-    func noteReminderLanded() {
+    public func noteReminderLanded() {
         reminderLanding = nil
     }
 
     /// 体重を記録したあと。この端末でまだ通知の許可を求めていなければ、iPhone の画面で求める
-    func requestNotificationPermissionAfterWeightRecorded() async {
+    public func requestNotificationPermissionAfterWeightRecorded() async {
         switch await missedWeightRecordWatch.requestPermissionIfNotYetRequested() {
         case .granted:
             await accountSession.capture(.notificationPermissionRequested(granted: true))
@@ -142,16 +143,16 @@ final class RootModel {
         }
     }
 
-    func notificationPermission() async -> NotificationPermission {
+    public func notificationPermission() async -> NotificationPermission {
         await missedWeightRecordWatch.permission()
     }
 
-    func capture(_ event: ClientUsageEvent) async {
+    public func capture(_ event: ClientUsageEvent) async {
         await accountSession.capture(event)
     }
 
     /// Apple ID の設定で連携を止めたあと、アプリを終了せずに戻った人にも、サインインの画面を出すため
-    func reopenIfSignedIn() async {
+    public func reopenIfSignedIn() async {
         switch screen {
         case .loadingTimeline, .timeline:
             await open()
@@ -160,169 +161,45 @@ final class RootModel {
         }
     }
 
-    func saveWeight(_ write: WeightEntry.Write) async {
-        try? await recordSync.save(write)
-    }
-
-    /// 撮った写真は、1枚で1つの食事にする。食事の時刻は撮った時刻（付帯情報に無ければ「写真を使用」を押した時刻）
-    func recordCapturedMeal(original: Data, exif: PhotoExif, sentAt: Date) async {
-        let timeZone = clock.timeZone()
-        let photoId = UUID()
-        let takenAt = PhotoTakenTime(exif: exif, pickedAt: sentAt, deviceTimeZone: timeZone)
-        let draft = MealDraft.captured(
-            photoId: photoId, takenAt: takenAt.instant, sentAt: sentAt, deviceTimeZone: timeZone)
-        await recordMeals([draft], originals: [photoId: original], entry: .captured)
-    }
-
-    /// 選んだ写真を、撮影時刻の近いものごとの食事にまとめて記録する。`pickedAt` は選び終えた時刻
-    func recordPickedMeals(originals: [Data], pickedAt: Date) async {
-        let timeZone = clock.timeZone()
-        let photos = originals.map { (id: UUID(), original: $0) }
-        let picked = photos.map { photo in
-            PickedPhoto(
-                id: photo.id,
-                takenTime: PhotoTakenTime(
-                    exif: PhotoMetadata.exif(ofImageData: photo.original),
-                    pickedAt: pickedAt,
-                    deviceTimeZone: timeZone
-                )
-            )
-        }
-        // 選ぶ画面は 10 枚までしか選ばせないので、多すぎることは無い
-        guard !picked.isEmpty,
-            let drafts = try? MealDraft.picked(picked, sentAt: pickedAt, deviceTimeZone: timeZone)
-        else {
-            return
-        }
-        await recordMeals(
-            drafts,
-            originals: Dictionary(uniqueKeysWithValues: photos.map { ($0.id, $0.original) }),
-            entry: .picked
-        )
-    }
-
-    /// 食事を消す。インターネットにつながらなくても、その場でキャッシュとアプリの中の写真から消える。
-    /// 消せたら、PostHog に推定の状態と、送ってから消すまでの時間を送る
-    func deleteMeal(_ card: MealCard, deletedAt: Date) async {
-        do {
-            try await recordSync.deleteMeal(id: card.meal.id)
-        } catch {
-            return
-        }
-        await accountSession.capture(.mealDeleted(card, at: deletedAt))
-    }
-
-    /// 食事の画面で撮った時刻を直す。インターネットにつながらなくても、その場で1日の丸と日のまとめが直した日に移る。
-    /// 直せたら、PostHog に直した回数を送る（時刻は送らない）
-    func correctMealTime(_ card: MealCard, eatenAt: Date) async {
-        do {
-            try await recordSync.correctMealTime(mealId: card.meal.id, eatenAt: eatenAt)
-        } catch {
-            return
-        }
-        await accountSession.capture(.mealTimeCorrected)
-    }
-
-    /// 料理の画面で料理の名前を直す。インターネットにつながらなくても、その場で直した名前になる。
-    /// 送ったら、PostHog に直した回数を送る（名前は送らない）。空の名前と今と同じ名前は送らない
-    func renameDish(_ dish: Dish, to typedName: String) async {
-        guard let renamed = try? await recordSync.renameDish(id: dish.id, to: typedName),
-            renamed != dish
-        else { return }
-        await accountSession.capture(.dishCorrected)
-    }
-
-    /// 料理の画面で料理の量を直す。その場で材料の量と kcal・栄養の内訳が変わる。送ったら、PostHog に直した回数を送る（量は送らない）
-    func correctDishQuantity(_ dish: Dish, to value: Double) async {
-        guard let corrected = try? await recordSync.correctDishQuantity(id: dish.id, to: value),
-            corrected != dish
-        else { return }
-        await accountSession.capture(.dishCorrected)
-    }
-
-    /// 料理の画面で材料の量を直す。その場で kcal と栄養の内訳が変わる。送ったら、PostHog に料理を直した回数を送る（量は送らない）
-    func correctIngredientQuantity(_ ingredient: Ingredient, to quantity: Double) async {
+    /// 画面からの編集を書き、書いたら PostHog に出来事を送る。後始末は `UserEdit.aftermath` に種類ごとに書いてある
+    public func perform(_ edit: UserEdit) async {
         guard
-            let corrected = try? await recordSync.correctIngredientQuantity(
-                id: ingredient.id, to: quantity),
-            corrected != ingredient
+            case .written(let recordCount)? = try? await recordSync.perform(
+                edit, in: clock.timeZone())
         else { return }
-        await accountSession.capture(.dishCorrected)
-    }
-
-    /// 料理を消す（食事の画面で左へ送った、料理の画面の「この料理を削除」。最後の1品でないとき）。
-    /// インターネットにつながらなくても、その場で消える。消せたら、PostHog に消した回数を送る（名前は送らない）
-    func deleteDish(_ dish: Dish) async {
-        do {
-            try await recordSync.deleteDish(id: dish.id)
-        } catch {
-            return
+        let aftermath = edit.aftermath
+        if let event = aftermath.usage.event(recordCount: recordCount) {
+            await accountSession.capture(event)
         }
-        await accountSession.capture(.dishDeleted)
-    }
-
-    /// 食事の画面の「料理を足す」。インターネットにつながらなくても、その場で料理の行が出る。
-    /// 足したら、PostHog に足した回数を送る（名前は送らない）。空の名前は足さない
-    func addDish(named typedName: String, to card: MealCard) async {
-        guard (try? await recordSync.addDish(named: typedName, toMeal: card.meal.id)) != nil
-        else { return }
-        await accountSession.capture(.dishAdded)
-    }
-
-    /// 入力欄から文章を送る。インターネットにつながらなくても、その場で送り待ちに並ぶ。
-    /// 送ったら、PostHog にプリセットの種類と字数を送る（本文は送らない）
-    func sendText(_ draft: TextDraft) async {
-        guard (try? await recordSync.sendText(draft.text)) != nil else { return }
-        await accountSession.capture(draft.sentEvent)
-    }
-
-    /// 文章の食事のカードの「会話として送り直す」。確かめずに、その場でその文章の食事が消える。
-    /// 送ったら、PostHog に消えた食事の数を送る
-    func resendAsConversation(sentTextId: UUID, deletedMealCount: Int) async {
-        await enqueue(
-            { try await recordSync.resendAsConversation(sentTextId: sentTextId) },
-            thenCapture: .resentAsConversation(deletedMealCount: deletedMealCount))
-    }
-
-    /// 作れなかった・回数切れの1行の「送り直す」。送ったら、PostHog に1行の理由を送る
-    func resendReply(
-        sentTextId: UUID, reason: ClientUsageEvent.ReplyRegenerateReason
-    ) async {
-        await enqueue(
-            { try await recordSync.resend(sentTextId: sentTextId) },
-            thenCapture: .replyRegenerateTapped(reason))
-    }
-
-    /// 送り待ちに並べられたら、PostHog に出来事を送る。並べられなかったら送らない
-    private func enqueue(
-        _ write: () async throws -> Void, thenCapture event: ClientUsageEvent
-    ) async {
-        guard (try? await write()) != nil else { return }
-        await accountSession.capture(event)
+        if aftermath.requestsNutritionAuthorization {
+            // 撮る・選ぶ画面が閉じてタイムラインに戻ってから、栄養の書き込みの許可を求める。
+            // 許可の画面が閉じるまで待たずに返し、写真を読んでいるあいだの仮のカードを、食事のカードが出たらすぐ外せるようにする
+            Task { await health.requestNutritionAuthorizationAfterMealRecorded() }
+        }
     }
 
     /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil
-    func mealPhotoFile(mealId: UUID, photoId: UUID) async -> URL? {
+    public func mealPhotoFile(mealId: UUID, photoId: UUID) async -> URL? {
         await recordSync.mealPhotos.photoFile(mealId: mealId, photoId: photoId)
     }
 
-    func holdsMealOriginals(_ mealId: UUID) async -> Bool {
+    public func holdsMealOriginals(_ mealId: UUID) async -> Bool {
         await recordSync.mealPhotos.holdsOriginals(ofMeal: mealId)
     }
 
-    func prepareWeightEntry() async {
+    public func prepareWeightEntry() async {
         await health.prepareForFirstWeightEntry()
         // ヘルスケアから今日の体重を読み込んでいれば、知らせに答える
         await recordSync.refreshMissedWeightRecordWatch(after: .weightEntryOpening)
     }
 
-    func noteAppBackgrounded() {
+    public func noteAppBackgrounded() {
         rejectionAcceptance = .ignoring
         recordSync.stopWaitingForNoticeTime()
         Task { await recordSync.stopFollowingReplies() }
     }
 
-    func noteAppActive() {
+    public func noteAppActive() {
         switch rejectionAcceptance {
         case .ignoring:
             rejectionAcceptance = .accepting(RejectedLines())
@@ -331,19 +208,19 @@ final class RootModel {
         }
     }
 
-    func signedInAccountId() async -> String? {
+    public func signedInAccountId() async -> String? {
         await accountSession.signedInAccountId()
     }
 
-    func turnOnUsageData() async {
+    public func turnOnUsageData() async {
         try? await recordSync.turnOnUsageData()
     }
 
-    func turnOffUsageData() async {
+    public func turnOffUsageData() async {
         try? await recordSync.turnOffUsageData()
     }
 
-    func deleteAccount() async -> AccountDeletionFailure? {
+    public func deleteAccount() async -> AccountDeletionFailure? {
         let outcome: AccountSession.DeleteAccountOutcome
         do {
             outcome = try await accountSession.deleteAccount()
@@ -369,17 +246,19 @@ final class RootModel {
     }
 
     /// サブスクリプション中で自動更新がオンのときだけ返す。返したら、確かめの前に退会の案内を出す
-    func accountDeletionGuide() async -> AccountDeletionGuide? {
+    public func accountDeletionGuide() async -> AccountDeletionGuide? {
         await AccountDeletionGuide.prepare(
             status: await recordSync.subscriptionStatus(), now: clock.now(),
             timeZone: clock.timeZone(), purchases: subscriptionPurchases)
     }
 
-    func rereadAccountDeletionGuide(_ guide: AccountDeletionGuide) async -> AccountDeletionGuide {
+    public func rereadAccountDeletionGuide(_ guide: AccountDeletionGuide) async
+        -> AccountDeletionGuide
+    {
         await guide.rereadingRenewal(purchases: subscriptionPurchases)
     }
 
-    func signIn(with result: AppleSignInResult) async {
+    public func signIn(with result: AppleSignInResult) async {
         guard case .signIn(let prompt, _) = screen else { return }
         switch result {
         case .cancelled:
@@ -394,13 +273,13 @@ final class RootModel {
         }
     }
 
-    enum Screen: Equatable {
+    public enum Screen: Equatable, Sendable {
         case opening
         case signIn(SignInDestination.Prompt, SignInStatus)
         case loadingTimeline
         case timeline
 
-        init(_ destination: SignInDestination) {
+        public init(_ destination: SignInDestination) {
             switch destination {
             case .signIn(let prompt): self = .signIn(prompt, .ready)
             case .loadingTimeline: self = .loadingTimeline
@@ -448,6 +327,11 @@ final class RootModel {
         screen = Screen(destination)
     }
 
+    private func openFromReminderTappedWhileOpening(_ noticeId: UUID?) async {
+        guard let noticeId else { return }
+        await openFromReminder(noticeId: noticeId)
+    }
+
     private func dropRejection(for recordId: UUID) {
         switch rejectionAcceptance {
         case .ignoring:
@@ -477,21 +361,6 @@ final class RootModel {
             rejected.add(writes)
             rejectionAcceptance = .accepting(rejected)
         }
-    }
-
-    private func recordMeals(
-        _ drafts: [MealDraft], originals: [UUID: Data], entry: MealDraft.Entry
-    ) async {
-        guard let meals = try? await recordSync.recordMeals(drafts, originals: originals),
-            !meals.isEmpty
-        else {
-            return
-        }
-        await accountSession.capture(
-            .mealRecorded(entry: entry, photoCount: originals.count, mealCount: meals.count))
-        // 撮る・選ぶ画面が閉じてタイムラインに戻ってから、栄養の書き込みの許可を求める。
-        // 許可の画面が閉じるまで待たずに返し、写真を読んでいるあいだの仮のカードを、食事のカードが出たらすぐ外せるようにする
-        Task { await health.requestNutritionAuthorizationAfterMealRecorded() }
     }
 
     /// シートを出しているあいだは問い直さない。問うあいだにサインインの画面に替わったら出さない

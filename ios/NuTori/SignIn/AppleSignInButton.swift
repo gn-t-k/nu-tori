@@ -1,5 +1,6 @@
 import AuthenticationServices
 import CryptoKit
+import NuToriCore
 import SwiftUI
 
 struct AppleSignInButton: View {
