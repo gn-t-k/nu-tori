@@ -1,0 +1,153 @@
+#!/usr/bin/env swift
+// 画像を、行ごと・列ごとに名前を付けて1枚に並べる。画面を確かめるとき、画像を1枚ずつ読まずに見比べるために使う（docs/agents/ios-mac.md）
+// Mac に ImageMagick も PIL も無いので、Xcode の swift と CoreGraphics だけで描く
+import CoreGraphics
+import CoreText
+import Foundation
+import ImageIO
+import UniformTypeIdentifiers
+
+let usage = """
+    使い方: scripts/tile-images --out <出力.png> --columns <列の名前>,... [--cell-width <px>] --row <行の名前> <画像>... [--row ...]
+      --row        1行ぶん。画像は列の数だけ並べる。描けなかったところは - と書くと、空けて「画像が無い」と書く
+      --cell-width 1つの画像を縮める幅（既定 300）。高さは元の縦横の比で決める
+    """
+
+struct Row {
+    let label: String
+    let paths: [String?]
+}
+
+struct Arguments {
+    let out: String
+    let columns: [String]
+    let cellWidth: Int
+    let rows: [Row]
+}
+
+func fail(_ message: String) -> Never {
+    FileHandle.standardError.write(Data((message + "\n").utf8))
+    exit(2)
+}
+
+func parse(_ arguments: [String]) -> Arguments {
+    var out: String?
+    var columns: [String] = []
+    var cellWidth = 300
+    var rows: [Row] = []
+    var rest = arguments[...]
+    while let flag = rest.popFirst() {
+        switch flag {
+        case "--out":
+            out = rest.popFirst()
+        case "--columns":
+            columns = rest.popFirst()?.split(separator: ",").map(String.init) ?? []
+        case "--cell-width":
+            guard let value = rest.popFirst().flatMap({ Int($0) }), value > 0 else { fail(usage) }
+            cellWidth = value
+        case "--row":
+            guard let label = rest.popFirst() else { fail(usage) }
+            var paths: [String?] = []
+            while let next = rest.first, !next.hasPrefix("--") {
+                rest.removeFirst()
+                paths.append(next == "-" ? nil : next)
+            }
+            rows.append(Row(label: label, paths: paths))
+        default:
+            fail(usage)
+        }
+    }
+    guard let out, !columns.isEmpty, !rows.isEmpty else { fail(usage) }
+    for row in rows where row.paths.count != columns.count {
+        fail("\(row.label) の画像が \(row.paths.count) 枚で、列の数 \(columns.count) と合わない")
+    }
+    return Arguments(out: out, columns: columns, cellWidth: cellWidth, rows: rows)
+}
+
+func loadImage(_ path: String) -> CGImage? {
+    guard let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil) else { return nil }
+    return CGImageSourceCreateImageAtIndex(source, 0, nil)
+}
+
+let arguments = parse(Array(CommandLine.arguments.dropFirst()))
+let images = arguments.rows.map { row in row.paths.map { $0.flatMap(loadImage) } }
+for (row, rowImages) in zip(arguments.rows, images) {
+    for case let (path?, nil) in zip(row.paths, rowImages) {
+        fail("読めない画像: \(path)")
+    }
+}
+
+let margin = 16
+let gap = 16
+let headerHeight = 40
+let labelHeight = 32
+let cellWidth = arguments.cellWidth
+let missingHeight = cellWidth
+
+func scaledHeight(_ image: CGImage?) -> Int {
+    guard let image else { return missingHeight }
+    return Int((Double(image.height) * Double(cellWidth) / Double(image.width)).rounded())
+}
+
+// 同じ行の画像の上端をそろえ、行の高さは一番高い画像に合わせる
+let rowHeights = images.map { $0.map(scaledHeight).max() ?? missingHeight }
+let width = margin * 2 + cellWidth * arguments.columns.count + gap * (arguments.columns.count - 1)
+let height = margin * 2 + headerHeight + rowHeights.reduce(0) { $0 + labelHeight + $1 + gap } - gap
+
+guard
+    let context = CGContext(
+        data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpace(name: CGColorSpace.sRGB)!,
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+else { fail("描く場所を作れない") }
+
+// CoreGraphics は左下が原点なので、上から下へ並べるために上端からの位置を変える
+func flippedRect(x: Int, top: Int, width: Int, height: Int) -> CGRect {
+    CGRect(x: x, y: context.height - top - height, width: width, height: height)
+}
+
+func drawText(_ text: String, x: Int, top: Int, height: Int, size: CGFloat) {
+    let font = CTFontCreateUIFontForLanguage(.system, size, nil)!
+    let attributes: [NSAttributedString.Key: Any] = [
+        NSAttributedString.Key(kCTFontAttributeName as String): font,
+        NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(gray: 0, alpha: 1),
+    ]
+    let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
+    let baseline = context.height - top - height + Int((CGFloat(height) - size) / 2 + size * 0.2)
+    context.textPosition = CGPoint(x: x, y: baseline)
+    CTLineDraw(line, context)
+}
+
+// ライトの白もダークの黒も縁が見えるよう、地は中間の灰にする
+context.setFillColor(CGColor(gray: 0.62, alpha: 1))
+context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+for (index, column) in arguments.columns.enumerated() {
+    drawText(column, x: margin + index * (cellWidth + gap), top: margin, height: headerHeight, size: 24)
+}
+
+var top = margin + headerHeight
+for ((row, rowImages), rowHeight) in zip(zip(arguments.rows, images), rowHeights) {
+    drawText(row.label, x: margin, top: top, height: labelHeight, size: 20)
+    top += labelHeight
+    for (index, image) in rowImages.enumerated() {
+        let x = margin + index * (cellWidth + gap)
+        if let image {
+            context.interpolationQuality = .high
+            context.draw(image, in: flippedRect(x: x, top: top, width: cellWidth, height: scaledHeight(image)))
+        } else {
+            context.setFillColor(CGColor(gray: 0.85, alpha: 1))
+            context.fill(flippedRect(x: x, top: top, width: cellWidth, height: missingHeight))
+            drawText("画像が無い", x: x + 12, top: top, height: missingHeight, size: 20)
+        }
+    }
+    top += rowHeight + gap
+}
+
+guard let sheet = context.makeImage(),
+    let destination = CGImageDestinationCreateWithURL(
+        URL(fileURLWithPath: arguments.out) as CFURL, UTType.png.identifier as CFString, 1, nil)
+else { fail("\(arguments.out) に書けない") }
+CGImageDestinationAddImage(destination, sheet, nil)
+guard CGImageDestinationFinalize(destination) else { fail("\(arguments.out) に書けない") }
+print(arguments.out)
