@@ -1,0 +1,2387 @@
+{
+  "meals": [
+    {
+      "key": "oyakodon",
+      "dish": "親子丼",
+      "ingredients": [
+        {
+          "name": "ご飯",
+          "quantity": 200,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "鶏もも肉",
+          "quantity": 80,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "卵",
+          "quantity": 1,
+          "unit": "個",
+          "source": "food_composition"
+        },
+        {
+          "name": "割り下",
+          "quantity": 30,
+          "unit": "ml",
+          "source": "estimated"
+        }
+      ],
+      "totals": {
+        "energyKcal": 568,
+        "proteinG": 23.85,
+        "fatG": 15.85,
+        "carbohydrateG": 75.95
+      }
+    },
+    {
+      "key": "curry",
+      "dish": "カレーライス",
+      "ingredients": [
+        {
+          "name": "ご飯",
+          "quantity": 200,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "牛肉（かた）",
+          "quantity": 50,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "じゃがいも",
+          "quantity": 50,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "たまねぎ",
+          "quantity": 40,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "にんじん",
+          "quantity": 20,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "カレールウ",
+          "quantity": 20,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "福神漬",
+          "quantity": 10,
+          "unit": "g",
+          "source": "food_composition"
+        }
+      ],
+      "totals": {
+        "energyKcal": 553.6,
+        "proteinG": 15.91,
+        "fatG": 11.64,
+        "carbohydrateG": 89.39
+      }
+    },
+    {
+      "key": "onigiri",
+      "dish": "おにぎり",
+      "ingredients": [
+        {
+          "name": "ご飯",
+          "quantity": 200,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "焼きのり",
+          "quantity": 2,
+          "unit": "g",
+          "source": "food_composition"
+        }
+      ],
+      "totals": {
+        "energyKcal": 317.94,
+        "proteinG": 4.64,
+        "fatG": 0.44,
+        "carbohydrateG": 69.23
+      }
+    }
+  ],
+  "review": {
+    "startingWeightTrendKg": 70,
+    "previousExpenditureKcal": 2100,
+    "goalWeeks": 12,
+    "recordedMealDayCount": 7,
+    "intakeOptionsKcal": [
+      1600,
+      1700,
+      1800,
+      1900,
+      2000,
+      2100,
+      2200,
+      2300,
+      2400
+    ],
+    "weightChangeOptionsKg": [
+      -0.6,
+      -0.5,
+      -0.4,
+      -0.3,
+      -0.2,
+      -0.1,
+      0,
+      0.1,
+      0.2,
+      0.3
+    ],
+    "goals": [
+      {
+        "key": "maintain",
+        "direction": "maintain",
+        "targetWeightKg": 70,
+        "previousGuideKcal": 2100,
+        "outcomes": [
+          [
+            {
+              "expenditureKcal": 2140,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2113,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2085,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2058,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2030,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2003,
+              "guideKcal": 2000,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 265,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1975,
+              "guideKcal": 2000,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 265,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1948,
+              "guideKcal": 1950,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 255,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1920,
+              "guideKcal": 1950,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 255,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1893,
+              "guideKcal": 1950,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 255,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2165,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2138,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2110,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2083,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2055,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2028,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2000,
+              "guideKcal": 2000,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 265,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1973,
+              "guideKcal": 1950,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 255,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1945,
+              "guideKcal": 1950,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 255,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1918,
+              "guideKcal": 1950,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 255,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2190,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2163,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2135,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2108,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2080,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2053,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2025,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1998,
+              "guideKcal": 2000,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 265,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1970,
+              "guideKcal": 1950,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 255,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1943,
+              "guideKcal": 1950,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 255,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2215,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2188,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2160,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2133,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2105,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2078,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2050,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2023,
+              "guideKcal": 2000,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 265,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1995,
+              "guideKcal": 2000,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 265,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1968,
+              "guideKcal": 1950,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 255,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2240,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2213,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2185,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2158,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2130,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2103,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2075,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2048,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2020,
+              "guideKcal": 2000,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 265,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1993,
+              "guideKcal": 2000,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 265,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2265,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2238,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2210,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2183,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2155,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2128,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2100,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2073,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2045,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2018,
+              "guideKcal": 2000,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 265,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2290,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2263,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2235,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2208,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2180,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2153,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2125,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2098,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2070,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2043,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2315,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2288,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2260,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2233,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2205,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2178,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2150,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2123,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2095,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2068,
+              "guideKcal": 2050,
+              "proteinG": 110,
+              "fatG": 55,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2340,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2313,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2285,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2258,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2230,
+              "guideKcal": 2250,
+              "proteinG": 110,
+              "fatG": 65,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2203,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2175,
+              "guideKcal": 2200,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 305,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2148,
+              "guideKcal": 2150,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 295,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2120,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2093,
+              "guideKcal": 2100,
+              "proteinG": 110,
+              "fatG": 60,
+              "carbohydrateG": 280,
+              "mainReason": "expenditure_change"
+            }
+          ]
+        ]
+      },
+      {
+        "key": "lose-3kg",
+        "direction": "lose",
+        "targetWeightKg": 67,
+        "previousGuideKcal": 1850,
+        "outcomes": [
+          [
+            {
+              "expenditureKcal": 2140,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2113,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2085,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2058,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2030,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2003,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1975,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1948,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1920,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1893,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2165,
+              "guideKcal": 1950,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 260,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2138,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2110,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2083,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2055,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2028,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2000,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1973,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1945,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1918,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2190,
+              "guideKcal": 1950,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 260,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2163,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2135,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2108,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2080,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2053,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2025,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1998,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1970,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1943,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2215,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2188,
+              "guideKcal": 1950,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 260,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2160,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2133,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2105,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2078,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2050,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2023,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1995,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1968,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2240,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2213,
+              "guideKcal": 1950,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 260,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2185,
+              "guideKcal": 1950,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 260,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2158,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2130,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2103,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2075,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2048,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2020,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1993,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2265,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2238,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2210,
+              "guideKcal": 1950,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 260,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2183,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2155,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2128,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2100,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2073,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2045,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2018,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2290,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2263,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2235,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2208,
+              "guideKcal": 1950,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 260,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2180,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2153,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2125,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2098,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2070,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2043,
+              "guideKcal": 1700,
+              "proteinG": 105,
+              "fatG": 45,
+              "carbohydrateG": 220,
+              "mainReason": "balance_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2315,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2288,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2260,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2233,
+              "guideKcal": 1950,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 260,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2205,
+              "guideKcal": 1950,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 260,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2178,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2150,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2123,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2095,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2068,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "balance_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2340,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2313,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2285,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2258,
+              "guideKcal": 2000,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 270,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2230,
+              "guideKcal": 1950,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 260,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2203,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2175,
+              "guideKcal": 1900,
+              "proteinG": 105,
+              "fatG": 55,
+              "carbohydrateG": 245,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2148,
+              "guideKcal": 1850,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 245,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2120,
+              "guideKcal": 1800,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 235,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2093,
+              "guideKcal": 1750,
+              "proteinG": 105,
+              "fatG": 50,
+              "carbohydrateG": 220,
+              "mainReason": "balance_change"
+            }
+          ]
+        ]
+      },
+      {
+        "key": "lose-6kg",
+        "direction": "lose",
+        "targetWeightKg": 64,
+        "previousGuideKcal": 1550,
+        "outcomes": [
+          [
+            {
+              "expenditureKcal": 2140,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2113,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2085,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2058,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2030,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2003,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1975,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1948,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1920,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1893,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2165,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2138,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2110,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2083,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2055,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2028,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2000,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1973,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1945,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1918,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2190,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2163,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2135,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2108,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2080,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2053,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2025,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1998,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1970,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1943,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2215,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2188,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2160,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2133,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2105,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2078,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2050,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2023,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1995,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1968,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2240,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2213,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2185,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2158,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2130,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2103,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2075,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2048,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2020,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 1993,
+              "guideKcal": 1400,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 160,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2265,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2238,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2210,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2183,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2155,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2128,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2100,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2073,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2045,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2018,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2290,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2263,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2235,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2208,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2180,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2153,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2125,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2098,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2070,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2043,
+              "guideKcal": 1450,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 175,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2315,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2288,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2260,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2233,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2205,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2178,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2150,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2123,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2095,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2068,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            }
+          ],
+          [
+            {
+              "expenditureKcal": 2340,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2313,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2285,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2258,
+              "guideKcal": 1700,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 225,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2230,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2203,
+              "guideKcal": 1650,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 210,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2175,
+              "guideKcal": 1600,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 200,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2148,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "expenditure_change"
+            },
+            {
+              "expenditureKcal": 2120,
+              "guideKcal": 1550,
+              "proteinG": 100,
+              "fatG": 45,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            },
+            {
+              "expenditureKcal": 2093,
+              "guideKcal": 1500,
+              "proteinG": 100,
+              "fatG": 40,
+              "carbohydrateG": 185,
+              "mainReason": "balance_change"
+            }
+          ]
+        ]
+      }
+    ]
+  }
+}

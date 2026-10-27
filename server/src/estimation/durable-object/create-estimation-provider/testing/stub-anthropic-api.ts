@@ -4,14 +4,14 @@ import Anthropic from "@anthropic-ai/sdk";
 // reply には要求の signal を渡す（流す応答の本文を、切れたときに止めるのに使う）。
 // 再試行はアラームの側が持つので、SDK の再試行は切る
 export const stubAnthropicApi = (reply: (signal: AbortSignal | undefined) => Promise<Response>) => {
-  const requests: { url: string; authorization: string | null; body: unknown }[] = [];
+  const requests: { url: string; apiKey: string | null; body: unknown }[] = [];
   const client = new Anthropic({
     apiKey: "test-anthropic-api-key",
     maxRetries: 0,
     fetch: async (input, init) => {
       requests.push({
         url: input instanceof Request ? input.url : String(input),
-        authorization: new Headers(init?.headers).get("authorization"),
+        apiKey: new Headers(init?.headers).get("x-api-key"),
         body: JSON.parse(await new Response(init?.body).text()),
       });
       // 本物の fetch と同じく、signal が切れたら失敗させる（SDK の時間の上限は signal を切って働く）

@@ -43,12 +43,10 @@ describe("Anthropic の読み分けと返事の提供元", () => {
       test("Haiku 5.5 に、思考を切り、アカウント ID のハッシュを添えて、文章をユーザーのメッセージで渡すこと", async () => {
         await provider.classifySentText(request);
 
-        expect(
-          requests.map(({ url, authorization, body }) => ({ url, authorization, body })),
-        ).toEqual([
+        expect(requests.map(({ url, apiKey, body }) => ({ url, apiKey, body }))).toEqual([
           {
             url: "https://api.anthropic.com/v1/messages",
-            authorization: "Bearer test-anthropic-api-key",
+            apiKey: "test-anthropic-api-key",
             body: expect.objectContaining({
               model: "claude-haiku-5-5",
               thinking: { type: "disabled" },
@@ -357,7 +355,7 @@ describe("Anthropic の読み分けと返事の提供元", () => {
         expect(requests).toEqual([
           {
             url: "https://api.anthropic.com/v1/messages",
-            authorization: "Bearer test-anthropic-api-key",
+            apiKey: "test-anthropic-api-key",
             body: expect.objectContaining({
               model: "claude-sonnet-5-5",
               thinking: { type: "between_tools" },

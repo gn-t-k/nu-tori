@@ -8,7 +8,7 @@
     "evals:reply": "tsx evals/run-eval.ts reply"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "1.1.0",
+    "@anthropic-ai/sdk": "0.135.0",
     "@hono/zod-openapi": "1.6.3",
     "@peculiar/x509": "2.2.0",
     "@praha/byethrow": "0.12.0",

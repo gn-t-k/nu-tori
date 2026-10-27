@@ -3,6 +3,7 @@ import { notFoundPage } from "./pages/not-found-page";
 import { securityHeaders } from "./security-headers";
 import { canonicalPathOf } from "./site-page";
 import { sitePages } from "./site-pages";
+import { subscriptionPrices } from "./subscription-prices";
 import { fetchSite } from "./testing/fetch-site";
 import { fetchSiteWithLandingVariants } from "./testing/fetch-site-with-landing-variants";
 
@@ -331,6 +332,43 @@ describe("nu-tori.app の配信", () => {
 
       test("提供者のトークンがあれば、バッジのリンクが自分の版の ct と pt を持つこと（テストだけの版 b）", () => {
         expect(variantBBody).toContain(campaignLinkOfVariantB);
+      });
+
+      test("版 a の最後の節の文のリンクも、バッジと同じ自分の版の ct のリンクであること", () => {
+        // リンクで切った切れ端の数は、リンクの数より1つ多い
+        expect(variantABody.split(campaignLinkOfVariantA).length - 1).toBe(2);
+      });
+
+      test("版 a が、特定商取引法に基づく表記と同じ価格の SoftwareApplication の構造化データを1つ持ち、評価を持たないこと", () => {
+        const jsonLds = [
+          ...variantABody.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs),
+        ].map(([, json]) => {
+          if (json === undefined) throw new Error("構造化データの中身が無い");
+          return JSON.parse(json);
+        });
+        expect(jsonLds).toHaveLength(1);
+        expect(jsonLds[0]).toMatchObject({
+          "@type": "SoftwareApplication",
+          operatingSystem: "iOS",
+          applicationCategory: "HealthApplication",
+          offers: [
+            { price: String(subscriptionPrices.monthlyYen), priceCurrency: "JPY" },
+            { price: String(subscriptionPrices.yearlyYen), priceCurrency: "JPY" },
+          ],
+        });
+        expect(jsonLds[0]).not.toHaveProperty("aggregateRating");
+      });
+
+      test("版 a が読むスクリプトと画像が、自分のオリジンから 200 で返ること", async () => {
+        const paths = [...variantABody.matchAll(/ src="(\/[^"]*)"/g)].map(([, path]) => {
+          if (path === undefined) throw new Error("src のパスが無い");
+          return path;
+        });
+        expect(paths).toContain("/landing-a.js");
+        const statuses = await Promise.all(
+          paths.map(async (path) => [path, (await fetchSite(path)).status]),
+        );
+        expect(statuses).toEqual(paths.map((path) => [path, 200]));
       });
     });
   });
