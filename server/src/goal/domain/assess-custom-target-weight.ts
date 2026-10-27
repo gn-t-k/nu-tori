@@ -1,6 +1,7 @@
 import { R } from "@praha/byethrow";
-import { computeWeightChangeGoalInputs, resolveCompleteGoalSetupBasis } from "./goal-setup-basis";
-import { evaluateCustomTargetWeight } from "./evaluate-custom-target-weight";
+import type { evaluateCustomTargetWeight } from "./evaluate-custom-target-weight";
+import { offerWeightChange } from "./goal-offer";
+import { resolveCompleteGoalSetupBasis } from "./goal-setup-basis";
 import type { GoalSetupRequestRejectedError } from "./goal-setup-request-rejected-error";
 import type { GoalSetupSituation } from "./goal-setup-situation";
 import type { GoalSetupStores } from "./goal-setup-stores";
@@ -26,13 +27,10 @@ export const assessCustomTargetWeight = (
     resolveCompleteGoalSetupBasis(stores, request, now),
     R.andThen((basis) =>
       R.pipe(
-        computeWeightChangeGoalInputs(basis, request),
-        R.map((goal) => ({
+        offerWeightChange(basis, request),
+        R.map((offer) => ({
           startedOn: basis.startedOn,
-          evaluation: evaluateCustomTargetWeight({
-            ...goal,
-            targetWeightKg: request.targetWeightKg,
-          }),
+          evaluation: offer.evaluateCustomTargetWeight(request.targetWeightKg),
         })),
       ),
     ),
