@@ -34,9 +34,15 @@ final class CopyAndSelectUtteranceUITests: XCTestCase {
             if pasted {
                 break
             }
+            // 同期のせいか、コピーが壊れたせいかを見分けられるよう、空にする前に貼られた文を残す
+            attachScreenshot(of: app, named: "違う文が貼られた書く欄（\(attempt) 回め）")
+            let value = XCTAttachment(string: app.composerField.value as? String ?? "")
+            value.name = "違う文が貼られた書く欄の文（\(attempt) 回め）"
+            value.lifetime = .keepAlways
+            add(value)
             clearComposer()
         }
-        XCTAssertTrue(pasted)
+        XCTAssertTrue(pasted, "3回とも違う文が貼られた")
         attachScreenshot(of: app, named: "コピーした文章を貼り付けた書く欄")
     }
 
