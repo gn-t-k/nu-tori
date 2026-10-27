@@ -10,7 +10,8 @@ struct WeightScreen: View {
     /// 体重と食事の受け付けなかった1行。この画面は体重の1行だけを出す
     let rejectedLines: [RejectedLine]
     let capture: (ClientUsageEvent) async -> Void
-    let saveWeight: (WeightEntry.Write) async -> Void
+    /// 体重記録を直す編集を渡す
+    let performEdit: (UserEdit) async -> Void
     /// 目標が無いときの「目標を立てる」。タイムラインまで戻り、知らせのカードまで送って広げる。目標があれば nil
     let startGoalSetup: (() -> Void)?
     /// 目標までの道のり。目標がなければ nil
@@ -318,7 +319,7 @@ struct WeightScreen: View {
         else { return }
         Task {
             await capture(.weightCorrected(place.usagePlace))
-            await saveWeight(.correct(corrected))
+            await performEdit(.saveWeight(.correct(corrected)))
         }
     }
 

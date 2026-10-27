@@ -14,13 +14,11 @@ struct TimelineScreenContainer: View {
     let noteReminderLanded: () -> Void
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
-    let saveWeight: (WeightEntry.Write) async -> Void
-    /// 入力欄から文章を送る。送れるかは書く欄が決め、送れるときだけ呼ぶ
-    let sendText: (TextDraft) async -> Void
+    /// 記録を作る・直す・消す編集を渡す（`RootModel.perform(_:)`）
+    let performEdit: (UserEdit) async -> Void
     /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事
     let replyStreams: [UUID: ReplyStream]
     let goalSetup: GoalSetupSession
-    let conversationActions: ConversationActions
     let accountActions: AccountActions
     let paywallActions: PaywallActions
     let mealActions: MealActions
@@ -54,13 +52,11 @@ struct TimelineScreenContainer: View {
             noteReminderLanded: noteReminderLanded,
             requestNotificationPermission: requestNotificationPermission,
             prepareWeightEntry: prepareWeightEntry,
-            saveWeight: saveWeight,
-            sendText: sendText,
+            performEdit: performEdit,
             accountActions: accountActions,
             paywallActions: paywallActions,
             mealActions: mealActions,
             conversation: timeline.conversation(streams: replyStreams),
-            conversationActions: conversationActions,
             goalSetupFlow: GoalSetupNoticeCard.Flow(
                 goalSetup.flow, on: .timeline, openedOn: goalSetup.place),
             goalScreenGoalSetupFlow: GoalSetupNoticeCard.Flow(

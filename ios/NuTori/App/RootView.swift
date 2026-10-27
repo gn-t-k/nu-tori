@@ -49,9 +49,11 @@ struct RootView: View {
                     photoCount: picked.count,
                     record: { pickedAt in
                         try? await Task.sleep(for: .seconds(picked.loadingSeconds))
-                        await model.recordPickedMeals(
-                            originals: UITestMealPhotos.jpegs(count: picked.count),
-                            pickedAt: pickedAt)
+                        await model.perform(
+                            .recordPickedMeals(
+                                UITestMealPhotos.jpegs(count: picked.count).map(
+                                    PhotoMetadata.original),
+                                pickedAt: pickedAt))
                     })
             }
         #endif
@@ -89,23 +91,9 @@ struct RootView: View {
                     await model.requestNotificationPermissionAfterWeightRecorded()
                 },
                 prepareWeightEntry: { await model.prepareWeightEntry() },
-                saveWeight: { write in
-                    await model.saveWeight(write)
-                },
-                sendText: { draft in
-                    await model.sendText(draft)
-                },
+                performEdit: { await model.perform($0) },
                 replyStreams: model.replyStreams,
                 goalSetup: model.goalSetup,
-                conversationActions: ConversationActions(
-                    resendAsConversation: { sentTextId, deletedMealCount in
-                        await model.resendAsConversation(
-                            sentTextId: sentTextId, deletedMealCount: deletedMealCount)
-                    },
-                    resend: { sentTextId, reason in
-                        await model.resendReply(sentTextId: sentTextId, reason: reason)
-                    }
-                ),
                 accountActions: AccountActions(
                     signedInAccountId: { await model.signedInAccountId() },
                     turnOnUsageData: { await model.turnOnUsageData() },
@@ -132,15 +120,6 @@ struct RootView: View {
                 ),
                 mealActions: MealActions(
                     prepareCamera: { await CameraReadiness.prepare() },
-                    recordCapturedPhoto: { original, exif, sentAt in
-                        await model.recordCapturedMeal(
-                            original: original, exif: exif, sentAt: sentAt)
-                    },
-                    recordPickedPhotos: { items, pickedAt in
-                        await model.recordPickedMeals(
-                            originals: await PickedMealPhotos.originals(of: items),
-                            pickedAt: pickedAt)
-                    },
                     photoSelection: photoSelection,
                     loadPhoto: { mealId, photoId in
                         guard
@@ -149,30 +128,7 @@ struct RootView: View {
                             return nil
                         }
                         return await MealPhotoImage.thumbnail(at: file)
-                    },
-                    correctMealTime: { card, eatenAt in
-                        await model.correctMealTime(card, eatenAt: eatenAt)
-                    },
-                    deleteMeal: { card, deletedAt in
-                        await model.deleteMeal(card, deletedAt: deletedAt)
-                    },
-                    addDish: { card, typedName in
-                        await model.addDish(named: typedName, to: card)
-                    },
-                    dish: DishActions(
-                        rename: { dish, typedName in
-                            await model.renameDish(dish, to: typedName)
-                        },
-                        correctQuantity: { dish, value in
-                            await model.correctDishQuantity(dish, to: value)
-                        },
-                        correctIngredientQuantity: { ingredient, quantity in
-                            await model.correctIngredientQuantity(ingredient, to: quantity)
-                        },
-                        delete: { dish in
-                            await model.deleteDish(dish)
-                        }
-                    )
+                    }
                 ),
                 holdsMealOriginals: { await model.holdsMealOriginals($0) }
             )

@@ -15,6 +15,11 @@ nonisolated enum PhotoMetadata {
         return exif(fromProperties: properties)
     }
 
+    /// 選んだ写真の元のバイトと、そこから読んだ付帯情報
+    static func original(_ data: Data) -> MealPhotoOriginal {
+        MealPhotoOriginal(data: data, exif: exif(ofImageData: data))
+    }
+
     /// 付帯情報の辞書から読む。標準のカメラが返す付帯情報（`UIImagePickerController.InfoKey.mediaMetadata`）も同じ形
     static func exif(fromProperties properties: [String: Any]) -> PhotoExif {
         let exif = properties[kCGImagePropertyExifDictionary as String] as? [String: Any]

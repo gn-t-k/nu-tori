@@ -60,22 +60,6 @@ public actor RecordSync {
         }
     }
 
-    public func save(_ write: WeightEntry.Write) async throws {
-        guard let engine = await engineIfSignedIn() else { return }
-        switch write {
-        case .create:
-            break
-        case .correct(let record):
-            await reflection.recordReplacing(id: record.id)
-        }
-        let record = try await engine.save(write)
-        await publishFromPending(engine)
-        // 積んだ答えは、このあとの同期で送る
-        _ = await noteToMissedWeightRecordWatch(after: .weightRecorded)
-        try? await weightHealthExport.exportWeightRecord(record)
-        _ = try await syncAfterInFlight()
-    }
-
     /// 記録忘れの見張りに出来事を知らせる。知らせの書き込みを積んだら、裏で送る。サインインしていなければ何もしない
     public func refreshMissedWeightRecordWatch(after event: MissedWeightRecordWatch.Event) async {
         guard await engines.hasSession(), await engines.signedInAccountId() != nil else { return }
@@ -137,7 +121,9 @@ public actor RecordSync {
     public func recordWeight(kilograms: Double, at instant: Date, in timeZone: TimeZone)
         async throws
     {
-        try await save(.create(kilograms: kilograms, instant: instant, timeZone: timeZone))
+        _ = try await perform(
+            .saveWeight(.create(kilograms: kilograms, instant: instant, timeZone: timeZone)),
+            in: timeZone)
     }
 
     /// 目標を決める要求の応答の記録を、取りに行った変更と同じ道でキャッシュに当てる。同じ記録があとで同期でも届く
@@ -169,23 +155,6 @@ public actor RecordSync {
         try? await store.subscriptionStatus()
     }
 
-    /// 1回の撮る・選ぶでできた食事を記録する。`originals` は写真の ID ごとの元の写真で、どの食事の写真もそろっている。
-    /// 写真はアプリの中に置いて裏で送り始め、食事の書き込みは送り待ちから裏で送る。送れなかった分は送り待ちに残る。
-    /// 同期の往復を待たずに返す（呼び出し側が、タイムラインに戻ってすぐ栄養の許可を求めるため）。
-    /// 送れたら、推定中の食事があるあいだ、裏で取りに行く。サインインしていなければ記録せず空。
-    /// 記録できなかった食事があれば投げる（それより前の食事は記録してある）
-    @discardableResult
-    public func recordMeals(_ drafts: [MealDraft], originals: [UUID: Data]) async throws -> [Meal] {
-        guard let engine = await engineIfSignedIn() else { return [] }
-        var meals: [Meal] = []
-        for draft in drafts {
-            meals.append(try await engine.recordMeal(draft, originals: originals))
-        }
-        await publishFromPending(engine)
-        Task { await self.followEstimationAfterSending() }
-        return meals
-    }
-
     /// 食事を記録したあと、食事の写真を送り終えたあと、料理を足した・名前を直したあと。
     /// 送り待ちを送り、送り終えたら、推定中の食事か料理があるあいだ裏で取りに行く
     public func followEstimationAfterSending() async {
@@ -201,101 +170,31 @@ public actor RecordSync {
         await mealPhotos.resendPendingUploads()
     }
 
-    /// 食事の撮った時刻を直す。電波が無くても、その場でキャッシュに当たる。直す書き込みは送り待ちに並ぶ
-    public func correctMealTime(mealId: UUID, eatenAt: Date) async throws {
-        guard let engine = await engineIfSignedIn() else { return }
-        await reflection.recordReplacing(id: mealId)
-        try await engine.correctMealTime(mealId: mealId, eatenAt: eatenAt)
-        await publishFromPending(engine)
-        syncInBackground()
-    }
-
-    /// 電波が無くても、その場でキャッシュとアプリの中の写真から消える。消す書き込みは送り待ちに並ぶ
-    public func deleteMeal(id mealId: UUID) async throws {
-        guard let engine = await engineIfSignedIn() else { return }
-        try await engine.deleteMeal(id: mealId)
-        syncInBackground()
-    }
-
-    /// 料理の名前を直す。電波が無くても、その場でキャッシュに当たる。直す書き込みは送り待ちに並び、送れたらサーバーが推定し直しを始める。
-    /// 返すのはキャッシュの今の料理（空の名前と今と同じ名前は送らず、前の料理）。サインインしていなければ nil
-    public func renameDish(id dishId: UUID, to typedName: String) async throws -> Dish? {
-        guard let engine = await engineIfSignedIn() else { return nil }
-        await reflection.recordReplacing(id: dishId)
-        let dish = try await engine.renameDish(id: dishId, to: typedName)
-        await publishFromPending(engine)
-        // 送れたら、推定し直しを待つあいだ数秒おきに取りに行く
-        Task { await self.followEstimationAfterSending() }
-        return dish
-    }
-
-    /// 食事に料理を足す。電波が無くても、その場でキャッシュに入る。作る書き込みは送り待ちに並び、送れたらサーバーが推定し直しを始める。
-    /// 返すのは足した料理（空の名前は足さず nil）。サインインしていなければ nil
-    public func addDish(named typedName: String, toMeal mealId: UUID) async throws -> Dish? {
-        guard let engine = await engineIfSignedIn() else { return nil }
-        guard let dish = try await engine.addDish(named: typedName, toMeal: mealId) else {
-            return nil
+    /// ユーザーの編集を書き、`UserEdit.aftermath` の後始末をする。書き込みは送り待ちに並び、送り終えるのを待たずに返す。
+    /// `timeZone` は端末の今のタイムゾーン（写真の撮影時刻を読む）。サインインしていなければ書かない。
+    /// 書けなかったら投げる（食事の記録では、それより前の食事は記録してある）
+    public func perform(_ edit: UserEdit, in timeZone: TimeZone) async throws -> UserEdit.Outcome {
+        guard let engine = await engineIfSignedIn() else { return .unwritten }
+        let aftermath = edit.aftermath
+        if let recordId = aftermath.replacedRecordId {
+            await reflection.recordReplacing(id: recordId)
         }
+        let outcome = try await write(edit, with: engine, in: timeZone)
+        guard case .written = outcome else { return outcome }
         await publishFromPending(engine)
-        Task { await self.followEstimationAfterSending() }
-        return dish
-    }
-
-    /// 料理の量を直す。材料の量も同じ割合で変わる。返すのはキャッシュの今の料理。サインインしていなければ nil
-    public func correctDishQuantity(id dishId: UUID, to value: Double) async throws -> Dish? {
-        guard let engine = await engineIfSignedIn() else { return nil }
-        await reflection.recordReplacing(id: dishId)
-        let dish = try await engine.correctDishQuantity(id: dishId, to: value)
-        await publishFromPending(engine)
-        syncInBackground()
-        return dish
-    }
-
-    /// 材料の量を直す。返すのはキャッシュの今の材料。サインインしていなければ nil
-    public func correctIngredientQuantity(id ingredientId: UUID, to quantity: Double) async throws
-        -> Ingredient?
-    {
-        guard let engine = await engineIfSignedIn() else { return nil }
-        await reflection.recordReplacing(id: ingredientId)
-        let ingredient = try await engine.correctIngredientQuantity(
-            id: ingredientId, to: quantity)
-        await publishFromPending(engine)
-        syncInBackground()
-        return ingredient
-    }
-
-    /// 料理を消す（最後の1品でないとき）。電波が無くても、その場でキャッシュから消える。消す書き込みは送り待ちに並ぶ
-    public func deleteDish(id dishId: UUID) async throws {
-        guard let engine = await engineIfSignedIn() else { return }
-        await reflection.recordReplacing(id: dishId)
-        try await engine.deleteDish(id: dishId)
-        await publishFromPending(engine)
-        syncInBackground()
-    }
-
-    /// 入力欄から文章を送る。電波が無くても、その場でキャッシュに入る。作る書き込みは送り待ちに並ぶ。
-    /// 返すのは送った文章（受け付ける範囲の外は送らず nil）。サインインしていなければ nil
-    @discardableResult
-    public func sendText(_ typedBody: String) async throws -> SentText? {
-        guard let engine = await engineIfSignedIn() else { return nil }
-        guard let sentText = try await engine.sendText(typedBody) else { return nil }
-        await followRepliesAfterWriting(engine)
-        return sentText
-    }
-
-    /// 文章の食事のカードの「会話として送り直す」。電波が無くても、その場でその文章の食事・料理・材料がキャッシュから消える。
-    /// 書き込みは送り待ちに並ぶ
-    public func resendAsConversation(sentTextId: UUID) async throws {
-        try await resendText(sentTextId: sentTextId) { engine in
-            try await engine.resendAsConversation(sentTextId: sentTextId)
+        switch aftermath.followUp {
+        case .sync:
+            syncInBackground()
+        case .weightRecorded:
+            // 積んだ答えは、このあとの同期で送る
+            _ = await noteToMissedWeightRecordWatch(after: .weightRecorded)
+            syncInBackground()
+        case .estimation:
+            Task { await self.followEstimationAfterSending() }
+        case .replies:
+            Task { await self.followRepliesAfterSending() }
         }
-    }
-
-    /// 作れなかった・回数切れの1行の「送り直す」。書き込みは送り待ちに並ぶ
-    public func resend(sentTextId: UUID) async throws {
-        try await resendText(sentTextId: sentTextId) { engine in
-            try await engine.resend(sentTextId: sentTextId)
-        }
+        return outcome
     }
 
     /// 裏へ回ったとき・サインアウトしたときに、見守る要求をすべて切る。前面に戻って同期を終えたら、つなぎ直す
@@ -436,20 +335,83 @@ public actor RecordSync {
         _ = try? await syncAfterInFlight()
     }
 
-    /// 送り直す書き込みを送り待ちに並べる。サインインしていなければ何もしない
-    private func resendText(
-        sentTextId: UUID, _ enqueue: (SyncEngine) async throws -> Void
-    ) async throws {
-        guard let engine = await engineIfSignedIn() else { return }
-        await reflection.recordReplacing(id: sentTextId)
-        try await enqueue(engine)
-        await followRepliesAfterWriting(engine)
+    /// 編集を送り待ちとキャッシュに書く。今と同じ値で、書くものが無ければ `.unwritten`
+    private func write(_ edit: UserEdit, with engine: SyncEngine, in timeZone: TimeZone)
+        async throws -> UserEdit.Outcome
+    {
+        switch edit {
+        case .saveWeight(let write):
+            let record = try await engine.save(write)
+            try? await weightHealthExport.exportWeightRecord(record)
+            return .written(recordCount: 1)
+        case .recordCapturedMeal(let photo, let sentAt):
+            let photoId = UUID()
+            let takenAt = PhotoTakenTime(
+                exif: photo.exif, pickedAt: sentAt, deviceTimeZone: timeZone)
+            let draft = MealDraft.captured(
+                photoId: photoId, takenAt: takenAt.instant, sentAt: sentAt,
+                deviceTimeZone: timeZone)
+            return try await recordMeals([draft], originals: [photoId: photo.data], with: engine)
+        case .recordPickedMeals(let photos, let pickedAt):
+            let identified = photos.map { (id: UUID(), photo: $0) }
+            let picked = identified.map { photo in
+                PickedPhoto(
+                    id: photo.id,
+                    takenTime: PhotoTakenTime(
+                        exif: photo.photo.exif, pickedAt: pickedAt, deviceTimeZone: timeZone))
+            }
+            // 選ぶ画面は 10 枚までしか選ばせないので、多すぎることは無い
+            guard !picked.isEmpty,
+                let drafts = try? MealDraft.picked(
+                    picked, sentAt: pickedAt, deviceTimeZone: timeZone)
+            else { return .unwritten }
+            return try await recordMeals(
+                drafts,
+                originals: Dictionary(
+                    uniqueKeysWithValues: identified.map { ($0.id, $0.photo.data) }),
+                with: engine)
+        case .correctMealTime(let card, let eatenAt):
+            try await engine.correctMealTime(mealId: card.meal.id, eatenAt: eatenAt)
+            return .written(recordCount: 1)
+        case .deleteMeal(let card, _):
+            try await engine.deleteMeal(id: card.meal.id)
+            return .written(recordCount: 1)
+        case .addDish(let typedName, let card):
+            let dish = try await engine.addDish(named: typedName, toMeal: card.meal.id)
+            return dish == nil ? .unwritten : .written(recordCount: 1)
+        case .renameDish(let dish, let typedName):
+            let renamed = try await engine.renameDish(id: dish.id, to: typedName)
+            return renamed == dish ? .unwritten : .written(recordCount: 1)
+        case .correctDishQuantity(let dish, let value):
+            let corrected = try await engine.correctDishQuantity(id: dish.id, to: value)
+            return corrected == dish ? .unwritten : .written(recordCount: 1)
+        case .correctIngredientQuantity(let ingredient, let quantity):
+            let corrected = try await engine.correctIngredientQuantity(
+                id: ingredient.id, to: quantity)
+            return corrected == ingredient ? .unwritten : .written(recordCount: 1)
+        case .deleteDish(let dish):
+            try await engine.deleteDish(id: dish.id)
+            return .written(recordCount: 1)
+        case .sendText(let draft):
+            let sentText = try await engine.sendText(draft.text)
+            return sentText == nil ? .unwritten : .written(recordCount: 1)
+        case .resendAsConversation(let sentTextId, _):
+            try await engine.resendAsConversation(sentTextId: sentTextId)
+            return .written(recordCount: 1)
+        case .resendReply(let sentTextId, _):
+            try await engine.resend(sentTextId: sentTextId)
+            return .written(recordCount: 1)
+        }
     }
 
-    /// 文章の書き込みを送り待ちに並べたあと。まだ届いていない記録としてその場で描き、裏で送って返事を追う
-    private func followRepliesAfterWriting(_ engine: SyncEngine) async {
-        await publishFromPending(engine)
-        Task { await self.followRepliesAfterSending() }
+    /// 写真はアプリの中に置いて裏で送り始める。`originals` は写真の ID ごとの元の写真で、どの食事の写真もそろっている
+    private func recordMeals(
+        _ drafts: [MealDraft], originals: [UUID: Data], with engine: SyncEngine
+    ) async throws -> UserEdit.Outcome {
+        for draft in drafts {
+            _ = try await engine.recordMeal(draft, originals: originals)
+        }
+        return drafts.isEmpty ? .unwritten : .written(recordCount: drafts.count)
     }
 
     /// 文章を送った・送り直したあと。送り待ちを送り、送り終えたら、見守る要求がつながっていない応答待ちの文章のために、送ってから1分まで数秒おきに取りに行く

@@ -1,16 +1,15 @@
 import Foundation
-import NuToriCore
-import Observation
+public import Observation
 
 /// 目標を立てる知らせのカードが広げる、目標の設定の流れを持つ。閉じても流れを残し、開き直すと同じページから続ける。
 /// 流れは初めて開くときに、そのときの状況（初めてか立て直しか）で作る。サインアウトで捨てる
 @MainActor
 @Observable
-final class GoalSetupSession {
+public final class GoalSetupSession {
     /// - Parameters:
     ///   - start: その人の状況をキャッシュから決める（`RecordSync.goalSetupStart(today:)`）
     ///   - makeFlow: 状況から流れを作る。要求のクライアントと同期の段取り、ヘルスケアの口は作る側が渡す
-    init(
+    public init(
         today: @escaping () -> CalendarDay,
         start: @escaping (CalendarDay) async throws -> GoalSetupStart,
         makeFlow: @escaping (GoalSetupStart) -> GoalSetupFlow
@@ -21,13 +20,13 @@ final class GoalSetupSession {
     }
 
     /// 開いたことのある流れ。まだ開いていなければ nil。広げているか、「続ける」にするかは流れが持つ
-    private(set) var flow: GoalSetupFlow?
+    public private(set) var flow: GoalSetupFlow?
     /// 流れを最後に開いた場所。広げたカードは、この場所にだけ描く
-    private(set) var place: Place = .timeline
+    public private(set) var place: Place = .timeline
 
     /// カードを広げる。途中まで進めていれば同じページから。決めたあとに開くときは、新しく始める。
     /// 広げたまま別の場所から開いたときは、描く場所だけを移す
-    func open(from entry: GoalSetupObservation.Entry, on place: Place) async {
+    public func open(from entry: GoalSetupObservation.Entry, on place: Place) async {
         guard !isOpening else { return }
         self.place = place
         guard flow?.isOpen != true else { return }
@@ -42,12 +41,12 @@ final class GoalSetupSession {
     }
 
     /// サインアウトとアカウントの削除。前のアカウントの答え（身体データを含む）を次のアカウントに持ち越さない
-    func discard() {
+    public func discard() {
         flow = nil
     }
 
     /// 流れを開いた場所
-    enum Place {
+    public enum Place: Sendable {
         /// タイムライン（知らせのカードと、目標があるあいだは一番下のカード）。日のまとめと体重の画面から開いたときもここに戻って描く
         case timeline
         /// 目標の画面の、今の目標のカードの場所

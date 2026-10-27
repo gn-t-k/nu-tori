@@ -2,12 +2,6 @@ import AuthenticationServices
 import Foundation
 import NuToriCore
 
-enum AppleSignInResult: Equatable {
-    case authorized(AppleSignInCredential)
-    case cancelled
-    case failed
-}
-
 extension AppleSignInResult {
     init(_ result: Result<ASAuthorization, any Error>, nonce: String) {
         switch result {
