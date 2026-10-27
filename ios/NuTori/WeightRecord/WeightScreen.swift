@@ -48,7 +48,7 @@ struct WeightScreen: View {
                     }
                     // 古い日は1段深い一覧に置き、この画面の長さを保つ
                     if recent.hasMore {
-                        NavigationLink("すべての記録", value: WeightHistoryRoute())
+                        NavigationLink("すべての記録", value: TimelineNavigation.Route.weightHistory)
                             .accessibilityIdentifier("weight-history-link")
                     }
                 } header: {
