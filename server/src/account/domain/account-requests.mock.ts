@@ -92,25 +92,22 @@ const spyOnAccountRequests = (
   return {
     pushSyncWrites: vi
       .spyOn(accountRequests, "pushSyncWrites")
-      .mockReturnValue({ result: [], nextAlarmAt: undefined, usageEvents, requestLog }),
+      .mockReturnValue({ result: [], usageEvents, requestLog }),
     pullSyncChanges: vi.spyOn(accountRequests, "pullSyncChanges").mockReturnValue({
       result: { changes: [], hasMore: false, nextAfterSequence: 0, startedOn: undefined },
-      nextAlarmAt: undefined,
       usageEvents,
       requestLog,
     }),
     receiveMealPhoto: vi
       .spyOn(accountRequests, "receiveMealPhoto")
-      .mockResolvedValue({ result: R.succeed(undefined), nextAlarmAt: undefined, usageEvents }),
+      .mockResolvedValue({ result: R.succeed(undefined), usageEvents }),
     previewGoalSetup: vi.spyOn(accountRequests, "previewGoalSetup").mockReturnValue({
       result: goalSetupResults.previewGoalSetup,
-      nextAlarmAt: undefined,
       usageEvents,
       requestLog,
     }),
     proposeGoals: vi.spyOn(accountRequests, "proposeGoals").mockReturnValue({
       result: goalSetupResults.proposeGoals,
-      nextAlarmAt: undefined,
       usageEvents,
       requestLog,
     }),
@@ -118,16 +115,20 @@ const spyOnAccountRequests = (
       .spyOn(accountRequests, "assessCustomTargetWeight")
       .mockReturnValue({
         result: goalSetupResults.assessCustomTargetWeight,
-        nextAlarmAt: undefined,
         usageEvents,
         requestLog,
       }),
     decideGoal: vi.spyOn(accountRequests, "decideGoal").mockReturnValue({
       result: goalSetupResults.decideGoal,
-      nextAlarmAt: undefined,
       usageEvents,
       requestLog,
     }),
+    reportSubscriptionTransaction: vi
+      .spyOn(accountRequests, "reportSubscriptionTransaction")
+      .mockReturnValue({ result: [], usageEvents }),
+    receiveAppStoreServerNotification: vi
+      .spyOn(accountRequests, "receiveAppStoreServerNotification")
+      .mockReturnValue({ result: "duplicate", usageEvents }),
     runAlarm: vi.spyOn(accountRequests, "runAlarm").mockResolvedValue({
       result: {
         error: undefined,
@@ -135,8 +136,8 @@ const spyOnAccountRequests = (
         classifications: [],
         attempts: [],
         replyAttempts: [],
+        nextAlarmAt: undefined,
       },
-      nextAlarmAt: undefined,
       usageEvents,
     }),
   };
