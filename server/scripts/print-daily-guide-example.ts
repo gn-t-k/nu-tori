@@ -123,11 +123,7 @@ for (let week = 0; week < weeks; week++) {
       daysToDeadline: countDaysBetween(reviewedMonday, deadline) + 1,
     },
   });
-  // ずれを1日あたりにした kcal と、そのうち推定を動かした割合。割合はドメイン層が返さないので、丸めた推定の差から逆に出して 0.05 単位に寄せる。
-  // ずれの小さい週は丸めの誤差で本番の割合と食い違うので、ページが使う2週目だけ、site の daily-guide-example.ts が 0.5 であることを確かめる
   const deviationKcalPerDay = (kilocaloriesPerKilogram * reviewed.deviationKg) / daysPerWeek;
-  const gain =
-    Math.round(((reviewed.expenditureKcal - expenditureKcal) / deviationKcalPerDay) * 20) / 20;
   reviews.push({
     weekFirstDay: addDays(reviewedMonday, -daysPerWeek),
     weekLastDay: addDays(reviewedMonday, -1),
@@ -138,8 +134,8 @@ for (let week = 0; week < weeks; week++) {
     actualWeightChangeKg: round(judgement.actualWeightChangeKg, 4),
     deviationKg: round(reviewed.deviationKg, 4),
     deviationKcalPerDay: round(Math.abs(deviationKcalPerDay), 1),
-    gain,
-    adjustedKcal: round(Math.abs(deviationKcalPerDay) * gain, 1),
+    gain: reviewed.gain,
+    adjustedKcal: round(Math.abs(deviationKcalPerDay) * reviewed.gain, 1),
     expenditureKcal: reviewed.expenditureKcal,
     guideKcal: guide.energyKcal,
     limitHits: guide.limitHits,
