@@ -6,6 +6,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 - 画面を持たないロジックは、ローカルの Swift パッケージ `NuToriCore/` に置き、SwiftUI・UIKit・HealthKit・SwiftData を import しない。下の「端末で行うもの」の計算と判定と、送り待ちの判断がここに入る。Linux のエージェントと CI でも型検査とテストを回すため
 - アプリの流れ（`RootModel`。開く・サインインする・サインアウトするで画面を替える、記録忘れの通知から開いた着き先、受け付けなかった1行、規約への同意のシート）と、目標の設定の流れを持つもの（`GoalSetupSession`）は、NuToriCore に `@Observable` のまま置き、Core のテストで確かめる。画面からの記録の編集の受け方と足し方は `docs/agents/sync.md` の「送って取りに行く段取り」
+- タイムラインの画面が描く値（`TimelineSnapshot`。潜った画面と日のまとめに渡す値も含む）と、画面の移り方（`TimelineNavigation`。開いているシートと潜った画面の並びを、出来事を受けて替える reducer）は、NuToriCore に置き、Core のテストで確かめる。`TimelineScreenContainer` は `@Query` の行を記録にして `TimelineSnapshot` に渡すだけにし、画面の中で記録を組まない。潜る行き先は `TimelineNavigation.Route` の case に足し、行き先の画面は `TimelineScreen` の `destination(_:)` に足す
 - アプリのターゲットだけが使う依存の版の正本は、ターゲットを持たないパッケージ `AppDependencies/` に置き、`NuToriCore/` の依存にしない。理由は `AppDependencies/Package.swift` の先頭、上げ方は `docs/agents/dependencies.md`
 - 記録の種類（今は体重記録、アカウントの設定、食事、推定の状態、料理、料理ごとの推定の状態、材料、知らせ、いつもの時刻、体重の傾向、送った文章、送った文章の状態、返事、目標、1日の目安、推定消費カロリー、週の見直し、サブスクリプションの状態）ごとに、フォルダを切る。`NuToriCore/Sources/NuToriCore/`・`NuToriCore/Sources/NuToriAPI/`・`NuTori/`（アプリのターゲット）のそれぞれに `WeightRecord/`、`AccountSettings/` を置き、その種類だけにかかる型・判断・SwiftData のモデル・画面を入れる。テストのターゲットも同じフォルダ名でそろえる。同期の共通のもの（同期の働き、同期の置き場の型、送り待ち）は `Sync/`、タイムラインは `Timeline/` に残す。機能を第一の軸にする切り方を採らなかった理由は「[コードの置き方を、機能ごとに縦に切るかを決める](https://github.com/gn-t-k/nu-tori/issues/153)」の解決コメント
 - 端末の SwiftData は2つの置き場に分ける（[ADR-0022](../docs/adr/0022-device-cache-and-pending-writes-in-separate-stores.md)）。`SwiftDataSyncStore` が両方を持つ

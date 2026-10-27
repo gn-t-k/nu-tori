@@ -24,64 +24,6 @@ struct MealScreen: View {
     let openPaywall: () -> Void
 
     var body: some View {
-        list
-            .navigationDestination(for: DishRoute.self) { route in
-                DishDestination(
-                    offer: offer.dishScreen(dishId: route.dishId, rejectedLines: rejectedLines)
-                ) { dishOffer in
-                    DishScreen(
-                        offer: dishOffer,
-                        performEdit: performEdit,
-                        deleteMeal: deleteMealAndReturn,
-                        confirmsMealDeletion: false)
-                }
-            }
-    }
-
-    /// confirmsDeletion・confirmsLastDishDeletion は開いたときに、食事を消す・最後の1品を消す確かめを出しているか。
-    /// addingDish は開いたときに、料理を足す名前の欄を出しているか
-    init(
-        card: MealCard,
-        now: @escaping () -> Date,
-        capture: @escaping (ClientUsageEvent) async -> Void,
-        actions: MealActions,
-        performEdit: @escaping (UserEdit) async -> Void,
-        returnToTimeline: @escaping () -> Void,
-        openPaywall: @escaping () -> Void,
-        rejectedLines: [RejectedLine],
-        confirmsDeletion: Bool,
-        confirmsLastDishDeletion: Bool,
-        addingDish: Bool,
-        sentText: SentText?
-    ) {
-        self.card = card
-        self.sentText = sentText
-        self.rejectedLines = rejectedLines
-        self.now = now
-        self.capture = capture
-        self.actions = actions
-        self.performEdit = performEdit
-        self.returnToTimeline = returnToTimeline
-        self.openPaywall = openPaywall
-        _confirmsDeletion = State(initialValue: confirmsDeletion)
-        _confirmsLastDishDeletion = State(initialValue: confirmsLastDishDeletion)
-        _addingDish = State(initialValue: addingDish)
-        _eatenAt = State(initialValue: card.meal.eatenAt)
-    }
-
-    @State private var confirmsDeletion: Bool
-    /// 最後の1品の行を左へ送り、食事ごと消すかを確かめている
-    @State private var confirmsLastDishDeletion: Bool
-    /// 「料理を足す」を押して、名前の欄を出している
-    @State private var addingDish: Bool
-    @State private var newDishName = ""
-    @FocusState private var focusesNewDishName: Bool
-    /// 日付と時刻のボタンが選んでいる撮った時刻。送ってキャッシュに当たるまでのあいだも、選んだ値のまま見せる
-    @State private var eatenAt: Date
-    /// 読み終えた写真。写真をまだ持っていない端末では、届くまで回る印を出す
-    @State private var images: [UUID: UIImage] = [:]
-
-    private var list: some View {
         List {
             if !card.meal.photoIds.isEmpty {
                 Section {
@@ -139,6 +81,49 @@ struct MealScreen: View {
         }
     }
 
+    /// confirmsDeletion・confirmsLastDishDeletion は開いたときに、食事を消す・最後の1品を消す確かめを出しているか。
+    /// addingDish は開いたときに、料理を足す名前の欄を出しているか
+    init(
+        card: MealCard,
+        now: @escaping () -> Date,
+        capture: @escaping (ClientUsageEvent) async -> Void,
+        actions: MealActions,
+        performEdit: @escaping (UserEdit) async -> Void,
+        returnToTimeline: @escaping () -> Void,
+        openPaywall: @escaping () -> Void,
+        rejectedLines: [RejectedLine],
+        confirmsDeletion: Bool,
+        confirmsLastDishDeletion: Bool,
+        addingDish: Bool,
+        sentText: SentText?
+    ) {
+        self.card = card
+        self.sentText = sentText
+        self.rejectedLines = rejectedLines
+        self.now = now
+        self.capture = capture
+        self.actions = actions
+        self.performEdit = performEdit
+        self.returnToTimeline = returnToTimeline
+        self.openPaywall = openPaywall
+        _confirmsDeletion = State(initialValue: confirmsDeletion)
+        _confirmsLastDishDeletion = State(initialValue: confirmsLastDishDeletion)
+        _addingDish = State(initialValue: addingDish)
+        _eatenAt = State(initialValue: card.meal.eatenAt)
+    }
+
+    @State private var confirmsDeletion: Bool
+    /// 最後の1品の行を左へ送り、食事ごと消すかを確かめている
+    @State private var confirmsLastDishDeletion: Bool
+    /// 「料理を足す」を押して、名前の欄を出している
+    @State private var addingDish: Bool
+    @State private var newDishName = ""
+    @FocusState private var focusesNewDishName: Bool
+    /// 日付と時刻のボタンが選んでいる撮った時刻。送ってキャッシュに当たるまでのあいだも、選んだ値のまま見せる
+    @State private var eatenAt: Date
+    /// 読み終えた写真。写真をまだ持っていない端末では、届くまで回る印を出す
+    @State private var images: [UUID: UIImage] = [:]
+
     /// 出す操作。推定の状態はこの画面で見ず、これだけで決める
     private var offer: MealEditOffer {
         MealEditOffer(card: card)
@@ -148,11 +133,9 @@ struct MealScreen: View {
         MealScreenList(card: card, rejectedLines: rejectedLines)
     }
 
-    /// 消すとタイムラインに戻る。戻る途中でカードと1日の丸からその分が減る
     private func deleteMealAndReturn() {
-        let deletedAt = now()
-        returnToTimeline()
-        Task { await performEdit(.deleteMeal(card, deletedAt: deletedAt)) }
+        Self.deleteMealAndReturn(
+            card, now: now, returnToTimeline: returnToTimeline, performEdit: performEdit)
     }
 
     /// 「食事を削除」を押すと、押したボタンから確かめる（`confirmationDialog`）
@@ -291,7 +274,10 @@ struct MealScreen: View {
                 ForEach(items, id: \.rowId) { item in
                     switch item {
                     case .record(let contents, let below):
-                        NavigationLink(value: DishRoute(dishId: contents.dish.id)) {
+                        NavigationLink(
+                            value: TimelineNavigation.Route.dish(
+                                mealId: card.meal.id, dishId: contents.dish.id)
+                        ) {
                             dishRow(contents, rejected: below)
                         }
                         .accessibilityIdentifier("meal-dish")
@@ -449,5 +435,18 @@ struct MealScreen: View {
             RejectedMealLinesText(lines: rejected)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+extension MealScreen {
+    /// 食事を消してタイムラインに戻る。食事の画面と、そこから潜る料理の画面で使う。
+    /// 戻る途中でカードと1日の丸からその分が減る
+    static func deleteMealAndReturn(
+        _ card: MealCard, now: () -> Date, returnToTimeline: () -> Void,
+        performEdit: @escaping (UserEdit) async -> Void
+    ) {
+        let deletedAt = now()
+        returnToTimeline()
+        Task { await performEdit(.deleteMeal(card, deletedAt: deletedAt)) }
     }
 }

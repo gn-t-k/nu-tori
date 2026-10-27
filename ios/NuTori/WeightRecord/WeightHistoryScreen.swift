@@ -8,7 +8,7 @@ struct WeightHistoryScreen: View {
 
     var body: some View {
         List(rows, id: \.record.id) { row in
-            NavigationLink(value: row.day) {
+            NavigationLink(value: TimelineNavigation.Route.weightScreen(row.day)) {
                 LabeledContent(TimelineDayText.label(for: row.day)) {
                     HStack(spacing: 8) {
                         Text(WeightAmountText.kilograms(row.record.kilograms))
