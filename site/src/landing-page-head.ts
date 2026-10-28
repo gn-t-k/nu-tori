@@ -2,5 +2,5 @@
 export const landingPageHead = {
   title: "nu-tori",
   description:
-    "朝の体重と食事の写真から、1日に食べる量の目安を毎週合わせ直す iPhone のアプリです。",
+    "体重と食事の写真から、あなたにちょうどいい食事の量を毎週計算し直す iPhone のアプリです。",
 };
