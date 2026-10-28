@@ -4,8 +4,7 @@ import SwiftData
 
 /// サブスクリプションの状態。アカウントに1つなので、行は1つだけ置く。
 /// 分かれる形を、省略できる列で平らに持つ（テストユーザーはほかの列を持たない）。
-/// SwiftData の列は値を持つ enum を持てないので、列の組み合わせで書ける形のうち、`SubscriptionStatus` に無いもの（テストユーザーで商品がある、
-/// 商品があって期限が無いなど）も書けてしまう。書くのは `apply(_:)` だけにし、読む `subscriptionStatus()` はそれらを読めない行として nil にする
+/// SwiftData の列は値を持つ enum を持てないので、列の組み合わせで書ける形のうち、`SubscriptionStatus` に無いもの（テストユーザーで商品がある、商品があって期限が無いなど）も書けてしまう。書くのは `apply(_:)` だけにし、読む `subscriptionStatus()` はそれらを読めない行として nil にする
 @Model
 nonisolated final class CachedSubscriptionStatus {
     @Attribute(.unique) var singletonKey: String

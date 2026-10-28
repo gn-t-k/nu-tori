@@ -24,8 +24,7 @@ public struct DayRing: Hashable, Sendable {
     }
 
     /// 一周を 1 とした、P・F・C を塗る長さ。空の輪にするときは nil。
-    /// 1日の目安と比べる日は、一周を目安にして食べた kcal の分だけ進み（目安を超えたら一周で止める）、
-    /// 比べない日は P・F・C の割合で一周する（DESIGN.md の「1日の丸」）
+    /// 1日の目安と比べる日は、一周を目安にして食べた kcal の分だけ進み（目安を超えたら一周で止める）、比べない日は P・F・C の割合で一周する（DESIGN.md の「1日の丸」）
     public var arcs: Arcs? {
         guard let shares else { return nil }
         let filled = eatenFractionOfGuide.map { min($0, 1) } ?? 1

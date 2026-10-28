@@ -1,7 +1,6 @@
 public import Foundation
 
-/// 退会の案内のシートの中身。サブスクリプション中で自動更新がオンの人が「アカウントを削除」を押すと、確かめの前に出し、
-/// アカウントを削除しても Apple の請求が続くことと、解約の道を示す
+/// 退会の案内のシートの中身。サブスクリプション中で自動更新がオンの人が「アカウントを削除」を押すと、確かめの前に出し、アカウントを削除しても Apple の請求が続くことと、解約の道を示す
 public struct AccountDeletionGuide: Sendable, Equatable {
     public let plan: SubscriptionStatus.Plan
     /// 次の更新日（期限を含む日）。解約しても、この日まで使える

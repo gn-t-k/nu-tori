@@ -246,8 +246,7 @@ struct DishScreen: View {
             set: { drafts[field] = $0 })
     }
 
-    /// 打ちかけの文字を送る。名前は前後の空白を除いて空か今と同じなら、量は数でないか範囲の外か今と同じなら、
-    /// 送らずに今の値に戻す（送るかは `SyncEngine` が決める）。キャッシュに当たってから打ちかけを捨て、前の値がちらつかないようにする
+    /// 打ちかけの文字を送る。名前は前後の空白を除いて空か今と同じなら、量は数でないか範囲の外か今と同じなら、送らずに今の値に戻す（送るかは `SyncEngine` が決める）。キャッシュに当たってから打ちかけを捨て、前の値がちらつかないようにする
     private func commit(_ field: Field) {
         guard let typed = drafts[field] else { return }
         let dish = contents.dish

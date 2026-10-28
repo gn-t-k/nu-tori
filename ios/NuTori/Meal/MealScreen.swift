@@ -4,8 +4,7 @@ import SwiftUI
 import UIKit
 
 /// 食事の画面。タイムラインの食事のカードから潜る。その場で直す値は時刻だけで、料理は料理の画面へ潜って直す。
-/// 写真、時刻、合計と栄養の出どころの1行、料理の一覧、「料理を足す」（推定を待っているあいだは押せず、下に推定が終わると足せることの1行）、
-/// 「栄養の出典 ›」、「食事を削除」の順に並べる
+/// 写真、時刻、合計と栄養の出どころの1行、料理の一覧、「料理を足す」（推定を待っているあいだは押せず、下に推定が終わると足せることの1行）、「栄養の出典 ›」、「食事を削除」の順に並べる
 struct MealScreen: View {
     let card: MealCard
     /// 文章の食事の送った文章。写真の代わりに一番上に出す。写真の食事と、送った文章がまだ届いていない文章の食事は nil
@@ -47,8 +46,7 @@ struct MealScreen: View {
                 totals
             }
             dishList
-                // 確かめているあいだに料理の数が変わったら、最後の1品の確かめを閉じる。見えなくするだけだと、
-                // また最後の1品に戻ったときに、押していない確かめが出直すため
+                // 確かめているあいだに料理の数が変わったら、最後の1品の確かめを閉じる。見えなくするだけだと、また最後の1品に戻ったときに、押していない確かめが出直すため
                 .onChange(of: card.contents.dishes.count) { _, _ in
                     confirmsLastDishDeletion = false
                 }
@@ -169,8 +167,7 @@ struct MealScreen: View {
             }
         }
         // 地と文字の色は iOS の compact の見た目に任せ、Primary は押したときの tint（AccentColor）で出る。
-        // DESIGN.md の list-row-editable-value（押してその場で直せる値は Primary）に従わないのは、compact には押す前の文字の色を変える口が無く、
-        // Primary にするには標準の見た目と動き（カレンダーのアプリと同じ）を捨てて自前のボタンに替えることになるため
+        // DESIGN.md の list-row-editable-value（押してその場で直せる値は Primary）に従わないのは、compact には押す前の文字の色を変える口が無く、Primary にするには標準の見た目と動き（カレンダーのアプリと同じ）を捨てて自前のボタンに替えることになるため
         .datePickerStyle(.compact)
         // 端末のタイムゾーンでなく食事の時差の時計で見せ、選んだ値もその時計の時刻として受け取る
         .environment(\.timeZone, card.meal.eatenTimeZone)
@@ -261,8 +258,7 @@ struct MealScreen: View {
         }
     }
 
-    /// 料理の一覧の場所。写真の推定の状態の1行（推定中・翌日に推定は状態ごとに、料理なし・推定できなかったは料理が無いあいだ）の下に、
-    /// 料理の行と受け付けなかった1行を並べる。まだ送れていない・写真を待っているあいだで料理が無ければ、何も置かない
+    /// 料理の一覧の場所。写真の推定の状態の1行（推定中・翌日に推定は状態ごとに、料理なし・推定できなかったは料理が無いあいだ）の下に、料理の行と受け付けなかった1行を並べる。まだ送れていない・写真を待っているあいだで料理が無ければ、何も置かない
     @ViewBuilder private var dishList: some View {
         let note = card.dishListNote
         let items = screenList.dishes

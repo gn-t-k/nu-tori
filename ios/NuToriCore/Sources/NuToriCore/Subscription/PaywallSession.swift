@@ -1,8 +1,7 @@
 public import Foundation
 public import Observation
 
-/// 課金画面を1回開いてから閉じるまで。購入者のトークンを求め、`SubscriptionStoreView` で買えた取引と「購入を復元」を知らせ、
-/// 結果の1行と閉じるかを決め、開いた・閉じたを PostHog に送る
+/// 課金画面を1回開いてから閉じるまで。購入者のトークンを求め、`SubscriptionStoreView` で買えた取引と「購入を復元」を知らせ、結果の1行と閉じるかを決め、開いた・閉じたを PostHog に送る
 @MainActor
 @Observable
 public final class PaywallSession {

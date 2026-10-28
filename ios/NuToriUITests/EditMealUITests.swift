@@ -127,16 +127,14 @@ final class EditMealUITests: XCTestCase {
         XCTAssertTrue(waitUntil(time, matches: "label CONTAINS %@", "5:30"))
     }
 
-    /// 確かめを「キャンセル」で閉じる。iOS 26 の確かめは押した場所から浮かぶ欄で出て「キャンセル」のボタンを持たず、
-    /// 欄の外を押すのがキャンセルになる（CI の要素の木では「ポップアップを閉じる」の領域だけがある）。
+    /// 確かめを「キャンセル」で閉じる。iOS 26 の確かめは押した場所から浮かぶ欄で出て「キャンセル」のボタンを持たず、欄の外を押すのがキャンセルになる（CI の要素の木では「ポップアップを閉じる」の領域だけがある）。
     /// 画面の下から出る形なら「キャンセル」を押す
     private func cancelConfirmation() {
         let cancel = app.buttons["キャンセル"]
         if cancel.exists {
             cancel.tap()
         } else {
-            // 欄は押した料理の行のそばに浮かび、画面の真ん中に重なることがある。領域の真ん中を押すと欄のボタンに当たりうるので、
-            // 行から離れた上の端（ナビゲーションバーのあたり）を押す
+            // 欄は押した料理の行のそばに浮かび、画面の真ん中に重なることがある。領域の真ん中を押すと欄のボタンに当たりうるので、行から離れた上の端（ナビゲーションバーのあたり）を押す
             app.otherElements["PopoverDismissRegion"]
                 .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
         }

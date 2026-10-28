@@ -89,8 +89,9 @@ target_files() {
             ;;
         scripts) paths="scripts/|\.claude/hooks/|\.github/workflows/check\.yml\$" ;;
     esac
-    # 文書（*.md）だけの変更では、確かめるものが無い
-    grep -vE '\.md$' <<< "$files" | grep -E "^($paths)" || true
+    # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は site のページの文字の大きさと比べる
+    if [ "$target" = site ]; then paths="$paths|DESIGN\.md\$"; fi
+    { grep -vE '\.md$' <<< "$files" || true; grep -Fx DESIGN.md <<< "$files" || true; } | grep -E "^($paths)" || true
 }
 
 # CI がまだ見ていない分（まだ push していない変更と作業中の変更）が関わる対象だけを確かめる
@@ -646,6 +647,34 @@ check_site() {
 # 整形と Lint だけ（--lint）
 lint_site() {
     lint_worker_package "$site" "公開のページの依存（pnpm）"
+
+    step "ページの文字が DESIGN.md の最小の大きさより小さくないか"
+    check_site_font_sizes
+}
+
+# DESIGN.md の typography の fontSize のうち最も小さいものを最小とし、site/public/site.css の font-size をそれと比べる。比べられるよう、font-size は px で書かせる
+check_site_font_sizes() {
+    local minimum
+    minimum="$(sed -nE 's/^    fontSize: ([0-9]+)px$/\1/p' "$root/DESIGN.md" | sort -n | head -n 1)"
+    if [ -z "$minimum" ]; then
+        echo "DESIGN.md の typography から fontSize を読めない" >&2
+        return 1
+    fi
+    if ! awk -v minimum="$minimum" -v file="site/public/site.css" '
+        /font-size:/ {
+            value = $0
+            sub(/.*font-size:[[:space:]]*/, "", value)
+            sub(/[[:space:]]*(;.*)?$/, "", value)
+            if (value !~ /^[0-9.]+px$/ || value + 0 < minimum) {
+                printf "%s:%d: font-size: %s\n", file, FNR, value > "/dev/stderr"
+                failed = 1
+            }
+        }
+        END { exit failed }
+    ' "$site/public/site.css"; then
+        echo "font-size は px で、DESIGN.md の typography の最小（${minimum}px）以上にする（DESIGN.md「Typography」）" >&2
+        return 1
+    fi
 }
 
 # 既定の重さで当てる。-o all は、変数を {} で囲む（SC2250）だけで数百件出る

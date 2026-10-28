@@ -26,8 +26,7 @@ public enum SyncChange: Sendable, Equatable {
     /// 食事の削除の印と、別の変更で届く。届く順は約束しない
     case mealEstimationStatusDeletion(mealId: UUID)
     case notice(SyncedNotice)
-    /// サーバーからは届かない（知らせは削除の印を持たない）。受け付けなかった知らせの書き込みで、
-    /// サーバーに知らせが無いときに、端末がキャッシュから外すのに使う
+    /// サーバーからは届かない（知らせは削除の印を持たない）。受け付けなかった知らせの書き込みで、サーバーに知らせが無いときに、端末がキャッシュから外すのに使う
     case noticeRemoval(noticeId: UUID)
     /// 送った文章は消えないので、削除の印を持たない
     case sentText(SyncedSentText)

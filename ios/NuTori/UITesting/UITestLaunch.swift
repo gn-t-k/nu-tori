@@ -3,8 +3,7 @@
     import NuToriAPI
     import NuToriCore
 
-    /// UI テストが `launchEnvironment` で渡す値。UI テストはアプリと別のプロセスで動くので、
-    /// サーバーにつながず、サインインの状態と Apple の結果を、起動の値で差し替える
+    /// UI テストが `launchEnvironment` で渡す値。UI テストはアプリと別のプロセスで動くので、サーバーにつながず、サインインの状態と Apple の結果を、起動の値で差し替える
     struct UITestLaunch {
         let account: Account
         let appleSignIn: AppleSignIn

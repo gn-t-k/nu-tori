@@ -7,7 +7,7 @@
 1. `src/pages/<名前>-page.tsx` に `SitePage`（`src/site-page.ts`）を1つ書く。ページのパス（`outputPath`）・`<title>`・説明・検索に載せるか（`kind`）は、このページの `SitePage` に置く。`outputPath` は末尾のスラッシュ無し（`/terms` → `terms.html`）にする。公開のページは、`kind` を `public` にして足のリンクの文を `footerLabel` に書き、`outputPath` がそのまま正規の URL のパスになる（ほかの `kind` の正規の URL は `src/site-page.ts` の型のコメント）
 2. ページの一覧（`src/site-pages.ts`）に並べる。一覧はページを並べるだけで、書き出し・`sitemap.xml`・`<head>`・外枠の足のリンク・テストがここからページを読み、公開のページの並びが足のリンクの並びになる
 
-- ページに JavaScript とインラインの `style` を置かない。Content-Security-Policy（`src/security-headers.ts`）が自分のオリジンと Cloudflare Web Analytics のビーコンだけを許すため。見た目は `public/site.css` に書く
+- ページに JavaScript とインラインの `style` を置かない。Content-Security-Policy（`src/security-headers.ts`）が自分のオリジンと Cloudflare Web Analytics のビーコンだけを許すため。見た目は `public/site.css` に書く。`font-size` は px で書き、`DESIGN.md` の typography の最小より小さくしない（`scripts/check site` が確かめる）
 - Cloudflare Web Analytics のビーコンは外枠（`src/site-layout.tsx`）が全ページに置く。サイトのトークンとビーコンの送り先は `src/web-analytics.ts` の1か所にあり、CSP もそこから作る。LP に PostHog・Sentry は入れない
 - セキュリティのヘッダーは `src/security-headers.ts` の1か所に置く。`vite build` がそこから `_headers` を書き出し、Worker も同じ定義を付ける（Worker の応答には `_headers` が効かない）
 
@@ -34,4 +34,4 @@
 - 変えたら `scripts/check site` を回す。整形・Lint・型検査のあと、書き出しと Worker の束ねをしてからテストを回す
 - テストの継ぎ目は1つ（`src/worker.test.ts`）。書き出した `dist` と wrangler が束ねた Worker を、`wrangler.jsonc` の設定のまま別の Worker として動かし（`vitest.config.ts`）、`src/testing/fetch-site.ts` の `fetchSite` で要求を投げて、状態・ヘッダー・Cookie・本文に含まれるリンク（ページの中の目印の id を含む）を見る。テストの実行環境の `SELF` は assets の振り分けの前段（`run_worker_first`）を通らないので使わない。ページの部品の単体テストと、Hono の経路を直に叩くテストは書かない
 - LP の版の振り分けは、本番の `LP_VARIANTS` に頼らず、版を a と b にした2つめの Worker（`src/testing/fetch-site-with-landing-variants.ts`）で確かめる。b はテストだけの版で、`vite build --mode test` が本番のページに足して `.wrangler/test-dist` に書き出す（`src/testing/test-site-app.tsx`）。版を選ぶ乱数は、その Worker のテストだけの入口（`src/testing/landing-variants-test-worker.ts`）で決める
-- 文言と見た目はテストせず、書き出したページを開いて見る
+- 文言と見た目はテストせず、書き出したページを開いて見る。テストで日本語の文字列を照らすと、`.oxlintrc.json` の `nu-tori/no-wording-in-test` が落とす（`describe`・`test` の名前は除く）

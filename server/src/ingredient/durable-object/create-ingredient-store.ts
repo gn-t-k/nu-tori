@@ -160,8 +160,7 @@ const isCurrent = (
   { dishId, estimationId }: { dishId: RecordId; estimationId: string },
 ): boolean => findNewestDishEstimationId(db, dishId) === estimationId;
 
-// 今の量は、材料を直した量（材料を書き換えた控えの修正）と、料理の量に比例させた量（料理を書き換えた控えの明細）を合わせて、
-// 受け取った順（控えを当てたときの変更の通し番号）でいちばんあとのもの。どちらも無ければ推定した量。
+// 今の量は、材料を直した量（材料を書き換えた控えの修正）と、料理の量に比例させた量（料理を書き換えた控えの明細）を合わせて、受け取った順（控えを当てたときの変更の通し番号）でいちばんあとのもの。どちらも無ければ推定した量。
 // 出どころは、材料を直した量があれば直した（比例は推定したまま）
 const findCurrentQuantity = (
   db: DrizzleSqliteDODatabase,

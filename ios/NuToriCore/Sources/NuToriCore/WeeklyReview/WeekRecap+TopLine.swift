@@ -1,6 +1,5 @@
 extension WeekRecap {
-    /// 一番上の、太字の1行と、その下の文かペースの値の行。ペースが出る週は「いまのペース」「要るペース」の値の行を並べ、
-    /// ペースが返らない週（達成した、期限の日を迎えた）は、その週に起きたことを文で書く
+    /// 一番上の、太字の1行と、その下の文かペースの値の行。ペースが出る週は「いまのペース」「要るペース」の値の行を並べ、ペースが返らない週（達成した、期限の日を迎えた）は、その週に起きたことを文で書く
     public struct TopLine: Hashable, Sendable {
         public let headline: String
         public let detail: Detail

@@ -25,6 +25,13 @@ custom_rules:
     excluded: [".*UITests/.*"]
     message: "UI テスト以外は Swift Testing で書く（docs/agents/languages/swift.md「道具」）"
     severity: error
+  no_wrapped_comment:
+    name: "コメントの文を途中で折り返さない"
+    # 「、」と助詞で終わる行は文の途中。次の行が「- 」で始まる箇条書き（DocC の - Parameters: など）は当てない。server/oxlint-plugin.js の no-wrapped-comment と同じ決まり
+    regex: "^[ \\t]*//[^\\n]*(、|を|が|は|に|で|へ)[ \\t]*\\n[ \\t]*//(?![ \\t/]*-)"
+    match_kinds: [comment, doccomment]
+    message: "コメントの文を途中で折り返さず、1行で書く。改行は人が必要と思ったときに文の切れ目で入れる（docs/agents/coding-style.md「コードを説明する情報」）"
+    severity: error
   no_parameterized_test:
     name: "@Test(arguments:) は理由があるときだけ"
     regex: "@Test\\([^)]*arguments:"

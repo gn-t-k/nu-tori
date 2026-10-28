@@ -18,8 +18,7 @@ public enum DishProgress: Hashable, Sendable {
         }
         switch status {
         case nil:
-            // 量の無い料理は、足したばかりで状態がまだ届いていない料理。写真の推定が済んでいない食事の状態の無い料理は、
-            // 写真の推定が作った料理が食事の状態より先に届いたもので、食事の状態が届くまで分からない料理として扱う
+            // 量の無い料理は、足したばかりで状態がまだ届いていない料理。写真の推定が済んでいない食事の状態の無い料理は、写真の推定が作った料理が食事の状態より先に届いたもので、食事の状態が届くまで分からない料理として扱う
             self =
                 dish.quantity == nil || mealState.awaitsPhotoEstimation
                 ? .notSent : .settled

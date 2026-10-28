@@ -81,9 +81,9 @@ const previousWeeks: Parameters<typeof computeReviewedExpenditure>[0]["previousW
   [];
 
 for (let week = 0; week < weeks; week++) {
-  for (let d = 0; d < 7; d++) {
+  for (const [d, intakeNoise] of intakeNoiseKcal.entries()) {
     const index = week * 7 + d;
-    const kcal = guideKcal + intakeNoiseKcal[d]!;
+    const kcal = guideKcal + intakeNoise;
     const trueExpenditureKcal = trueExpenditureAt(trueWeightKg);
     days.push({
       calendarDay: addDays(startedOn, index),
@@ -149,11 +149,11 @@ const trend = computeWeightTrend([
   ...priorWeights,
   ...days.map(({ calendarDay, weightKg }) => ({ calendarDay, weightKg })),
 ]);
-const withTrend = (day: { calendarDay: string; weightKg: number }, i: number) => ({
-  calendarDay: day.calendarDay,
-  weightKg: day.weightKg,
-  trendKg: round(trend[i]!.trendKg, 4),
-});
+const withTrend = (day: { calendarDay: string; weightKg: number }, i: number) => {
+  const point = trend[i];
+  if (point === undefined) throw new Error(`${day.calendarDay} の体重の傾向が無い`);
+  return { calendarDay: day.calendarDay, weightKg: day.weightKg, trendKg: round(point.trendKg, 4) };
+};
 
 // 4週目のあと、見直さずに4週目の1日の目安を食べ続けたら（本当に使うカロリーの仮定だけで動く。nu-tori の決まりではない）
 const plateau: { week: number; trueWeightKg: number }[] = [];

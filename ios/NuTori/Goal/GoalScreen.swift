@@ -1,8 +1,7 @@
 import NuToriCore
 import SwiftUI
 
-/// 目標の画面（仕様の「目標の画面」、`gform` A の押して進む画面）。「どういう目標か」「どう進んでいるか」「どう調整しているか」の順に1枚ずつ、
-/// 今の目標のカード、体重の傾向、今の1日の目安を並べ、その下に週の振り返りへの1行、過去の目標を並べる（#744 の解決コメント）。
+/// 目標の画面（仕様の「目標の画面」、`gform` A の押して進む画面）。「どういう目標か」「どう進んでいるか」「どう調整しているか」の順に1枚ずつ、今の目標のカード、体重の傾向、今の1日の目安を並べ、その下に週の振り返りへの1行、過去の目標を並べる（#744 の解決コメント）。
 /// 「目標を切り替える」とカードのボタンでは、カードをその場で目標の設定のカードに変える（`gswitch` A）
 struct GoalScreen: View {
     /// キャッシュの記録から組んだ中身。目標がなければ nil
@@ -175,8 +174,7 @@ struct GoalScreen: View {
                     dailyGuideSince(since)
                 }
             }
-            // DESIGN.md の Typography に Title は無いが、下に並べる推定消費カロリーより目立たせ、この画面の調整の主役にするため、
-            // Title（28）の semibold にする（#744 の解決コメント）
+            // DESIGN.md の Typography に Title は無いが、下に並べる推定消費カロリーより目立たせ、この画面の調整の主役にするため、Title（28）の semibold にする（#744 の解決コメント）
             Text(NutritionText.kilocalories(dailyGuide.energyKilocalories))
                 .font(.title.weight(.semibold))
                 .monospacedDigit()

@@ -3,8 +3,7 @@ import { generateRecordId, type RecordId } from "../../domain/record-id";
 import type { AppStoreSubscriptionTransaction } from "./read-app-store-subscription-transaction";
 import type { SubscriptionTransactionStore } from "./subscription-transaction-store";
 
-// 届いた取引の写しを書く。サブスクリプションは初めてのときだけ、取引は初めての取引の ID のときだけ書き、
-// 同じ取引の ID のあとの写しは書き換えない。写しに取り消しが載っていれば取り消しを足す。
+// 届いた取引の写しを書く。サブスクリプションは初めてのときだけ、取引は初めての取引の ID のときだけ書き、同じ取引の ID のあとの写しは書き換えない。写しに取り消しが載っていれば取り消しを足す。
 // ただし同じ取引に同じ取り消しの時刻の取り消しがあれば足さない（#647 の「判定の決まり」）。
 // 受け取りは呼ぶ側が先に書いておく。
 // 端末からの知らせと App Store のサーバー通知の両方が、記録の変化を書く入口の run の中で使う

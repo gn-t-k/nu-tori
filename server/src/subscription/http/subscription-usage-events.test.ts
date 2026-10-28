@@ -21,8 +21,10 @@ import { app } from "../../http/app";
 import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { signInTestAccount } from "../../http/testing";
 import { mockDeletePostHogPersonOk } from "../../observability/delete-posthog-person/delete-posthog-person.mock";
-import { mockPostHogCaptureEndpointOk } from "../../observability/testing/posthog-capture-endpoint.mock";
-import { readPostHogCapturedEvents } from "../../observability/testing/read-posthog-captured-events";
+import {
+  mockPostHogCaptureEndpointOk,
+  readPostHogCapturedEvents,
+} from "../../observability/testing";
 import { markTestUser } from "../../subscription-status/http/testing/mark-test-user";
 import { placeFreeTrialLastDay } from "../../subscription-status/http/testing/place-free-trial-last-day";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";

@@ -7,9 +7,7 @@ import Synchronization
 
 /// API のトランスポートの差し替え。送った要求を記録する
 ///
-/// 作り方は、答え方ごとに `ok`（どの要求にも同じ答え）、`sync`（同期の書き込みと取得）、
-/// `account`（サインインと削除）、`mealPhotos`（縮小版を取りに行く）、`goalSetup`（目標の設定の要求に、テストが決めた答えを返す）、
-/// `termsAgreement`（規約の同意が要るかと同意）、`subscription`（購入者のトークンと取引の知らせ）、`error`（投げる）の8つ
+/// 作り方は、答え方ごとに `ok`（どの要求にも同じ答え）、`sync`（同期の書き込みと取得）、`account`（サインインと削除）、`mealPhotos`（縮小版を取りに行く）、`goalSetup`（目標の設定の要求に、テストが決めた答えを返す）、`termsAgreement`（規約の同意が要るかと同意）、`subscription`（購入者のトークンと取引の知らせ）、`error`（投げる）の8つ
 public final class ClientTransportMock: ClientTransport, @unchecked Sendable {
     /// 目標の設定の要求は、答えを待つあいだに次の要求が重なるので、鍵で守る
     public var requests: [(request: HTTPRequest, body: String?)] {

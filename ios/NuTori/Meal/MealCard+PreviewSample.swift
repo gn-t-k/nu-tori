@@ -3,8 +3,7 @@
     import NuToriCore
 
     extension MealCard {
-        /// プレビューの見本の、推定できた食事。親子丼（成分表と推定の材料）と味噌汁（栄養成分表示と、
-        /// たんぱく質が「不明」の推定の材料）の2品で、P は「以上」になる
+        /// プレビューの見本の、推定できた食事。親子丼（成分表と推定の材料）と味噌汁（栄養成分表示と、たんぱく質が「不明」の推定の材料）の2品で、P は「以上」になる
         static func sampleEstimated(_ meal: Meal, recordedOnThisDevice: Bool = true) -> MealCard {
             let oyakodon = Dish(
                 id: UUID(), mealId: meal.id, name: "親子丼",
