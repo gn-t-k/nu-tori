@@ -81,8 +81,8 @@ jobs:
       - name: 主な流れを確かめる
         run: pnpm exec tsx e2e/verify-development.ts
 
-  # main で落ちたら needs-triage の Issue を立て、開いた Issue があればまた落ちたことを書き足し、緑に戻ったら閉じる（ios-ui-test.yml の track-main-failure と同じ形）。
-  # 赤くなるだけでは気づかず、9回続けて落ちていた（#793）。開発用のデプロイが落ちて確かめが飛んだ回は、何もしない
+  # ios-ui-test.yml の track-main-failure と同じ形。直すときはそろえる
+  # 開発用のデプロイが落ちて確かめが飛んだ回は、流れを確かめていないので、立ても閉じもしない
   track-main-failure:
     needs: verify-development
     if: >-
@@ -101,9 +101,10 @@ jobs:
       - id: open-issue
         name: 開いている Issue を探す
         run: |
-          number="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
-            --jq '.[] | select(.pull_request == null and .title == env.TITLE) | .number' | head -n 1)"
-          echo "number=$number" >> "$GITHUB_OUTPUT"
+          # パイプで head に渡すと gh api の失敗が消え、開いた Issue があっても2つ目を立てるので、受けてから最初の1つを取る
+          numbers="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            --jq '.[] | select(.pull_request == null and .title == env.TITLE) | .number')"
+          echo "number=${numbers%%$'\n'*}" >> "$GITHUB_OUTPUT"
       - name: 緑に戻ったので Issue を閉じる
         if: needs.verify-development.result == 'success' && steps.open-issue.outputs.number != ''
         env:
