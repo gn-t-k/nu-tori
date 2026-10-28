@@ -30,13 +30,15 @@ export const landingAPage = createLandingVariantPage({
         <section class="lp-band lp-hero">
           <div class="lp-wrap">
             <h1>
-              操作は、朝の体重と、
-              <br />
-              食べる前の1枚だけ。
+              続けるほど、
+              <wbr />
+              あなたにちょうどいい
+              <wbr />
+              食事の量が
+              <wbr />
+              分かります。
             </h1>
-            <p class="lp-lead">
-              撮れば料理と量と栄養が並び、1日に食べる量の目安は体重の動きを見て毎週直ります。
-            </p>
+            <p class="lp-lead">することは、体重を量ることと食べる前に写真を1枚撮ることだけです。</p>
             <div class="lp-actions">
               <AppStoreBadge href={appStoreUrl} />
               <p class="lp-secondary">30日間、支払いの登録なしで、すべての機能を使えます。</p>
