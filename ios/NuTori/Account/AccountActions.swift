@@ -7,7 +7,7 @@ struct AccountActions {
     let turnOffUsageData: () async -> Void
     /// 端末の記録は残してサインインの画面に置き換わる
     let signOut: () async -> Void
-    /// サインアウトの確かめの文を替えるため
+    /// 送り待ちがあるときだけサインアウトを確かめるため
     let hasPendingWrites: () async -> Bool
     /// 消せなかったときだけ理由を返す。消せたときとセッションが切れていたときは、サインインの画面に置き換わる
     let deleteAccount: () async -> AccountDeletionFailure?

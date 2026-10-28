@@ -67,7 +67,7 @@ struct AccountScreen: View {
                 }
                 .disabled(isDeleting || isSigningOut)
             } footer: {
-                Text(Self.signOutKeepsRecords)
+                Text("同じ Apple ID でサインインすると、記録はそのまま戻ります。")
             }
             Section {
                 Button(role: .destructive) {
@@ -133,18 +133,17 @@ struct AccountScreen: View {
                 )
             )
         }
-        .alert("サインアウトしますか？", isPresented: confirmingSignOut) {
-            Button("キャンセル", role: .cancel) {
-                signOutStep = .idle
-            }
-            Button("サインアウト") {
+        .confirmationDialog(
+            "サインアウトしますか？", isPresented: confirmingSignOut, titleVisibility: .visible
+        ) {
+            Button("サインアウト", role: .destructive) {
                 Task { await proceedToSignOut() }
             }
+            Button("キャンセル", role: .cancel) {}
         } message: {
             Text(
-                confirmingSignOutWithPendingWrites
-                    ? "まだ送っていない記録があります。同じ Apple ID でサインインすると送ります。ほかの Apple ID でサインインすると、この iPhone から消えます。"
-                    : Self.signOutKeepsRecords)
+                "まだ送っていない記録があります。同じ Apple ID でサインインすると送ります。ほかの Apple ID でサインインすると、この iPhone から消えます。"
+            )
         }
         .alert("アカウントを削除しますか？", isPresented: $confirmingDeletion) {
             Button("アカウントを削除", role: .destructive) {
@@ -190,11 +189,13 @@ struct AccountScreen: View {
         case failed(AccountDeletionFailure)
     }
 
+    /// 送り待ちが無ければ、同じ Apple ID でサインインし直せば戻せるので、確かめずに進める（DESIGN.md の確かめ）
     private enum SignOut {
         case idle
-        /// 確かめの文を替えるため、送り待ちがあるかを読んでいる
+        /// 送り待ちがあるかを読んでいる
         case checkingPendingWrites
-        case confirming(hasPendingWrites: Bool)
+        /// 送り待ちがあり、ほかの Apple ID でサインインすると消えるので確かめている
+        case confirming
         /// サインインの画面に替わるのを待っている
         case signingOut
     }
@@ -224,8 +225,6 @@ struct AccountScreen: View {
     private static let notificationSettingsURL = URL(
         string: UIApplication.openNotificationSettingsURLString)!
 
-    private static let signOutKeepsRecords = "同じ Apple ID でサインインすると、記録はそのまま戻ります。"
-
     /// 続けて押されても、読み直しとサインアウトを2度進めない
     private var isSigningOut: Bool {
         switch signOutStep {
@@ -234,7 +233,6 @@ struct AccountScreen: View {
         }
     }
 
-    /// 閉じるのはダイアログのボタンが状態を替えたときだけなので、閉じた知らせは受けない
     private var confirmingSignOut: Binding<Bool> {
         Binding(
             get: {
@@ -243,15 +241,12 @@ struct AccountScreen: View {
                 case .idle, .checkingPendingWrites, .signingOut: false
                 }
             },
-            set: { _ in }
+            set: { presented in
+                // 外を押して閉じたとき。ボタンで閉じたときは、ボタンの操作より先に来ることがある
+                guard !presented, case .confirming = signOutStep else { return }
+                signOutStep = .idle
+            }
         )
-    }
-
-    private var confirmingSignOutWithPendingWrites: Bool {
-        switch signOutStep {
-        case .confirming(let hasPendingWrites): hasPendingWrites
-        case .idle, .checkingPendingWrites, .signingOut: false
-        }
     }
 
     private var isDeleting: Bool {
@@ -359,11 +354,16 @@ struct AccountScreen: View {
     private func requestSignOut() async {
         guard case .idle = signOutStep else { return }
         signOutStep = .checkingPendingWrites
-        signOutStep = .confirming(hasPendingWrites: await actions.hasPendingWrites())
+        if await actions.hasPendingWrites() {
+            signOutStep = .confirming
+        } else {
+            signOutStep = .idle
+            await proceedToSignOut()
+        }
     }
 
     private func proceedToSignOut() async {
-        guard case .confirming = signOutStep else { return }
+        guard !isSigningOut else { return }
         signOutStep = .signingOut
         // ふつうはサインインの画面に替わり、この画面ごと消える
         await actions.signOut()

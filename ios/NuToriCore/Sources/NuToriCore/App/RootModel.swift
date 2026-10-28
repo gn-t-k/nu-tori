@@ -255,7 +255,7 @@ public final class RootModel {
         }
     }
 
-    /// サインアウトの確かめの文を、送り待ちがあるかで替えるため。読めなければ、ほかの Apple ID で消えうることを知らせる側に倒す
+    /// 送り待ちがあるときだけサインアウトを確かめるため。読めなければ、ほかの Apple ID で消えうることを確かめる側に倒す
     public func hasPendingWrites() async -> Bool {
         (try? await accountSession.hasPendingWrites()) ?? true
     }
