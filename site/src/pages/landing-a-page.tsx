@@ -47,9 +47,7 @@ export const landingAPage = createLandingVariantPage({
               <li>
                 <div class="lp-shot" aria-hidden="true" />
                 <b>体重を量る</b>
-                <span>
-                  ヘルスケアと同期するので、ヘルスケアに入った体重はそのまま入ります。手で入れることもできます。
-                </span>
+                <span>ヘルスケアと同期します。アプリから入力することもできます。</span>
               </li>
               <li>
                 <div class="lp-shot" aria-hidden="true" />
@@ -58,7 +56,7 @@ export const landingAPage = createLandingVariantPage({
               </li>
               <li>
                 <div class="lp-shot" aria-hidden="true" />
-                <b>毎週、食べる量が調整される</b>
+                <b>食べる量の目安が、あなたに合っていきます</b>
                 <span>
                   体重の動きと食べた量から、あなたにちょうどいい1日の量を毎週計算し直します。
                 </span>
