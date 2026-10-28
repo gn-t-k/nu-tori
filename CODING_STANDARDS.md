@@ -10,7 +10,7 @@
 - `docs/agents/testing.md`: テストの好み
 - `docs/agents/languages/<言語>.md`: 言語ごとの当てはめ。変えたファイルの言語のものを読む
 - `.agents/skills/writing-for-agents/SKILL.md`: エージェントが読む文書（`AGENTS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/`）の書き方。それらを変えたときに読む
-- `.agents/skills/code-review/SKILL.md` の「3. Identify the standards sources」: 臭いの一覧（smell baseline。Mysterious Name など12の臭い）と、それを当てる2つの決まり。その節だけを読む
+- `.agents/skills/code-review/SKILL.md` の「3. Identify the standards sources」: 臭いの一覧（smell baseline）と、それを当てる決まり。その節だけを読む
 
 ## 指摘するもの
 
