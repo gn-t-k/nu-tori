@@ -994,3 +994,196 @@ body:has(.lp) .site-footer {
     padding: 16px;
   }
 }
+
+/* PROTOTYPE: D 節の3案（src/pages/landing-a/prototype-d-section.tsx）と切り替えの帯 */
+.proto-switcher {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 9999px;
+  background: #1c1c1e;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.proto-switcher button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 9999px;
+  background: #3a3a3c;
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.proto-lanes {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px 12px;
+  max-width: 720px;
+  margin: 24px 0 0;
+}
+
+.proto-lanes p {
+  margin: 0;
+}
+
+.proto-lane-head {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.proto-lane-when {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--lp-secondary);
+  padding-top: 10px;
+}
+
+.proto-lane-you,
+.proto-lane-app {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.proto-lane-you {
+  border: 1px solid var(--separator);
+}
+
+.proto-lane-app {
+  background: var(--surface);
+}
+
+.proto-lane-open {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.proto-lane-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--lp-secondary);
+}
+
+.proto-lane-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--lp-secondary);
+}
+
+.proto-lane-key-open {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--primary);
+}
+
+.proto-states li > div {
+  margin-bottom: 8px;
+}
+
+.proto-undelivered {
+  opacity: 0.55;
+}
+
+.proto-empty-body {
+  min-height: 58px;
+}
+
+/* lp-numbered の番号がカードの kcal の b にも付くのを消す */
+.proto-states .app-meal b::before {
+  content: none;
+}
+
+.proto-spinner {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  border: 2px solid var(--on-surface-tertiary);
+  border-top-color: var(--on-surface-secondary);
+  animation: proto-spin 0.9s linear infinite;
+}
+
+@keyframes proto-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.proto-status {
+  font-size: 15px;
+}
+
+.proto-day-sum {
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+.proto-day {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 20px;
+  border-left: 2px solid var(--separator);
+  display: grid;
+  gap: 20px;
+}
+
+.proto-day li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+}
+
+.proto-day li::before {
+  content: "";
+  position: absolute;
+  left: -27px;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+.proto-day-time {
+  font-size: 13px;
+  color: var(--lp-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.proto-day li > span:not(.proto-day-time) {
+  color: var(--lp-secondary);
+}
+
+.proto-day-card {
+  max-width: 300px;
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .proto-lanes {
+    gap: 6px 8px;
+  }
+
+  .proto-lane-you,
+  .proto-lane-app {
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+}

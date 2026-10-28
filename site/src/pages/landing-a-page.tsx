@@ -9,7 +9,7 @@ import { AppMealCard } from "./landing-a/app-meal-card";
 import { examplePhotoMeals } from "./landing-a/example-photo-meals";
 import { exampleTextMeals } from "./landing-a/example-text-meals";
 import { AppComposer } from "./landing-a/app-composer";
-import { FlowComparison } from "./landing-a/flow-comparison";
+import { DSectionPrototype } from "./landing-a/prototype-d-section";
 import { MealPhotoPicker } from "./landing-a/meal-photo-picker";
 import { ReviewExample } from "./landing-a/review-example";
 import { SoftwareApplicationJsonLd } from "./landing-a/software-application-json-ld";
@@ -94,29 +94,7 @@ export const landingAPage = createLandingVariantPage({
           </div>
         </section>
 
-        <section class="lp-band">
-          <div class="lp-wrap">
-            <h2>撮ったら、確定を押さずに食べはじめられます</h2>
-            <p>写真を読むのは裏で進みます。候補を選んで確定する操作はありません。</p>
-            <FlowComparison />
-            <ol class="lp-steps lp-numbered">
-              <li>
-                <b>撮る</b>
-                <span>食べる前に1枚撮って、そのまま閉じます。</span>
-              </li>
-              <li>
-                <b>食べる</b>
-                <span>食べているあいだに、写真から料理と材料と量を読みます。</span>
-              </li>
-              <li>
-                <b>あとで見る・直す</b>
-                <span>
-                  開けば、何をどれだけと読んだかが見られます。違っていたら、そこで直せます。
-                </span>
-              </li>
-            </ol>
-          </div>
-        </section>
+        <DSectionPrototype curry={curry} />
 
         <section class="lp-band lp-band-surface">
           <div class="lp-wrap lp-feature">
@@ -182,6 +160,7 @@ export const landingAPage = createLandingVariantPage({
         </section>
         <SoftwareApplicationJsonLd />
         <script src="/landing-a.js" defer />
+        <script src="/prototype-d-switcher.js" defer />
       </div>
     );
   },
