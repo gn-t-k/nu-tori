@@ -9,14 +9,14 @@ import { AppMealCard } from "./landing-a/app-meal-card";
 import { examplePhotoMeals } from "./landing-a/example-photo-meals";
 import { exampleTextMeals } from "./landing-a/example-text-meals";
 import { AppComposer } from "./landing-a/app-composer";
-import { FlowComparison } from "./landing-a/flow-comparison";
+import { LunchDay } from "./landing-a/lunch-day";
 import { MealPhotoPicker } from "./landing-a/meal-photo-picker";
 import { ReviewExample } from "./landing-a/review-example";
 import { SoftwareApplicationJsonLd } from "./landing-a/software-application-json-ld";
 
 // LP の版 a。並びと見た目は #594 の解決コメントの1〜11（https://github.com/gn-t-k/nu-tori/issues/594#issuecomment-6306406922）と、その試作の版8。
 // 文は試作の文を下書きにした仮の文で、本番の文言は仕様3「App Store の掲載と提出」の PR で掲載情報とまとめて書く（#597 の解決コメントの1）。
-// 手順と流れの絵は、仕様3のスクリーンショットの仕組みの画像ができたら足す（手順には、画像が入るまで場所取り（lp-shot）を置いてある）。iPhone の絵は自分で描かない。
+// 手順の絵は、仕様3のスクリーンショットの仕組みの画像ができたら足す（手順には、画像が入るまで場所取り（lp-shot）を置いてある）。iPhone の絵は自分で描かない。
 // LP_VARIANTS（wrangler.jsonc）に "a" を入れるまで、外からは見えない
 export const landingAPage = createLandingVariantPage({
   variant: "a",
@@ -25,7 +25,7 @@ export const landingAPage = createLandingVariantPage({
   Content: ({ appStoreUrl }) => {
     const curry = examplePhotoMeals.find(({ key }) => key === "curry");
     if (curry === undefined) {
-      throw new Error("撮るだけの節の見本のカレーライスが、見本の食事に無い");
+      throw new Error("撮るだけの節と昼ごはんの日の見本のカレーライスが、見本の食事に無い");
     }
     const ochazuke = exampleTextMeals.find(({ key }) => key === "ochazuke");
     if (ochazuke === undefined) {
@@ -95,26 +95,22 @@ export const landingAPage = createLandingVariantPage({
         </section>
 
         <section class="lp-band">
-          <div class="lp-wrap">
-            <h2>撮ったら、確定を押さずに食べはじめられます</h2>
-            <p>写真を読むのは裏で進みます。候補を選んで確定する操作はありません。</p>
-            <FlowComparison />
-            <ol class="lp-steps lp-numbered">
-              <li>
-                <b>撮る</b>
-                <span>食べる前に1枚撮って、そのまま閉じます。</span>
-              </li>
-              <li>
-                <b>食べる</b>
-                <span>食べているあいだに、写真から料理と材料と量を読みます。</span>
-              </li>
-              <li>
-                <b>あとで見る・直す</b>
-                <span>
-                  開けば、何をどれだけと読んだかが見られます。違っていたら、そこで直せます。
-                </span>
-              </li>
-            </ol>
+          <div class="lp-wrap lp-feature">
+            <div>
+              <h2>撮ったら、あとはまかせて閉じられます</h2>
+              <p>地下の店で昼ごはんを食べた日の、アプリの動きです。</p>
+            </div>
+            <div>
+              <LunchDay meal={curry} />
+              <p class="lp-day-sum">
+                記録のために
+                <wbr />
+                アプリを開いていたのは、
+                <wbr />
+                {/* 時刻と「の」のあいだで折り返さない */}
+                12:30&nbsp;の数秒だけです。
+              </p>
+            </div>
           </div>
         </section>
 

@@ -574,50 +574,54 @@ body:has(.lp) .site-footer {
   accent-color: var(--primary);
 }
 
-/* 2つの流れは手順を縦に積み、左右に並べる。横に並べると携帯の幅で矢印が折り返す（#594 の申し送り） */
-.lp-flows {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  max-width: 560px;
-  margin: 24px 0 0;
-}
-
-.lp-flow-name {
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.lp-flow ol {
+/* 昼ごはんの日の時刻を、左の縦線に点を打って追う */
+.lp-day {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 20px;
+  border-left: 2px solid var(--separator);
+  display: grid;
+  gap: 20px;
 }
 
-.lp-flow li {
+.lp-day li {
   position: relative;
-  width: fit-content;
-  background: var(--surface);
-  border-radius: 9999px;
-  padding: 2px 12px;
-  font-size: 15px;
+  display: grid;
+  gap: 2px;
 }
 
-.lp-flow li + li {
-  margin-top: 28px;
-}
-
-.lp-flow li + li::before {
-  content: "↓" / "";
+.lp-day li::before {
+  content: "";
   position: absolute;
-  top: -27px;
-  left: 12px;
+  left: -27px;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+.lp-day-time {
+  font-size: 13px;
+  color: var(--lp-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-day li > span:not(.lp-day-time) {
   color: var(--lp-secondary);
 }
 
-.lp-flow .lp-flow-eat {
-  background: var(--primary);
-  color: #ffffff;
+.lp-day-card {
+  max-width: 300px;
+  margin-top: 8px;
+}
+
+/* .lp p の margin より強くするため、.lp を付ける */
+.lp .lp-day-sum {
+  margin-top: 24px;
+  font-weight: 600;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .lp-prices {
