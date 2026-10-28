@@ -14,7 +14,7 @@ import { SoftwareApplicationJsonLd } from "./landing-a/software-application-json
 
 // LP の版 a。並びと見た目は #594 の解決コメントの1〜11（https://github.com/gn-t-k/nu-tori/issues/594#issuecomment-6306406922）と、その試作の版8。
 // 文は試作の文を下書きにした仮の文で、本番の文言は仕様3「App Store の掲載と提出」の PR で掲載情報とまとめて書く（#597 の解決コメントの1）。
-// 手順と流れの絵は、仕様3のスクリーンショットの仕組みの画像ができたら足す。iPhone の絵は自分で描かない。
+// 手順と流れの絵は、仕様3のスクリーンショットの仕組みの画像ができたら足す（手順には、画像が入るまで場所取り（lp-shot）を置いてある）。iPhone の絵は自分で描かない。
 // LP_VARIANTS（wrangler.jsonc）に "a" を入れるまで、外からは見えない
 export const landingAPage = createLandingVariantPage({
   variant: "a",
@@ -43,16 +43,19 @@ export const landingAPage = createLandingVariantPage({
             </div>
             <ol class="lp-steps">
               <li>
+                <div class="lp-shot" aria-hidden="true" />
                 <b>朝、体重を量る</b>
                 <span>
                   ヘルスケアにつながる体重計なら、量るだけで入ります。無ければ手で入れます。
                 </span>
               </li>
               <li>
+                <div class="lp-shot" aria-hidden="true" />
                 <b>食べる前に撮る</b>
                 <span>撮り忘れたら「昼にカレー」と書きます。</span>
               </li>
               <li>
+                <div class="lp-shot" aria-hidden="true" />
                 <b>毎週、目安が変わる</b>
                 <span>体重の動きと食べた量から、1日に食べる量の目安を直します。</span>
               </li>
