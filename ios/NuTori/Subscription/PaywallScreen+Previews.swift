@@ -29,6 +29,8 @@
             case tokenUnreachable
             /// 買ったが、ほかのアカウントのサブスクリプションだった
             case ownedByOtherAccount
+            /// 「購入を復元」を押したが、復元できなかった
+            case restoreFailed
 
             var content: PaywallContent {
                 let tokyo = TimeZone(identifier: "Asia/Tokyo")!
@@ -38,7 +40,7 @@
                     case .freeTrial, .requestingToken:
                         .freeTrial(
                             lastDay: CalendarDay.sampleToday.advanced(by: 9), remainingDays: 10)
-                    case .expired, .tokenUnreachable, .ownedByOtherAccount:
+                    case .expired, .tokenUnreachable, .ownedByOtherAccount, .restoreFailed:
                         .expired
                     case .subscribed:
                         .subscribed(
@@ -49,7 +51,8 @@
 
             var purchaseToken: PaywallSession.PurchaseToken {
                 switch self {
-                case .freeTrial, .expired, .subscribed, .ownedByOtherAccount: .issued(UUID())
+                case .freeTrial, .expired, .subscribed, .ownedByOtherAccount, .restoreFailed:
+                    .issued(UUID())
                 case .requestingToken: .requesting
                 case .tokenUnreachable: .unavailable
                 }
@@ -61,6 +64,7 @@
                 case .tokenUnreachable:
                     "インターネットにつながらないため、今は始められません。つながるところで、もう一度開いてください。"
                 case .ownedByOtherAccount: "このサブスクリプションは、ほかの nu-tori のアカウントで使っています"
+                case .restoreFailed: "復元できませんでした。時間をおいて、もう一度押してください。"
                 }
             }
         }
