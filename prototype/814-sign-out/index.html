@@ -1,0 +1,215 @@
+<title>サインアウトの置き場</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- 試作（#814）。捨てるコード。アカウントの画面にサインアウトを置く3案を、?variant=A|B|C で切り替えて見比べる -->
+<style>
+/* 一列のスマホの枠の中に、iOS の設定の一覧を模す。色は DESIGN.md のトークン */
+:root {
+  --bg: #F2F2F7; --surface: #FFFFFF; --fg: #000000;
+  --fg2: rgba(60,60,67,.6); --sep: rgba(60,60,67,.29);
+  --tint: #6155F5; --error: #FF383C; --dim: rgba(0,0,0,.35);
+  --page: #E4E3EC; --bar: #1C1C1E; --bar-fg: #FFFFFF;
+  --font: -apple-system, "SF Pro Text", "Hiragino Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,.6); --sep: rgba(84,84,88,.6);
+  --tint: #6D7CFF; --error: #FF4245; --dim: rgba(0,0,0,.55);
+  --page: #111114; --bar: #F2F2F7; --bar-fg: #000000; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,.6); --sep: rgba(84,84,88,.6);
+  --tint: #6D7CFF; --error: #FF4245; --dim: rgba(0,0,0,.55);
+  --page: #111114; --bar: #F2F2F7; --bar-fg: #000000; color-scheme: dark }
+body { background: var(--page); color: var(--fg); font-family: var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 96px; }
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 20px; grid-template-columns: minmax(0, 390px) minmax(0, 1fr); align-items: start; }
+@media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+.phone { background: var(--bg); border-radius: 36px; border: 1px solid var(--sep); overflow: hidden; position: relative; min-height: 720px; }
+.nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 14px 16px 8px; font-size: 17px; }
+.nav b { font-weight: 600; } .nav .done { justify-self: end; color: var(--tint); font-weight: 600; }
+.list { padding: 8px 16px 24px; display: grid; gap: 28px; font-size: 17px; }
+.sec { display: grid; gap: 6px; }
+.group { background: var(--surface); border-radius: 10px; overflow: hidden; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 16px; min-height: 22px; border: 0; background: none; font: inherit; color: inherit; width: 100%; text-align: left; }
+.row + .row { border-top: .5px solid var(--sep); }
+.row .val { color: var(--fg2); } .row .chev { color: var(--fg2); }
+button.row { cursor: pointer; } button.row:focus-visible { outline: 2px solid var(--tint); outline-offset: -2px; }
+.tint { color: var(--tint); } .danger { color: var(--error); }
+.foot, .head { font-size: 13px; color: var(--fg2); padding: 0 16px; line-height: 18px; }
+.head { text-transform: none; }
+.center { text-align: center; }
+.hl { outline: 2px dashed var(--tint); outline-offset: 3px; border-radius: 12px; }
+/* ダイアログ */
+.scrim { position: absolute; inset: 0; background: var(--dim); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.scrim.sheet { align-items: flex-end; padding: 8px 8px 20px; }
+.alert { background: var(--surface); border-radius: 14px; width: 270px; text-align: center; overflow: hidden; }
+.alert .t { font-weight: 600; font-size: 17px; padding: 18px 16px 4px; }
+.alert .m { font-size: 13px; line-height: 18px; padding: 0 16px 16px; }
+.alert .btns { display: grid; grid-template-columns: 1fr 1fr; border-top: .5px solid var(--sep); }
+.alert .btns.v { grid-template-columns: 1fr; }
+.alert .btns button { font: inherit; font-size: 17px; padding: 11px; border: 0; background: none; color: var(--tint); cursor: pointer; }
+.alert .btns button + button { border-left: .5px solid var(--sep); }
+.alert .btns.v button + button { border-left: 0; border-top: .5px solid var(--sep); }
+.sheetbox { width: 100%; display: grid; gap: 8px; }
+.sheetbox .g { background: var(--surface); border-radius: 14px; overflow: hidden; text-align: center; }
+.sheetbox .m { font-size: 13px; color: var(--fg2); padding: 14px 16px; line-height: 18px; }
+.sheetbox button { display: block; width: 100%; font: inherit; font-size: 20px; padding: 16px; border: 0; border-top: .5px solid var(--sep); background: none; color: var(--tint); cursor: pointer; }
+.sheetbox .g:last-child button { border-top: 0; font-weight: 600; }
+.b-danger { color: var(--error) !important; } .b-bold { font-weight: 600; }
+/* サインインの画面 */
+.signin { display: grid; justify-items: center; align-content: center; gap: 18px; min-height: 720px; padding: 32px; text-align: center; }
+.logo { width: 72px; height: 72px; border-radius: 16px; background: var(--tint); }
+.signin h2 { margin: 0; font-size: 28px; }
+.signin p { margin: 0; font-size: 17px; line-height: 24px; color: var(--fg2); max-width: 30ch; }
+.apple { background: var(--fg); color: var(--bg); border-radius: 10px; padding: 14px; width: 100%; max-width: 300px; font-weight: 600; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
+/* 右の説明 */
+.notes { display: grid; gap: 14px; font-size: 15px; line-height: 1.6; min-width: 0; }
+.notes h1 { font-size: 20px; margin: 0; text-wrap: balance; }
+.notes h3 { font-size: 13px; letter-spacing: .04em; color: var(--fg2); margin: 6px 0 0; }
+.notes p, .notes ul { margin: 0; } .notes ul { padding-left: 1.2em; }
+.ctrl { display: flex; flex-wrap: wrap; gap: 8px; }
+.ctrl label { display: flex; gap: 6px; align-items: center; background: var(--surface); border-radius: 8px; padding: 6px 10px; font-size: 14px; cursor: pointer; }
+.state { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--surface); border-radius: 8px; padding: 10px; white-space: pre-wrap; overflow-x: auto; }
+/* 切り替えのバー（試作の外側） */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--bar); color: var(--bar-fg); border-radius: 999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.25); font-size: 14px; max-width: calc(100% - 32px); }
+.switcher button { background: none; border: 0; color: inherit; font: inherit; font-size: 18px; padding: 6px 12px; cursor: pointer; border-radius: 999px; }
+.switcher span { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+
+<div class="wrap">
+  <div class="phone" id="phone"></div>
+  <div class="notes">
+    <h1 id="vtitle"></h1>
+    <p id="vdesc"></p>
+    <h3>試す条件</h3>
+    <div class="ctrl">
+      <label><input type="checkbox" id="pending"> 送り待ちが残っている（まだサーバーに届いていない記録がある）</label>
+      <label><input type="checkbox" id="highlight" checked> サインアウトの行を点線で囲む</label>
+    </div>
+    <h3>サインインの画面の書き出し（サインアウトしたあと）</h3>
+    <div class="ctrl">
+      <label><input type="radio" name="lead" value="again" id="lead-again" checked> 今の「もう一度サインインしてください」を使う</label>
+      <label><input type="radio" name="lead" value="out" id="lead-out"> サインアウトのとき専用の文にする</label>
+    </div>
+    <h3>今の状態</h3>
+    <div class="state" id="state"></div>
+    <p class="foot" style="padding:0">左の画面の「サインアウト」を押すと、確かめのダイアログ、サインインの画面の順に進みます。サインインの画面のボタンでアカウントの画面に戻ります。</p>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="案の切り替え">
+  <button id="prev" aria-label="前の案">‹</button>
+  <span id="label"></span>
+  <button id="next" aria-label="次の案">›</button>
+</div>
+
+<script>
+const VARIANTS = {
+  A: { name: '削除の上に独立した段', desc: '「アカウントを削除」の段の上に、「サインアウト」だけの段を足す。確かめは中央のダイアログ。押せる色はアクセント色で、削除の赤と分ける。' },
+  B: { name: '削除と同じ段にまとめる', desc: '最後の段を「サインアウト」と「アカウントを削除」の2行にする。確かめは下から出るシート（iOS の設定アプリの Apple アカウントの画面と同じ形）。' },
+  C: { name: '一番上にアカウントの段', desc: '一覧の一番上に「Apple でサインイン中」の段を置き、その下にサインアウトを置く。どのアカウントで入っているかが見える。確かめは中央のダイアログ。' },
+};
+const keys = Object.keys(VARIANTS);
+let variant = new URLSearchParams(location.search).get('variant');
+if (!keys.includes(variant)) variant = 'A';
+let screen = 'account'; // account | confirm | signin
+
+const $ = (id) => document.getElementById(id);
+const pending = () => $('pending').checked;
+const lead = () => document.querySelector('input[name=lead]:checked').value;
+const hl = () => $('highlight').checked ? ' hl' : '';
+
+function confirmMessage() {
+  return pending()
+    ? 'まだ送っていない記録があります。同じ Apple ID でサインインすると送ります。ほかの Apple ID でサインインすると、この iPhone から消えます。'
+    : '同じ Apple ID でサインインすると、記録はそのまま戻ります。';
+}
+
+function signInLead() {
+  if (lead() === 'out') {
+    return pending()
+      ? 'サインアウトしました。同じ Apple ID でサインインすると、記録はそのまま戻り、まだ送っていない記録も送ります。'
+      : 'サインアウトしました。同じ Apple ID でサインインすると、記録はそのまま戻ります。';
+  }
+  return pending()
+    ? 'もう一度サインインしてください。同じ Apple ID で続けると、記録はそのまま戻り、まだ送っていない記録も送ります。'
+    : 'もう一度サインインしてください。同じ Apple ID で続けると、記録はそのまま戻ります。';
+}
+
+const commonTop = `
+  <div class="sec"><div class="group"><div class="row"><span>サブスクリプション</span><span class="val">無料体験中 ›</span></div></div></div>
+  <div class="sec"><div class="group"><div class="row"><span>ヘルスケア</span><span class="chev">›</span></div></div></div>
+  <div class="sec"><div class="group"><div class="row"><span>記録忘れの通知</span><span class="val">オン</span></div><div class="row"><span class="tint">iPhone の設定を開く ↗</span></div></div></div>
+  <div class="sec"><div class="group"><div class="row"><span>カメラ</span><span class="val">許可</span></div><div class="row"><span class="tint">iPhone の設定を開く ↗</span></div></div></div>
+  <div class="sec"><div class="group"><div class="row"><span>利用状況を送る</span><span class="val">オン</span></div></div>
+    <div class="foot">開いた画面や操作の回数などを送ります。写真・文章・体重や食事の値は送りません。</div></div>
+  <div class="sec"><div class="group"><div class="row"><span class="tint">プライバシーポリシー ↗</span></div><div class="row"><span class="tint">問い合わせ ↗</span></div></div></div>`;
+const deleteFoot = `<div class="foot">エラーの報告と利用状況のデータは、最長 90 日で消えます。</div>`;
+const version = `<div class="foot center">1.0 (42)</div>`;
+const signOutBtn = `<button class="row" data-act="signout"><span class="tint">サインアウト</span></button>`;
+const deleteBtn = `<button class="row"><span class="danger">アカウントを削除</span></button>`;
+
+function accountList() {
+  if (variant === 'A') return `${commonTop}
+    <div class="sec${hl()}"><div class="group">${signOutBtn}</div></div>
+    <div class="sec"><div class="group">${deleteBtn}</div>${deleteFoot}</div>${version}`;
+  if (variant === 'B') return `${commonTop}
+    <div class="sec${hl()}"><div class="group">${signOutBtn}${deleteBtn}</div>${deleteFoot}</div>${version}`;
+  return `
+    <div class="sec${hl()}"><div class="group"><div class="row"><span>Apple でサインイン中</span><span class="val">…@privaterelay</span></div>${signOutBtn}</div></div>
+    ${commonTop}
+    <div class="sec"><div class="group">${deleteBtn}</div>${deleteFoot}</div>${version}`;
+}
+
+function dialog() {
+  if (variant === 'B') return `<div class="scrim sheet"><div class="sheetbox">
+    <div class="g"><div class="m">${confirmMessage()}</div><button class="b-danger" data-act="do">サインアウト</button></div>
+    <div class="g"><button data-act="cancel">キャンセル</button></div></div></div>`;
+  return `<div class="scrim"><div class="alert">
+    <div class="t">サインアウトしますか？</div><div class="m">${confirmMessage()}</div>
+    <div class="btns"><button data-act="cancel">キャンセル</button><button class="b-bold" data-act="do">サインアウト</button></div></div></div>`;
+}
+
+function render() {
+  const phone = $('phone');
+  if (screen === 'signin') {
+    phone.innerHTML = `<div class="signin"><div class="logo" aria-hidden="true"></div><h2>nu-tori</h2>
+      <p>${signInLead()}</p><button class="apple" data-act="back"> Apple でサインイン</button>
+      <div class="foot">（試作：押すとアカウントの画面に戻る）</div></div>`;
+  } else {
+    phone.innerHTML = `<div class="nav"><span></span><b>アカウント</b><span class="done">完了</span></div>
+      <div class="list">${accountList()}</div>${screen === 'confirm' ? dialog() : ''}`;
+  }
+  const v = VARIANTS[variant];
+  $('label').textContent = `${variant}（${v.name}）`;
+  $('vtitle').textContent = `案 ${variant}：${v.name}`;
+  $('vdesc').textContent = v.desc;
+  $('state').textContent = JSON.stringify({ variant, screen, 送り待ち: pending(), サインインの書き出し: lead() === 'out' ? 'サインアウト専用' : '今の文' }, null, 2);
+}
+
+$('phone').addEventListener('click', (e) => {
+  const act = e.target.closest('[data-act]')?.dataset.act;
+  if (act === 'signout') screen = 'confirm';
+  else if (act === 'cancel') screen = 'account';
+  else if (act === 'do') screen = 'signin';
+  else if (act === 'back') screen = 'account';
+  render();
+});
+document.querySelectorAll('input').forEach((i) => i.addEventListener('change', render));
+
+function go(step) {
+  variant = keys[(keys.indexOf(variant) + step + keys.length) % keys.length];
+  screen = 'account';
+  try { const u = new URL(location.href); u.searchParams.set('variant', variant); history.replaceState(null, '', u); } catch (e) {}
+  render();
+}
+$('prev').onclick = () => go(-1);
+$('next').onclick = () => go(1);
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+render();
+</script>
