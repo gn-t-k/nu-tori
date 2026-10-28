@@ -6,7 +6,7 @@ import { landingPageHead } from "../landing-page-head";
 import { subscriptionPrices } from "../subscription-prices";
 import { AppTextMeal } from "./landing-a/app-text-meal";
 import { AppMealCard } from "./landing-a/app-meal-card";
-import { exampleMeals, exampleTextMeals } from "./landing-a/example-meals";
+import { examplePhotoMeals, exampleTextMeals } from "./landing-a/example-photo-meals";
 import { AppComposer } from "./landing-a/app-composer";
 import { FlowComparison } from "./landing-a/flow-comparison";
 import { MealPhotoPicker } from "./landing-a/meal-photo-picker";
@@ -22,7 +22,7 @@ export const landingAPage = createLandingVariantPage({
   listing: appStoreListing,
   ...landingPageHead,
   Content: ({ appStoreUrl }) => {
-    const curry = exampleMeals.find(({ key }) => key === "curry");
+    const curry = examplePhotoMeals.find(({ key }) => key === "curry");
     if (curry === undefined) {
       throw new Error("撮るだけの節の見本のカレーライスが、見本の食事に無い");
     }

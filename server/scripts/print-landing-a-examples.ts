@@ -205,7 +205,7 @@ const reviewExample = {
 console.log(
   JSON.stringify(
     {
-      meals: photoMeals.map(toMealExample),
+      photoMeals: photoMeals.map(toMealExample),
       textMeals: textMeals.map(toMealExample),
       review: reviewExample,
     },
