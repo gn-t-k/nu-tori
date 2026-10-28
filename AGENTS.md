@@ -37,7 +37,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 ### リポジトリ全体の決定
 
 - アプリは `ios/`、サーバーは `server/`、`nu-tori.app` のページは `site/` に置く（モノレポ）。`ios/`・`server/`・`site/` のファイルを読み書きする前に、そのディレクトリの `AGENTS.md` を読む
-- 確かめる手順の入口は `scripts/check` の1本にする。引数なしでは、まだ push していない変更と作業中の変更が関わる対象を、`ios`・`server`・`site`・`scripts` を渡すと渡した対象の全部を確かめ、`--fix` で直してから確かめる。エージェントも人も CI も同じものを呼ぶ。エージェントは、変えたらコミットの前に `scripts/check --fix` を回し、0 で終わるまで直す。数分かかるときは Bash の `run_in_background` で回し、終わりの知らせで結果を読む
+- 確かめる手順の入口は `scripts/check` の1本にする。引数なしでは、まだ push していない変更と作業中の変更が関わる対象を、`ios`・`server`・`site`・`scripts` を渡すと渡した対象の全部を確かめ、`--fix` で直してから確かめる。エージェントも人も CI も同じものを呼ぶ。エージェントは、変えたらコミットの前に `scripts/check --fix` を回し、0 で終わるまで直す。数分かかるときは Bash の `run_in_background` で回し、終わりの知らせで結果を読む（止めるときは PID を確かめて `kill <PID>` で止める。コマンドライン全体で探す `pkill -f`・`pgrep -f` は、Claude Code では hook が拒む）
 - スキルやサブエージェントの定義を足す・直すとき、worktree でサブエージェントを立てるとき、`/wizard` でウィザードを書くとき、hook・許可のルール・MCP・CI の設定を足す・直すとき、Sentry・App Store Connect・Cloudflare・PostHog を読むとき、本番の知らせを Issue にする仕組み（`production-alerts`）に触るとき、`@nu-tori.app` からメールを送る道具を足すときは、`docs/agents/tooling.md` を読む
 - 依存と道具（Swift・Node・pnpm など）の版を上げるとき、依存の PR とその落ちた Issue を扱うとき、依存の更新で壊れた本番を戻すときは、`docs/agents/dependencies.md` を読む
 - 環境は本番と開発用の2つ。TestFlight と App Store の版は本番に、デバッグビルドは開発用につなぐ。DB、写真の置き場、LLM の API キー、Sign in with Apple の鍵は環境ごとに分け、開発用の LLM のキーには低い費用の上限をかける。Workers AI は、呼ぶときに環境ごとの AI Gateway を通し、開発用のゲートウェイに低い支出の上限をかける
