@@ -13,7 +13,7 @@ import type { IngredientNutrientSource } from "../src/ingredient/domain/ingredie
 import { computeNutrientTotal } from "../src/ingredient/domain/compute-nutrient-total";
 import { computeReviewedExpenditure } from "../src/weekly-review/domain/compute-reviewed-expenditure";
 
-// 写真の食事。成分表は食品番号で引き、成分表に合うものが無い割り下だけを、AI が推定したことにした値（可食部 100 g あたり）で置く
+// 見本の食事。成分表は食品番号で引き、成分表に合うものが無い割り下だけを、AI が推定したことにした値（可食部 100 g あたり）で置く
 type ExampleIngredient = {
   name: string;
   quantity: number;
@@ -21,7 +21,10 @@ type ExampleIngredient = {
   edibleGramsPerUnit: number;
 } & ({ foodNumber: string } | { estimated: Partial<Record<NutrientName, number>> });
 
-const meals: { key: string; dish: string; ingredients: ExampleIngredient[] }[] = [
+type ExampleMeal = { key: string; dish: string; ingredients: ExampleIngredient[] };
+
+// 写真の食事
+const meals: ExampleMeal[] = [
   {
     key: "oyakodon",
     dish: "親子丼",
@@ -61,6 +64,19 @@ const meals: { key: string; dish: string; ingredients: ExampleIngredient[] }[] =
   },
 ];
 
+// 書いた食事（「朝はお茶漬けを食べた」と送ったとき）
+const textMeals: ExampleMeal[] = [
+  {
+    key: "ochazuke",
+    dish: "お茶漬け",
+    ingredients: [
+      { name: "ご飯", foodNumber: "01088", quantity: 150, unit: "g", edibleGramsPerUnit: 1 },
+      { name: "お茶漬けの素", foodNumber: "17125", quantity: 6, unit: "g", edibleGramsPerUnit: 1 },
+      { name: "緑茶", foodNumber: "16037", quantity: 150, unit: "ml", edibleGramsPerUnit: 1 },
+    ],
+  },
+];
+
 const toCompositionIngredient = (ingredient: ExampleIngredient) => {
   if ("estimated" in ingredient) {
     const nutrientSource: IngredientNutrientSource = { type: "estimated" };
@@ -86,7 +102,7 @@ const computeExactTotal = (
 
 const round = (value: number, digits: number) => Number(value.toFixed(digits));
 
-const mealExamples = meals.map(({ key, dish, ingredients }) => {
+const toMealExample = ({ key, dish, ingredients }: ExampleMeal) => {
   const resolved = ingredients.map(toCompositionIngredient);
   return {
     key,
@@ -104,7 +120,7 @@ const mealExamples = meals.map(({ key, dish, ingredients }) => {
       carbohydrateG: computeExactTotal(resolved, "carbohydrate_g"),
     },
   };
-});
+};
 
 // 見直しの見本。月曜に体重の傾向 70.0 kg で目標を立て、推定消費カロリー 2,100 kcal から1日の目安を出した人の、次の月曜の最初の見直し。
 // その週は食事を7日とも記録した。目標は、保つ・12週で 3 kg 減らす・12週で 6 kg 減らす（週 0.25 kg と 0.5 kg）の3つから選ぶ
@@ -187,4 +203,14 @@ const reviewExample = {
   }),
 };
 
-console.log(JSON.stringify({ meals: mealExamples, review: reviewExample }, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      meals: meals.map(toMealExample),
+      textMeals: textMeals.map(toMealExample),
+      review: reviewExample,
+    },
+    null,
+    2,
+  ),
+);

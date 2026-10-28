@@ -115,6 +115,38 @@
       }
     }
   ],
+  "textMeals": [
+    {
+      "key": "ochazuke",
+      "dish": "お茶漬け",
+      "ingredients": [
+        {
+          "name": "ご飯",
+          "quantity": 150,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "お茶漬けの素",
+          "quantity": 6,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "緑茶",
+          "quantity": 150,
+          "unit": "ml",
+          "source": "food_composition"
+        }
+      ],
+      "totals": {
+        "energyKcal": 252.06,
+        "proteinG": 4.38,
+        "fatG": 0.46,
+        "carbohydrateG": 54.02
+      }
+    }
+  ],
   "review": {
     "startingWeightTrendKg": 70,
     "previousExpenditureKcal": 2100,

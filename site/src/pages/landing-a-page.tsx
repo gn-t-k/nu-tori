@@ -6,7 +6,8 @@ import { landingPageHead } from "../landing-page-head";
 import { subscriptionPrices } from "../subscription-prices";
 import { AppTextMeal } from "./landing-a/app-text-meal";
 import { AppMealCard } from "./landing-a/app-meal-card";
-import { exampleMeals } from "./landing-a/example-meals";
+import { exampleMeals, exampleTextMeals } from "./landing-a/example-meals";
+import { AppComposer } from "./landing-a/app-composer";
 import { FlowComparison } from "./landing-a/flow-comparison";
 import { MealPhotoPicker } from "./landing-a/meal-photo-picker";
 import { ReviewExample } from "./landing-a/review-example";
@@ -24,6 +25,10 @@ export const landingAPage = createLandingVariantPage({
     const curry = exampleMeals.find(({ key }) => key === "curry");
     if (curry === undefined) {
       throw new Error("撮るだけの節の見本のカレーライスが、見本の食事に無い");
+    }
+    const ochazuke = exampleTextMeals.find(({ key }) => key === "ochazuke");
+    if (ochazuke === undefined) {
+      throw new Error("撮るだけの節の見本のお茶漬けが、書いた食事の見本に無い");
     }
     return (
       <div class="lp">
@@ -52,7 +57,7 @@ export const landingAPage = createLandingVariantPage({
               <li>
                 <div class="lp-shot" aria-hidden="true" />
                 <b>食べる前に撮る</b>
-                <span>撮り忘れたら「昼にカレー」と書けばOKです。</span>
+                <span>撮り忘れたら「朝はお茶漬けを食べた」と書けばOKです。</span>
               </li>
               <li>
                 <div class="lp-shot" aria-hidden="true" />
@@ -66,21 +71,22 @@ export const landingAPage = createLandingVariantPage({
         <section class="lp-band lp-band-surface">
           <div class="lp-wrap lp-feature">
             <div>
-              <h2>撮るだけ・撮り忘れたら書くだけ</h2>
+              <h2>撮って送るだけ。撮り忘れたら、書いて送るだけ</h2>
               <p>
-                写真から料理と材料と量を読み取り、栄養を出します。撮り忘れた食事は、書けば入ります。
+                写真を送ると、料理と材料と量を読み取って栄養を出します。撮り忘れたら、「朝はお茶漬けを食べた」と書いて送れば、同じように記録されます。
               </p>
-              <p>読み取りが違っていたら、あとで直せます。</p>
             </div>
-            <div class="lp-plate lp-entries">
-              <div>
-                <p class="lp-fine">撮ったとき</p>
-                <AppMealCard meal={curry} entry={{ kind: "photo" }} />
+            {/* 昼に撮って送ったあと、朝の記録を忘れていたのに気づいて書いて送った、アプリの画面の下のほう */}
+            <div class="lp-plate app-timeline">
+              <div class="app-own">
+                <span class="app-own-time">12:30</span>
+                <AppMealCard meal={curry} entry={{ kind: "photo", photo: curry.photo }} />
               </div>
-              <div>
-                <p class="lp-fine">書いたとき</p>
-                <AppTextMeal text="昼にカレー" meal={curry} eatenTime="12:00" />
+              <div class="app-own">
+                <span class="app-own-time">12:42</span>
+                <AppTextMeal text="朝はお茶漬けを食べた" meal={ochazuke} eatenTime="7:30" />
               </div>
+              <AppComposer />
             </div>
           </div>
         </section>

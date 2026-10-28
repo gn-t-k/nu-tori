@@ -506,17 +506,6 @@ body:has(.lp) .site-footer {
   padding: 24px;
 }
 
-.lp-entries {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-
-.lp-entries p {
-  margin-bottom: 8px;
-}
-
 .lp-example,
 .lp-example-panel {
   display: grid;
@@ -744,6 +733,71 @@ body:has(.lp) .site-footer {
   border-radius: 0;
 }
 
+/* タイムラインの下のほう。自分の記録は右に寄せ、時刻をカードの外の左下に置く（DESIGN.md の own-record-time） */
+.app-timeline {
+  display: grid;
+  gap: 8px;
+}
+
+.app-own {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* 食事のカードは画面の 72%（OwnRecordCard）、文章とその食事のかたまりは吹き出しの 78%（SentTextBubbleView の BubbleWidth） */
+.app-own > .app-meal {
+  width: 72%;
+}
+
+.app-own > .app-text-meal {
+  width: 78%;
+}
+
+.app-own-time {
+  flex: none;
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--on-surface-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-composer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.app-composer-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  background: var(--fill);
+  color: var(--primary);
+}
+
+.app-composer-camera {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.app-composer-field {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--on-surface-tertiary);
+  font-size: 17px;
+  line-height: 36px;
+}
+
 .app-list {
   background: var(--surface);
   border-radius: 10px;
@@ -938,11 +992,5 @@ body:has(.lp) .site-footer {
 
   .lp-plate {
     padding: 16px;
-  }
-}
-
-@media (max-width: 480px) {
-  .lp-entries {
-    grid-template-columns: minmax(0, 1fr);
   }
 }

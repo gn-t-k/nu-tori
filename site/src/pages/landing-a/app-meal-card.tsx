@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import { AppChevron } from "./app-chevron";
 import { appText } from "./app-text";
-import type { ExampleMeal } from "./example-meals";
+import type { ExampleMeal, MealSummary } from "./example-meals";
 
 // アプリのタイムラインの食事のカード（ios/NuTori/Meal/MealCardView.swift）。下に料理の名前と kcal・P・F・C。
 // 撮った食事は写真を上に 4:3 で出し、時刻はカードの外に置くので書かない（DESIGN.md の own-record-time）。
@@ -10,13 +10,13 @@ export const AppMealCard = ({
   meal,
   entry,
 }: {
-  meal: ExampleMeal;
-  entry: { kind: "photo" } | { kind: "text"; eatenTime: string };
+  meal: MealSummary;
+  entry: { kind: "photo"; photo: ExampleMeal["photo"] } | { kind: "text"; eatenTime: string };
 }) => (
   <div class="app-meal">
     {match(entry)
-      .with({ kind: "photo" }, () => (
-        <img src={meal.photo.src} alt={meal.photo.alt} width="800" height="600" loading="lazy" />
+      .with({ kind: "photo" }, ({ photo }) => (
+        <img src={photo.src} alt={photo.alt} width="800" height="600" loading="lazy" />
       ))
       .with({ kind: "text" }, () => null)
       .exhaustive()}
