@@ -100,7 +100,7 @@ check_changed() {
     upstream="$(git -C "$root" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null)" ||
         upstream=origin/main
     base="$(git -C "$root" merge-base "$upstream" HEAD 2> /dev/null)" || base=""
-    if [ -z "$base" ] || ! files="$(unpushed_files_except_main "$base")"; then
+    if [ -z "$base" ] || ! files="$(changed_files "$base")" || ! picked="$(pick_unpushed_targets "$base")"; then
         echo "${upstream} と比べられないので、server と site と ios と scripts のすべてを確かめる"
         check_target server
         check_target site
@@ -108,9 +108,8 @@ check_changed() {
         check_target scripts
         return
     fi
-    echo "${upstream} と比べて、まだ push していない変更と作業中の変更から選ぶ（origin/main と同じ中身のファイルは除く）"
+    echo "${upstream} と比べて、まだ push していない変更と作業中の変更から選ぶ（origin/main と同じ中身の対象は除く）"
 
-    picked="$(pick_targets <<< "$files")"
     [[ "$picked" == *ios=true* ]] && run_ios=true
     [[ "$picked" == *server=true* ]] && run_server=true
     [[ "$picked" == *site=true* ]] && run_site=true
@@ -131,8 +130,7 @@ check_changed() {
     if $run_server; then
         check_target server
         # --fix が server/openapi.json を書き出し直すと、アプリの API のクライアントも生成し直す
-        if ! $run_ios && files="$(unpushed_files_except_main "$base")" &&
-            [[ "$(pick_targets <<< "$files")" == *ios=true* ]]; then
+        if ! $run_ios && picked="$(pick_unpushed_targets "$base")" && [[ "$picked" == *ios=true* ]]; then
             echo "server の確かめのあとに ios に関わる変更（server/openapi.json など）があるので、ios も確かめる"
             run_ios=true
         fi
@@ -153,17 +151,26 @@ changed_files() {
 }
 
 # push 先がまだ main を取り込んでいないと、main を取り込んだだけのファイルも push 先と違って見える。
-# それらは origin/main と同じ中身で、CI が main で確かめているので除く
-unpushed_files_except_main() {
-    local files from_main
+# 対象の中身がまるごと origin/main と同じなら、CI が main で確かめているので除く。
+# ファイルごとには除かない。main から来たファイルが、その対象の main に無いファイルと組んで落ちることがある（#790。名前を変えた main を取り込み、古い名前の import が残った）
+pick_unpushed_targets() {
+    local files from_main picked branch target
     files="$(changed_files "$1")" || return 1
+    picked="$(pick_targets <<< "$files")"
     if ! from_main="$(git -C "$root" diff --name-only --no-renames origin/main 2> /dev/null)"; then
-        echo "$files"
+        echo "$picked"
         return
     fi
     from_main="$from_main
 $(git -C "$root" ls-files --others --exclude-standard)"
-    grep -Fx -f <(echo "$from_main") <<< "$files" || true
+    branch="$(pick_targets <<< "$from_main")"
+    for target in ios server site scripts; do
+        if [[ "$picked" == *"$target=true"* && "$branch" == *"$target=true"* ]]; then
+            echo "$target=true"
+        else
+            echo "$target=false"
+        fi
+    done
 }
 
 # 確かめる理由が見えるよう、当たったファイルを先頭の3つまで出す
