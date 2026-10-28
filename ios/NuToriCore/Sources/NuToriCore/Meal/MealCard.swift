@@ -46,8 +46,7 @@ public struct MealCard: Hashable, Sendable {
     }
 
     /// カードの名前の場所。推定が済んだ食事は、料理があれば料理の名前を、無ければ状態の1行を置く（#188）。
-    /// 推定を待っている食事は状態の1行だけを置く。推定を待っている食事には料理を足せないので、料理があるのは、
-    /// 写真の推定が作った料理が食事の推定の状態より先に届いた一瞬だけ
+    /// 推定を待っている食事は状態の1行だけを置く。推定を待っている食事には料理を足せないので、料理があるのは、写真の推定が作った料理が食事の推定の状態より先に届いた一瞬だけ
     public var namePlace: NamePlace {
         switch state {
         case .notSent, .awaitingPhotos, .estimating, .deferredToNextDay, .awaitingSubscription:
@@ -60,8 +59,7 @@ public struct MealCard: Hashable, Sendable {
         }
     }
 
-    /// 食事の画面の料理の一覧の場所に置く、食事の写真の推定の状態。推定中と翌日に推定は状態ごとに置き、
-    /// 料理なしと推定できなかったは料理が無いあいだだけ置く（#188）
+    /// 食事の画面の料理の一覧の場所に置く、食事の写真の推定の状態。推定中と翌日に推定は状態ごとに置き、料理なしと推定できなかったは料理が無いあいだだけ置く（#188）
     public var dishListNote: DishListNote? {
         switch state {
         case .notSent, .awaitingPhotos, .estimated: nil

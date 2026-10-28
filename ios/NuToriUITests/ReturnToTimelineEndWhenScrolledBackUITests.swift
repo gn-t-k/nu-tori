@@ -4,8 +4,7 @@ import XCTest
 /// 写真の選択は起動の値で差し替える（選ぶ画面を開かずに1枚選んだことにする）
 ///
 /// 遡っていても一番下へ動かし、足されるカードを追うと決める規則は NuToriCore の単体テスト（TimelineViewportTests の「一番下へ戻す」）が見る。
-/// ここで見るのは SwiftUI の癖: 遡って画面の外へ出た下端へ、ScrollViewProxy の scrollTo が着けること、
-/// 指示を次の更新で実行しても（動かす口は ScrollViewReader の中にしか無い）、あとから足されるカードが入力欄の上に見えること
+/// ここで見るのは SwiftUI の癖: 遡って画面の外へ出た下端へ、ScrollViewProxy の scrollTo が着けること、指示を次の更新で実行しても（動かす口は ScrollViewReader の中にしか無い）、あとから足されるカードが入力欄の上に見えること
 @MainActor
 final class ReturnToTimelineEndWhenScrolledBackUITests: XCTestCase {
     private var app = XCUIApplication()

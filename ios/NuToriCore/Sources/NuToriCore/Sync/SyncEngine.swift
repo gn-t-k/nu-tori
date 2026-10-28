@@ -172,8 +172,7 @@ public actor SyncEngine {
         return try await store.ingredients().first(where: { $0.id == ingredientId }) ?? ingredient
     }
 
-    /// 料理を消す。電波が無くても、その場でキャッシュから料理と材料と料理ごとの推定の状態を消し、消す書き込みを送り待ちに並べ、
-    /// ヘルスケアからも消しに行く。最後の1品かは画面が `MealEditOffer` で先に決め、最後の1品なら `deleteMeal` を呼ぶ
+    /// 料理を消す。電波が無くても、その場でキャッシュから料理と材料と料理ごとの推定の状態を消し、消す書き込みを送り待ちに並べ、ヘルスケアからも消しに行く。最後の1品かは画面が `MealEditOffer` で先に決め、最後の1品なら `deleteMeal` を呼ぶ
     public func deleteDish(id dishId: UUID) async throws {
         let ingredientIds = try await store.ingredients().filter { $0.dishId == dishId }.map(\.id)
         try await writingCache {
@@ -398,8 +397,7 @@ public actor SyncEngine {
 
     /// 結果を、受け付けた・受け付けなかったの2つに畳んで読む。細かい結果はサーバーの控えと観測にだけ使う。
     /// 受け付けなかったら送り待ちから外し、添えられたサーバーの今の値を、取りに行った変更と同じ道で当てる。
-    /// 受け付けた料理を足す・名前を直す書き込みは、料理ごとの推定の状態が届くまで料理をまだ送れていないとして見せるため、
-    /// 変更を取り切るまで送り待ちに残す（取りに行けなければ次の同期で送り直し、帳簿は同じ書き込みの ID に同じ結果を返す）
+    /// 受け付けた料理を足す・名前を直す書き込みは、料理ごとの推定の状態が届くまで料理をまだ送れていないとして見せるため、変更を取り切るまで送り待ちに残す（取りに行けなければ次の同期で送り直し、帳簿は同じ書き込みの ID に同じ結果を返す）
     private func resolve(
         _ batch: [PendingEntry],
         with results: [SyncWriteResult],

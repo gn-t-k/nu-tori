@@ -30,8 +30,7 @@ export const createFoodCompositionSearch = (entries: readonly FoodCompositionEnt
   const byFoodNumber = new Map(entries.map((entry) => [entry.foodNumber, entry]));
 
   return {
-    // 点数の高い順に、最大 limit 件。点数は、尋ねた語の字の組のうち含まれる割合（重み付き）を第1に、
-    // 食品の側の字の組のうち尋ねた語に含まれる割合を第2にする。同点は食品番号の順
+    // 点数の高い順に、最大 limit 件。点数は、尋ねた語の字の組のうち含まれる割合（重み付き）を第1に、食品の側の字の組のうち尋ねた語に含まれる割合を第2にする。同点は食品番号の順
     findCandidates: (query: string, limit: number): FoodCompositionEntry[] => {
       const queryGrams = new Set(toGrams(query));
       const queryWeight = sumWeights(queryGrams);

@@ -1,8 +1,7 @@
 import type { RecordId } from "../../domain/record-id";
 import type { NoticeResponse } from "./notice";
 
-// 端末から届く知らせの書き込み。種類と対象の日付は、受け付けるかを種類の decide が決めるため、
-// 種類は文字列で、対象の日付は種類によらず有るか無いかで受ける
+// 端末から届く知らせの書き込み。種類と対象の日付は、受け付けるかを種類の decide が決めるため、種類は文字列で、対象の日付は種類によらず有るか無いかで受ける
 export type NoticeWrite = { id: RecordId } & (
   | {
       type: "create_notice";

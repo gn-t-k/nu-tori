@@ -1,7 +1,6 @@
 public import NuToriAPI
 
-/// 記録の種類（`CacheApplying`）の、登録簿の1行。箱のキャッシュ（`BoxCache`。アプリでは `ModelContext`、メモリの箱では `RecordCacheMock`）から、
-/// その種類のキャッシュの口を取り出して当てる。種類ごとに書くのは、口の取り出し方の1行だけ
+/// 記録の種類（`CacheApplying`）の、登録簿の1行。箱のキャッシュ（`BoxCache`。アプリでは `ModelContext`、メモリの箱では `RecordCacheMock`）から、その種類のキャッシュの口を取り出して当てる。種類ごとに書くのは、口の取り出し方の1行だけ
 public struct PortedRecordKind<Syncing: CacheApplying, BoxCache>: RecordKind {
     /// - Parameter port: 箱のキャッシュから、この種類のキャッシュの口を取り出す
     public init(_ syncing: Syncing, port: @escaping @Sendable (BoxCache) -> Syncing.Cache) {

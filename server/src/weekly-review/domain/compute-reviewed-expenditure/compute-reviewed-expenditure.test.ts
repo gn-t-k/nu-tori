@@ -4,8 +4,7 @@ import { computeReviewedExpenditure, type ReviewedExpenditureInputs } from "./in
 type Reviewed = ReturnType<typeof computeReviewedExpenditure>;
 
 // 前の推定 2,400 kcal、平均 2,200 kcal、食事を記録した日 7 日、実際の変化 −0.4 kg の週。
-// 予測した変化は（2,200 − 2,400）× 7 ÷ 7,700 = −0.1818 kg、ずれは 0.2182 kg で、
-// ρ × ずれ ÷ 7 は 240 kcal
+// 予測した変化は（2,200 − 2,400）× 7 ÷ 7,700 = −0.1818 kg、ずれは 0.2182 kg で、ρ × ずれ ÷ 7 は 240 kcal
 const inputs = (overrides: Partial<ReviewedExpenditureInputs> = {}): ReviewedExpenditureInputs => ({
   previousExpenditureKcal: 2400,
   averageEnergyIntakeKcal: 2200,

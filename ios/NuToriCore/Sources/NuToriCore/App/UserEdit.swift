@@ -1,7 +1,6 @@
 public import Foundation
 
-/// 画面から受ける、記録を作る・直す・消す編集。`RootModel.perform(_:)` の1つの口で受け、
-/// どれも電波が無くてもその場でキャッシュに当たり、書き込みが送り待ちに並ぶ。後始末は `aftermath` に種類ごとに書く
+/// 画面から受ける、記録を作る・直す・消す編集。`RootModel.perform(_:)` の1つの口で受け、どれも電波が無くてもその場でキャッシュに当たり、書き込みが送り待ちに並ぶ。後始末は `aftermath` に種類ごとに書く
 public enum UserEdit: Sendable {
     /// 体重を記録する・直す
     case saveWeight(WeightEntry.Write)

@@ -13,6 +13,10 @@
 
 - tsconfig は `@tsconfig/strictest` を継承し、`moduleResolution` は `Bundler` にする（拡張子なしの `./index` やディレクトリの import はこれを前提にする）。このファイルの型の話は、そこで有効になる `strict`、`exactOptionalPropertyTypes`、`noImplicitReturns` などを前提にする
 
+### コードを説明する情報
+
+- 文を途中で折り返したコメント（「、」や助詞で終わり、次の行のコメントへ続く）は、`.oxlintrc.json` の `nu-tori/no-wrapped-comment` が落とす
+
 ### 関数はアロー関数で書く
 
 - 関数は `const functionName = () => {}` で書く
@@ -24,6 +28,7 @@
 - ファイル名は export する名前のケバブケースにする（`compute-weight-trend.ts` → `export const computeWeightTrend`、`weight-record-store.ts` → `export type WeightRecordStore`）。export する名前のどれとも合わないファイルは、`.oxlintrc.json` の `nu-tori/filename-matches-export` が落とす
 - mock のファイル（`mockXxxOk` と `mockXxxError` を対で export する）と、再 export だけの `index.ts`・`testing/index.ts` は、「1つのファイルから1つ」を置き換える。関数と一緒に export するエラーのクラスは「失敗の扱い」
 - 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/` のディレクトリにし、入口の `foo/index.ts` から再 export する（`foo/foo.ts`、`foo/foo.test.ts`、`foo/foo.mock.ts` を並べる）
+- `foo/` の外からは入口を通して import する。`index.ts` が再 export しているファイルを外から直に import すると、`.oxlintrc.json` の `nu-tori/import-through-index` が落とす
 
 ### ファイルの中はトップダウン
 
@@ -101,6 +106,7 @@ type Options = { formatProgress: (progress: Progress) => string };
 ### キャストのいらない形を探す
 
 - キャストは `as`（と同じ意味の `<T>x`）を指す。`as const` は型を狭めるだけなので含めない
+- 非 null の断言（`x!`）もキャストと同じく型の食い違いを隠すので使わない（`.oxlintrc.json` の `typescript/no-non-null-assertion`）。無いはずの値は、無ければ投げて型を絞る
 
 ### 依存パッケージ
 

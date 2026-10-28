@@ -7,8 +7,7 @@ const usualWeighingTimes = sqliteTable("usual_weighing_times", {
   id: text("id").$type<RecordId>().primaryKey(),
 });
 
-// 学び直しで値が変わった事実。今の値は、控えの要求の received_at の降順、
-// 同じ要求の中は position_in_request の降順で最初の行
+// 学び直しで値が変わった事実。今の値は、控えの要求の received_at の降順、同じ要求の中は position_in_request の降順で最初の行
 const usualWeighingTimeChanges = sqliteTable("usual_weighing_time_changes", {
   syncWriteReceiptId: text("sync_write_receipt_id")
     .primaryKey()

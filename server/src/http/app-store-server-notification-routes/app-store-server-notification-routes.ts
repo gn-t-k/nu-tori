@@ -13,8 +13,7 @@ import { AppStoreServerNotificationUnhandledError } from "./app-store-server-not
 // App Store のサーバー通知（App Store Server Notifications V2）の受け口（#647 の「App Store のサーバー通知を受ける」）。
 // Sign in with Apple の /v1/apple-server-notifications とは別の口。
 // Apple が呼ぶ口なので、アプリが読む OpenAPI の文書には出さない（アプリのクライアントに入れない）。
-// 署名を確かめられない通知と、Production の環境の断った通知・案内できない通知は Sentry に送る。Sandbox の環境のものは、
-// 開発用のビルドで買うたびに本番のサーバーにも届いて起きるので、Workers Logs にだけ出す
+// 署名を確かめられない通知と、Production の環境の断った通知・案内できない通知は Sentry に送る。Sandbox の環境のものは、開発用のビルドで買うたびに本番のサーバーにも届いて起きるので、Workers Logs にだけ出す
 export const appStoreServerNotificationRoutes = new OpenAPIHono<{
   Bindings: Env;
   Variables: { accountId?: string } & AppStoreNotificationLogVariables;

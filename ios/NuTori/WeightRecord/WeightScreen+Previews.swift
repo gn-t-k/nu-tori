@@ -34,8 +34,7 @@
     }
 
     extension WeightScreen {
-        /// 傾向のグラフは、記録のある日が7日に届くまでの見本（oneRecord から rejected）では線を引かず点だけで、
-        /// 使い始めた日が4週の中にあるので区切りを引く
+        /// 傾向のグラフは、記録のある日が7日に届くまでの見本（oneRecord から rejected）では線を引かず点だけで、使い始めた日が4週の中にあるので区切りを引く
         fileprivate enum Sample: CaseIterable {
             /// その日の記録は1件。傾向のグラフは、線の無い点だけ
             case oneRecord

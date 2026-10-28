@@ -7,8 +7,7 @@ const date = customType<{ data: Date; driverData: string }>({
   fromDriver: (value) => new Date(value),
 });
 
-// Better Auth の CLI（`@better-auth/cli generate`）が設定から書き出した Drizzle の宣言を、
-// d1-migrations/ の表の形（列の名前と型）に合わせて直したもの。Better Auth は Drizzle でなく D1 を直に読み書きする
+// Better Auth の CLI（`@better-auth/cli generate`）が設定から書き出した Drizzle の宣言を、d1-migrations/ の表の形（列の名前と型）に合わせて直したもの。Better Auth は Drizzle でなく D1 を直に読み書きする
 const user = sqliteTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

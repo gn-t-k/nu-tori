@@ -3,8 +3,7 @@ import { computeReviewedDailyGuide } from "./index";
 
 type Input = Parameters<typeof computeReviewedDailyGuide>[0];
 
-// 減量の目標。見直す月曜から期限の日まで 56 日、日曜の体重の傾向から目標体重まで 4 kg で、
-// 必要な速さの分は 4 kg ÷ 56 日 × 7,700 kcal = 1日に 550 kcal。
+// 減量の目標。見直す月曜から期限の日まで 56 日、日曜の体重の傾向から目標体重まで 4 kg で、必要な速さの分は 4 kg ÷ 56 日 × 7,700 kcal = 1日に 550 kcal。
 // ハード案の速さの上限は 72.4 kg × 0.75% ÷ 7 日 × 7,700 kcal = 1日に 597.3 kcal で、当たらない
 const losingGoal = {
   direction: "lose",
@@ -181,8 +180,7 @@ describe("見直した1日の目安", () => {
 
     describe("50 kcal に丸めたあとの値で分けると、大きいほうが入れ替わるとき", () => {
       beforeEach(() => {
-        // 減らす分は 5.6 kg ÷ 77 日 × 7,700 kcal = 560 kcal。丸める前は 1,885 kcal で、
-        // 推定消費カロリーの変化 +45 kcal、減らす分の変化 +40 kcal。丸めた 1,900 kcal では減らす分の変化が +55 kcal になる
+        // 減らす分は 5.6 kg ÷ 77 日 × 7,700 kcal = 560 kcal。丸める前は 1,885 kcal で、推定消費カロリーの変化 +45 kcal、減らす分の変化 +40 kcal。丸めた 1,900 kcal では減らす分の変化が +55 kcal になる
         input = {
           expenditureKcal: 2445,
           previous: { energyKcal: 1800, expenditureKcal: 2400 },

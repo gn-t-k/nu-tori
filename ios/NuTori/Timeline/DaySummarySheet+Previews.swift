@@ -20,8 +20,7 @@
     }
 
     extension DaySummarySheet {
-        /// 体重は、使い始める前のヘルスケアの記録が5日ある。記録のある日が7日にそろう weighedOnce の日から、
-        /// 体重の傾向の速さを出す。それより前の日（firstDay、unrecorded）には出さない
+        /// 体重は、使い始める前のヘルスケアの記録が5日ある。記録のある日が7日にそろう weighedOnce の日から、体重の傾向の速さを出す。それより前の日（firstDay、unrecorded）には出さない
         fileprivate enum Sample: CaseIterable {
             /// 体重を1回量った日。傾向の速さを出す
             case weighedOnce
@@ -43,8 +42,7 @@
             case foodUnavailableWithPending
             /// kcal はあるが P・F・C がすべて 0 の日。空の輪の中に kcal を書く
             case foodWithoutMacros
-            /// 昨日から減量の目標を立てている今日。丸は1日の目安のうち食べた分だけ進み、P・F・C は「食べた量 / 目安」、
-            /// 体重の下に目標の行「あと N kg・あと N 日・まだ言い切れません」と週の振り返りの行「（途中）」
+            /// 昨日から減量の目標を立てている今日。丸は1日の目安のうち食べた分だけ進み、P・F・C は「食べた量 / 目安」、体重の下に目標の行「あと N kg・あと N 日・まだ言い切れません」と週の振り返りの行「（途中）」
             case goalLosing
             /// 昨日から維持の目標を立てている今日。体重の下に「65.0 kg を保つ・保てています」
             case goalMaintaining

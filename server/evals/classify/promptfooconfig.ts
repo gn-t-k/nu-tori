@@ -1,5 +1,5 @@
 import type { UnifiedConfig } from "promptfoo";
-import type { ClassificationErrorKind } from "./judge-classification-error/judge-classification-error";
+import type { ClassificationErrorKind } from "./judge-classification-error";
 
 // 読み分けの評価（#419 の「読み分け」、#423）。
 // 評価の組を Claude Haiku 5.5 に読ませ、間違いの種類ごとの件数を namedScores に出す。

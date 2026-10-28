@@ -1,1 +1,4 @@
-export { judgeClassificationError } from "./judge-classification-error";
+export {
+  type ClassificationErrorKind,
+  judgeClassificationError,
+} from "./judge-classification-error";

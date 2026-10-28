@@ -24,9 +24,7 @@ export type AppStoreServerNotificationReceipt = {
 export type AppStoreServerNotificationResult = "written" | "duplicate" | "awaiting_revocation";
 
 // App Store のサーバー通知を、記録の変化を書く入口の1つのトランザクションで書く（#647 の「App Store のサーバー通知を受ける」）。
-// どの種類も、運んだ取引の写しを端末の知らせと同じ決まりで書き（初めての取引の ID なら取引、載っていれば取り消し）、
-// 種類ごとの事実を足す。受け取りの行が運んだサブスクリプションを指すので、受け取りだけの種類でも、
-// サブスクリプションがまだ無ければ運んだ取引で書く。事実を書いたら、サブスクリプションの状態の変更を足し、保留した推定を再開する
+// どの種類も、運んだ取引の写しを端末の知らせと同じ決まりで書き（初めての取引の ID なら取引、載っていれば取り消し）、種類ごとの事実を足す。受け取りの行が運んだサブスクリプションを指すので、受け取りだけの種類でも、サブスクリプションがまだ無ければ運んだ取引で書く。事実を書いたら、サブスクリプションの状態の変更を足し、保留した推定を再開する
 export const receiveAppStoreServerNotification = (
   writeRecordChanges: RecordChangeWriter,
   stores: {

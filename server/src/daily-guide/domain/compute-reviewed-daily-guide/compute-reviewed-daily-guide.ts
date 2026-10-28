@@ -8,8 +8,7 @@ import { computeRequiredPace, type RequiredPaceGoal } from "../compute-required-
 import { roundToFiftyKcal } from "../round-to-fifty-kcal";
 import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
 
-// 見直せた週の1日の目安。目標を立てたときと同じ式を、新しい推定消費カロリーと、
-// 見直す月曜 M の前の日曜の体重の傾向と M から期限の日までの日数で出し、前の週の1日の目安からの変化を ±150 kcal までに抑える
+// 見直せた週の1日の目安。目標を立てたときと同じ式を、新しい推定消費カロリーと、見直す月曜 M の前の日曜の体重の傾向と M から期限の日までの日数で出し、前の週の1日の目安からの変化を ±150 kcal までに抑える
 export const computeReviewedDailyGuide = ({
   expenditureKcal,
   previous,

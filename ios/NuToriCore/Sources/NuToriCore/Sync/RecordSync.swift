@@ -107,8 +107,7 @@ public actor RecordSync {
             today: today)
     }
 
-    /// 初めての目標の下見の前。ヘルスケアの体重を取り込み（このとき初めて許可を得た人は全期間分）、送り待ちを送って、
-    /// 体重記録の送り待ちが残っていなければ true。電波が無い、同期が止まった、サインインしていなければ false
+    /// 初めての目標の下見の前。ヘルスケアの体重を取り込み（このとき初めて許可を得た人は全期間分）、送り待ちを送って、体重記録の送り待ちが残っていなければ true。電波が無い、同期が止まった、サインインしていなければ false
     public func sendWeightRecordsForGoalSetup() async -> Bool {
         await importHealthChanges()
         guard let result = try? await syncAfterInFlight(), result.ending == .finished,
