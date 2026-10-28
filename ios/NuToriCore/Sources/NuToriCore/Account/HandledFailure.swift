@@ -21,6 +21,8 @@ public enum HandledFailure: Sendable, Equatable {
     case notificationPermissionRequest
     /// 目標の設定の要求（下見・目標案・自分で決める目標体重・目標を決める）が失敗したか、サーバーが断った
     case goalSetupRequest
+    /// 「購入を復元」で App Store と取引を突き合わせられなかった（`AppStore.sync()`）
+    case appStoreSync
 
     /// 取り消し、つながらない・時間切れ、締め出し（426）、ロック中のヘルスケア（想定した結果）は送らない
     public static func reported(_ error: any Error, as area: HandledFailure) -> HandledFailure? {

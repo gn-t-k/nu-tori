@@ -219,7 +219,8 @@ import SwiftData
         let subscriptionPurchases = SubscriptionPurchases(
             store: parts.subscriptionStore,
             client: client,
-            applyReportedChanges: { try await sync.applySubscriptionTransactionReport($0) })
+            applyReportedChanges: { try await sync.applySubscriptionTransactionReport($0) },
+            errorReporting: observation.errorReporting)
         // 起動したらすぐ聞き始める。聞き始める前に流れた取引は取りこぼす
         Task { await subscriptionPurchases.watchTransactionUpdates() }
         let model = RootModel(

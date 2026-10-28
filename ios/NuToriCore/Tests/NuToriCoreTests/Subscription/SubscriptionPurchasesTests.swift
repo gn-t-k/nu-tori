@@ -419,6 +419,82 @@ struct SubscriptionPurchasesTests {
         }
     }
 
+    @Suite("購入を復元して、App Store と突き合わせられなかったが、今使える取引があるとき")
+    struct RestoreSyncFailedWithEntitlements {
+        let syncError: NSError
+        let transport: ClientTransportMock
+        let reporting: ErrorReportingSessionMock
+        let purchases: SubscriptionPurchases
+
+        init() {
+            syncError = NSError(domain: "StoreKit.StoreKitError", code: 2)
+            transport = .subscription { _ in (.ok, linkedJSON) }
+            reporting = .ok()
+            purchases = .fixture(
+                store: .ok(entitlements: [.sample(id: 4)], syncResult: .failed(syncError)),
+                transport: transport, errorReporting: reporting)
+        }
+
+        @Test("今使える取引を復元のきっかけで知らせ、結びついたと返すこと")
+        func reportsEntitlements() async throws {
+            let outcome = await purchases.restore()
+
+            #expect(outcome == .linked)
+            #expect(try reportBodies(transport).map { $0["trigger"] } == ["restore"])
+        }
+
+        @Test("突き合わせられなかった誤りの種類を Sentry に送ること")
+        func reportsSyncFailure() async throws {
+            _ = await purchases.restore()
+
+            #expect(reporting.reported == [.appStoreSync])
+            let cause = try #require(reporting.reports.first?.cause)
+            #expect(cause == FailureCause(syncError))
+        }
+    }
+
+    @Suite("購入を復元して、App Store と突き合わせられず、今使える取引も無いとき")
+    struct RestoreSyncFailedWithoutEntitlements {
+        let purchases: SubscriptionPurchases
+
+        init() {
+            purchases = .fixture(
+                store: .ok(
+                    entitlements: [],
+                    syncResult: .failed(NSError(domain: "StoreKit.StoreKitError", code: 2))),
+                transport: .subscription { _ in (.ok, linkedJSON) })
+        }
+
+        @Test("復元するものが無いとは言わず、失敗したと返すこと")
+        func returnsFailed() async {
+            let outcome = await purchases.restore()
+
+            #expect(outcome == .failed(.retryLater))
+        }
+    }
+
+    @Suite("購入を復元して、つながらず App Store と突き合わせられなかったとき")
+    struct RestoreSyncUnreachable {
+        let reporting: ErrorReportingSessionMock
+        let purchases: SubscriptionPurchases
+
+        init() {
+            reporting = .ok()
+            purchases = .fixture(
+                store: .ok(
+                    entitlements: [], syncResult: .failed(URLError(.notConnectedToInternet))),
+                transport: .subscription { _ in (.ok, linkedJSON) }, errorReporting: reporting)
+        }
+
+        @Test("つながらなかったと返し、Sentry に送らないこと")
+        func returnsUnreachable() async {
+            let outcome = await purchases.restore()
+
+            #expect(outcome == .failed(.unreachable))
+            #expect(reporting.reported.isEmpty)
+        }
+    }
+
     @Suite("Apple アカウントへのサインインを閉じたとき")
     struct RestoreCancelled {
         let transport: ClientTransportMock

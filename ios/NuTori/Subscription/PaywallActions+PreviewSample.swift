@@ -14,7 +14,8 @@
                         transport: FakeSyncServer(.init(records: [], startedOn: "2026-10-01")),
                         appBuildGate: AppBuildGate(build: 0, reportVerdict: { _ in }),
                         sessionToken: { nil }),
-                    applyReportedChanges: { _ in }),
+                    applyReportedChanges: { _ in },
+                    errorReporting: PlaceholderErrorReportingSession()),
                 capture: { _ in },
                 storefront: .storeKit
             )
