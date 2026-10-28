@@ -454,7 +454,6 @@ body:has(.lp) .site-footer {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
   text-align: left;
-  counter-reset: lp-step;
 }
 
 .lp-steps li {
@@ -479,17 +478,6 @@ body:has(.lp) .site-footer {
   border-radius: 16px;
   background: var(--surface);
   border: 1px solid var(--separator);
-}
-
-.lp-numbered li {
-  counter-increment: lp-step;
-}
-
-.lp-numbered b::before {
-  content: counter(lp-step);
-  color: var(--primary);
-  margin-right: 8px;
-  font-variant-numeric: tabular-nums;
 }
 
 .lp-feature {
@@ -576,10 +564,13 @@ body:has(.lp) .site-footer {
 
 /* 昼ごはんの日の時刻を、左の縦線に点を打って追う */
 .lp-day {
+  --lp-day-indent: 20px;
+  --lp-day-line: 2px;
+  --lp-day-dot: 12px;
   list-style: none;
   margin: 0;
-  padding: 0 0 0 20px;
-  border-left: 2px solid var(--separator);
+  padding: 0 0 0 var(--lp-day-indent);
+  border-left: var(--lp-day-line) solid var(--separator);
   display: grid;
   gap: 20px;
 }
@@ -593,22 +584,22 @@ body:has(.lp) .site-footer {
 .lp-day li::before {
   content: "";
   position: absolute;
-  left: -27px;
+  /* 点の中心を縦線の中心に合わせる */
+  left: calc(-1 * (var(--lp-day-indent) + var(--lp-day-line) / 2 + var(--lp-day-dot) / 2));
   top: 6px;
-  width: 12px;
-  height: 12px;
+  width: var(--lp-day-dot);
+  height: var(--lp-day-dot);
   border-radius: 9999px;
   background: var(--primary);
 }
 
-.lp-day-time {
-  font-size: 13px;
+.lp-day li > span {
   color: var(--lp-secondary);
-  font-variant-numeric: tabular-nums;
 }
 
-.lp-day li > span:not(.lp-day-time) {
-  color: var(--lp-secondary);
+.lp-day-time {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .lp-day-card {
