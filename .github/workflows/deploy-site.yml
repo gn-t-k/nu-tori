@@ -19,6 +19,8 @@ permissions:
 jobs:
   production:
     runs-on: ubuntu-latest
+    # 通った回は長くて 15 分。止まった回を既定の 6 時間残さない
+    timeout-minutes: 30
     environment:
       name: production
       url: https://nu-tori.app/privacy

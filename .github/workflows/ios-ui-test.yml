@@ -23,6 +23,8 @@ permissions:
 jobs:
   ios-ui-test:
     runs-on: xcode-27
+    # 通った回は長くて 50 分。止まった回で、待つセッションが時間切れになった（#745）
+    timeout-minutes: 100
     outputs:
       artifact-url: ${{ steps.upload.outputs.artifact-url }}
       failures: ${{ steps.report.outputs.failures }}
@@ -72,6 +74,8 @@ jobs:
       always() && github.ref == 'refs/heads/main' &&
       (needs.ios-ui-test.result == 'success' || needs.ios-ui-test.result == 'failure')
     runs-on: ubuntu-latest
+    # 通った回は 1 分かからない。止まった回を既定の 6 時間残さない
+    timeout-minutes: 5
     permissions:
       issues: write
     env:
