@@ -55,8 +55,7 @@ public actor SubscriptionPurchases {
     }
 
     /// 「購入を復元」。App Store と突き合わせてから、今使える取引をすべて知らせる。
-    /// 突き合わせられなくても、端末にある今使える取引を知らせる。StoreKit は今使える取引を自動で最新に保ち、
-    /// 新しい端末でも最初の起動から読める。TestFlight では、パスワードを入れたあとに `AppStore.sync()` が投げることがある（#829）
+    /// 突き合わせられなくても、端末にある今使える取引を知らせる。StoreKit は今使える取引を自動で最新に保ち、新しい端末でも最初の起動から読める。TestFlight では、パスワードを入れたあとに `AppStore.sync()` が投げることがある（#829）
     public func restore() async -> RestoreOutcome {
         var syncFailure: (any Error)?
         switch await store.syncWithAppStore() {
