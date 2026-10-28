@@ -23,8 +23,7 @@ type ExampleIngredient = {
 
 type ExampleMeal = { key: string; dish: string; ingredients: ExampleIngredient[] };
 
-// 写真の食事
-const meals: ExampleMeal[] = [
+const photoMeals: ExampleMeal[] = [
   {
     key: "oyakodon",
     dish: "親子丼",
@@ -206,7 +205,7 @@ const reviewExample = {
 console.log(
   JSON.stringify(
     {
-      meals: meals.map(toMealExample),
+      meals: photoMeals.map(toMealExample),
       textMeals: textMeals.map(toMealExample),
       review: reviewExample,
     },

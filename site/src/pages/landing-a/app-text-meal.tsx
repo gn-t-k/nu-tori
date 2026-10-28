@@ -14,6 +14,6 @@ export const AppTextMeal = ({
 }) => (
   <div class="app-text-meal">
     <p class="app-bubble">{text}</p>
-    <AppMealCard meal={meal} entry={{ kind: "text", eatenTime }} />
+    <AppMealCard entry={{ kind: "text", meal, eatenTime }} />
   </div>
 );

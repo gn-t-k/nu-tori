@@ -30,6 +30,7 @@ export const landingAPage = createLandingVariantPage({
     if (ochazuke === undefined) {
       throw new Error("撮るだけの節の見本のお茶漬けが、書いた食事の見本に無い");
     }
+    const forgottenMealText = "朝はお茶漬けを食べた";
     return (
       <div class="lp">
         <section class="lp-band lp-hero">
@@ -57,7 +58,7 @@ export const landingAPage = createLandingVariantPage({
               <li>
                 <div class="lp-shot" aria-hidden="true" />
                 <b>食べる前に撮る</b>
-                <span>撮り忘れたら「朝はお茶漬けを食べた」と書けばOKです。</span>
+                <span>撮り忘れたら「{forgottenMealText}」と書けばOKです。</span>
               </li>
               <li>
                 <div class="lp-shot" aria-hidden="true" />
@@ -73,18 +74,19 @@ export const landingAPage = createLandingVariantPage({
             <div>
               <h2>撮って送るだけ。撮り忘れたら、書いて送るだけ</h2>
               <p>
-                写真を送ると、料理と材料と量を読み取って栄養を出します。撮り忘れたら、「朝はお茶漬けを食べた」と書いて送れば、同じように記録されます。
+                写真を送ると、料理と材料と量を読み取って栄養を出します。撮り忘れたら、「
+                {forgottenMealText}」と書いて送れば、同じように記録されます。
               </p>
             </div>
             {/* 昼に撮って送ったあと、朝の記録を忘れていたのに気づいて書いて送った、アプリの画面の下のほう */}
             <div class="lp-plate app-timeline">
               <div class="app-own">
                 <span class="app-own-time">12:30</span>
-                <AppMealCard meal={curry} entry={{ kind: "photo", photo: curry.photo }} />
+                <AppMealCard entry={{ kind: "photo", meal: curry }} />
               </div>
               <div class="app-own">
                 <span class="app-own-time">12:42</span>
-                <AppTextMeal text="朝はお茶漬けを食べた" meal={ochazuke} eatenTime="7:30" />
+                <AppTextMeal text={forgottenMealText} meal={ochazuke} eatenTime="7:30" />
               </div>
               <AppComposer />
             </div>

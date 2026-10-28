@@ -7,34 +7,39 @@ import type { ExampleMeal, MealSummary } from "./example-meals";
 // 撮った食事は写真を上に 4:3 で出し、時刻はカードの外に置くので書かない（DESIGN.md の own-record-time）。
 // 書いた食事は写真の場所を持たず、文章とその食事のかたまりの中で食べた時刻を書く
 export const AppMealCard = ({
-  meal,
   entry,
 }: {
-  meal: MealSummary;
-  entry: { kind: "photo"; photo: ExampleMeal["photo"] } | { kind: "text"; eatenTime: string };
-}) => (
-  <div class="app-meal">
-    {match(entry)
-      .with({ kind: "photo" }, ({ photo }) => (
-        <img src={photo.src} alt={photo.alt} width="800" height="600" loading="lazy" />
-      ))
-      .with({ kind: "text" }, () => null)
-      .exhaustive()}
-    <div class="app-meal-body">
-      <div class="app-meal-text">
-        <span class="app-meal-name">{meal.dish}</span>
-        {match(entry)
-          .with({ kind: "photo" }, () => null)
-          .with({ kind: "text" }, ({ eatenTime }) => <span class="app-meal-time">{eatenTime}</span>)
-          .exhaustive()}
-        <span class="app-meal-nutrition">
-          <b>{appText.kcal(meal.totals.energyKcal)}</b>
-          <span>P {appText.grams(meal.totals.proteinG)}</span>
-          <span>F {appText.grams(meal.totals.fatG)}</span>
-          <span>C {appText.grams(meal.totals.carbohydrateG)}</span>
-        </span>
+  entry:
+    | { kind: "photo"; meal: ExampleMeal }
+    | { kind: "text"; meal: MealSummary; eatenTime: string };
+}) => {
+  const { meal } = entry;
+  return (
+    <div class="app-meal">
+      {match(entry)
+        .with({ kind: "photo" }, ({ meal: { photo } }) => (
+          <img src={photo.src} alt={photo.alt} width="800" height="600" loading="lazy" />
+        ))
+        .with({ kind: "text" }, () => null)
+        .exhaustive()}
+      <div class="app-meal-body">
+        <div class="app-meal-text">
+          <span class="app-meal-name">{meal.dish}</span>
+          {match(entry)
+            .with({ kind: "photo" }, () => null)
+            .with({ kind: "text" }, ({ eatenTime }) => (
+              <span class="app-meal-time">{eatenTime}</span>
+            ))
+            .exhaustive()}
+          <span class="app-meal-nutrition">
+            <b>{appText.kcal(meal.totals.energyKcal)}</b>
+            <span>P {appText.grams(meal.totals.proteinG)}</span>
+            <span>F {appText.grams(meal.totals.fatG)}</span>
+            <span>C {appText.grams(meal.totals.carbohydrateG)}</span>
+          </span>
+        </div>
+        <AppChevron />
       </div>
-      <AppChevron />
     </div>
-  </div>
-);
+  );
+};

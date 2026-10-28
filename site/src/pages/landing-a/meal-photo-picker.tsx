@@ -21,7 +21,7 @@ export const MealPhotoPicker = () => (
     </div>
     {exampleMeals.map((meal, index) => (
       <div class="lp-example-panel" data-meal-panel={meal.key} hidden={index !== 0}>
-        <AppMealCard meal={meal} entry={{ kind: "photo", photo: meal.photo }} />
+        <AppMealCard entry={{ kind: "photo", meal }} />
         <MealTotals meal={meal} />
         <MealIngredients meal={meal} />
       </div>
