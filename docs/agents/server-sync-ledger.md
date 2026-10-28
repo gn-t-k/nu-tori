@@ -1,7 +1,5 @@
 # サーバーの同期の帳簿と記録の種類
 
-パスは `server/` から数える。
-
 - 同期の共通の仕組み（帳簿）は `src/domain/sync-ledger/`。種類は帳簿に `RecordKind`（名前、書き込みを受け付けるかの決定、今の値を読む口）を渡す。冪等、控え、変更の並び、500 件の区切りは帳簿が持つので、種類に書き写さない
 - 種類の名前を書くのは、名前の一覧（`domain/record-types.ts`）の1か所だけにする。何も import しない定数で、`RecordType` と、帳簿の表の `text({ enum })`（`durable-object/sync-ledger-tables.ts`）がここから引く。`record_type` の列は TEXT で、SQL に値の並びを書いていないので、種類を足しても移行は要らない
 - 種類を足すときは、一覧に名前を足し、種類のまとまりを `src/<種類>/` に作って、種類、置き場、受け口の入口を置き、登録簿に1行ずつ足す（どれも名前の順）: `domain/create-record-kinds.ts`、`domain/record-kind-stores.ts`、`durable-object/create-record-kind-stores.ts`、`http/sync-routes/http-record-kinds.ts`。ドメイン層は Durable Object と受け口を import できず、層ごとに登録簿が分かれるため4か所になる。一覧に足した名前が種類の登録簿（`create-record-kinds.ts`）か受け口の登録簿（`RecordType` をキーにした表）に無いと、型検査が止める。一覧に無い名前の種類も止める。書き込みのスキーマの並び（`registered-write-schemas.ts`）と、OpenAPI の値の部品は、受け口の登録簿から導く。書き込みの `oneOf` の並びは表の順で決まるので、並びが変わるのを受け入れる

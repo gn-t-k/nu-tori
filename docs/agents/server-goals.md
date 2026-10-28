@@ -1,7 +1,5 @@
 # 目標の設定と週の見直し（サーバー）
 
-パスは `server/` から数える。
-
 ## 目標の設定の要求
 
 - 目標の設定は、同期の外でその場で答える要求で進める。経路は `src/http/goal-setup-routes/`（`/v1/goal-setup/*`）、入口は `src/goal/domain/` の `previewGoalSetup`（目標の下見）・`proposeGoals`（目標案）・`assessCustomTargetWeight`（自分で決める目標体重）で、その人の Durable Object の同じ名前の RPC から呼ぶ。この3つは何も書かない。ただし、目標を決める要求と同じく、答える前にまだ見直していない週を見るので、見直しが要るときだけ週の見直しの行を書く（下の「週の見直し」）

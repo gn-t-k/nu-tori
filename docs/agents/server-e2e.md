@@ -1,7 +1,5 @@
 # 確かめのジョブのためのサインインの口
 
-パスは `server/` から数える。
-
 - 開発用の環境で主な流れを確かめるジョブ（`docs/agents/tooling.md` の「CI」）は、Apple を通せないので、`POST /v1/e2e/sessions`（`src/http/e2e-session-routes/`）でサインインする。毎回新しいアカウントを作り、`sessionToken` と `accountId` を返す。OpenAPI の文書には載せない（アプリのクライアントに入れない）
 - 本番で開くと誰でも入れてしまうので、次のすべてが揃ったときだけ開き、ほかは口が無いのと同じ 404 にする
   1. `SENTRY_ENVIRONMENT` が `development`（許可する名前を挙げる。本番や綴りの違う名前は閉じる）
