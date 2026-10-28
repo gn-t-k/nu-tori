@@ -20,7 +20,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 
 ### コーディングの好み
 
-好みの入口は `CODING_STANDARDS.md` で、レビュー役が読む。PR を出す前と PR に push する前に、`docs/agents/git.md` の好みのレビューを通す。好みのほうが違うと思ったら、ユーザーに聞いてから `CODING_STANDARDS.md` とそこから指す文書を直す。
+好みの入口は `CODING_STANDARDS.md` で、レビュー役が読む。PR を出す前と PR に push する前に、`docs/agents/git.md` の好みのレビューを通す。`/implement` と `/implement-spec` の中で `/code-review` を呼ぶときも、`docs/agents/git.md` の「好みのレビュー」を読む。好みのほうが違うと思ったら、ユーザーに聞いてから `CODING_STANDARDS.md` とそこから指す文書を直す。
 
 ### 進め方
 
