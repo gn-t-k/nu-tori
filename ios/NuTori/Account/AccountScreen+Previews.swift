@@ -13,7 +13,7 @@
                 cameraAccess: sample.cameraAccess,
                 notificationPermission: sample.notificationPermission,
                 deletion: sample.deletion,
-                signOut: sample.signOut,
+                signOutStep: sample.signOutStep,
                 appVersion: "1.0",
                 appBuild: 53,
                 actions: .noop,
@@ -32,7 +32,7 @@
                 cameraAccess: .permitted,
                 notificationPermission: .permitted,
                 deletion: .idle,
-                signOut: .idle,
+                signOutStep: .idle,
                 appVersion: "1.0",
                 appBuild: 53,
                 actions: .noop,
@@ -90,6 +90,8 @@
             case deletionUnreachable
             /// サーバーが断り、消せなかった
             case deletionRetryLater
+            /// サインアウトの前に、送り待ちがあるかを読んでいる
+            case checkingPendingWrites
             /// 送り待ちがあり、サインアウトを確かめている
             case signOutConfirming
             /// サインインの画面に替わるのを待っている
@@ -109,7 +111,8 @@
                 switch self {
                 case .notSendingUsageData: false
                 case .sendingUsageData, .deleting, .deletionUnreachable, .deletionRetryLater,
-                    .signOutConfirming, .signingOut, .cameraNotPermitted, .cameraNotYetRequested,
+                    .checkingPendingWrites, .signOutConfirming, .signingOut, .cameraNotPermitted,
+                    .cameraNotYetRequested,
                     .notificationsNotPermitted,
                     .notificationsNotYetRequested, .notificationsReading:
                     true
@@ -119,7 +122,7 @@
             var cameraAccess: CameraAccess {
                 switch self {
                 case .sendingUsageData, .notSendingUsageData, .deleting, .deletionUnreachable,
-                    .deletionRetryLater, .signOutConfirming, .signingOut,
+                    .deletionRetryLater, .checkingPendingWrites, .signOutConfirming, .signingOut,
                     .notificationsNotPermitted, .notificationsNotYetRequested,
                     .notificationsReading:
                     .permitted
@@ -131,7 +134,8 @@
             var notificationPermission: NotificationPermission? {
                 switch self {
                 case .sendingUsageData, .notSendingUsageData, .deleting, .deletionUnreachable,
-                    .deletionRetryLater, .signOutConfirming, .signingOut, .cameraNotPermitted,
+                    .deletionRetryLater, .checkingPendingWrites, .signOutConfirming, .signingOut,
+                    .cameraNotPermitted,
                     .cameraNotYetRequested:
                     .permitted
                 case .notificationsNotPermitted: .notPermitted
@@ -145,7 +149,7 @@
                 case .sendingUsageData, .notSendingUsageData, .cameraNotPermitted,
                     .cameraNotYetRequested, .notificationsNotPermitted,
                     .notificationsNotYetRequested,
-                    .notificationsReading, .signOutConfirming, .signingOut:
+                    .notificationsReading, .checkingPendingWrites, .signOutConfirming, .signingOut:
                     .idle
                 case .deleting: .deleting
                 case .deletionUnreachable: .failed(.unreachable)
@@ -153,13 +157,14 @@
                 }
             }
 
-            var signOut: AccountScreen.SignOut {
+            var signOutStep: AccountScreen.SignOutStep {
                 switch self {
                 case .sendingUsageData, .notSendingUsageData, .deleting, .deletionUnreachable,
                     .deletionRetryLater, .cameraNotPermitted, .cameraNotYetRequested,
                     .notificationsNotPermitted, .notificationsNotYetRequested,
                     .notificationsReading:
                     .idle
+                case .checkingPendingWrites: .checkingPendingWrites
                 case .signOutConfirming: .confirming
                 case .signingOut: .signingOut
                 }

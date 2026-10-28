@@ -158,7 +158,7 @@ struct AccountScreen: View {
         }
     }
 
-    /// deletion と signOut は開いたときの状態。削除とサインアウトは画面の中で進むので、あとから渡し直しても変わらない
+    /// deletion と signOutStep は開いたときの状態。削除とサインアウトは画面の中で進むので、あとから渡し直しても変わらない
     init(
         subscription: AccountSubscriptionRow?,
         openPaywall: @escaping () -> Void,
@@ -166,7 +166,7 @@ struct AccountScreen: View {
         cameraAccess: CameraAccess,
         notificationPermission: NotificationPermission?,
         deletion: Deletion,
-        signOut: SignOut,
+        signOutStep: SignOutStep,
         appVersion: String,
         appBuild: Int,
         actions: AccountActions,
@@ -182,7 +182,7 @@ struct AccountScreen: View {
         self.actions = actions
         self.onClose = onClose
         _deletion = State(initialValue: deletion)
-        _signOutStep = State(initialValue: signOut)
+        _signOutStep = State(initialValue: signOutStep)
     }
 
     enum Deletion {
@@ -191,7 +191,7 @@ struct AccountScreen: View {
         case failed(AccountDeletionFailure)
     }
 
-    enum SignOut {
+    enum SignOutStep {
         case idle
         /// 送り待ちがあるかを読んでいる
         case checkingPendingWrites
@@ -213,7 +213,7 @@ struct AccountScreen: View {
     @State private var accountId: String?
     @State private var deletion: Deletion
     @State private var confirmingDeletion = false
-    @State private var signOutStep: SignOut
+    @State private var signOutStep: SignOutStep
     @State private var presentedDeletionGuide: PresentedDeletionGuide?
     /// 「アカウントを削除」を押して、退会の案内を出すかを読んでいる
     @State private var preparingDeletion = false
