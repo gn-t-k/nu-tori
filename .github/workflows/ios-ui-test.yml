@@ -89,9 +89,10 @@ jobs:
         env:
           TEST_TITLE_PREFIX: "${{ env.TITLE }}: "
         run: |
-          issues="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
-            --jq '.[] | select(.pull_request == null and (.title == env.TITLE or (.title | startswith(env.TEST_TITLE_PREFIX)))) | {number, title}' |
-            jq -sc .)"
+          # パイプで jq に渡すと gh api の失敗が消え、開いた Issue があっても2つ目を立てるので、受けてから配列にする
+          matches="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            --jq '.[] | select(.pull_request == null and (.title == env.TITLE or (.title | startswith(env.TEST_TITLE_PREFIX)))) | {number, title}')"
+          issues="$(jq -sc . <<< "$matches")"
           echo "issues=$issues" >> "$GITHUB_OUTPUT"
       - name: 緑に戻ったので Issue を閉じる
         if: needs.ios-ui-test.result == 'success'
