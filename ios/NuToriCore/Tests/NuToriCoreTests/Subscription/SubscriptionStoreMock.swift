@@ -25,7 +25,7 @@ final class SubscriptionStoreMock: SubscriptionStore, Sendable {
     ) -> SubscriptionStoreMock {
         SubscriptionStoreMock(
             products: .failure(error), unfinished: [],
-            entitlements: [], syncResult: .failed, autoRenewal: autoRenewal)
+            entitlements: [], syncResult: .failed(error), autoRenewal: autoRenewal)
     }
 
     /// `Transaction.updates` に取引を流す

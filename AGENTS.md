@@ -27,7 +27,8 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 - ユーザーへの返事と、リポジトリに置く文書は日本語で書く
 - 比べるものや流れは、表より図で見せる
 - 選択肢を尋ねるときは、今の形と、具体の場面（どの操作で何が起きるか）と、変えたあとの形（フォルダの木・型・表）を見せる。`GLOSSARY.md` に無い語は、使う前に一言で定義する
-- UI や振る舞いの選択肢を尋ねるときは、`/prototype` で見比べられるものを先に作る。作った HTML は Artifact（claude.ai の非公開のページ）にも載せ、リンクを Issue に書く。開発者が iPad の Claude アプリで開いて見比べるため。正本はブランチのファイルで、直したら同じページに載せ直す
+- UI や振る舞いの選択肢を尋ねるときは、`/prototype` で見比べられるものを先に作る
+- 試作を作る・探すときは、`docs/agents/decisions.md` の「試作の置き場」を読む
 - 工程のゲートや引き継ぎなどの大きな確認をするときは、`docs/agents/gate-review.md` を読む
 
 ### 情報の置き場
@@ -37,7 +38,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 ### リポジトリ全体の決定
 
 - アプリは `ios/`、サーバーは `server/`、`nu-tori.app` のページは `site/` に置く（モノレポ）。`ios/`・`server/`・`site/` のファイルを読み書きする前に、そのディレクトリの `AGENTS.md` を読む
-- 確かめる手順の入口は `scripts/check` の1本にする。引数なしでは、まだ push していない変更と作業中の変更が関わる対象を、`ios`・`server`・`site`・`scripts` を渡すと渡した対象の全部を確かめ、`--fix` で直してから確かめる。エージェントも人も CI も同じものを呼ぶ。エージェントは、変えたらコミットの前に `scripts/check --fix` を回し、0 で終わるまで直す。数分かかるときは Bash の `run_in_background` で回し、終わりの知らせで結果を読む（止めるときは PID を確かめて `kill <PID>` で止める。コマンドライン全体で探す `pkill -f`・`pgrep -f` は、Claude Code では hook が拒む）
+- 確かめる手順の入口は `scripts/check` の1本にする。引数なしでは、まだ push していない変更と作業中の変更が関わる対象を、`ios`・`server`・`site`・`scripts` を渡すと渡した対象の全部を確かめ、`--fix` で直してから確かめる。エージェントも人も CI も同じものを呼ぶ。エージェントは、変えたらコミットの前に `scripts/check --fix` を回し、0 で終わるまで直す。数分かかるときは Bash の `run_in_background` で回し、その終わりの知らせ1つを待って結果を読む（前景の `until`・`sleep` では待たない。止めるときは PID を確かめて `kill <PID>` で止める。コマンドライン全体で探す `pkill -f`・`pgrep -f` は、Claude Code では hook が拒む）。check の終わりの知らせを待つあいだに、クラウドのセッションの Stop hook が未コミット・未 push を言ってきても、コミットせずに「check 待ち」と返して止まる（hook は2回目の Stop では黙る）
 - スキルやサブエージェントの定義を足す・直すとき、worktree でサブエージェントを立てるとき、`/wizard` でウィザードを書くとき、hook・許可のルール・MCP・CI の設定を足す・直すとき、Sentry・App Store Connect・Cloudflare・PostHog を読むとき、本番の知らせを Issue にする仕組み（`production-alerts`）に触るとき、`@nu-tori.app` からメールを送る道具を足すときは、`docs/agents/tooling.md` を読む
 - 依存と道具（Swift・Node・pnpm など）の版を上げるとき、依存の PR とその落ちた Issue を扱うとき、依存の更新で壊れた本番を戻すときは、`docs/agents/dependencies.md` を読む
 - 環境は本番と開発用の2つ。TestFlight と App Store の版は本番に、デバッグビルドは開発用につなぐ。DB、写真の置き場、LLM の API キー、Sign in with Apple の鍵は環境ごとに分け、開発用の LLM のキーには低い費用の上限をかける。Workers AI は、呼ぶときに環境ごとの AI Gateway を通し、開発用のゲートウェイに低い支出の上限をかける
@@ -55,7 +56,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 
 ### 公開リポジトリ
 
-このリポジトリは公開して開発する（ADR-0010）。開発者自身の健康データ（ヘルスケアの書き出しなど）は、`.gitignore` したファイル（`prototype/0001-expenditure` の `data.local.js` など）にだけ置き、コミットにも Issue・PR・コメントにも書かない。開発者が良いと言ったものは除く。
+このリポジトリは公開して開発する（ADR-0010）。開発者自身の健康データ（ヘルスケアの書き出しなど）は、`.gitignore` したファイル（ルートの `.gitignore` が除く `*.local.js`。試作のフォルダの `data.local.js` など）にだけ置き、コミットにも Issue・PR・コメントにも書かない。開発者が良いと言ったものは除く。
 
 ### git
 

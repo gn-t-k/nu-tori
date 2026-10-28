@@ -7,7 +7,7 @@ public import Observation
 public final class PaywallSession {
     /// 購入の選択肢に渡す購入者のトークン。受け取るまで買えない
     public private(set) var purchaseToken: PurchaseToken = .requesting
-    /// 購入ボタンの上に出す1行
+    /// 購入と復元の結果の1行
     public private(set) var message: String?
     /// 結びついたので、シートを閉じる
     public private(set) var isFinished = false

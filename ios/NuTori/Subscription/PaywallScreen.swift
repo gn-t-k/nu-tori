@@ -9,7 +9,7 @@ struct PaywallScreen: View {
     let content: PaywallContent
     let storefront: PaywallStorefront
     let purchaseToken: PaywallSession.PurchaseToken
-    /// 購入ボタンの上に出す1行
+    /// 購入と復元の結果の1行。画面の上に固定して出す
     let message: String?
     let purchaseCompleted: (AppStorePurchaseAttempt) async -> Void
     let purchaseFailed: () -> Void
@@ -19,6 +19,17 @@ struct PaywallScreen: View {
     var body: some View {
         NavigationStack {
             storefrontView
+                // 結果の1行は、どこまで送っていても見えないと、押しても何も起きないように見えるので、上に固定する
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if let message {
+                        Text(message)
+                            .font(.footnote)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(.bar)
+                            .accessibilityIdentifier("paywall-message")
+                    }
+                }
                 // 押せなくした課金の部分の外に置き、「購入を復元」と「閉じる」はいつも押せるようにする
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
@@ -120,11 +131,6 @@ struct PaywallScreen: View {
                     .foregroundStyle(.secondary)
             }
             summary
-            if let message {
-                Text(message)
-                    .font(.footnote)
-                    .accessibilityIdentifier("paywall-message")
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
