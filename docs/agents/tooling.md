@@ -26,6 +26,7 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 
 - `session-start.sh`（クラウドで始めたとき）: Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる。依存は、サブエージェントがライブラリのソースを読めるよう入れる（無いと CDN から取り直していた）
 - `warn-behind-main.sh`（クラウドで続けたとき〈resume・compact・clear〉と、手元で始めたときと続けたとき）: 作業ツリーが origin/main より遅れていたら知らせ、手元では main を取り込ませる。長いセッションのあいだに main が進み、古い版の働き方の文書を読んでチケットを切り違えたため。手元の worktree は古い main から作られ、まだ無い道具を探して止まったため
+- `block-pkill-f.sh`（Bash を呼ぶ前）: `pkill -f`・`pgrep -f`（`-af` のような束ね方と `--full` を含む）を含むコマンドを止め、終わりの知らせを待つか PID を指して止めるよう返す。`-f` はコマンドライン全体に当たり、そのパターンを含む自分のシェルまで止める（exit 144）。`AGENTS.md` の注意書きだけでは、1週間に4つのセッションで起きたため（#787）。文字列に書いただけでも止まるので、コミットメッセージや本文に書くときは Write で書いたファイルで渡す（heredoc も止まる）
 
 ## 許可のルール
 
