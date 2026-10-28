@@ -2,12 +2,13 @@ import XCTest
 
 extension XCTestCase {
     /// 要素が条件に合うまで待つ。推定の結果は、取りに行く間隔（数秒おき）で届く
-    @MainActor func waitUntil(_ element: XCUIElement, matches format: String, _ argument: String)
-        -> Bool
-    {
+    @MainActor func waitUntil(
+        _ element: XCUIElement, matches format: String, _ argument: String,
+        timeout: TimeInterval = 30
+    ) -> Bool {
         let expectation = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: format, argument), object: element)
-        return XCTWaiter().wait(for: [expectation], timeout: 30) == .completed
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 
     /// 要素が画面の中に入って押せるようになるまで待つ
