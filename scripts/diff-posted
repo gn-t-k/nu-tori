@@ -7,6 +7,7 @@ usage() {
     cat >&2 << 'USAGE'
 使い方: scripts/diff-posted <元の本文のファイル> <API のパス>
   API のパス  issues/<番号>（Issue と PR の本文）、issues/comments/<ID>（コメント）、pulls/<番号>
+              前に repos/<owner>/<repo>/ を付けるとそのリポジトリを、付けなければ gn-t-k/nu-tori を読む
 同じなら 0、違えば差分を出して 1 で終わる。末尾の署名と空行、行末の空白、CR は比べない
 USAGE
     exit 2
@@ -27,12 +28,10 @@ normalize() {
 }
 
 [ $# -eq 2 ] && [ -f "$1" ] || usage
-case "$2" in
-    issues/[0-9]* | issues/comments/[0-9]* | pulls/[0-9]*) ;;
-    *) usage ;;
-esac
+[[ "$2" =~ ^(repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/)?(issues/[0-9]+|issues/comments/[0-9]+|pulls/[0-9]+)$ ]] || usage
+path="${BASH_REMATCH[1]:-repos/gn-t-k/nu-tori/}${BASH_REMATCH[2]}"
 
-posted="$(gh api "repos/gn-t-k/nu-tori/$2" --jq .body)"
+posted="$(gh api "$path" --jq .body)"
 if diff -u --label 元の本文 --label "書いた本文（$2）" <(normalize < "$1") <(normalize <<< "$posted"); then
     echo "同じ"
 else
