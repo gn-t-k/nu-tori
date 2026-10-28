@@ -661,6 +661,11 @@ check_site_font_sizes() {
         return 1
     fi
     if ! awk -v minimum="$minimum" -v file="site/public/site.css" '
+        # 一括指定（font:）の大きさは読み分けないので、font-size で書かせる
+        /(^|[^-])font:/ {
+            printf "%s:%d: font: の一括指定\n", file, FNR > "/dev/stderr"
+            failed = 1
+        }
         /font-size:/ {
             value = $0
             sub(/.*font-size:[[:space:]]*/, "", value)
@@ -672,7 +677,7 @@ check_site_font_sizes() {
         }
         END { exit failed }
     ' "$site/public/site.css"; then
-        echo "font-size は px で、DESIGN.md の typography の最小（${minimum}px）以上にする（DESIGN.md「Typography」）" >&2
+        echo "font-size は px で書き、DESIGN.md の typography の最小（${minimum}px）以上にする（DESIGN.md「Typography」）" >&2
         return 1
     fi
 }

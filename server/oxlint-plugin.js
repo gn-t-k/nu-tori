@@ -205,8 +205,8 @@ export default {
             if (
               next !== undefined &&
               next.loc.start.line === comment.loc.end.line + 1 &&
-              /(、|を|が|は|に|で|へ)\s*$/u.test(comment.value) &&
-              !/^\s*-/u.test(next.value)
+              /(、|を|が|は|に|で|へ|て|(?<!も)の)\s*$/u.test(comment.value) &&
+              !/^\s*- /u.test(next.value)
             ) {
               context.report({
                 node: comment,
@@ -338,8 +338,7 @@ const resolveModule = (specifierPath) =>
     path.join(specifierPath, "index.tsx"),
   ].find((candidate) => existsSync(candidate) && statSync(candidate).isFile());
 
-const isInside = (directory, ancestor) =>
-  directory === ancestor || directory.startsWith(`${ancestor}${path.sep}`);
+const isInside = (directory, ancestor) => !path.relative(ancestor, directory).startsWith("..");
 
 const relativeSpecifier = (from, to) => {
   const relative = path.relative(from, to);

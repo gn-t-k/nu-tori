@@ -27,8 +27,8 @@ custom_rules:
     severity: error
   no_wrapped_comment:
     name: "コメントの文を途中で折り返さない"
-    # 「、」と助詞で終わる行は文の途中。次の行が「- 」で始まる箇条書き（DocC の - Parameters: など）は当てない。server/oxlint-plugin.js の no-wrapped-comment と同じ決まり
-    regex: "^[ \\t]*//[^\\n]*(、|を|が|は|に|で|へ)[ \\t]*\\n[ \\t]*//(?![ \\t/]*-)"
+    # 「、」と助詞で終わる行は文の途中（「もの」は文の終わりになるので除く）。次の行が「- 」で始まる箇条書き（DocC の - Parameters: など）は当てない。server/oxlint-plugin.js の no-wrapped-comment と同じ決まり
+    regex: "^[ \\t]*//[^\\n]*(、|を|が|は|に|で|へ|て|(?<!も)の)[ \\t]*\\n[ \\t]*//(?![ \\t/]*- )"
     match_kinds: [comment, doccomment]
     message: "コメントの文を途中で折り返さず、1行で書く。改行は人が必要と思ったときに文の切れ目で入れる（docs/agents/coding-style.md「コードを説明する情報」）"
     severity: error
