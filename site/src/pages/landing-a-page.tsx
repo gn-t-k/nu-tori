@@ -46,20 +46,22 @@ export const landingAPage = createLandingVariantPage({
             <ol class="lp-steps">
               <li>
                 <div class="lp-shot" aria-hidden="true" />
-                <b>朝、体重を量る</b>
+                <b>体重を量る</b>
                 <span>
-                  ヘルスケアにつながる体重計なら、量るだけで入ります。無ければ手で入れます。
+                  ヘルスケアと同期するので、ヘルスケアに入った体重はそのまま入ります。手で入れることもできます。
                 </span>
               </li>
               <li>
                 <div class="lp-shot" aria-hidden="true" />
                 <b>食べる前に撮る</b>
-                <span>撮り忘れたら「昼にカレー」と書きます。</span>
+                <span>撮り忘れたら「昼にカレー」と書けばOKです。</span>
               </li>
               <li>
                 <div class="lp-shot" aria-hidden="true" />
-                <b>毎週、目安が変わる</b>
-                <span>体重の動きと食べた量から、1日に食べる量の目安を直します。</span>
+                <b>毎週、食べる量が調整される</b>
+                <span>
+                  体重の動きと食べた量から、あなたにちょうどいい1日の量を毎週計算し直します。
+                </span>
               </li>
             </ol>
           </div>
