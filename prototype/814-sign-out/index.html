@@ -90,7 +90,12 @@ button.row { cursor: pointer; } button.row:focus-visible { outline: 2px solid va
     <h3>サインインの画面の書き出し（サインアウトしたあと）</h3>
     <div class="ctrl">
       <label><input type="radio" name="lead" value="again" id="lead-again" checked> 今の「もう一度サインインしてください」を使う</label>
-      <label><input type="radio" name="lead" value="out" id="lead-out"> サインアウトのとき専用の文にする</label>
+      <label><input type="radio" name="lead" value="out" id="lead-out"> サインアウトのとき専用の文にする（不採用）</label>
+    </div>
+    <h3>案 C の一番上の段（端末はメールを持たないので、アカウントを見分ける値は出せない）</h3>
+    <div class="ctrl">
+      <label><input type="radio" name="ctop" value="label" checked> 「Apple でサインイン中」の行（値なし）＋サインアウト</label>
+      <label><input type="radio" name="ctop" value="button"> サインアウトだけ＋下に説明の1行</label>
     </div>
     <h3>今の状態</h3>
     <div class="state" id="state"></div>
@@ -108,7 +113,7 @@ button.row { cursor: pointer; } button.row:focus-visible { outline: 2px solid va
 const VARIANTS = {
   A: { name: '削除の上に独立した段', desc: '「アカウントを削除」の段の上に、「サインアウト」だけの段を足す。確かめは中央のダイアログ。押せる色はアクセント色で、削除の赤と分ける。' },
   B: { name: '削除と同じ段にまとめる', desc: '最後の段を「サインアウト」と「アカウントを削除」の2行にする。確かめは下から出るシート（iOS の設定アプリの Apple アカウントの画面と同じ形）。' },
-  C: { name: '一番上にアカウントの段', desc: '一覧の一番上に「Apple でサインイン中」の段を置き、その下にサインアウトを置く。どのアカウントで入っているかが見える。確かめは中央のダイアログ。' },
+  C: { name: '一番上にアカウントの段', desc: '一覧の一番上にサインアウトの段を置く。端末はメールを持たない（サーバーは仮のメールを入れる）ので、どのアカウントかを見分ける値は出せない。上の段の中身は右の切り替えで見比べる。確かめは中央のダイアログ。' },
 };
 const keys = Object.keys(VARIANTS);
 let variant = new URLSearchParams(location.search).get('variant');
@@ -157,7 +162,9 @@ function accountList() {
   if (variant === 'B') return `${commonTop}
     <div class="sec${hl()}"><div class="group">${signOutBtn}${deleteBtn}</div>${deleteFoot}</div>${version}`;
   return `
-    <div class="sec${hl()}"><div class="group"><div class="row"><span>Apple でサインイン中</span><span class="val">…@privaterelay</span></div>${signOutBtn}</div></div>
+    ${document.querySelector('input[name=ctop]:checked').value === 'label'
+      ? `<div class="sec${hl()}"><div class="group"><div class="row"><span>Apple でサインイン中</span></div>${signOutBtn}</div></div>`
+      : `<div class="sec${hl()}"><div class="group">${signOutBtn}</div><div class="foot">同じ Apple ID でサインインすると、記録はそのまま戻ります。</div></div>`}
     ${commonTop}
     <div class="sec"><div class="group">${deleteBtn}</div>${deleteFoot}</div>${version}`;
 }
