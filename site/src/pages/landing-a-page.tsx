@@ -57,9 +57,7 @@ export const landingAPage = createLandingVariantPage({
               <li>
                 <div class="lp-shot" aria-hidden="true" />
                 <b>目安が合っていく</b>
-                <span>
-                  体重の動きと食べた量から、あなたにちょうどいい1日の量を毎週計算し直します。
-                </span>
+                <span>体重の動きと食べた量から、1日の量を毎週計算し直します。</span>
               </li>
             </ol>
           </div>
