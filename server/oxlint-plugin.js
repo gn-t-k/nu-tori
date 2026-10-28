@@ -345,19 +345,21 @@ const relativeSpecifier = (from, to) => {
   return relative.startsWith(".") ? relative : `./${relative}`;
 };
 
+// エディタのように同じプロセスで何度も回すときに、直した index.ts を読み直すよう、更新の時刻ごとに持つ
 const reexportedModulesByIndex = new Map();
 
 const reexportedModules = (index) => {
-  if (!reexportedModulesByIndex.has(index)) {
+  const key = `${index}:${statSync(index).mtimeMs}`;
+  if (!reexportedModulesByIndex.has(key)) {
     const specifiers = [
       ...readFileSync(index, "utf8").matchAll(
         /^export\b[^;]*?\bfrom\s*["'](\.{1,2}\/[^"']+)["']/gmu,
       ),
     ].map((match) => match[1]);
     reexportedModulesByIndex.set(
-      index,
+      key,
       specifiers.map((specifier) => resolveModule(path.resolve(path.dirname(index), specifier))),
     );
   }
-  return reexportedModulesByIndex.get(index);
+  return reexportedModulesByIndex.get(key);
 };

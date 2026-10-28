@@ -86,11 +86,12 @@ target_files() {
             if [ "$target" = site ]; then paths="$paths|server/oxlint-plugin\.js\$"; fi
             # 出し方のページの例の数字は、server の確かめが書き出したものと比べる
             if [ "$target" = server ]; then paths="$paths|site/src/pages/daily-guide/daily-guide-example\.json\$"; fi
+            # site のページの文字の大きさは、DESIGN.md の typography の最小と比べる
+            if [ "$target" = site ]; then paths="$paths|DESIGN\.md\$"; fi
             ;;
         scripts) paths="scripts/|\.claude/hooks/|\.github/workflows/check\.yml\$" ;;
     esac
-    # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は site のページの文字の大きさと比べる
-    if [ "$target" = site ]; then paths="$paths|DESIGN\.md\$"; fi
+    # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は確かめに使うので残す
     { grep -vE '\.md$' <<< "$files" || true; grep -Fx DESIGN.md <<< "$files" || true; } | grep -E "^($paths)" || true
 }
 
