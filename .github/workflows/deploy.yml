@@ -52,7 +52,7 @@ jobs:
     secrets: inherit
 
   # 開発用の環境へ出した Worker に、本物の API を通して主な流れ（サインイン、体重、写真の食事、推定、アカウントの削除、無料体験の終わったアカウントの推定の保留）を確かめる。
-  # 落ちたらこのジョブが赤くなるだけにする。必須のチェックにせず、本番のデプロイも待たせない（docs/agents/tooling.md の「CI」）
+  # 必須のチェックにせず、本番のデプロイも待たせない。main で落ちたら track-main-failure が Issue を立てる（docs/agents/tooling.md の「CI」）
   verify-development:
     needs: development
     runs-on: ubuntu-latest
@@ -80,3 +80,51 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: 主な流れを確かめる
         run: pnpm exec tsx e2e/verify-development.ts
+
+  # main で落ちたら立て、緑に戻ったら閉じる流れは、ios-ui-test.yml の track-main-failure に合わせた
+  # 開発用のデプロイが落ちて確かめが飛んだ回は、流れを確かめていないので、立ても閉じもしない
+  track-main-failure:
+    needs: verify-development
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      (needs.verify-development.result == 'success' || needs.verify-development.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      TITLE: main の verify-development が落ちている
+    steps:
+      # 題で探す。concurrency の deploy で回は1本ずつなので、2つの回が同時に立てることは無い
+      - id: open-issue
+        name: 開いている Issue を探す
+        run: |
+          # パイプで head に渡すと gh api の失敗が消え、開いた Issue があっても2つ目を立てるので、受けてから最初の1つを取る
+          numbers="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            --jq '.[] | select(.pull_request == null and .title == env.TITLE) | .number')"
+          echo "number=${numbers%%$'\n'*}" >> "$GITHUB_OUTPUT"
+      - name: 緑に戻ったので Issue を閉じる
+        if: needs.verify-development.result == 'success' && steps.open-issue.outputs.number != ''
+        env:
+          NUMBER: ${{ steps.open-issue.outputs.number }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" -f body="main の verify-development が緑に戻った: $RUN_URL" > /dev/null
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/$NUMBER" -f state=closed -f state_reason=completed > /dev/null
+      - name: Issue を立てるか、また落ちたことを書き足す
+        if: needs.verify-development.result == 'failure'
+        env:
+          NUMBER: ${{ steps.open-issue.outputs.number }}
+        run: |
+          if [ -n "$NUMBER" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" -f body="また落ちた: $RUN_URL" > /dev/null
+            exit 0
+          fi
+          body="$(printf '%s\n\n- 落ちた回: %s\n\n%s' \
+            'main の verify-development（開発用の環境で、本物の API を通して主な流れを確かめるジョブ）が落ちた。落ちた段は回のログに出る。' \
+            "$RUN_URL" \
+            'main で verify-development が緑に戻ると、ワークフローがこの Issue を閉じる。')"
+          number="$(gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$TITLE" -f body="$body" -f "labels[]=needs-triage" --jq .number)"
+          # GITHUB_TOKEN で立てた Issue は lock-conversations.yml を起こさないので、ここでロックする
+          gh api --method PUT "repos/$GITHUB_REPOSITORY/issues/$number/lock" > /dev/null
