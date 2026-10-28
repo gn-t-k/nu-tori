@@ -17,9 +17,3 @@ export const examplePhotoMeals = examples.photoMeals.map((meal) => {
 });
 
 export type ExamplePhotoMeal = (typeof examplePhotoMeals)[number];
-
-// 書いた食事の見本。写真を持たない
-export const exampleTextMeals = examples.textMeals;
-
-// 食事のカードに出す料理の名前と栄養。撮った食事にも書いた食事にもある
-export type MealSummary = Pick<ExamplePhotoMeal, "dish" | "totals">;
