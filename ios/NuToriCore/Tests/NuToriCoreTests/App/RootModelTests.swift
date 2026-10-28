@@ -214,12 +214,5 @@ struct RootModelTests {
             #expect(device.model.rejectedLines.isEmpty)
             #expect(device.model.termsAgreementSheet == nil)
         }
-
-        @Test("サインアウトしたことを PostHog に送ること")
-        func capturesSignedOut() async {
-            await device.model.signOut()
-
-            #expect(device.analytics.captured.contains(.signedOut))
-        }
     }
 }

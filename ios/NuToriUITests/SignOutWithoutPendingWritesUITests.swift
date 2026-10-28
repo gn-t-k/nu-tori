@@ -1,7 +1,7 @@
 import XCTest
 
 @MainActor
-final class SignOutUITests: XCTestCase {
+final class SignOutWithoutPendingWritesUITests: XCTestCase {
     private var app = XCUIApplication()
 
     override func setUp() async throws {
@@ -13,10 +13,7 @@ final class SignOutUITests: XCTestCase {
 
     func test_サインアウトしたらサインインし直しの画面に戻ること() {
         let signOutButton = app.buttons["サインアウト"]
-        // 一覧の下のほうにあり、画面の外にあると作られないので、送って出す
-        for _ in 0..<3 where !signOutButton.isHittable {
-            app.swipeUp()
-        }
+        XCTAssertTrue(app.scrollUntilExists(signOutButton))
         attachScreenshot(of: app, named: "サインアウトの段のあるアカウントの画面")
         signOutButton.tap()
         let alert = app.alerts["サインアウトしますか？"]

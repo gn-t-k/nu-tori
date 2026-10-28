@@ -249,8 +249,9 @@ public final class RootModel {
         } catch is CancellationError {
             return
         } catch {
-            // 投げるのは端末の鍵と印を書くところだけ。画面はサインインに替え、開き直したときに鍵が残っていればタイムラインに戻る
-            replaceScreen(with: .signIn(.introduction))
+            // 投げるのは端末の鍵と印を書くところと送り待ちを読むところで、送り待ちが残っているかわからないので、ある側の文に倒す。
+            // 鍵を消せていなければ、開き直したときにタイムラインに戻る
+            replaceScreen(with: .signIn(.signInAgain(hasPendingWrites: true)))
         }
     }
 

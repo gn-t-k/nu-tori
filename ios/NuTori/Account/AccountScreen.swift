@@ -65,9 +65,9 @@ struct AccountScreen: View {
                 Button("サインアウト") {
                     Task { await requestSignOut() }
                 }
-                .disabled(isDeleting || signingOut)
+                .disabled(isDeleting || isSigningOut)
             } footer: {
-                Text("同じ Apple ID でサインインすると、記録はそのまま戻ります。")
+                Text(Self.signOutKeepsRecords)
             }
             Section {
                 Button(role: .destructive) {
@@ -81,7 +81,7 @@ struct AccountScreen: View {
                         }
                     }
                 }
-                .disabled(isDeleting || signingOut)
+                .disabled(isDeleting || isSigningOut)
             } header: {
                 if let deletionFailure {
                     Text(deletionFailure.message)
@@ -105,11 +105,11 @@ struct AccountScreen: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("完了", action: onClose)
-                    .disabled(isDeleting)
+                    .disabled(isDeleting || isSigningOut)
             }
         }
-        // 消している途中で閉じると、消せなかったときの1行を出す先が無くなる
-        .interactiveDismissDisabled(isDeleting)
+        // 消している途中で閉じると、消せなかったときの1行を出す先が無くなる。サインアウトは進め始めたら閉じずに画面が替わるのを待つ
+        .interactiveDismissDisabled(isDeleting || isSigningOut)
         .sheet(
             item: $presentedDeletionGuide,
             onDismiss: {
@@ -133,16 +133,18 @@ struct AccountScreen: View {
                 )
             )
         }
-        .alert("サインアウトしますか？", isPresented: $confirmingSignOut) {
-            Button("キャンセル", role: .cancel) {}
+        .alert("サインアウトしますか？", isPresented: confirmingSignOut) {
+            Button("キャンセル", role: .cancel) {
+                signOutStep = .idle
+            }
             Button("サインアウト") {
-                Task { await signOut() }
+                Task { await proceedToSignOut() }
             }
         } message: {
             Text(
-                signOutHasPendingWrites
+                confirmingSignOutWithPendingWrites
                     ? "まだ送っていない記録があります。同じ Apple ID でサインインすると送ります。ほかの Apple ID でサインインすると、この iPhone から消えます。"
-                    : "同じ Apple ID でサインインすると、記録はそのまま戻ります。")
+                    : Self.signOutKeepsRecords)
         }
         .alert("アカウントを削除しますか？", isPresented: $confirmingDeletion) {
             Button("アカウントを削除", role: .destructive) {
@@ -188,6 +190,15 @@ struct AccountScreen: View {
         case failed(AccountDeletionFailure)
     }
 
+    private enum SignOut {
+        case idle
+        /// 確かめの文を替えるため、送り待ちがあるかを読んでいる
+        case checkingPendingWrites
+        case confirming(hasPendingWrites: Bool)
+        /// サインインの画面に替わるのを待っている
+        case signingOut
+    }
+
     /// シートの `item` に渡すため。開くたびに別のシートとして出す
     private struct PresentedDeletionGuide: Identifiable {
         let id = UUID()
@@ -200,11 +211,7 @@ struct AccountScreen: View {
     @State private var accountId: String?
     @State private var deletion: Deletion
     @State private var confirmingDeletion = false
-    @State private var confirmingSignOut = false
-    /// 確かめを出すときに読んだ送り待ちの有無
-    @State private var signOutHasPendingWrites = false
-    /// 送り待ちを読んでからサインインの画面に替わるまで。続けて押されても2度進めない
-    @State private var signingOut = false
+    @State private var signOutStep = SignOut.idle
     @State private var presentedDeletionGuide: PresentedDeletionGuide?
     /// 「アカウントを削除」を押して、退会の案内を出すかを読んでいる
     @State private var preparingDeletion = false
@@ -216,6 +223,36 @@ struct AccountScreen: View {
     /// iPhone の設定の、このアプリの通知の設定
     private static let notificationSettingsURL = URL(
         string: UIApplication.openNotificationSettingsURLString)!
+
+    private static let signOutKeepsRecords = "同じ Apple ID でサインインすると、記録はそのまま戻ります。"
+
+    /// 続けて押されても、読み直しとサインアウトを2度進めない
+    private var isSigningOut: Bool {
+        switch signOutStep {
+        case .checkingPendingWrites, .signingOut: true
+        case .idle, .confirming: false
+        }
+    }
+
+    /// 閉じるのはダイアログのボタンが状態を替えたときだけなので、閉じた知らせは受けない
+    private var confirmingSignOut: Binding<Bool> {
+        Binding(
+            get: {
+                switch signOutStep {
+                case .confirming: true
+                case .idle, .checkingPendingWrites, .signingOut: false
+                }
+            },
+            set: { _ in }
+        )
+    }
+
+    private var confirmingSignOutWithPendingWrites: Bool {
+        switch signOutStep {
+        case .confirming(let hasPendingWrites): hasPendingWrites
+        case .idle, .checkingPendingWrites, .signingOut: false
+        }
+    }
 
     private var isDeleting: Bool {
         switch deletion {
@@ -320,18 +357,17 @@ struct AccountScreen: View {
     }
 
     private func requestSignOut() async {
-        guard !signingOut else { return }
-        signingOut = true
-        defer { signingOut = false }
-        signOutHasPendingWrites = await actions.hasPendingWrites()
-        confirmingSignOut = true
+        guard case .idle = signOutStep else { return }
+        signOutStep = .checkingPendingWrites
+        signOutStep = .confirming(hasPendingWrites: await actions.hasPendingWrites())
     }
 
-    private func signOut() async {
-        guard !signingOut else { return }
-        signingOut = true
-        // サインインの画面に替わると、この画面ごと消える
+    private func proceedToSignOut() async {
+        guard case .confirming = signOutStep else { return }
+        signOutStep = .signingOut
+        // ふつうはサインインの画面に替わり、この画面ごと消える
         await actions.signOut()
+        signOutStep = .idle
     }
 
     private func deleteAccount() async {
