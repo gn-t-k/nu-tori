@@ -345,21 +345,21 @@ const relativeSpecifier = (from, to) => {
   return relative.startsWith(".") ? relative : `./${relative}`;
 };
 
-// エディタのように同じプロセスで何度も回すときに、直した index.ts を読み直すよう、更新の時刻ごとに持つ
+// エディタのように同じプロセスで何度も回すときに、直した index.ts を読み直すよう、読んだときの更新の時刻と一緒に持つ
 const reexportedModulesByIndex = new Map();
 
 const reexportedModules = (index) => {
-  const key = `${index}:${statSync(index).mtimeMs}`;
-  if (!reexportedModulesByIndex.has(key)) {
-    const specifiers = [
-      ...readFileSync(index, "utf8").matchAll(
-        /^export\b[^;]*?\bfrom\s*["'](\.{1,2}\/[^"']+)["']/gmu,
-      ),
-    ].map((match) => match[1]);
-    reexportedModulesByIndex.set(
-      key,
-      specifiers.map((specifier) => resolveModule(path.resolve(path.dirname(index), specifier))),
-    );
+  const { mtimeMs } = statSync(index);
+  const cached = reexportedModulesByIndex.get(index);
+  if (cached?.mtimeMs === mtimeMs) {
+    return cached.modules;
   }
-  return reexportedModulesByIndex.get(key);
+  const specifiers = [
+    ...readFileSync(index, "utf8").matchAll(/^export\b[^;]*?\bfrom\s*["'](\.{1,2}\/[^"']+)["']/gmu),
+  ].map((match) => match[1]);
+  const modules = specifiers.map((specifier) =>
+    resolveModule(path.resolve(path.dirname(index), specifier)),
+  );
+  reexportedModulesByIndex.set(index, { mtimeMs, modules });
+  return modules;
 };
