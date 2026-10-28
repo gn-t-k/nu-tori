@@ -8,11 +8,13 @@ public actor SubscriptionPurchases {
         store: any SubscriptionStore,
         client: NuToriAPIClient,
         applyReportedChanges: @escaping @Sendable ([SyncChange]) async throws -> Void,
+        errorReporting: any ErrorReportingSession,
         newRequestId: @escaping @Sendable () -> UUID = { UUID() }
     ) {
         self.store = store
         self.client = client
         self.applyReportedChanges = applyReportedChanges
+        self.errorReporting = errorReporting
         self.newRequestId = newRequestId
     }
 
@@ -52,16 +54,25 @@ public actor SubscriptionPurchases {
         }
     }
 
-    /// 「購入を復元」。App Store と突き合わせてから、今使える取引をすべて知らせる
+    /// 「購入を復元」。App Store と突き合わせてから、今使える取引をすべて知らせる。
+    /// 突き合わせられなくても、端末にある今使える取引を知らせる。StoreKit は今使える取引を自動で最新に保ち、
+    /// 新しい端末でも最初の起動から読める。TestFlight では、パスワードを入れたあとに `AppStore.sync()` が投げることがある（#829）
     public func restore() async -> RestoreOutcome {
+        var syncFailure: (any Error)?
         switch await store.syncWithAppStore() {
         case .synced: break
         case .cancelled: return .cancelled
-        case .failed: return .failed(.retryLater)
+        case .failed(let error):
+            await errorReporting.report(error, as: .appStoreSync)
+            syncFailure = error
         }
         var outcomes: [ReportOutcome] = []
         for transaction in await store.currentEntitlements() {
             outcomes.append(await report(transaction, trigger: .restore))
+        }
+        // 突き合わせられなかったので、復元するものが無いとは言い切れない
+        if outcomes.isEmpty, let syncFailure {
+            return .failed(RequestFailureReason(syncFailure))
         }
         return RestoreOutcome(outcomes)
     }
@@ -140,6 +151,7 @@ public actor SubscriptionPurchases {
     private let store: any SubscriptionStore
     private let client: NuToriAPIClient
     private let applyReportedChanges: @Sendable ([SyncChange]) async throws -> Void
+    private let errorReporting: any ErrorReportingSession
     private let newRequestId: @Sendable () -> UUID
 
     /// 知らせている途中の取引。`Transaction.updates` と終えていない取引に同じ取引が流れても、1度だけ送る

@@ -40,8 +40,13 @@ nonisolated struct StoreKitSubscriptionStore: SubscriptionStore {
             return .synced
         } catch StoreKitError.userCancelled {
             return .cancelled
+        } catch StoreKitError.networkError(let error) {
+            // 包まれた原因の型と番号を Sentry で読むため、包みを解く。つながらないときは送らずに済む
+            return .failed(error)
+        } catch StoreKitError.systemError(let error) {
+            return .failed(error)
         } catch {
-            return .failed
+            return .failed(error)
         }
     }
 

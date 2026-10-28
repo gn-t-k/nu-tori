@@ -25,9 +25,10 @@ public protocol SubscriptionStore: Sendable {
     func autoRenewal() async -> SubscriptionPurchases.AutoRenewal
 }
 
-public enum AppStoreSyncResult: Sendable, Equatable {
+public enum AppStoreSyncResult: Sendable {
     case synced
     /// Apple アカウントへのサインインを閉じた
     case cancelled
-    case failed
+    /// 突き合わせられなかった。StoreKit が包んだ原因（つながらないなど）があれば、包みを解いた原因
+    case failed(any Error)
 }
