@@ -62,6 +62,14 @@ struct AccountScreen: View {
                 externalLink("問い合わせ", url: inquiryURL)
             }
             Section {
+                Button("サインアウト") {
+                    Task { await requestSignOut() }
+                }
+                .disabled(isDeleting || signingOut)
+            } footer: {
+                Text("同じ Apple ID でサインインすると、記録はそのまま戻ります。")
+            }
+            Section {
                 Button(role: .destructive) {
                     Task { await requestDeletion() }
                 } label: {
@@ -73,7 +81,7 @@ struct AccountScreen: View {
                         }
                     }
                 }
-                .disabled(isDeleting)
+                .disabled(isDeleting || signingOut)
             } header: {
                 if let deletionFailure {
                     Text(deletionFailure.message)
@@ -124,6 +132,17 @@ struct AccountScreen: View {
                     cancel: { presentedDeletionGuide = nil }
                 )
             )
+        }
+        .alert("サインアウトしますか？", isPresented: $confirmingSignOut) {
+            Button("キャンセル", role: .cancel) {}
+            Button("サインアウト") {
+                Task { await signOut() }
+            }
+        } message: {
+            Text(
+                signOutHasPendingWrites
+                    ? "まだ送っていない記録があります。同じ Apple ID でサインインすると送ります。ほかの Apple ID でサインインすると、この iPhone から消えます。"
+                    : "同じ Apple ID でサインインすると、記録はそのまま戻ります。")
         }
         .alert("アカウントを削除しますか？", isPresented: $confirmingDeletion) {
             Button("アカウントを削除", role: .destructive) {
@@ -181,6 +200,11 @@ struct AccountScreen: View {
     @State private var accountId: String?
     @State private var deletion: Deletion
     @State private var confirmingDeletion = false
+    @State private var confirmingSignOut = false
+    /// 確かめを出すときに読んだ送り待ちの有無
+    @State private var signOutHasPendingWrites = false
+    /// 送り待ちを読んでからサインインの画面に替わるまで。続けて押されても2度進めない
+    @State private var signingOut = false
     @State private var presentedDeletionGuide: PresentedDeletionGuide?
     /// 「アカウントを削除」を押して、退会の案内を出すかを読んでいる
     @State private var preparingDeletion = false
@@ -293,6 +317,21 @@ struct AccountScreen: View {
         }
         presentedDeletionGuide = PresentedDeletionGuide(guide: guide)
         await actions.openedAccountDeletionGuide()
+    }
+
+    private func requestSignOut() async {
+        guard !signingOut else { return }
+        signingOut = true
+        defer { signingOut = false }
+        signOutHasPendingWrites = await actions.hasPendingWrites()
+        confirmingSignOut = true
+    }
+
+    private func signOut() async {
+        guard !signingOut else { return }
+        signingOut = true
+        // サインインの画面に替わると、この画面ごと消える
+        await actions.signOut()
     }
 
     private func deleteAccount() async {

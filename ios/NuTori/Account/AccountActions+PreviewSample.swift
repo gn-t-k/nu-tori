@@ -8,6 +8,8 @@
                 signedInAccountId: { nil },
                 turnOnUsageData: {},
                 turnOffUsageData: {},
+                signOut: {},
+                hasPendingWrites: { false },
                 deleteAccount: { nil },
                 notificationPermission: { .permitted },
                 openedNotificationSettings: {},

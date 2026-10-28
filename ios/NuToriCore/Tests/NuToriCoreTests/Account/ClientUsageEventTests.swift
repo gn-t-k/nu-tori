@@ -139,6 +139,18 @@ struct ClientUsageEventTests {
         }
     }
 
+    @Suite("サインアウト")
+    struct SignOut {
+        @Test("サインアウトしたことを、中身を持たない出来事にすること")
+        func signedOutHasNoFields() {
+            let event = ClientUsageEvent.signedOut
+
+            #expect(event.name == "signed_out")
+            #expect(event.fields.isEmpty)
+            #expect(event.screenToken == nil)
+        }
+    }
+
     @Suite("退会の案内のシート")
     struct AccountDeletionGuide {
         @Test("シートを出したことを、中身を持たない出来事にすること")

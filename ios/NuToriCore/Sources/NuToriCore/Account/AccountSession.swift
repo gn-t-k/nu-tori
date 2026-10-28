@@ -111,6 +111,20 @@ public actor AccountSession {
         }
     }
 
+    /// 端末の記録は残し、サインインし直しの印の道を通す。違う Apple ID でサインインしたときに、前のアカウントの記録を消す
+    public func signOut() async throws -> SignInDestination {
+        // 識別を外す前に送り切る
+        await analytics.capture(.signedOut)
+        await flushAnalyticsEvents()
+        // 鍵を捨てると送れなくなるので、送信だけを取り消す。同じアカウントでサインインし直して開いたときに送り直す
+        await backgroundTransfers.cancelUploads()
+        return try await discardSessionAndAskToSignInAgain()
+    }
+
+    public func hasPendingWrites() async throws -> Bool {
+        try await !syncStore.pendingEntries().isEmpty
+    }
+
     public func beginObservationIfSignedIn() async {
         guard let account = try? await deviceStore.signedInAccount() else { return }
         if (try? await deviceStore.hasSignInAgainMark()) == true { return }
