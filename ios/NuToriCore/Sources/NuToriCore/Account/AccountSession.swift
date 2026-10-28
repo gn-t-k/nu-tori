@@ -111,7 +111,7 @@ public actor AccountSession {
         }
     }
 
-    /// 端末の記録は残し、サインインし直しの印の道を通す。違う Apple ID でサインインしたときに、前のアカウントの記録を消す
+    /// 端末の記録は残し、サインインし直しの印の道を通す。違う Apple ID でサインインしたときに、前のアカウントの記録を消せるようにするため
     public func signOut() async throws -> SignInDestination {
         // 識別を外す前に送り切る
         await analytics.capture(.signedOut)

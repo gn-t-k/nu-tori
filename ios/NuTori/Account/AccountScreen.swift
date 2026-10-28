@@ -137,7 +137,7 @@ struct AccountScreen: View {
             "サインアウトしますか？", isPresented: confirmingSignOut, titleVisibility: .visible
         ) {
             Button("サインアウト", role: .destructive) {
-                Task { await proceedToSignOut() }
+                Task { await signOutAfterConfirming() }
             }
             Button("キャンセル", role: .cancel) {}
         } message: {
@@ -158,7 +158,7 @@ struct AccountScreen: View {
         }
     }
 
-    /// deletion は開いたときの状態。削除は画面の中で進むので、あとから渡し直しても変わらない
+    /// deletion と signOut は開いたときの状態。削除とサインアウトは画面の中で進むので、あとから渡し直しても変わらない
     init(
         subscription: AccountSubscriptionRow?,
         openPaywall: @escaping () -> Void,
@@ -166,6 +166,7 @@ struct AccountScreen: View {
         cameraAccess: CameraAccess,
         notificationPermission: NotificationPermission?,
         deletion: Deletion,
+        signOut: SignOut,
         appVersion: String,
         appBuild: Int,
         actions: AccountActions,
@@ -181,6 +182,7 @@ struct AccountScreen: View {
         self.actions = actions
         self.onClose = onClose
         _deletion = State(initialValue: deletion)
+        _signOutStep = State(initialValue: signOut)
     }
 
     enum Deletion {
@@ -189,8 +191,7 @@ struct AccountScreen: View {
         case failed(AccountDeletionFailure)
     }
 
-    /// 送り待ちが無ければ、同じ Apple ID でサインインし直せば戻せるので、確かめずに進める（DESIGN.md の確かめ）
-    private enum SignOut {
+    enum SignOut {
         case idle
         /// 送り待ちがあるかを読んでいる
         case checkingPendingWrites
@@ -212,7 +213,7 @@ struct AccountScreen: View {
     @State private var accountId: String?
     @State private var deletion: Deletion
     @State private var confirmingDeletion = false
-    @State private var signOutStep = SignOut.idle
+    @State private var signOutStep: SignOut
     @State private var presentedDeletionGuide: PresentedDeletionGuide?
     /// 「アカウントを削除」を押して、退会の案内を出すかを読んでいる
     @State private var preparingDeletion = false
@@ -354,16 +355,23 @@ struct AccountScreen: View {
     private func requestSignOut() async {
         guard case .idle = signOutStep else { return }
         signOutStep = .checkingPendingWrites
+        // 送り待ちが無ければ、同じ Apple ID でサインインし直せば戻せるので、確かめずに進める（DESIGN.md の確かめ）
         if await actions.hasPendingWrites() {
             signOutStep = .confirming
         } else {
-            signOutStep = .idle
-            await proceedToSignOut()
+            await signOut()
         }
     }
 
-    private func proceedToSignOut() async {
-        guard !isSigningOut else { return }
+    /// ダイアログのボタンより先に、閉じた知らせで `.idle` に戻っていることがある
+    private func signOutAfterConfirming() async {
+        switch signOutStep {
+        case .idle, .confirming: await signOut()
+        case .checkingPendingWrites, .signingOut: return
+        }
+    }
+
+    private func signOut() async {
         signOutStep = .signingOut
         // ふつうはサインインの画面に替わり、この画面ごと消える
         await actions.signOut()
