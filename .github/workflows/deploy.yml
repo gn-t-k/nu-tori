@@ -81,7 +81,7 @@ jobs:
       - name: 主な流れを確かめる
         run: pnpm exec tsx e2e/verify-development.ts
 
-  # ios-ui-test.yml の track-main-failure と同じ形。直すときはそろえる
+  # main で落ちたら立て、緑に戻ったら閉じる流れは、ios-ui-test.yml の track-main-failure に合わせた
   # 開発用のデプロイが落ちて確かめが飛んだ回は、流れを確かめていないので、立ても閉じもしない
   track-main-failure:
     needs: verify-development
