@@ -79,7 +79,7 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - トークンは読むだけにする。アカウントのトークンで、Workers の役割 `Metadata Read-Only` を `nu-tori-development` と `nu-tori-production` に絞ったものと、`Account Analytics Read` だけを付ける（このトークンでログの問い合わせが通ることを 2026-10-09 に確かめた）。デプロイ用の `CLOUDFLARE_API_TOKEN` は使わない
   - Mac: シェルの設定に `NU_TORI_CLOUDFLARE_ACCOUNT_ID` と `NU_TORI_CLOUDFLARE_READ_TOKEN` を書く
   - Claude Code on the web と Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置く。Cursor の `NU_TORI_CLOUDFLARE_READ_TOKEN` は Runtime Secret にする
-- AI Gateway のログは読まない（ゲートウェイは置いていない。`server/AGENTS.md` の「構成」）。Workers AI を呼び始めてゲートウェイを作るときに、トークンに `AI Gateway Read` を足し、スクリプトにゲートウェイの ID とログを読む口を足す。そのときも、要求と応答の本文（`request_head`・`response_head`、`.../logs/<id>/request`・`/response`）は読まない
+- AI Gateway のログは読まない（ゲートウェイは置いていない。`docs/agents/server-llm.md` の「鍵と提供元」）。Workers AI を呼び始めてゲートウェイを作るときに、トークンに `AI Gateway Read` を足し、スクリプトにゲートウェイの ID とログを読む口を足す。そのときも、要求と応答の本文（`request_head`・`response_head`、`.../logs/<id>/request`・`/response`）は読まない
 - アカウント ID かトークンの無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどちらかの置き場に2つとも置くよう頼む
 
 ## PostHog を読む
@@ -121,7 +121,7 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - CI は変わったパスでジョブを分け、main のルールセットでは `check.yml` の `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行い、文書（`*.md`）だけの変更ではジョブを飛ばす。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る。どのパスがどの対象に当たるかの決まりは `scripts/check` に1か所だけ置き、`changes` のジョブは PR の差分を `scripts/check --pick-targets` に渡す。比べる範囲と、差分が取れないときにすべてを確かめることは、呼ぶ側が決める。必須にしないワークフロー（デプロイ、`ios-ui-test.yml`）は `paths` で飛ばしてよい
 - GitHub Actions の秘密の値は、main からだけ使える Environment に置く（ADR-0010）
 - 依存の PR をマージし、落ちた PR の Issue を扱う `dependency-pr.yml` と、Swift Package を上げる `update-swift-packages.yml` は、`GITHUB_TOKEN` でなく、このリポジトリ用の GitHub App のトークン（`actions/create-github-app-token`）で GitHub を操作する。`GITHUB_TOKEN` で出した PR やマージは、ほかのワークフロー（check、deploy、`ios-ui-test.yml`）を起動しないため。App の Client ID は変数 `DEPENDENCY_APP_CLIENT_ID`、秘密鍵は秘密の値 `DEPENDENCY_APP_PRIVATE_KEY` として、main からだけ使える Environment `dependency-updates` に置く。依存の PR の扱い方は `docs/agents/dependencies.md`
-- 開発用の環境で主な流れを確かめるジョブ（`deploy.yml` の `verify-development`）は、開発用の Worker のデプロイのあとに、`server/e2e/verify-development.ts` が本物の API を通す。必須のチェックにせず、本番のデプロイは待たない。main で落ちたら、ワークフローが `needs-triage` の Issue を立て、緑に戻ったら閉じる。使う秘密の値 `E2E_SIGN_IN_SECRET` は、開発用の Environment の GitHub Actions の秘密の値と、開発用の Worker の秘密の値（`wrangler secret put E2E_SIGN_IN_SECRET`）に、同じ値を置く。本番の Environment にも本番の Worker にも置かない（守り方は `server/AGENTS.md` の「確かめのジョブのためのサインインの口」）
+- 開発用の環境で主な流れを確かめるジョブ（`deploy.yml` の `verify-development`）は、開発用の Worker のデプロイのあとに、`server/e2e/verify-development.ts` が本物の API を通す。必須のチェックにせず、本番のデプロイは待たない。main で落ちたら、ワークフローが `needs-triage` の Issue を立て、緑に戻ったら閉じる。使う秘密の値 `E2E_SIGN_IN_SECRET` は、開発用の Environment の GitHub Actions の秘密の値と、開発用の Worker の秘密の値（`wrangler secret put E2E_SIGN_IN_SECRET`）に、同じ値を置く。本番の Environment にも本番の Worker にも置かない（守り方は `docs/agents/server-e2e.md`）
 - iOS のアプリは、PR ではビルド（UI テストのビルドを含む）までを確かめ、UI テストは main への push と、手で始めたときだけ回す。PR は Mac の結果で merge する（手順は `ios/AGENTS.md` の「確かめる」）。main で落ちたら、ワークフローが落ちたテストごとに Issue を立て（題と本文に、テストの名前と失敗の要約を書く。テストの前に止まった回は、ワークフローの名前の Issue を1つ）、緑に戻ったら閉じる。その Issue は次の PR より先に直す
 
   **Why:** PR の回は merge の判断に使われず、落ちるのも PR のせいでない揺れだった。CI でしか出ない落ち方（競り合い、Mac と CI の Xcode の版のずれ）は、main の回で気づける。手で始める回は、Mac が閉じている日の PR が UI テストの結果無しで merge されないために残す（経緯は [#478](https://github.com/gn-t-k/nu-tori/issues/478) の解決コメント）
