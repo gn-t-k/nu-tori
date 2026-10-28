@@ -23,6 +23,8 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # 通った回は 1 分かからない。呼ぶ側のジョブには書けないので、ここで止める
+    timeout-minutes: 10
     environment:
       name: ${{ inputs.environment }}
       url: ${{ inputs.url }}
