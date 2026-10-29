@@ -98,6 +98,8 @@ struct RootView: View {
                     signedInAccountId: { await model.signedInAccountId() },
                     turnOnUsageData: { await model.turnOnUsageData() },
                     turnOffUsageData: { await model.turnOffUsageData() },
+                    signOut: { await model.signOut() },
+                    hasPendingWrites: { await model.hasPendingWrites() },
                     deleteAccount: { await model.deleteAccount() },
                     notificationPermission: { await model.notificationPermission() },
                     openedNotificationSettings: {

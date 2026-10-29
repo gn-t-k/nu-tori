@@ -243,6 +243,23 @@ public final class RootModel {
         }
     }
 
+    public func signOut() async {
+        do {
+            replaceScreen(with: try await accountSession.signOut())
+        } catch is CancellationError {
+            return
+        } catch {
+            // 投げるのは端末の鍵と印を書くところと送り待ちを読むところで、送り待ちが残っているかわからないので、ある側の文に倒す。
+            // 鍵を消せていなければ、開き直したときにタイムラインに戻る
+            replaceScreen(with: .signIn(.signInAgain(hasPendingWrites: true)))
+        }
+    }
+
+    /// 送り待ちがあるときだけサインアウトを確かめるため。読めなければ、ほかの Apple ID で消えうることを確かめる側に倒す
+    public func hasPendingWrites() async -> Bool {
+        (try? await accountSession.hasPendingWrites()) ?? true
+    }
+
     /// サブスクリプション中で自動更新がオンのときだけ返す。返したら、確かめの前に退会の案内を出す
     public func accountDeletionGuide() async -> AccountDeletionGuide? {
         await AccountDeletionGuide.prepare(
