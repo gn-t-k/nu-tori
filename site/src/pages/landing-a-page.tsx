@@ -117,14 +117,38 @@ export const landingAPage = createLandingVariantPage({
         <section class="lp-band lp-band-surface">
           <div class="lp-wrap lp-feature">
             <div>
-              <h2>日本食品標準成分表で数えます</h2>
-              <p>
-                料理を材料に分け、材料ごとに文部科学省の日本食品標準成分表（八訂）増補2023年の値を引いて数えます。食事を開けば、成分表の値を使った材料の数が見られます。
-              </p>
+              <h2>
+                栄養は、
+                <wbr />
+                材料ごとに
+                <wbr />
+                日本食品標準成分表
+                <wbr />
+                から
+              </h2>
+              {/* 見積もるのは何がどれだけかだけで、値は成分表から取り、合計は決まった式で出す（server/src/estimation/durable-object/create-estimation-provider/match-ingredients.ts） */}
+              <ol class="lp-method">
+                <li>
+                  <b>料理と材料と量を見積もる</b>
+                  <span>写真から、料理と、その材料とグラム数を見積もります。</span>
+                </li>
+                <li>
+                  <b>材料を成分表の食品に合わせる</b>
+                  <span>
+                    材料ごとに、文部科学省の日本食品標準成分表（八訂）増補2023年から近い食品を選びます。
+                  </span>
+                </li>
+                <li>
+                  <b>量をかけて足す</b>
+                  <span>
+                    100&nbsp;g あたりの値に量をかけて、合計を出します。量を直せば、計算し直します。
+                  </span>
+                </li>
+              </ol>
               <p class="lp-fine">
-                写真に栄養成分表示が写っていれば、その表示を使います。成分表に合うものが無い材料は、値を推定します。
+                パッケージの栄養成分表示が写っていれば、その表示を使います。成分表に近い食品が無い材料は、値を見積もります。
               </p>
-              <p class="lp-fine">見本の写真は Wikimedia Commons の CC0 の写真（Ocdp）です。</p>
+              <p>写真を選ぶと、材料と量と、値の出どころが見られます。</p>
             </div>
             <div class="lp-plate">
               <MealPhotoPicker />

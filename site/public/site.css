@@ -562,6 +562,29 @@ body:has(.lp) .site-footer {
   accent-color: var(--primary);
 }
 
+/* 成分表の節の3つの手順 */
+.lp-method {
+  margin: 0 0 20px;
+  padding: 0 0 0 1.5em;
+  display: grid;
+  gap: 16px;
+}
+
+.lp-method li::marker {
+  color: var(--primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-method li > b,
+.lp-method li > span {
+  display: block;
+}
+
+.lp-method li > span {
+  color: var(--lp-secondary);
+}
+
 /* 昼ごはんの日の時刻を、左の縦線に点を打って追う */
 .lp-day {
   --lp-day-indent: 20px;
