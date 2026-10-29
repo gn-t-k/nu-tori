@@ -515,6 +515,7 @@ check_ios_ui_test() {
     # キーボードの並びと最初に出るキーボードはシミュレータの言語で決まり、英語のランナー（CI）ではかなが出ない。かなを打つテストのために、どこでもかなを入れて、最後に使ったキーボードにする（最初に出る）。テストの中で地球儀のキーで切り替えると、初めての案内がキーボードを覆う
     xcrun simctl spawn "$ui_test_simulator" defaults write -g AppleKeyboards -array "$kana_keyboard" "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji"
     xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences KeyboardLastUsed "$kana_keyboard"
+    warm_up_keyboard_daemon
     rm -rf "$results"
     local repeat_options=()
     if [ -n "$repeat" ]; then
@@ -931,6 +932,22 @@ boot_ui_test_simulator() {
     # 切る前に立ち上がっていたら止める。立ち上がっていなければ失敗するので、失敗は見ない
     xcrun simctl spawn "$ui_test_simulator" launchctl bootout "$service" 2> /dev/null || true
     xcrun simctl bootstatus "$ui_test_simulator" -b
+}
+
+# キーボードの係（kbd）は、初めてキーボードを出したときに起きて連絡先の地域を探し、時間切れ（CI で 10 秒）まで待つあいだアプリが応えないので、キーボードの並びを入れたあと、テストの前に起こして探し終えるまで待つ
+warm_up_keyboard_daemon() {
+    local tries=0 log
+    xcrun simctl spawn "$ui_test_simulator" launchctl kickstart "user/$(id -u)/com.apple.TextInput.kbd"
+    until log="$(xcrun simctl spawn "$ui_test_simulator" log show --last 2m --style compact \
+        --predicate 'process == "kbd" AND eventMessage CONTAINS "Retrieved meCard regions"' 2> /dev/null)" &&
+        [[ "$log" == *"Retrieved meCard regions"* ]]; do
+        tries=$((tries + 1))
+        if [ "$tries" -ge 60 ]; then
+            echo "キーボードの係が連絡先の地域を探し終えない" >&2
+            return 1
+        fi
+        sleep 1
+    done
 }
 
 # kill -9 などで消し損ねた UI テストの複製を、名前の pid のプロセスが居なければ消す
