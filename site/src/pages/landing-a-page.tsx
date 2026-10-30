@@ -11,8 +11,9 @@ import { exampleTextMeals } from "./landing-a/example-text-meals";
 import { AppComposer } from "./landing-a/app-composer";
 import { LunchDay } from "./landing-a/lunch-day";
 import { MealPhotoPicker } from "./landing-a/meal-photo-picker";
-import { ReviewExample } from "./landing-a/review-example";
 import { SoftwareApplicationJsonLd } from "./landing-a/software-application-json-ld";
+import { dailyGuideExample } from "./daily-guide/daily-guide-example";
+import { WeeksFigure } from "./daily-guide/weeks-figure";
 
 // LP の版 a。並びと見た目は #594 の解決コメントの1〜11（https://github.com/gn-t-k/nu-tori/issues/594#issuecomment-6306406922）と、その試作の版8。
 // 文は試作の文を下書きにした仮の文で、本番の文言は仕様3「App Store の掲載と提出」の PR で掲載情報とまとめて書く（#597 の解決コメントの1）。
@@ -31,6 +32,10 @@ export const landingAPage = createLandingVariantPage({
     if (ochazuke === undefined) {
       throw new Error("撮るだけの節の見本のお茶漬けが、書いた食事の見本に無い");
     }
+    // 目安の節の図は出し方のページの見本の人なので、説明の数も同じ書き出しから取る
+    const exampleLossKg = Math.round(
+      dailyGuideExample.initial.startingWeightTrendKg - dailyGuideExample.person.targetWeightKg,
+    );
     const forgottenMealText = "朝はお茶漬けを食べた";
     return (
       <div class="lp">
@@ -174,19 +179,37 @@ export const landingAPage = createLandingVariantPage({
                   </span>
                 </li>
                 <li>
-                  <b>毎週、使ったカロリーを見積もり直す</b>
+                  <b>毎週、消費カロリーを推定し直す</b>
                   <span>
-                    その週に食べた量と体重の動きから、<span class="lp-nowrap">1日</span>
-                    に使っているカロリーを見積もり直します。アプリでは「推定消費カロリー」と呼びます。
+                    その週に食べた量と体重の動きから推定し直します。アプリでは「推定消費カロリー」と呼びます。
                   </span>
                 </li>
                 <li>
                   <b>目安を決め直す</b>
-                  <span>見積もり直した値と目標から次の週の目安を出し、変わったら知らせます。</span>
+                  <span>
+                    推定し直した消費カロリーと目標から次の週の目安を出し、変わったら知らせます。
+                  </span>
                 </li>
               </ol>
             </div>
-            <ReviewExample />
+            <WeeksFigure
+              labels={{
+                description:
+                  "推定した消費カロリーが毎週の体重で実際の消費カロリーに寄っていき、そこから目標に向けて減らす分を引いた食べる量の目安も下がる",
+                estimate: ["推定した", "消費カロリー"],
+                guide: ["食べる量", "の目安"],
+                truth: "実際の消費カロリー",
+                emphasized: "guide",
+                gap: ["目標に向けて", "減らす分"],
+              }}
+              caption={
+                <>
+                  {dailyGuideExample.person.goalWeeks}週間で{exampleLossKg}&nbsp;kg
+                  減量する目標を立てた場合の最初の5週間です。最初は消費カロリーを実際の消費カロリーより高く推定してしまいましたが、週を追うごとに実際の消費カロリーに近い値を推定できるようになります。計算はアプリと同じです（
+                  <a href="/daily-guide">1日の目安の出し方</a>）。
+                </>
+              }
+            />
           </div>
         </section>
 

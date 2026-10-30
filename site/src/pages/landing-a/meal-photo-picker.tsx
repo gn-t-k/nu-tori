@@ -39,7 +39,6 @@ const MealTotals = ({ meal }: { meal: ExamplePhotoMeal }) => (
       protein={appText.grams(meal.totals.proteinG)}
       fat={appText.grams(meal.totals.fatG)}
       carbohydrate={appText.grams(meal.totals.carbohydrateG)}
-      replacedByScript={false}
     />
     <p class="app-secondary">{sourceLine(meal)}</p>
   </div>
