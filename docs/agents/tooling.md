@@ -75,9 +75,10 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - 読む
   - ログ: `scripts/cloudflare logs <development|production> [何分前から] [parameters に足す JSON]`。例 `scripts/cloudflare logs production 60 '{"needle":{"value":"alarm"}}'`。JSON の `view`（既定 `events`、ほかに `calculations`・`invocations`）、`limit`、`filters`、`calculations`、`groupBys` は Workers Observability の問い合わせの形のまま渡す。保持は 7 日
   - 指標: `scripts/cloudflare metrics <development|production> [何時間前から]`。時刻と呼び出しの状態ごとの、要求・誤り・CPU 時間と壁時計の時間（単位はマイクロ秒）
-- 環境は毎回引数で名指す。本番を読んだら、返事にそう書く
-- 読んだ中身のうち、`accountId`、Durable Object の ID、要求 ID、要求の URL の値・ヘッダー・IP・User-Agent は、公開の Issue・PR・コメントに貼らない。貼るのは数・率・所要時間、経路の型、状態コード、例外の名前と `failedStage` まで
-- トークンは読むだけにする。アカウントのトークンで、Workers の役割 `Metadata Read-Only` を `nu-tori-development` と `nu-tori-production` に絞ったものと、`Account Analytics Read` だけを付ける（このトークンでログの問い合わせが通ることを 2026-10-09 に確かめた）。デプロイ用の `CLOUDFLARE_API_TOKEN` は使わない
+  - DMARC: `scripts/cloudflare dmarc [何日前から]`（既定 7）。`nu-tori.app` に届いた DMARC の報告の、日（報告を受け取った日で、メールを送った日の翌日ごろ）・送り元の組織（`sourceOrgName`）・報告した組織（`orgName`）・処置（`disposition`）ごとの、通数と SPF・DKIM・DMARC に通った数。GraphQL の zone の `dmarcReportsSourcesAdaptiveGroups` を読む
+- `logs` と `metrics` は、環境を毎回引数で名指す。本番を読んだら、返事にそう書く。`dmarc` はドメインの報告で、環境の区別が無い
+- 読んだ中身のうち、`accountId`、zone の ID、Durable Object の ID、要求 ID、要求の URL の値・ヘッダー・IP・User-Agent は、公開の Issue・PR・コメントに貼らない。貼るのは数・率・所要時間、経路の型、状態コード、例外の名前と `failedStage` まで。DMARC は、送り元のサーバーの IP と受け取った側のアドレスを貼らず、送り元と報告した組織の名前と、SPF・DKIM・DMARC の結果の件数まで
+- トークンは読むだけにする。アカウントのトークンで、Workers の役割 `Metadata Read-Only` を `nu-tori-development` と `nu-tori-production` に絞ったものと、`Account Analytics Read` と、範囲を `nu-tori.app` に絞った zone の `Analytics Read` だけを付ける（このトークンでログの問い合わせが通ることを 2026-10-09 に、`dmarc` が通ることを 2026-10-28 に確かめた）。zone の `Analytics Read` が無いと、`dmarc` は `zone.analytics.read` の権限が無いという `authz` の誤りで止まる（#775）。デプロイ用の `CLOUDFLARE_API_TOKEN` は使わない
   - Mac: シェルの設定に `NU_TORI_CLOUDFLARE_ACCOUNT_ID` と `NU_TORI_CLOUDFLARE_READ_TOKEN` を書く
   - Claude Code on the web と Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置く。Cursor の `NU_TORI_CLOUDFLARE_READ_TOKEN` は Runtime Secret にする
 - AI Gateway のログは読まない（ゲートウェイは置いていない。`docs/agents/server-llm.md` の「鍵と提供元」）。Workers AI を呼び始めてゲートウェイを作るときに、トークンに `AI Gateway Read` を足し、スクリプトにゲートウェイの ID とログを読む口を足す。そのときも、要求と応答の本文（`request_head`・`response_head`、`.../logs/<id>/request`・`/response`）は読まない
@@ -115,7 +116,7 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - `@nu-tori.app` を差出人にして送る道具（メルマガ、自動返信、Worker からのメールなど）を足すときは、同じ作業で、その道具を SPF と DKIM に足す
   - SPF: `v=spf1` で始まる TXT レコードは1つだけにし（2つあると SPF が失敗する）、そのレコードに道具の `include:` を書き足す。中で DNS を引くのは 10 回まで
   - DKIM: 道具が示す `<セレクタ>._domainkey` のレコードを新しく置く。Google の `google._domainkey` には触らない
-- 足し忘れは DNS の値からは分からず、受け取った側で DMARC に通らなくなって初めて出る。最初の報告は 24 時間ほどで届くので、道具を足した PR の本文（PR が無いときは、道具を足した Issue のコメント）に、24 時間後に Cloudflare の DMARC Management（`nu-tori.app` → Email → DMARC Management）でその送り元が SPF・DKIM に通っているかを見るよう書き、開発者に頼む
+- 足し忘れは DNS の値からは分からず、受け取った側で DMARC に通らなくなって初めて出る。報告は、その道具で実際に送った日（UTC）の分が、翌日に届く。道具を足したら、その道具で1通送り、届いたころに `scripts/cloudflare dmarc` でその送り元の行が SPF・DKIM・DMARC に通っているかを読む。道具を足した PR の merge より後の作業になるので、確かめる Issue を `ready-for-agent` で作り、PR の本文から指す
 
 ## CI
 
