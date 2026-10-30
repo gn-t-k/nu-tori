@@ -1017,3 +1017,124 @@ body:has(.lp) .site-footer {
     padding: 16px;
   }
 }
+
+/* PROTOTYPE: 切り替えの帯と F 節の右の見本の案 */
+.proto-switcher {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 9999px;
+  background: #1c1c1e;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.proto-switcher button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 9999px;
+  background: #3a3a3c;
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.lp .proto-f-lead {
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.proto-f-stage {
+  display: grid;
+  gap: 8px;
+}
+
+.lp .proto-f-stage-head {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lp-secondary);
+}
+
+.proto-f-input {
+  padding: 12px 16px;
+  border: 2px solid var(--primary);
+  border-radius: 16px;
+}
+
+.lp .proto-f-arrow {
+  margin: 4px 0;
+  text-align: center;
+  color: var(--lp-secondary);
+}
+
+.lp .proto-f-big {
+  margin: 0;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.proto-f-week {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.lp .proto-f-story {
+  margin: 0;
+  font-size: 17px;
+}
+
+.proto-f-weeks {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.proto-f-weeks p {
+  margin: 0;
+}
+
+.proto-f-week-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.proto-f-bar {
+  position: relative;
+  height: 12px;
+  margin: 6px 0;
+  border-radius: 9999px;
+  background: var(--separator);
+}
+
+.proto-f-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+.proto-f-bar-true {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--on-surface);
+}
+
+.proto-f-week[hidden] {
+  display: none;
+}

@@ -11,7 +11,7 @@ import { exampleTextMeals } from "./landing-a/example-text-meals";
 import { AppComposer } from "./landing-a/app-composer";
 import { LunchDay } from "./landing-a/lunch-day";
 import { MealPhotoPicker } from "./landing-a/meal-photo-picker";
-import { ReviewExample } from "./landing-a/review-example";
+import { FSectionPrototype } from "./landing-a/prototype-f-section";
 import { SoftwareApplicationJsonLd } from "./landing-a/software-application-json-ld";
 
 // LP の版 a。並びと見た目は #594 の解決コメントの1〜11（https://github.com/gn-t-k/nu-tori/issues/594#issuecomment-6306406922）と、その試作の版8。
@@ -186,7 +186,9 @@ export const landingAPage = createLandingVariantPage({
                 </li>
               </ol>
             </div>
-            <ReviewExample />
+            <div>
+              <FSectionPrototype />
+            </div>
           </div>
         </section>
 
@@ -221,6 +223,8 @@ export const landingAPage = createLandingVariantPage({
         </section>
         <SoftwareApplicationJsonLd />
         <script src="/landing-a.js" defer />
+        <script src="/prototype-f.js" defer />
+        <script src="/prototype-switcher.js" defer />
       </div>
     );
   },
