@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# エージェントと人が Cloudflare の、例外にならない振る舞い（Workers Logs、呼び出しの数・誤り・CPU 時間）を読む。環境の対応と呼ぶ先を、ここ1か所に置く
+# エージェントと人が Cloudflare の、例外にならない振る舞い（Workers Logs、呼び出しの数・誤り・CPU 時間）と、`nu-tori.app` の DMARC の集計を読む。環境の対応と呼ぶ先を、ここ1か所に置く
 set -euo pipefail
 
 usage() {
@@ -8,27 +8,31 @@ usage() {
   scripts/cloudflare logs <development|production> [何分前から（既定 60）] [parameters に足す JSON]
     例: scripts/cloudflare logs production 60 '{"needle":{"value":"alarm"}}'
   scripts/cloudflare metrics <development|production> [何時間前から（既定 24）]
+  scripts/cloudflare dmarc [何日前から（既定 7）]
 EOF
     exit 2
 }
-[ $# -ge 2 ] || usage
+[ $# -ge 1 ] || usage
 command="$1"
-environment="$2"
-shift 2
+shift
 
 case "$command" in
-    logs | metrics) ;;
+    logs | metrics)
+        [ $# -ge 1 ] || usage
+        # 環境に既定を置かない。付け忘れで、開発用と本番を取り違えないため
+        case "$1" in
+            development) worker="nu-tori-development" ;;
+            production) worker="nu-tori-production" ;;
+            *) usage ;;
+        esac
+        shift
+        ;;
+    # DMARC の報告はドメインに届くもので、環境の区別が無い
+    dmarc) ;;
     *) usage ;;
 esac
 
-# 環境に既定を置かない。付け忘れで、開発用と本番を取り違えないため
-case "$environment" in
-    development) worker="nu-tori-development" ;;
-    production) worker="nu-tori-production" ;;
-    *) usage ;;
-esac
-
-# 何分前・何時間前は正の整数だけを受ける。分を省いて JSON を渡すと、JSON が分として読まれるため
+# 何分前・何時間前・何日前は正の整数だけを受ける。分を省いて JSON を渡すと、JSON が分として読まれるため
 since="${1:-}"
 case "$since" in
     '') ;;
@@ -42,6 +46,10 @@ if [ -z "${NU_TORI_CLOUDFLARE_ACCOUNT_ID:-}" ] || [ -z "${NU_TORI_CLOUDFLARE_REA
 fi
 api="https://api.cloudflare.com/client/v4"
 account="$api/accounts/$NU_TORI_CLOUDFLARE_ACCOUNT_ID"
+
+get_json() {
+    curl --silent --show-error --fail-with-body -H "Authorization: Bearer $NU_TORI_CLOUDFLARE_READ_TOKEN" "$1"
+}
 
 post_json() {
     curl --silent --show-error --fail-with-body -H "Authorization: Bearer $NU_TORI_CLOUDFLARE_READ_TOKEN" \
@@ -99,6 +107,44 @@ case "$command" in
                     } }
                 }`,
                 variables: { accountTag: process.env.ACCOUNT, scriptName: process.env.WORKER, start: start.toISOString(), end: end.toISOString() },
+            }));' | post_json "$api/graphql" | fail_on_graphql_errors
+        ;;
+    dmarc)
+        # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
+        zone="$(get_json "$api/zones?name=nu-tori.app" | node -e '
+            let body = "";
+            process.stdin.on("data", (chunk) => (body += chunk)).on("end", () => {
+                // JSON でない本文は、fail_on_graphql_errors と同じく本文だけ出して失敗にする
+                let id;
+                try {
+                    id = JSON.parse(body).result?.[0]?.id;
+                } catch {
+                    console.error(body);
+                    process.exitCode = 1;
+                    return;
+                }
+                if (id) console.log(id);
+                else {
+                    // 名前の誤りやトークンの範囲の不足では、成功の形の空の一覧が返り、本文だけでは原因が読めない
+                    console.error(`nu-tori.app の zone が見つからない（トークンの範囲を確かめる）: ${body}`);
+                    process.exitCode = 1;
+                }
+            });')"
+        # 送り元の IP（sourceIP）と受け取った側のアドレス（envelopeTo）は、公開の Issue・PR に貼らないので問い合わせない
+        # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
+        ZONE="$zone" DAYS="${since:-7}" node -e '
+            const end = new Date();
+            const start = new Date(end - Number(process.env.DAYS) * 86_400_000);
+            console.log(JSON.stringify({
+                query: `query ($zoneTag: string!, $start: Date!, $end: Date!) {
+                    viewer { zones(filter: { zoneTag: $zoneTag }) {
+                        dmarcReportsSourcesAdaptiveGroups(limit: 1000, orderBy: [date_ASC, sum_totalMatchingMessages_DESC], filter: { date_geq: $start, date_leq: $end }) {
+                            sum { totalMatchingMessages spfPass dkimPass dmarc }
+                            dimensions { date sourceOrgName orgName disposition }
+                        }
+                    } }
+                }`,
+                variables: { zoneTag: process.env.ZONE, start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) },
             }));' | post_json "$api/graphql" | fail_on_graphql_errors
         ;;
     # 先頭の確かめと一覧がずれたとき、何もせず 0 で抜けないようにする
