@@ -113,14 +113,19 @@ case "$command" in
         zone="$(get_json "$api/zones?name=nu-tori.app" | node -e '
             let body = "";
             process.stdin.on("data", (chunk) => (body += chunk)).on("end", () => {
-                // 見つからないときと JSON でない本文は、fail_on_graphql_errors と同じく本文だけ出して失敗にする
+                // JSON でない本文は、fail_on_graphql_errors と同じく本文だけ出して失敗にする
                 let id;
                 try {
                     id = JSON.parse(body).result?.[0]?.id;
-                } catch {}
+                } catch {
+                    console.error(body);
+                    process.exitCode = 1;
+                    return;
+                }
                 if (id) console.log(id);
                 else {
-                    console.error(body);
+                    // 名前の誤りやトークンの範囲の不足では、成功の形の空の一覧が返り、本文だけでは原因が読めない
+                    console.error(`nu-tori.app の zone が見つからない（トークンの範囲を確かめる）: ${body}`);
                     process.exitCode = 1;
                 }
             });')"
