@@ -110,6 +110,7 @@ case "$command" in
             }));' | post_json "$api/graphql" | fail_on_graphql_errors
         ;;
     dmarc)
+        # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
         zone="$(get_json "$api/zones?name=nu-tori.app" | node -e '
             let body = "";
             process.stdin.on("data", (chunk) => (body += chunk)).on("end", () => {
