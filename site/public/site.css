@@ -562,6 +562,11 @@ body:has(.lp) .site-footer {
   accent-color: var(--primary);
 }
 
+/* 数と単位のように、あいだで折り返さない語 */
+.lp-nowrap {
+  white-space: nowrap;
+}
+
 /* 成分表の節の3つの手順 */
 .lp-method {
   margin: 0 0 20px;

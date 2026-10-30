@@ -41,6 +41,7 @@ for (const example of document.querySelectorAll("[data-review-example]")) {
     show("[data-review-fat]", notice.fat);
     show("[data-review-carbohydrate]", notice.carbohydrate);
     show("[data-review-reason]", notice.reason);
+    show("[data-review-previous-guide]", states.previousGuides[goal.dataset.reviewGoal]);
   };
   intake.addEventListener("input", update);
   weightChange.addEventListener("input", update);

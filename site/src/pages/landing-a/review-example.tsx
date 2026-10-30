@@ -17,7 +17,13 @@ export const ReviewExample = () => {
     states.notices[initialGoalIndex]?.[initialIntakeIndex]?.[initialWeightChangeIndex];
   const initialIntake = states.intakeLabels[initialIntakeIndex];
   const initialWeightChange = states.weightChangeLabels[initialWeightChangeIndex];
-  if (initial === undefined || initialIntake === undefined || initialWeightChange === undefined) {
+  const initialPreviousGuide = states.previousGuides[initialGoalIndex];
+  if (
+    initial === undefined ||
+    initialIntake === undefined ||
+    initialWeightChange === undefined ||
+    initialPreviousGuide === undefined
+  ) {
     throw new Error("目安の見本の最初の組が、書き出した見直しに無い");
   }
   return (
@@ -95,15 +101,16 @@ export const ReviewExample = () => {
         </span>
       </div>
       <p class="lp-fine">
-        見本の人: 先週の月曜に、体重 {appText.kg(review.startingWeightTrendKg)}{" "}
-        で目標（減らすときは期限を{review.goalWeeks}週）を立て、1日に使うカロリーを{" "}
-        {appText.kcal(review.previousExpenditureKcal)}{" "}
-        と見積もった人の、1回目の見直しです。先週は食事を{review.recordedMealDayCount}
-        日とも記録しました。体重が変わった量は、日々の上下をならした値です。先週の1日の目安は、
-        {goals
-          .map((goal) => `${goalLabel(goal)} ${appText.kcal(goal.previousGuideKcal)}`)
-          .join("・")}
-        です。計算は、アプリの毎週の見直しと同じです（
+        見本の人: 先週の月曜に体重{" "}
+        <span class="lp-nowrap">{appText.kg(review.startingWeightTrendKg)}</span>{" "}
+        で目標を立て（減らすときの期限は{review.goalWeeks}週）、1日に使うカロリーを{" "}
+        <span class="lp-nowrap">{appText.kcal(review.previousExpenditureKcal)}</span>{" "}
+        と見積もりました。先週の目安は{" "}
+        <span class="lp-nowrap" data-review-previous-guide>
+          {initialPreviousGuide}
+        </span>{" "}
+        で、食事は{review.recordedMealDayCount}
+        日とも記録しています。体重が変わった量は、日々の上下をならした値です。計算はアプリと同じです（
         <a href="/daily-guide">1日の目安の出し方</a>）。
       </p>
       <JsonScript type="application/json" value={states} />
@@ -185,6 +192,8 @@ const balanceReasonText = (goal: Goal, outcome: Outcome): string => {
 
 // notices は [目標][食べた量][体重が変わった量] の順に、知らせに入れる文を並べる。public/landing-a.js が名前で読む
 const states = {
+  // 目標ごとの先週の1日の目安。見本の注記に、選んだ目標の分だけ入れる
+  previousGuides: goals.map((goal) => appText.kcal(goal.previousGuideKcal)),
   intakeLabels: review.intakeOptionsKcal.map((kcal) => appText.kcal(kcal)),
   weightChangeLabels: review.weightChangeOptionsKg.map((kg) => appText.signedKg(kg)),
   notices: goals.map((goal) =>
