@@ -7,8 +7,9 @@
 1. `src/pages/<名前>-page.tsx` に `SitePage`（`src/site-page.ts`）を1つ書く。ページのパス（`outputPath`）・`<title>`・説明・検索に載せるか（`kind`）は、このページの `SitePage` に置く。`outputPath` は末尾のスラッシュ無し（`/terms` → `terms.html`）にする。公開のページは、`kind` を `public` にして足のリンクの文を `footerLabel` に書き、`outputPath` がそのまま正規の URL のパスになる（ほかの `kind` の正規の URL は `src/site-page.ts` の型のコメント）
 2. ページの一覧（`src/site-pages.ts`）に並べる。一覧はページを並べるだけで、書き出し・`sitemap.xml`・`<head>`・外枠の足のリンク・テストがここからページを読み、公開のページの並びが足のリンクの並びになる
 
-- ページに JavaScript とインラインの `style` を置かない。Content-Security-Policy（`src/security-headers.ts`）が自分のオリジンと Cloudflare Web Analytics のビーコンだけを許すため。見た目は `public/site.css` に書く。`font-size` は px で書き、`DESIGN.md` の typography の最小より小さくしない（`scripts/check site` が確かめる）
+- ページに JavaScript とインラインの `style` を置かない。Content-Security-Policy（`src/security-headers.ts`）が自分のオリジンと Cloudflare Web Analytics のビーコンだけを許すため。見た目は `public/site.css` に書く
   - 例外は、LP の版 a の工夫の節の見本を動かす `public/landing-a.js` だけ（#660）。中身と文は書き出しで全部作り、スクリプトは選んだものを見せて文を入れ替えるだけにする。スクリプトが読む値は、実行されない `<script type="application/json">` に置く
+- `public/site.css` の `font-size` は px で書き、`DESIGN.md` の typography の最小より小さくしない（`scripts/check site` が確かめる）
 - Cloudflare Web Analytics のビーコンは外枠（`src/site-layout.tsx`）が全ページに置く。サイトのトークンとビーコンの送り先は `src/web-analytics.ts` の1か所にあり、CSP もそこから作る。LP に PostHog・Sentry は入れない
 - セキュリティのヘッダーは `src/security-headers.ts` の1か所に置く。`vite build` がそこから `_headers` を書き出し、Worker も同じ定義を付ける（Worker の応答には `_headers` が効かない）
 

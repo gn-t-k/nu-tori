@@ -16,7 +16,7 @@ import { dailyGuideExample } from "./daily-guide/daily-guide-example";
 import { WeeksFigure } from "./daily-guide/weeks-figure";
 
 // LP の版 a。並びと見た目は #594 の解決コメントの1〜11（https://github.com/gn-t-k/nu-tori/issues/594#issuecomment-6306406922）と、その試作の版8。
-// 文は試作の文を下書きにした仮の文で、本番の文言は仕様3「App Store の掲載と提出」の PR で掲載情報とまとめて書く（#597 の解決コメントの1）。
+// 文は PR #809 で開発者と節ごとに決めた本番の文言で、掲載情報をこの文に合わせるのは #816。
 // 手順の絵は、仕様3のスクリーンショットの仕組みの画像ができたら足す（手順には、画像が入るまで場所取り（lp-shot）を置いてある）。iPhone の絵は自分で描かない。
 // LP_VARIANTS（wrangler.jsonc）に "a" を入れるまで、外からは見えない
 export const landingAPage = createLandingVariantPage({
