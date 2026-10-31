@@ -28,6 +28,8 @@ export const computeReviewedExpenditure = ({
 }: ReviewedExpenditureInputs): {
   predictedWeightChangeKg: number;
   deviationKg: number;
+  // ずれのうち推定を動かした割合（式の k）
+  gain: number;
   expenditureKcal: number;
   deviationDirection: ExpenditureDeviationDirection;
 } => {
@@ -35,7 +37,7 @@ export const computeReviewedExpenditure = ({
     ((averageEnergyIntakeKcal - previousExpenditureKcal) * daysPerWeek) / kilocaloriesPerKilogram;
   const deviationKg = predictedWeightChangeKg - actualWeightChangeKg;
   const deviationDirection = toDeviationDirection(deviationKg);
-  const k = Math.min(
+  const gain = Math.min(
     baseGain *
       (recordedMealDayCount / daysPerWeek) *
       (1 + countContinuedWeeks(deviationDirection, previousWeeks)),
@@ -44,8 +46,9 @@ export const computeReviewedExpenditure = ({
   return {
     predictedWeightChangeKg,
     deviationKg,
+    gain,
     expenditureKcal: Math.round(
-      previousExpenditureKcal + (k * kilocaloriesPerKilogram * deviationKg) / daysPerWeek,
+      previousExpenditureKcal + (gain * kilocaloriesPerKilogram * deviationKg) / daysPerWeek,
     ),
     deviationDirection,
   };
@@ -75,6 +78,6 @@ const countContinuedWeeks = (
   return changedAt === -1 ? reviewedDirections.length : changedAt;
 };
 
-// k の係数と上限。出荷後に調整する初期値
+// 割合（式の k）の係数と上限。出荷後に調整する初期値
 const baseGain = 0.25;
 const maximumGain = 0.75;

@@ -340,12 +340,10 @@ describe("nu-tori.app の配信", () => {
       });
 
       test("版 a が、特定商取引法に基づく表記と同じ価格の SoftwareApplication の構造化データを1つ持ち、評価を持たないこと", () => {
+        // 中身が無ければ、JSON.parse が投げてテストが落ちる
         const jsonLds = [
           ...variantABody.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs),
-        ].map(([, json]) => {
-          if (json === undefined) throw new Error("構造化データの中身が無い");
-          return JSON.parse(json);
-        });
+        ].map(([, json]) => JSON.parse(json ?? ""));
         expect(jsonLds).toHaveLength(1);
         expect(jsonLds[0]).toMatchObject({
           "@type": "SoftwareApplication",
@@ -360,10 +358,10 @@ describe("nu-tori.app の配信", () => {
       });
 
       test("版 a が読むスクリプトと画像が、自分のオリジンから 200 で返ること", async () => {
-        const paths = [...variantABody.matchAll(/ src="(\/[^"]*)"/g)].map(([, path]) => {
-          if (path === undefined) throw new Error("src のパスが無い");
-          return path;
-        });
+        // 正規表現の括弧は1つで、合えば必ず取れる。型の上で undefined がありうるだけなので除く
+        const paths = [...variantABody.matchAll(/ src="(\/[^"]*)"/g)].flatMap(([, path]) =>
+          path === undefined ? [] : [path],
+        );
         expect(paths).toContain("/landing-a.js");
         const statuses = await Promise.all(
           paths.map(async (path) => [path, (await fetchSite(path)).status]),

@@ -141,8 +141,7 @@ export const createDishStore = (db: DrizzleSqliteDODatabase): DishStore => ({
 
 // 版は、1 ＋ 名前の修正 ＋ 料理の量の修正 ＋ その料理の材料（前の推定の材料も）の量の修正 ＋ その食事の時刻の修正 ＋ 料理が対象の推定を当てた数。
 // 出来事は料理を消すまで消えないので、版は下がらない。数える出来事の種類は足すだけにする（減らすと版が下がり、ヘルスケアが書き直されない）。
-// 修正は控えの索引 sync_write_receipts_record (record_type, record_id) で引く。材料の分を材料と控えの結合で書くと、
-// 統計の無い DB では控えの record_type だけで引き、材料への書き込みの控えを全部読むので、材料の ID の副問い合わせで書く
+// 修正は控えの索引 sync_write_receipts_record (record_type, record_id) で引く。材料の分を材料と控えの結合で書くと、統計の無い DB では控えの record_type だけで引き、材料への書き込みの控えを全部読むので、材料の ID の副問い合わせで書く
 const countVersion = (
   db: DrizzleSqliteDODatabase,
   dish: { id: RecordId; mealId: RecordId },

@@ -17,8 +17,7 @@ public struct MealEditOffer: Hashable, Sendable {
 
     /// 食事の画面の料理の行を左へ送ると出す「削除」。料理の画面の「この料理を削除」も同じ。
     /// 推定を待っている食事の料理には出さない（料理が推定の状態より先に届いた一瞬だけ、行がある）。推定し直しを待っている料理には出す。
-    /// 最後の1品かは、キャッシュの料理で数える。推定中・翌日に推定・まだ送れていない料理と、
-    /// 推定し直しが通らなかった料理も、キャッシュにある料理として1品に数える。キャッシュに無い料理は、料理だけを消す
+    /// 最後の1品かは、キャッシュの料理で数える。推定中・翌日に推定・まだ送れていない料理と、推定し直しが通らなかった料理も、キャッシュにある料理として1品に数える。キャッシュに無い料理は、料理だけを消す
     public func rowDeletion(of dishId: UUID) -> Deletion {
         if mealAwaitsEstimation {
             return .hidden
@@ -98,8 +97,7 @@ public struct MealEditOffer: Hashable, Sendable {
         public enum NameAndQuantity: Hashable, Sendable {
             /// 押してその場で直せる欄にする。量の無い料理は量の行を置かない
             case editable(quantity: QuantityField?)
-            /// 欄をいつもの場所に置いたまま、押せない表示にする。量の無い料理も量の行を置き、
-            /// 食事の画面の料理の行と同じく量を「—」で見せる
+            /// 欄をいつもの場所に置いたまま、押せない表示にする。量の無い料理も量の行を置き、食事の画面の料理の行と同じく量を「—」で見せる
             case disabled(quantity: QuantityField?)
         }
 

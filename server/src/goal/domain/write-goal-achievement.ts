@@ -4,8 +4,7 @@ import type { GoalStore } from "./goal-store";
 import type { GoalAchievement } from "./goal";
 
 // 達成を書く口。記録の変化を書く入口（RecordChangeWriter）の run の中で呼び、書いた目標の記録を足す（同じ目標の変更がもう一度届く）。
-// 表で守らない決まり（減量・増量の目標だけ、1つの目標に1回だけ、閉じていない目標だけ、期限の日の確定のあとは期限の日より後の日だけ）は、
-// 書く前にここで確かめて投げる。減量・増量の目標だけであることは外部キーも保つ
+// 表で守らない決まり（減量・増量の目標だけ、1つの目標に1回だけ、閉じていない目標だけ、期限の日の確定のあとは期限の日より後の日だけ）は、書く前にここで確かめて投げる。減量・増量の目標だけであることは外部キーも保つ
 export const writeGoalAchievement = (
   goalStore: GoalStore,
   addChange: RecordChangeWrites["addChange"],

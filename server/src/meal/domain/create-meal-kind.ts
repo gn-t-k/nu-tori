@@ -118,8 +118,7 @@ const decideCreate = (
         mealCountOfDay: countMealsOnEatenDay(store, meal) + 1,
       },
     ],
-    // 推定の状態の変更は、食事ができたことに付いて addedChanges で足す。写真がそろって予定に入れたときに
-    // 推定の書き込みの口が足す変更は、同じ記録なので帳簿が1つにまとめる
+    // 推定の状態の変更は、食事ができたことに付いて addedChanges で足す。写真がそろって予定に入れたときに推定の書き込みの口が足す変更は、同じ記録なので帳簿が1つにまとめる
     commit: (_receiptId, addChange) => {
       store.insert(meal);
       stores.writeEstimationEvents(addChange, (writes) =>

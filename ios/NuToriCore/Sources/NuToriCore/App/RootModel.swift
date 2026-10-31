@@ -1,8 +1,7 @@
 public import Foundation
 public import Observation
 
-/// アプリの流れ。開く・サインインする・サインアウトするで画面を替え、記録忘れの通知から開いた着き先、受け付けなかった1行、
-/// 規約への同意のシートを持つ。画面からの編集は `perform(_:)` の1つの口で受ける
+/// アプリの流れ。開く・サインインする・サインアウトするで画面を替え、記録忘れの通知から開いた着き先、受け付けなかった1行、規約への同意のシートを持つ。画面からの編集は `perform(_:)` の1つの口で受ける
 @MainActor
 @Observable
 public final class RootModel {
@@ -104,8 +103,7 @@ public final class RootModel {
         return outcome
     }
 
-    /// 記録忘れの通知を押して開いた。ヘルスケアを読み、知らせを出すかを決めてから、
-    /// その日の知らせがあればその位置に、無ければ今日のいちばん下に着く
+    /// 記録忘れの通知を押して開いた。ヘルスケアを読み、知らせを出すかを決めてから、その日の知らせがあればその位置に、無ければ今日のいちばん下に着く
     public func openFromReminder(noticeId: UUID) async {
         // 起動して初めて開き終え、観測を始めてから決める。始める前の出来事は送られないため
         switch observationStart {
@@ -243,6 +241,23 @@ public final class RootModel {
         case .retryLater:
             return .retryLater
         }
+    }
+
+    public func signOut() async {
+        do {
+            replaceScreen(with: try await accountSession.signOut())
+        } catch is CancellationError {
+            return
+        } catch {
+            // 投げるのは端末の鍵と印を書くところと送り待ちを読むところで、送り待ちが残っているかわからないので、ある側の文に倒す。
+            // 鍵を消せていなければ、開き直したときにタイムラインに戻る
+            replaceScreen(with: .signIn(.signInAgain(hasPendingWrites: true)))
+        }
+    }
+
+    /// 送り待ちがあるときだけサインアウトを確かめるため。読めなければ、ほかの Apple ID で消えうることを確かめる側に倒す
+    public func hasPendingWrites() async -> Bool {
+        (try? await accountSession.hasPendingWrites()) ?? true
     }
 
     /// サブスクリプション中で自動更新がオンのときだけ返す。返したら、確かめの前に退会の案内を出す

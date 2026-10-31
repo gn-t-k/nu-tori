@@ -8,3 +8,5 @@ node_modules/
 site/dist/
 worker-configuration.d.ts
 .scratch/
+.claude/worktrees/
+*.local.js

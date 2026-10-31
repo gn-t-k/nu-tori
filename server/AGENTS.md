@@ -10,22 +10,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - Worker の型の宣言（`worker-configuration.d.ts`）は `wrangler types` が `wrangler.jsonc` から書き出す。コミットせず、`scripts/check server` が毎回書き出す
 - Workers で動かないライブラリが要る処理が出たら、その部分だけ別の基盤に置く
 - 秘密の値は `wrangler secret` に置く。足したら、`wrangler.jsonc` の `secrets.required`（使う環境に。本番だけの値は本番だけ）に名前を、`vitest.config.ts` にテストの値を書く。本番だけの秘密の値は `vitest.config.ts` に書かず、使うテストの中で `env` に足す（テストは開発用の設定で動くため）。GitHub Actions の秘密の値を足すときは `docs/agents/tooling.md` を読む
-- 推定の提供元（Anthropic）の API キーは、秘密の値 `ANTHROPIC_API_KEY` に置く。環境ごとの Anthropic のワークスペース（開発用は `nu-tori-development`、本番は `nu-tori-production`）のキーを、それぞれの環境に置く。`wrangler.jsonc` の `secrets.required` には両方の環境に書き、テストの値は `vitest.config.ts` にある（テストは提供元を偽物に差し替えるので、この値は本物に届かない）
-- 読み分け（Claude Haiku 5.5。#423 で決めた）も、推定と同じワークスペースの `ANTHROPIC_API_KEY` で呼ぶ。費用の上限はワークスペースの月の上限で、前払いのクレジットは自動で補充する（額と知らせは `docs/agents/production-incidents.md` の「費用の知らせ」）。上限に届くか補充が失敗してクレジットが尽きるとすべての文章が会話になるので、読み分けの呼び出しの失敗を Sentry に送り、急増で知らせる
-- Workers AI のつなぎ（`ai` の binding）と、環境ごとの AI Gateway は置いていない（#422 で作ったゲートウェイは、読み分けを Haiku 5.5 にしたので消す。#446）。Workers AI を呼ぶようになったら、両方の環境に `ai` のつなぎを書き、ルートの `AGENTS.md` のとおり環境ごとのゲートウェイを作って通し、そのときゲートウェイの設定（支出の上限、ログ、認証）をここに書く。ゲートウェイを名指さずに呼ぶと、ログがオンの `default` のゲートウェイができる
-
-## 確かめのジョブのためのサインインの口
-
-- 開発用の環境で主な流れを確かめるジョブ（`docs/agents/tooling.md` の「CI」）は、Apple を通せないので、`POST /v1/e2e/sessions`（`src/http/e2e-session-routes/`）でサインインする。毎回新しいアカウントを作り、`sessionToken` と `accountId` を返す。OpenAPI の文書には載せない（アプリのクライアントに入れない）
-- 本番で開くと誰でも入れてしまうので、次のすべてが揃ったときだけ開き、ほかは口が無いのと同じ 404 にする
-  1. `SENTRY_ENVIRONMENT` が `development`（許可する名前を挙げる。本番や綴りの違う名前は閉じる）
-  2. 秘密の値 `E2E_SIGN_IN_SECRET` が置かれていて、32 文字以上
-  3. `x-e2e-sign-in-secret` ヘッダーがその秘密の値と一致する（一致しなければ 401。ハッシュにして定数時間で比べる）
-- 新しいアカウントは前の週を持たないので、ジョブは目標の設定の要求（`/v1/goal-setup/*`）を過去の時刻に送ったことにし、開始の日を前の週に置いて、次の取りに行く要求で週の見直しが届くことを確かめる。`x-e2e-requested-at`（ISO 8601）と `x-e2e-sign-in-secret` を送り、上の 1〜3 が揃ったときだけその時刻で計算する。揃わないか時刻が読めなければ、ヘッダーが無いのと同じに今の時刻にする（断らず、差し替えがあることを漏らさない。`src/http/e2e-access/resolve-requested-at.ts`）
-- 課金の判定を確かめるため、ジョブは2つ目のアカウントを、サインインの口に `x-e2e-requested-at` を付けて60日前に使い始めたことにして作り、写真の食事の推定の状態が `awaiting_subscription` になることを確かめる。無料体験の最後の日は使い始めた日と課金を入れた日の遅いほうから数えるので、開発用の `BILLING_STARTED_ON` は30日より前の日にしておく（ジョブは、無料体験が終わっていなければそう書いて落ちる）。時刻の差し替えの条件は目標の設定の要求と同じ
-- ジョブは、推定が `failed` で終わった理由を `GET /v1/e2e/meals/{mealId}/last-estimation-attempt`（`src/http/e2e-estimation-attempt-routes/`）で読む
-- `E2E_SIGN_IN_SECRET` は開発用の Worker にだけ置き、本番の `wrangler.jsonc` と本番の Worker に書かない。置かなくても動き、口が閉じるだけなので、`secrets.required` には書かない（書くと、置くまで開発用のデプロイが失敗し、本番のデプロイも止まる）。型は `src/e2e-sign-in-secret.d.ts` で足す。本番の設定に名前を書いていないことは、`e2e-session-routes.test.ts` が `wrangler.jsonc` の文字列で確かめる
-- 確かめる流れは `e2e/run-main-flow.ts`（Workers の実行環境のテストで、偽の提供元を差して通る）、実行の入口は `e2e/verify-development.ts`（Node で `pnpm exec tsx` で動かす）、送る写真と出典は `e2e/photos/`
+- 推定・読み分け・返事（LLM の提供元、その鍵と費用の上限、Workers AI と AI Gateway、成分表のデータファイル）に触るときは、`docs/agents/server-llm.md` を読む
 
 ## 層
 
@@ -54,61 +39,9 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 出回っている最も古い版のアプリとも動くようにする。API の変更は足すだけにし、壊す変更は新しい版のエンドポイントとして出す。最低バージョン（本番の `vars` の `MINIMUM_APP_BUILD`）より古いビルドは締め出すので、この「最も古い版」から外れる。締め出すかの線引きと上げる手順は `docs/agents/ios-release.md`
 - 締め出しは受け口の入口（`src/http/reject-unsupported-app-build/`）で扱う。アプリが付けるビルド番号のヘッダー `X-App-Build` と、締め出したときの 426（本文は `{ "code": "app_build_unsupported" }`）は、経路のスキーマと OpenAPI の文書に載せない。`/v1` の経路は Apple のサーバー間通知（Sign in with Apple の通知と App Store のサーバー通知）を除いてすべて判定にかかるので、アプリから来ない経路を足すときは入口の外す経路に名前を足す
 
-## 同期の記録の種類の足し方
+## 同期の帳簿
 
-- 同期の共通の仕組み（帳簿）は `src/domain/sync-ledger/`。種類は帳簿に `RecordKind`（名前、書き込みを受け付けるかの決定、今の値を読む口）を渡す。冪等、控え、変更の並び、500 件の区切りは帳簿が持つので、種類に書き写さない
-- 種類の名前を書くのは、名前の一覧（`domain/record-types.ts`）の1か所だけにする。何も import しない定数で、`RecordType` と、帳簿の表の `text({ enum })`（`durable-object/sync-ledger-tables.ts`）がここから引く。`record_type` の列は TEXT で、SQL に値の並びを書いていないので、種類を足しても移行は要らない
-- 種類を足すときは、一覧に名前を足し、種類のまとまりを `src/<種類>/` に作って、種類、置き場、受け口の入口を置き、登録簿に1行ずつ足す（どれも名前の順）: `domain/create-record-kinds.ts`、`domain/record-kind-stores.ts`、`durable-object/create-record-kind-stores.ts`、`http/sync-routes/http-record-kinds.ts`。ドメイン層は Durable Object と受け口を import できず、層ごとに登録簿が分かれるため4か所になる。一覧に足した名前が種類の登録簿（`create-record-kinds.ts`）か受け口の登録簿（`RecordType` をキーにした表）に無いと、型検査が止める。一覧に無い名前の種類も止める。書き込みのスキーマの並び（`registered-write-schemas.ts`）と、OpenAPI の値の部品は、受け口の登録簿から導く。書き込みの `oneOf` の並びは表の順で決まるので、並びが変わるのを受け入れる
-  - 種類のまとまりに置くファイル: `domain/` に値の型、置き場の型、種類（`create-<種類>-kind.ts`）、端末が書く種類は書き込みの型。`durable-object/` に表の宣言と置き場の実装。`http/` に受け口の入口（`<種類>-http-kind.ts`）の1つ
-  - サーバーだけが書く種類は、`createServerOnlyKind`（`domain/sync-ledger/create-server-only-kind/`）で作る。渡すのは、名前、`whenGone`、今の値を探す `find`（無ければ `undefined`）。記録の ID が親の記録の ID で、親と一緒に消える種類（推定の状態、料理ごとの推定の状態）は、`whenGone` を `deletion_mark` にして親（あるか、削除の印があるか）を渡す。ほかの種類から計算する種類は `follows` も渡す
-- 書き込みと変更の union（`SyncWrite`、`SyncChange`）、受け口のスキーマ、`openapi.json` の `RecordKindName` の列挙は、登録簿から導く。最後に `scripts/check server --fix` で `openapi.json` を書き出し直す
-- 記録が消えたことの届け方は、ドメイン層の種類の `whenGone` の1か所で決める。削除の印を残す種類は `deletion_mark`、削除の印を持たず、ほかの記録から計算する種類（体重の傾向）は、記録が無くなったことも変更として届ける `absence`、消えない種類は `never`。取りに行く応答では、無くなったことは種類によらず `kind` が `<種類>_absence` で `record` が空の変更になる。帳簿は、`whenGone` と食い違う今の値（削除の印を持たない種類の削除の印、`absence` でない種類で変更の並びが指す記録も削除の印も無いこと）を、不具合として投げる。受け付けなかった書き込みの記録は、まだ作られていないことがあるので、どの種類でも無いことを返す
-- 受け口の種類（`HttpRecordKind`）は、端末からの書き込み（スキーマと変換。サーバーだけが書く種類は `undefined`）、値のスキーマ（`recordSchema`）、値の変換（`toRecord`）を持つ。スキーマと変換は、種類の受け口の入口（`src/<種類>/http/<種類>-http-kind.ts`）の1ファイルに書き、ファイルに分けない。取りに行く変更の `record` は種類によらず文字列をキーにした値なので、値のスキーマを、種類の名前から作った名前（`weight_trend` なら `WeightTrendRecord`）の部品として `openapi.json` に書き出す。`kind` の文字列（値は種類の名前、削除の印は `<種類>_deletion`、無くなったことは `<種類>_absence`）は `to-change-body.ts` が付けるので、種類は書かない
-- `RecordKindName` は端末が自分の登録簿と突き合わせるためのもので、応答の `kind` を解くのには使わない（`kind` は文字列のまま。知らない種類は端末が読み飛ばす）
-- `decide` は、受け付けるかの決定（`WriteDecision`。当てる `applied`、今の値と同じ `unchanged`、捨てる `ignored_duplicate`・`ignored_tombstone`・`kept_corrected`、受け付けない `rejected`）を返す。控えに載せる結果、書き込みの記録の変更を並びに載せるか、後に続く種類を走らせるかは、帳簿が決定から決め、種類は書かない。削除の印に当たって捨てた書き込みは、いつも削除の印を並びに載せ直す（削除の印を取り終えた端末に、作り直した記録を残させないため）
-- 種類の行（記録・削除の印・設定の変更）は、`decide` が返す `commit(receiptId)` の中で書く。控えの ID を帳簿しか作れない型にして、控えより先に書く形をコンパイルで止めるため
-- 変更の並びの表（`record_changes`）に書くのは帳簿だけにする。種類と置き場は、変えた記録を帳簿に渡す
-  - 書き込みが、自分の記録のほかに変える記録（食事を消すときの料理など）は、`decide` が返す `addedChanges` に載せる。帳簿は、書き込みの記録の変更のあとに、控えと結ばずに並びの順で足す。`commit` の中で変えた記録が分かる場合（推定の書き込みの口が足す推定の状態の変更）は、`commit` に渡る `addChange` で足す。帳簿は、`addedChanges` のあとに足した順で載せ、同じ記録の変更を最初の1つにまとめる。載せられる種類は `RecordKind` の4つ目の型引数で宣言し、登録簿に無い種類は型検査が止める
-  - ほかの種類の記録から計算する種類（体重の傾向、いつもの時刻）は、`RecordKind` の `follows` に元の種類の名前と `afterSourceApplied` を書く。帳簿は、元の種類の書き込みを当て（`applied`）、その変更を並びに載せたあとに、計算する種類を登録簿の順に呼ぶ。計算する種類は、書いたあとの記録を読んで自分の行を書き、変えた記録の ID を返す。元の種類は、計算する種類を知らない（`decide` で、書いたあとの記録をメモリの上で作り直さない）
-  - 端末の書き込みの外（受け口の要求、アラーム）で記録を変えるときは、記録の変化を書く入口（`src/domain/record-change-writer.ts` の `RecordChangeWriter`。Durable Object では `durable-object/create-record-change-writer/` が組み、中身は `domain/write-record-changes-to-stores.ts`）に `run` を渡し、その中で行を書いて、変えた記録を `addChange` で渡す。`run` の書き込みと変更は1つのトランザクションに入り、変更には渡した順に通し番号が付く。推定の予定と結果は `estimation`、返事の流れの出来事は `reply` で書き、変わった状態の変更は入口が `run` のあとに足す。流れ（推定・返事・読み分け・写真の受け取り）は帳簿を組まず、入口と、自分が読み書きする置き場だけを受け取る
-- 書き込みを当てたときに PostHog に送る出来事（食事を受け取った、など）は、`decide` が返す `usageEvents` に載せる。帳簿は、その要求で初めて決めた書き込みの分だけを返し、同じ書き込みの ID が再び届いたときは返さない。送るかどうか（利用状況の設定）は、要求を当て終えたあとの設定で Durable Object が送る前に決める（上の「層」）
-
-## 推定
-
-- 推定はアラームで進める。入口は `src/estimation/domain/advance-estimations.ts`: 待っている予定から推定を始め、次に試みる時刻が来た推定の試みを書いてから（`begin-estimation-attempts.ts`）、提供元を呼び（`run-estimation-attempt.ts`）、結果を書く（`record-estimation-attempt-outcome.ts`）。次に試みる時刻（待ちを広げる式と、試みの時間の上限）はドメイン層の `compute-next-estimation-attempt-at` が出し、アラームで動かす仕事の並び（`src/domain/account-alarm-jobs.ts`）もそれでアラームを合わせる
-- 推定の予定と結果（予定・見送り・推定・試み・結果・完了・断念）は、推定の書き込みの口（`src/estimation/domain/write-estimation-events.ts`）を通して書く（端末の書き込みの外では、記録の変化を書く入口がこの口の中身を呼ぶ）。書く置き場はこの口と入口にしか渡らず、口が書く前とあとの推定の状態を比べて変わった食事・料理にだけ推定の状態の変更を足すので、書く場所では足さない
-- 予定と推定の対象は、食事（写真の推定）か料理（名前を直した・料理を足したときの推定し直し。`EstimationTarget`）。料理が対象の推定は、料理の今の値を ① に渡し、終わったら `apply-dish-estimation.ts` が当てる（料理を消していたら、届いた推定を捨てる）。回数・見送り・やり直し・アラームは食事が対象の推定と同じ流れに載る
-- 推定の回数は、アカウントごとに1日 `maximumDailyEstimations`（15）まで。`beginEstimationAttempts` が、予定から推定を始める前に、予定の数える日（`counted_on`）の `estimations` を数え、上限なら見送る（`estimation_deferrals`、次の日の 0:00 の予定とつなぎ、PostHog の `estimation_deferred` の理由 `daily_limit`）。次の日の 0:00 は、ユーザーの最新のタイムゾーン（読めなければ食事を送ったときのもの）で `computeNextDayStart` が出し、その日の分に数える。日ごとの回数の行は持たず、食事を消しても推定の行は残るので回数は戻らない。テストは `src/estimation/http/testing/insert-counted-estimations.ts` で、食事につながらない推定を書いて回数を満たす
-- 推定を始めるとき、予定の数える日でサブスクリプション切れ（`src/subscription-status/domain/is-subscription-expired/`）なら、回数より先に見て推定を始めず、保留（`estimation_holds`）を書く（PostHog の `estimation_deferred` の理由 `subscription_expired`）。いちばん新しい予定が保留の食事・料理の推定の状態は `awaiting_subscription`。保留の再開は `src/estimation/domain/resume-held-estimations.ts` が、使えるようになった食事・料理ごとに、数える日を今日・時刻を今にした新しい予定を足す。推定を始めるときと課金の仕事のアラームが呼び、買った取引を書くトランザクションも同じ推定の書き込みの口の中で呼ぶ
-- 提供元（LLM）は、ドメイン層の型 `EstimationProvider`（`src/estimation/domain/estimation-provider.ts`）を、`src/estimation/durable-object/create-estimation-provider/` が作る。Durable Object は推定のたびにここから得る。本物は Anthropic の API（`@anthropic-ai/sdk`。再試行は SDK でなくドメイン層が持つので切る）で、`create-anthropic-estimation-provider.ts` が組む。モデルは Claude Sonnet 5（`request-structured-output.ts` の1か所）、思考は `thinking: { type: "disabled" }` で切り、`metadata.user_id` にアカウント ID の SHA-256 を入れ、構造化出力（`output_config.format`）で答えさせる。呼び出し1回の時間の上限は ① が 90 秒、② が 60 秒（試み全体の 3 分の中に収まる）。HTTP 400 は 400 の失敗、時間切れは時間切れの失敗、そのほかの SDK のエラーは提供元のエラー（`errorType` は応答のエラーの種類、無ければ `http_<状態コード>`、つなげなければ `connection_error`）、構造化出力が読めない・出力の上限で切れた・答えなかったは読めない応答の失敗（使ったトークンつき）にする。提供元の応答のテキストは残さない。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（料理あり・料理なし・確かめに通らない・答える前に待つは `mockCreateEstimationProviderOk`、エラー・400・時間切れ・② だけ落ちるは `mockCreateEstimationProviderError`）。提供元そのものの要求の組み立てと応答の読み取りは、Anthropic の API の手前（SDK の `fetch`）を差し替えて確かめる（`testing/stub-anthropic-api.ts`）
-- ① には、材料の量と単位に加えて、食べた分の可食部の g の合計（`edibleGrams`）を答えさせ、1単位あたりの g はドメイン層が量で割って出す（`run-estimation-attempt.ts` の `composeDishes`）。量と1単位あたりを別々に答えさせると、重ねて答えたときに掛け算で桁が跳ねる（#517）。① の指示か答えの形を変えたら、`pnpm exec tsx evals/ingredient-grams/check-ingredient-grams.ts` を回し、材料の g がありうる範囲に収まるかを見る
-- 栄養成分表示の値（①）と AI の推定の値（②）は、食べ物にありえない濃さなら確かめに通さない（`run-estimation-attempt.ts` の `isPossibleInFood`）。上限は基準 100 g あたりで、エネルギーが 1,200 kcal、g の項目が 200 g。基準の読み違いで桁が跳ねた答えを落とすためのもので、正しい記録をはじかない高さに置く: エネルギーは純粋な脂質（約 900 kcal）に栄養成分表示の許容差（±20%）を見込み、g の項目は、重さ（100 g）の倍にする（① が ml を g とみなすので、水あめのような重い液体は 100 ml あたり 120 g 近くになり、それを通すため）。基準が 0.2 g に満たない粒の表示は、丸めだけで上限を超えることがあり、そこは割り切る。材料の g そのものには上限を置かない（鍋ごとの記録や水 2 L は本物の記録で、ありえないと言える高さが無い）
-- LLM の呼び出しの失敗の型は、推定・読み分け・返事で同じ1組にする（`src/domain/llm-call-error.ts`・`llm-call-bad-request-error.ts`・`llm-call-timed-out-error.ts`・`llm-call-invalid-response-error.ts`）。Anthropic の SDK の失敗をこの型に写すのは `src/durable-object/anthropic/catch-anthropic-failure.ts` の1か所だけにし、提供元を足すときもここを通す
-- 提供元の失敗と、確かめに通らない応答は、試みの結果（`estimation_attempt_results.result`）にする。R2 と成分表の段で止まったら投げ、試みを結果の無いまま残して、途中で止まった試みとして数える
-- アラームの中は受け口の要求ごとのログを通らないので、アラームが呼び出しごとに `route: "alarm"` のログを出す（試みごとの結果・失敗した段・提供元のエラーの種類）
-- 試み1回分の中身（返った中身の確かめ、文章の食事のまとめ方と時刻の境目、① と ② の使用量の分け方、栄養の出どころ）は、`run-estimation-attempt.test.ts` が、偽の提供元（`src/estimation/domain/estimation-provider.mock.ts`。提供元を作る口の mock もこれを差す）と偽の写真の置き場を渡して直接確かめる。HTTP から動かす推定のテストは、つなぎ（記録・同期・出来事・ログに出ること）と予定（回数、見送り、やり直し、アラーム）に絞り、試みの中身の分岐を足さない
-- HTTP から動かす推定のテストは、`src/estimation/http/testing/use-fake-clock.ts` で Date だけを先の時刻にして、アラームがひとりでに動かないようにし、`runDurableObjectAlarm` で動かす。やり直しは時計を進めてから動かす
-
-## 読み分け
-
-- 読み分けはアラームで進める。入口は `src/sent-text/domain/classify-sent-texts.ts`: 読み分けを待っている文章（読み分けの行が無い）を送った時刻の順に1つずつ提供元に読ませ、1つのトランザクションで読み分けの結果と送った文章の状態の変更を書く。食事なら文章の食事（入口 `written`、時刻は送った時刻、`sent_text_meals` に文章を持つ）を作って推定の予定に入れ、会話・決めかねる・呼び出しの失敗なら会話にして返事の依頼（きっかけ: 読み分け）を書く。`runAccountAlarm` は推定より先に読み分けるので、文章の食事の推定は同じアラームで始まる
-- 読み分けは試みの行を持たず、やり直さない。呼んでいるあいだに止まった文章は行が無いまま残り、次のアラームで読み直す。読み分け待ちの文章があれば、次のアラームの時刻はその文章を受け取った時刻（過ぎているので、すぐ動く）
-- 読み分けと返事の提供元（LLM）は、ドメイン層の型 `ConversationProvider`（`src/reply/domain/conversation-provider.ts`）を、`src/reply/durable-object/create-conversation-provider/` が作る。差し替えの口はここ1つにし、テストは同じフォルダの mock で偽物に差し替える（食事・会話・決めかねると返事は `mockCreateConversationProviderOk`、読み分けか返事の呼び出しの失敗は `mockCreateConversationProviderError` の `failingCall`）。本物は Anthropic の API（推定と同じく SDK の再試行は切る）で、`create-anthropic-conversation-provider.ts` が組む。読み分けは Claude Haiku 5.5（要求は `create-haiku-classification-request.ts`、基準の文面は `classification-criteria.ts`。どれも評価 `server/evals/classify` で確かめたので、変えたら回し直す）に、思考を切り、`metadata.user_id` にアカウント ID の SHA-256 を入れ、構造化出力で「食事」「会話」「決めかねる」の1つを答えさせる。呼び出し1回の時間の上限は 30 秒。失敗はどれも会話になるので `LlmCallError` の `errorType` で分けるだけにする（応答のエラーの種類、無ければ `http_<状態コード>`、つなげなければ `connection_error`、時間切れは `timed_out`、出力の上限で切れた・答えなかった・読めないは `invalid_response`）。提供元そのものは、推定と同じく SDK の `fetch` を差し替えて確かめる。返事の提供元は下の「返事」
-
-## 返事
-
-- 返事はアラームで進める（`runAccountAlarm` が読み分け・推定のあとに呼ぶ）。入口は `src/reply/domain/advance-replies.ts`: 待っている依頼から返事の生成を始めて試みを書き（`begin-reply-attempts.ts`）、応える文章の送った順に1つずつ文脈を読んで提供元を呼び（`run-reply-attempt.ts`。先に作った返事をあとの文章の窓に入れるため並べない）、結果を書く（`record-reply-attempt-outcome.ts`）。次に試みる時刻は推定と同じ式（`src/domain/compute-next-attempt-at.ts`）で、試みの時間の上限は `reply-attempt-time-limit-ms.ts`
-- 返事の流れの出来事（依頼・きっかけ・回数切れ・生成・試み・結果・返事・作れなかった）は、返事の書き込みの口（`src/reply/domain/write-reply-events.ts`）を通して書く（端末の書き込みの外では、記録の変化を書く入口がこの口を呼ぶ）。口は、表で守らない決まり（依頼は会話と読み分けた文章にだけ、回数切れと生成・返事と作れなかったはどちらか1つ）を書く前に確かめて投げ、書く前とあとで送った文章の状態を比べて変わった文章にだけ状態の変更を、返事を書いたら返事の変更を足す。依頼ときっかけのサブセットは、口の `request` で一緒に書く（きっかけは依頼の型の `trigger` で1つ）
-- 依頼の数える日でサブスクリプション切れなら、生成を始めず止め（`reply_request_subscription_halts`）を書く。回数切れと同じく買っても再開せず、応答の状態 `halted` の理由（`daily_limit`・`subscription_expired`）で見分ける
-- 回数は1日 `maximumDailyReplyGenerations`（10）。生成を始めるときに、依頼の数える日の生成を数え、上限なら提供元を呼ばずに回数切れにする（翌日に回さない）。テストは `src/reply/http/testing/insert-counted-reply-requests.ts` で回数を満たす
-- 指し示す食事は、文脈で ID を付けた食事（今日と昨日の食事、記録の印の食事）のうち在るものだけを通し、ほかは読めない応答にしてやり直す
-- 返事の本物の提供元は Claude Sonnet 5.5 を流す形で呼ぶ（`generate-reply-with-sonnet.ts`）。要求は `create-sonnet-reply-request.ts`（指示を system に、文脈の窓・記録の値・新しい発言の文の塊をユーザーのメッセージに並べ、窓のあとにキャッシュの印。思考は `thinking: { type: "between_tools" }` で切る。Sonnet 5.5 は `disabled` を 400 で断る）、指示の文面は `reply-instructions.ts`（評価 `server/evals/reply` のすべての場面で確かめた。指示・文脈の文面・要求を変えたら `pnpm run evals:reply` を回し直し、すべて通るまで直す）、答えは構造化出力の `{ body, mealIds }`。流れてきた JSON から本文のできた分だけを読み（`read-streamed-reply-body.ts`）`onText` に渡す。時間の上限は試みの signal だけ。400 は状態コードで見分けて 400 の失敗、出力の上限で切れた・答えなかった・形が違うは読めない応答、流れが終わりの出来事なしに閉じたら提供元のエラー（`stream_ended`）。提供元そのものは SDK の `fetch` を差し替え、流す応答は `testing/reply-with-text-stream.ts` で作って確かめる
-- 見守る要求（`GET /v1/sent-texts/{sentTextId}/reply-stream`）は、Durable Object の RPC が返す SSE のバイトの流れを、受け口の Worker がそのまま `text/event-stream` で返す。つないでいる要求と、試みが流している途中の文は、Durable Object の実体のメモリ（`src/reply/domain/create-reply-watchers.ts`）にだけ持ち、記録に残さない。返事はアラームが作るので、端末が切れても最後まで作る。提供元は `generateReply` の `onText` に本文のできた分を渡し、アラームは読み分け・生成の開始・試みの結果のあとに `refresh` で結果を送る。出来事の形は `src/http/reply-stream-routes/reply-stream-event-schema.ts`
-
-## 成分表のデータファイル
-
-- 成分表のデータファイル（`src/domain/food-composition/food-composition-table.json`）は、文部科学省の本表の Excel から `scripts/build-food-composition-table.ts` が作る。手で書き換えず、成分表の版を上げるときや読み方を直したときに、`server/` で `pnpm exec tsx scripts/build-food-composition-table.ts` を回して作り直す。出典はファイルの `source`
-- 栄養の項目の名前は `shared/nutrients.json`、成分表の列との対応は `src/domain/food-composition/nutrient-source-columns.ts`。項目を足すときは JSON に1行足し、対応を足して、データファイルを作り直す
+- 記録の種類を足す・直すとき、同期の帳簿（`src/domain/sync-ledger/`）に触るとき、端末の書き込みの外（受け口の要求、アラーム）で記録を変えるとき、書き込みで PostHog に送る出来事を足すときは、`docs/agents/server-sync-ledger.md` を読む
 
 ## 出し方のページと LP の例
 
@@ -123,42 +56,15 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - 身体データと使い始める前の摂取エネルギーは、目標と推定消費カロリーの計算に使ったら捨て、DB にもログにも残さない（ADR-0009）
 
-## 目標の設定の要求
+## 目標の設定と週の見直し
 
-- 目標の設定は、同期の外でその場で答える要求で進める。経路は `src/http/goal-setup-routes/`（`/v1/goal-setup/*`）、入口は `src/goal/domain/` の `previewGoalSetup`（目標の下見）・`proposeGoals`（目標案）・`assessCustomTargetWeight`（自分で決める目標体重）で、その人の Durable Object の同じ名前の RPC から呼ぶ。この3つは何も書かない。ただし、目標を決める要求と同じく、答える前にまだ見直していない週を見るので、見直しが要るときだけ週の見直しの行を書く（下の「週の見直し」）
-- 見せる値（目標案、自分で決めた目標体重の評価、維持の目標体重と1日の目安）は `src/goal/domain/goal-offer/` の1か所で出す。目標案・自分で決める目標体重・目標を決める要求の3つの入口はどれもここを通り、目標を決める要求は見せる値を組み直さずに、端末が見せていた値と比べるだけにする（`assessGoalDecision`）
-- どの要求も、計算の元（開始の日、今の目標、開始の日の体重の傾向、推定消費カロリー）を `src/goal/domain/goal-setup-basis/` の `resolveGoalSetupBasis` で要求のたびに出し直す。初めての目標では推定消費カロリーを逆算か式で出し、今の目標があれば今の推定（`ExpenditureEstimateStore.findCurrent`）を使う。目標案から先は同じ module の `resolveCompleteGoalSetupBasis` で、体重記録と推定消費カロリーが揃っていることを確かめ、減量・増量の計算の元（期限までの日数を含む）は `computeWeightChangeGoalInputs` で出す
-- 断る要求（不具合のときだけ届く）は、形の誤りを 400、値の誤り（`GoalSetupRequestRejectedError` の `reason`）を 422 にして、本文の `code` に理由を入れ、受け口が Sentry に送る。エラーには理由と、誤っていた場所だけを持たせ、届いた値を載せない
-- 目標の下見の「減量の案を1つでも出せるか」は、期限を選ぶ前に答えるので、受け付けるいちばん短い期限（`src/goal/domain/accepted-deadline/` の `acceptedDeadlineDays.minimum`）で確かめる
-- 目標を決める要求（`POST /v1/goal-setup/decisions`、入口は `decideGoal`）が目標の行を書く（ほかに書くのは、下の「週の見直し」の、期限後の維持の目標を作る週の見直しを書く口だけ）。記録の変化を書く入口（`RecordChangeWriter`）の `run` の中で、要求の受け取り（`goal_decision_receipts`）を見て、同じ計算の元で見せる値を出し、端末が見せていた値と同じときだけ、目標を決めたことを書く口（`src/goal/domain/write-goal-decision.ts`。テストは Durable Object の置き場に当てる `src/goal/durable-object/write-goal-decision.test.ts`）で行の組を書く
-  - 応答の `status` は3つ: 決めた `decided`、開始の日か見せていた値が違った `recalculated`（目標案の応答と同じ形の新しい案を返し、受け取りを書かない。開始の日がずれて期限が 28〜182 日の外に出たら、受け付けるいちばん近い日に寄せた期限の案を返し、端末はその期限を使い直す）、自分で決めた目標体重を受け付けない `custom_target_weight_rejected`。同じ要求の ID の再送は、書かずに、決めた目標から読み直した記録（`readGoalDecisionRecords`）で `decided` を返す
-  - 目標・推定消費カロリー・1日の目安の行は、書く口を通してだけ書く。口は、表で守らない決まり（今の目標をいつも閉じて 0..1 に保つ、開始の日を今の目標より前にしない、推定の始まりは推定の行が無いときだけ、減量・増量で目標体重と開始の日の体重の傾向が等しくない、区分の値が一覧にある）を書く前に確かめて投げ、外部キーが指す行を先に書く
-  - 決めたときだけ、PostHog に `goal_decision_recorded` を送る（利用状況の設定に従う。再送では送らない）。体重・目標体重・kcal の値は載せない
-
-## 週の見直し
-
-- 週の見直しと、達成・期限の日の確定は、端末の要求の中で行い、アラームは使わない。起こすのは次の要求だけで、ほか（送り切っていない送る要求、写真、見守る、セッション）では起こさない
-  - 送り切った印（`isFinalBatch`）のある送る要求: 送った記録を当てたあと
-  - 取りに行く要求: 取りに行く前（見直しで変えた記録を同じ応答で届けるため）
-  - 目標の設定の4つの要求: 答える前。月曜に立て直すと、その月曜の見直しは前の目標に当たり、新しい目標はそのあとに決める
-- 要求の中では、達成と期限の日の確定（`judgeGoalProgress`）を、まだ見直していない週（`reviewUnreviewedWeeks`）より先に判定する。期限の日の翌日の最初の要求で届いた期限の日以前の体重は、確定の前の達成として数える
-- 週の区切りと今日は要求のタイムゾーンで決め、読めないタイムゾーンの要求では見ずに次の要求に任せる。週は古い順に1週ずつ、1週を記録の変化を書く入口の1つの `run` にする（次の週が、前の週に書いた推定と1日の目安を読む）
-- 必要な速さ（維持の幅を含む）は、目標を立てたときと同じ式（`computeRequiredPace`）で出す。続いた週の数は残さず、見直すたびにずれの向きの並びから数える
-- 期限後の維持には、今の減量・増量の目標の期限の日より後の最初の見直し（見送る週も含む）で、その週の見直しと同じ `run` の中で移る。推定は新しく出さず、見送った週は前の目標の最後の1日の目安を写す
-- 週の見直し・達成・期限の日の確定の行は、それぞれの書く口（`writeWeeklyReview`、`writeGoalAchievement`、`writeGoalDeadlineConfirmation`）を通してだけ書く。表で守れない決まりは口が書く前に確かめて投げる。週の見直しを書く口のテストは、Durable Object の置き場に当てる `src/weekly-review/durable-object/write-weekly-review.test.ts`
-- 見直しと目標の経過の PostHog の出来事は、`judgeGoalProgress` と `reviewUnreviewedWeeks` が返す（利用状況の設定で絞るのは、上の「層」の送る前の1か所）。体重・目標体重・kcal の値は載せず、差・日数・数・区分だけを載せる
-- 見直しを起こす要求は、要求ごとのログに見直した週の数（`reviewedWeekCount`）を出す。見直しを起こさない要求では出さない
+- 目標の設定の要求（`/v1/goal-setup/*`）と、週の見直し・達成・期限の日の確定に触るときは、`docs/agents/server-goals.md` を読む
 
 ## DB
 
 - スキーマは素の SQLite で書く。表は Drizzle ORM で宣言して読み書きし、移行は手書きの SQL で持つ（ADR-0021）。Drizzle Kit は使わない
 - Drizzle の宣言は、今の表の形に合わせて手で書く。記録の種類の表は `src/<種類>/durable-object/` に、帳簿の表と種類をまたぐ表は `src/durable-object/` に置き、全部を `durable-object-tables.ts` に集める。宣言は1ファイル1つの表の束を export する。移行を足すときは、SQL と宣言の両方を書く
-- 食事の仕様（#188）の表の置き場: 食事とその削除の印は `src/meal/durable-object/meal-tables.ts`、写真（宣言、ファイルの受け取りと R2 から消した事実、宣言の削除の印）は同じフォルダの `meal-photo-tables.ts`、推定の出来事（予定・つなぎ・見送り・推定・試み・結果・完了・断念）は `src/estimation/durable-object/estimation-tables.ts`、料理は `src/dish/durable-object/dish-tables.ts`、材料と出どころのサブセットと栄養の値は `src/ingredient/durable-object/ingredient-tables.ts`。推定の出来事は記録の種類ではないので `src/estimation/` に別に置く。表を足すときは、親の表の束を import して外部キーを張る
-- 食事を直す仕様（#332）の表の置き場: 当てた推定・推定の量・料理の名前と量の修正・比例の明細・料理が対象の予定のつなぎ・料理の削除の印は `dish-tables.ts`、材料の量の修正と材料の削除の印は `ingredient-tables.ts`、食事の時刻の修正は `meal-tables.ts`、予定の取り消しは `estimation-tables.ts`。表の束が互いを指す（料理 ↔ 材料、料理 ↔ 推定の出来事）ところは、指し返すほうの `references` に `(): AnySQLiteColumn =>` と型を書き、型の推論の循環を切る
-- 文章と会話の仕様（#419）の表の置き場: 送った文章・読み分け・会話として送り直し・送り直し・会話として送り直しで消した食事の削除の印と、文章の食事のサブセット（文章の食事・推定が作った食事・推定した時刻）は `src/sent-text/durable-object/sent-text-tables.ts`、返事の流れの出来事（依頼・きっかけ・回数切れ・生成・試み・結果・作れなかった）は `src/reply/durable-object/reply-tables.ts`、返事と指し示す食事は `src/ai-utterance/durable-object/ai-utterance-tables.ts`。返事の流れは記録の種類ではないので、推定と同じく `src/reply/` に別に置く
-- 目標を立てる仕様（#523）の表の置き場: 目標・減量と増量のサブセット・目標を閉じる・目標を決める要求の受け取りは `src/goal/durable-object/goal-tables.ts`、推定消費カロリーの推定と推定の始まりは `src/expenditure-estimate/durable-object/expenditure-estimate-tables.ts`、1日の目安と当たった上限と下限は `src/daily-guide/durable-object/daily-guide-tables.ts`。どの表も書き足すだけで、UPDATE も DELETE もしない。値が無いことは、サブセットの表に行が無いことで表す（維持の目標、閉じていない目標、始まりでない推定）。目標の向きは列に持たず、`src/goal/domain/compute-goal-direction.ts` が行の有無と体重の大小から出す
-- 週の見直しと目標の経過の仕様（#613）の表の置き場: 週の見直しと見送りは `src/weekly-review/durable-object/weekly-review-tables.ts`、見直した推定は `expenditure-estimate-tables.ts`、見直した1日の目安は `daily-guide-tables.ts`、達成・期限の日の確定・期限後の維持の目標は `goal-tables.ts`。どの表も書き足すだけで、区分の値（見送りの理由、ずれの向き、主な理由）は種類の `domain/` の定数から `text({ enum })` で引く。DB の制約で保てない決まり（週の見直しは見送りか見直した推定のどちらか一方を持つ、など）は書く口が書く前に確かめる
-- 課金の仕様（#647）の表の置き場: DO のサブスクリプション・取引・取り消しと戻し・請求の失敗と猶予・受け取り・無料体験なしは `src/subscription/durable-object/subscription-tables.ts`、推定の保留は `estimation-tables.ts`、返事のサブスクリプション切れの止めは `reply-tables.ts`、規約への同意は `src/terms-agreement/durable-object/terms-agreement-tables.ts`。D1 の購入者のトークン・案内・無料体験を使った Apple ID・テストユーザーは `src/subscription/d1/subscription-d1-tables.ts`。区分の値は `src/subscription/domain/subscription-transaction-fact.ts` の定数から `text({ enum })` で引く。判定（無料体験の最後の日、サブスクリプションの終わりなど）は `src/subscription/domain/` の純粋な関数で、表にもキャッシュの列にも持たない
+- 表を足す・置き場を探すときの、仕様ごとの表の置き場は `docs/agents/table-design.md` の「既存の表の置き場」にある
 - サブスクリプションの状態の種類は、Durable Object の外の事実（D1 のテストユーザーの旗と、環境変数 `BILLING_STARTED_ON` の課金を入れた日）も読む。Durable Object は、記録の置き場を組む要求とアラームのたびに `src/subscription/d1/read-subscription-account.ts` で読み、`createRecordKindStores` に渡す（旗の変化を Durable Object が知らないため）。旗の変化と時刻の区切りは、アラームで動かす課金の仕事が、区切りの時刻（`src/subscription-status/domain/find-subscription-check/`）に状態の記録の変更を足して届ける。保留した推定のあるアカウントがテストユーザーなら、切れていたあいだに旗を立てたので、すぐ動いて一度足し、保留を再開する（`read-subscription-check.ts`）。帳簿にまだ状態の変更が無い（課金を入れる前からの）アカウントには、すぐ動いて一度足す
 - 置き場の実装のクエリは Drizzle で書く。`sql.raw()` と、自分で文字列を組み立てる SQL は使わない（`sql` のテンプレートに列を渡すのはよい）。DB から読んだ区分の文字列は、宣言の `text({ enum })` から導いた型で受け、読み戻す関数を書かない
 - 宣言と移行がずれていないかは、`src/durable-object/durable-object-tables.test.ts` が、移行を当てた DB の実際の列（`pragma_table_info`）と宣言（`getTableConfig`）を比べて確かめる。比べる関数は `src/testing/find-table-declaration-mismatches.ts`（表と実際の列を渡すと、ずれの説明を返す。D1 の表にも使う）。表の宣言に無い表が DB にあっても落ちる
@@ -181,6 +87,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - テストは Workers の実行環境の中で回す
 - D1 と Durable Object の中身は、テストのあいだ消えない。テストごとに新しい ID（`generateRecordId()`）で書く
 - LLM の評価（`evals/`）は手で回し、CI と `scripts/check` には入れない。回し方（揺れを見る回数、別の版との比べ）は入口の `evals/run-eval.ts`・`evals/compare-eval.ts` にある。PR の本文には、出た要約を、評価したコミットの SHA ごと貼る
+- 開発用の環境で主な流れを確かめるジョブ（`e2e/`）と、そのためのサインインの口（`/v1/e2e/*`）に触るときは、`docs/agents/server-e2e.md` を読む
 
 ## デプロイ
 

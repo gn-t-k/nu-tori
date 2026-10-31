@@ -415,7 +415,8 @@ body:has(.lp) .site-footer {
 }
 
 .lp h2 {
-  font-size: clamp(24px, 3.4vw, 30px);
+  /* 大きさは px で書く（scripts/check が DESIGN.md の最小と比べるため）。狭い幅の大きさは下の @media に置く */
+  font-size: 30px;
   line-height: 1.3;
   margin: 0 0 16px;
 }
@@ -440,13 +441,13 @@ body:has(.lp) .site-footer {
 }
 
 .lp-hero h1 {
-  font-size: clamp(30px, 7vw, 56px);
+  font-size: 56px;
   line-height: 1.25;
   margin: 0;
 }
 
 .lp .lp-lead {
-  font-size: clamp(17px, 2.1vw, 20px);
+  font-size: 20px;
   color: var(--lp-secondary);
   max-width: 34em;
   margin: 16px auto 0;
@@ -538,7 +539,8 @@ body:has(.lp) .site-footer {
   border-radius: 7px;
   background: transparent;
   color: var(--on-surface);
-  font: inherit;
+  font-family: inherit;
+  font-weight: inherit;
   font-size: 13px;
   line-height: 1.3;
   cursor: pointer;
@@ -920,6 +922,18 @@ body:has(.lp) .site-footer {
     padding: 48px 0;
   }
 
+  .lp h2 {
+    font-size: 24px;
+  }
+
+  .lp-hero h1 {
+    font-size: 40px;
+  }
+
+  .lp .lp-lead {
+    font-size: 17px;
+  }
+
   .lp-hero {
     padding-top: 16px;
   }
@@ -950,5 +964,12 @@ body:has(.lp) .site-footer {
 
   .lp-plate {
     padding: 16px;
+  }
+}
+
+/* 携帯の幅では、見出しの1語（「あなたにちょうどいい」）が1行に収まる大きさにする */
+@media (max-width: 480px) {
+  .lp-hero h1 {
+    font-size: 30px;
   }
 }

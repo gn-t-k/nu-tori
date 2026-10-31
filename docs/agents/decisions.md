@@ -22,5 +22,16 @@ flowchart LR
 - `DESIGN.md` には、見た目（色・形・大きさ・文字・余白）と、見た目に効く禁止事項だけを書く。状態・文言・条件・操作の結果は、仕様の Issue とコード（とテスト）に置き、`DESIGN.md` に写さない
 - 用語は `GLOSSARY.md`、見た目のトークンとガードレールは `DESIGN.md`、好みは `CODING_STANDARDS.md` から指す `docs/agents/` の文書、`AGENTS.md` から指す働き方は `docs/agents/`
 - あとから書き換えない記録: 解決コメント、ADR、PR、コミットメッセージ、`docs/research/`（日付つきの調査）、`docs/ui-design/`。これらどうしが食い違うときは、新しいほうに従う（ADR と、あとの決定チケットの追記が食い違うときも）
-- 書き換えない記録や、Issue・PR のコメントが指す `AGENTS.md` の節や、その中の記述が見つからないときは、移し先の表を見る。2026-09-26 に仕様の中身と技術の選択を決定チケットへ移したときの表は「[決定の置き場を Matt の流れに合わせる](https://github.com/gn-t-k/nu-tori/issues/51)」の解決コメント、2026-09-29 に一部の作業でだけ要る働き方を `docs/agents/` へ移したときの表は「[AGENTS.md を整理する](https://github.com/gn-t-k/nu-tori/issues/92)」の解決コメントにある
+- 書き換えない記録や、Issue・PR のコメントが指す `AGENTS.md` の節や、その中の記述が見つからないときは、移し先の表を見る。2026-09-26 に仕様の中身と技術の選択を決定チケットへ移したときの表は「[決定の置き場を Matt の流れに合わせる](https://github.com/gn-t-k/nu-tori/issues/51)」の解決コメント、2026-09-29 に一部の作業でだけ要る働き方を `docs/agents/` へ移したときの表は「[AGENTS.md を整理する](https://github.com/gn-t-k/nu-tori/issues/92)」の解決コメントにある。2026-10-28 に `server/AGENTS.md` の一部の作業でだけ要る節を `docs/agents/server-*.md` と `docs/agents/table-design.md` へ移したときの表は、「[server/AGENTS.md が約60KBあり、server を触るたびに読む出力が大きすぎて退避される](https://github.com/gn-t-k/nu-tori/issues/795#issuecomment-6459443001)」のコメントにある
 - 用語集は、2026-09-30 に mattpocock/skills に合わせて `CONTEXT.md` から `GLOSSARY.md` に改名した。それより前の記録が指す `CONTEXT.md` は `GLOSSARY.md` と読む
+
+## 試作の置き場
+
+- `/prototype` の試作は、試作だけのブランチのリポジトリ直下の `prototype/<Issue の番号>-<題>/` に置く。`<題>` は英小文字をハイフンでつなぐ。ブランチは PR にせず、main に入れない。main には確かめた決定だけを残し、試作は一次資料としてブランチに残すため
+- ブランチは、Mac では `prototype/<Issue の番号>-<題>`、クラウドでは試作のセッションに割り当てられた `claude/...` にする。クラウドでは、同じセッションで実装の PR を出さない。PR を merge するとそのセッションのブランチが消え、試作も消えるため
+- `docs/ui-design/`（凍結済み）、`site/`・`ios/`・`server/` の下、Claude Docs には置かない。アプリやページの部品を使う試作も、`prototype/<Issue の番号>-<題>/` から相対パスで読む。`/prototype` スキルの置き場（`.agents/skills/prototype/SKILL.md` の "close to where it will actually be used"、`UI.md` の sub-shape A・B）より、この置き場を優先する
+- 作った HTML は Artifact（claude.ai の非公開のページ）にも載せ、そのリンクと、ブランチとパスを Issue のコメントに書く。開発者が iPad の Claude アプリで開いて見比べるため。正本はブランチのファイルで、直したら同じページに載せ直す
+- 試作を探すときは、Issue のコメントにあるブランチとパスから読む
+- この決まりより前の `prototype/0001-*` のブランチの `0001` は、Issue の番号ではなく `docs/ui-design/0001-first-release` の番号で、試作は `docs/ui-design/0001-first-release/` や `prototype/` の下にある
+
+**Why:** 置き場が `docs/ui-design/`・`site/` の下・ブランチ・Claude Docs にばらけ、試作を探して grep とブランチの探索を約8回した。凍結済みの `docs/ui-design/` に試作を置いたこともあった（#744、#796）

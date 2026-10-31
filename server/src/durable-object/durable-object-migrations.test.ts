@@ -243,8 +243,7 @@ describe("Durable Object の移行の版 7（料理と材料の表の作り直�
 const runInAccount = <T>(account: DurableObjectStub, run: (sql: Sql) => T): Promise<T> =>
   runInDurableObject(account, (_, state) => run(state.storage.sql));
 
-// 食事3つ（推定できたが2つの食事、推定できなかったあとに推定できた食事、料理なしの食事）、推定5つ、料理3つ、材料4つ、
-// 栄養の値と出どころのサブセット、#188 の形の料理と材料の削除の印（控えとのつなぎつき）
+// 食事3つ（推定できたが2つの食事、推定できなかったあとに推定できた食事、料理なしの食事）、推定5つ、料理3つ、材料4つ、栄養の値と出どころのサブセット、#188 の形の料理と材料の削除の印（控えとのつなぎつき）
 const seedVersion6Rows = (sql: Sql) => {
   for (const mealId of [meal1, "meal-2", "meal-3"]) {
     sql.exec(

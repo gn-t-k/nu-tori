@@ -81,9 +81,9 @@ const previousWeeks: Parameters<typeof computeReviewedExpenditure>[0]["previousW
   [];
 
 for (let week = 0; week < weeks; week++) {
-  for (let d = 0; d < 7; d++) {
+  for (const [d, intakeNoise] of intakeNoiseKcal.entries()) {
     const index = week * 7 + d;
-    const kcal = guideKcal + intakeNoiseKcal[d]!;
+    const kcal = guideKcal + intakeNoise;
     const trueExpenditureKcal = trueExpenditureAt(trueWeightKg);
     days.push({
       calendarDay: addDays(startedOn, index),
@@ -123,11 +123,7 @@ for (let week = 0; week < weeks; week++) {
       daysToDeadline: countDaysBetween(reviewedMonday, deadline) + 1,
     },
   });
-  // ずれを1日あたりにした kcal と、そのうち推定を動かした割合。割合はドメイン層が返さないので、丸めた推定の差から逆に出して 0.05 単位に寄せる。
-  // ずれの小さい週は丸めの誤差で本番の割合と食い違うので、ページが使う2週目だけ、site の daily-guide-example.ts が 0.5 であることを確かめる
   const deviationKcalPerDay = (kilocaloriesPerKilogram * reviewed.deviationKg) / daysPerWeek;
-  const gain =
-    Math.round(((reviewed.expenditureKcal - expenditureKcal) / deviationKcalPerDay) * 20) / 20;
   reviews.push({
     weekFirstDay: addDays(reviewedMonday, -daysPerWeek),
     weekLastDay: addDays(reviewedMonday, -1),
@@ -138,8 +134,8 @@ for (let week = 0; week < weeks; week++) {
     actualWeightChangeKg: round(judgement.actualWeightChangeKg, 4),
     deviationKg: round(reviewed.deviationKg, 4),
     deviationKcalPerDay: round(Math.abs(deviationKcalPerDay), 1),
-    gain,
-    adjustedKcal: round(Math.abs(deviationKcalPerDay) * gain, 1),
+    gain: reviewed.gain,
+    adjustedKcal: round(Math.abs(deviationKcalPerDay) * reviewed.gain, 1),
     expenditureKcal: reviewed.expenditureKcal,
     guideKcal: guide.energyKcal,
     limitHits: guide.limitHits,
@@ -153,11 +149,11 @@ const trend = computeWeightTrend([
   ...priorWeights,
   ...days.map(({ calendarDay, weightKg }) => ({ calendarDay, weightKg })),
 ]);
-const withTrend = (day: { calendarDay: string; weightKg: number }, i: number) => ({
-  calendarDay: day.calendarDay,
-  weightKg: day.weightKg,
-  trendKg: round(trend[i]!.trendKg, 4),
-});
+const withTrend = (day: { calendarDay: string; weightKg: number }, i: number) => {
+  const point = trend[i];
+  if (point === undefined) throw new Error(`${day.calendarDay} の体重の傾向が無い`);
+  return { calendarDay: day.calendarDay, weightKg: day.weightKg, trendKg: round(point.trendKg, 4) };
+};
 
 // 4週目のあと、見直さずに4週目の1日の目安を食べ続けたら（本当に使うカロリーの仮定だけで動く。nu-tori の決まりではない）
 const plateau: { week: number; trueWeightKg: number }[] = [];

@@ -1,8 +1,7 @@
 import NuToriCore
 import SwiftUI
 
-/// タイムラインの週の振り返りのカード（仕様の `tlcard` C）。見出し・週の日付・「›」、その週の小さな1日の丸7つ、ペースの1行、
-/// 見送った週の1行、まとめて見直したときの1行を、上から並べる。押すとその週の週の振り返りを開く
+/// タイムラインの週の振り返りのカード（仕様の `tlcard` C）。見出し・週の日付・「›」、その週の小さな1日の丸7つ、ペースの1行、見送った週の1行、まとめて見直したときの1行を、上から並べる。押すとその週の週の振り返りを開く
 struct WeeklyReviewCardView: View {
     let card: WeeklyReviewCard
     let open: () -> Void

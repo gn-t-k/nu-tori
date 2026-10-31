@@ -86,11 +86,13 @@ target_files() {
             if [ "$target" = site ]; then paths="$paths|server/oxlint-plugin\.js\$"; fi
             # 出し方のページの例と LP の版 a の見本の数字は、server の確かめが書き出したものと比べる
             if [ "$target" = server ]; then paths="$paths|site/src/pages/daily-guide/daily-guide-example\.json\$|site/src/pages/landing-a/landing-a-examples\.json\$"; fi
+            # site のページの文字の大きさは、DESIGN.md の typography の最小と比べる
+            if [ "$target" = site ]; then paths="$paths|DESIGN\.md\$"; fi
             ;;
         scripts) paths="scripts/|\.claude/hooks/|\.github/workflows/check\.yml\$" ;;
     esac
-    # 文書（*.md）だけの変更では、確かめるものが無い
-    grep -vE '\.md$' <<< "$files" | grep -E "^($paths)" || true
+    # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は確かめに使うので残す
+    { grep -vE '\.md$' <<< "$files" || true; grep -Fx DESIGN.md <<< "$files" || true; } | grep -E "^($paths)" || true
 }
 
 # CI がまだ見ていない分（まだ push していない変更と作業中の変更）が関わる対象だけを確かめる
@@ -100,7 +102,7 @@ check_changed() {
     upstream="$(git -C "$root" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null)" ||
         upstream=origin/main
     base="$(git -C "$root" merge-base "$upstream" HEAD 2> /dev/null)" || base=""
-    if [ -z "$base" ] || ! files="$(unpushed_files_except_main "$base")"; then
+    if [ -z "$base" ] || ! files="$(changed_files "$base")" || ! picked="$(pick_unpushed_targets "$base")"; then
         echo "${upstream} と比べられないので、server と site と ios と scripts のすべてを確かめる"
         check_target server
         check_target site
@@ -108,9 +110,8 @@ check_changed() {
         check_target scripts
         return
     fi
-    echo "${upstream} と比べて、まだ push していない変更と作業中の変更から選ぶ（origin/main と同じ中身のファイルは除く）"
+    echo "${upstream} と比べて、まだ push していない変更と作業中の変更から選ぶ（origin/main と同じ中身の対象は除く）"
 
-    picked="$(pick_targets <<< "$files")"
     [[ "$picked" == *ios=true* ]] && run_ios=true
     [[ "$picked" == *server=true* ]] && run_server=true
     [[ "$picked" == *site=true* ]] && run_site=true
@@ -131,8 +132,7 @@ check_changed() {
     if $run_server; then
         check_target server
         # --fix が server/openapi.json を書き出し直すと、アプリの API のクライアントも生成し直す
-        if ! $run_ios && files="$(unpushed_files_except_main "$base")" &&
-            [[ "$(pick_targets <<< "$files")" == *ios=true* ]]; then
+        if ! $run_ios && picked="$(pick_unpushed_targets "$base")" && [[ "$picked" == *ios=true* ]]; then
             echo "server の確かめのあとに ios に関わる変更（server/openapi.json など）があるので、ios も確かめる"
             run_ios=true
         fi
@@ -153,17 +153,26 @@ changed_files() {
 }
 
 # push 先がまだ main を取り込んでいないと、main を取り込んだだけのファイルも push 先と違って見える。
-# それらは origin/main と同じ中身で、CI が main で確かめているので除く
-unpushed_files_except_main() {
-    local files from_main
+# 対象の中身がまるごと origin/main と同じなら、CI が main で確かめているので除く。
+# ファイルごとには除かない。main から来たファイルが、その対象の main に無いファイルと組んで落ちることがある（#790。名前を変えた main を取り込み、古い名前の import が残った）
+pick_unpushed_targets() {
+    local files from_main picked branch target
     files="$(changed_files "$1")" || return 1
+    picked="$(pick_targets <<< "$files")"
     if ! from_main="$(git -C "$root" diff --name-only --no-renames origin/main 2> /dev/null)"; then
-        echo "$files"
+        echo "$picked"
         return
     fi
     from_main="$from_main
 $(git -C "$root" ls-files --others --exclude-standard)"
-    grep -Fx -f <(echo "$from_main") <<< "$files" || true
+    branch="$(pick_targets <<< "$from_main")"
+    for target in ios server site scripts; do
+        if [[ "$picked" == *"$target=true"* && "$branch" == *"$target=true"* ]]; then
+            echo "$target=true"
+        else
+            echo "$target=false"
+        fi
+    done
 }
 
 # 確かめる理由が見えるよう、当たったファイルを先頭の3つまで出す
@@ -506,6 +515,7 @@ check_ios_ui_test() {
     # キーボードの並びと最初に出るキーボードはシミュレータの言語で決まり、英語のランナー（CI）ではかなが出ない。かなを打つテストのために、どこでもかなを入れて、最後に使ったキーボードにする（最初に出る）。テストの中で地球儀のキーで切り替えると、初めての案内がキーボードを覆う
     xcrun simctl spawn "$ui_test_simulator" defaults write -g AppleKeyboards -array "$kana_keyboard" "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji"
     xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences KeyboardLastUsed "$kana_keyboard"
+    warm_up_keyboard_daemon
     rm -rf "$results"
     local repeat_options=()
     if [ -n "$repeat" ]; then
@@ -650,6 +660,39 @@ check_site() {
 # 整形と Lint だけ（--lint）
 lint_site() {
     lint_worker_package "$site" "公開のページの依存（pnpm）"
+
+    step "ページの文字が DESIGN.md の最小の大きさより小さくないか"
+    check_site_font_sizes
+}
+
+# DESIGN.md の typography の fontSize のうち最も小さいものを最小とし、site/public/site.css の font-size をそれと比べる。比べられるよう、font-size は px で書かせる
+check_site_font_sizes() {
+    local minimum
+    minimum="$(sed -nE 's/^    fontSize: ([0-9]+)px$/\1/p' "$root/DESIGN.md" | sort -n | head -n 1)"
+    if [ -z "$minimum" ]; then
+        echo "DESIGN.md の typography から fontSize を読めない" >&2
+        return 1
+    fi
+    if ! awk -v minimum="$minimum" -v file="site/public/site.css" '
+        # 一括指定（font:）の大きさは読み分けないので、font-size で書かせる
+        /(^|[^-])font:/ {
+            printf "%s:%d: font: の一括指定\n", file, FNR > "/dev/stderr"
+            failed = 1
+        }
+        /font-size:/ {
+            value = $0
+            sub(/.*font-size:[[:space:]]*/, "", value)
+            sub(/[[:space:]]*(;.*)?$/, "", value)
+            if (value !~ /^[0-9.]+px$/ || value + 0 < minimum) {
+                printf "%s:%d: font-size: %s\n", file, FNR, value > "/dev/stderr"
+                failed = 1
+            }
+        }
+        END { exit failed }
+    ' "$site/public/site.css"; then
+        echo "font-size は px で書き、DESIGN.md の typography の最小（${minimum}px）以上にする（DESIGN.md「Typography」）" >&2
+        return 1
+    fi
 }
 
 # 既定の重さで当てる。-o all は、変数を {} で囲む（SC2250）だけで数百件出る
@@ -900,6 +943,22 @@ boot_ui_test_simulator() {
     # 切る前に立ち上がっていたら止める。立ち上がっていなければ失敗するので、失敗は見ない
     xcrun simctl spawn "$ui_test_simulator" launchctl bootout "$service" 2> /dev/null || true
     xcrun simctl bootstatus "$ui_test_simulator" -b
+}
+
+# キーボードの係（kbd）は、初めてキーボードを出したときに起きて連絡先の地域を探し、時間切れ（CI で 10 秒）まで待つあいだアプリが応えないので、キーボードの並びを入れたあと、テストの前に起こして探し終えるまで待つ
+warm_up_keyboard_daemon() {
+    local tries=0 log
+    xcrun simctl spawn "$ui_test_simulator" launchctl kickstart "user/$(id -u)/com.apple.TextInput.kbd"
+    until log="$(xcrun simctl spawn "$ui_test_simulator" log show --last 2m --style compact \
+        --predicate 'process == "kbd" AND eventMessage CONTAINS "Retrieved meCard regions"' 2> /dev/null)" &&
+        [[ "$log" == *"Retrieved meCard regions"* ]]; do
+        tries=$((tries + 1))
+        if [ "$tries" -ge 60 ]; then
+            echo "キーボードの係が連絡先の地域を探し終えない" >&2
+            return 1
+        fi
+        sleep 1
+    done
 }
 
 # kill -9 などで消し損ねた UI テストの複製を、名前の pid のプロセスが居なければ消す

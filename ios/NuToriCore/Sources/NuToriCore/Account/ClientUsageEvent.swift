@@ -59,6 +59,8 @@ public enum ClientUsageEvent: Sendable, Equatable {
     case termsAgreementSheetShown
     /// 同意のシートの「同意して続ける」で、同意を受け付けられた
     case termsAgreed
+    /// アカウントの画面の「サインアウト」で、サインアウトした
+    case signedOut
     /// サブスクリプション中に「アカウントを削除」を押し、退会の案内のシートを出した
     case accountDeletionGuideOpened
     /// 退会の案内のシートの「サブスクリプションを解約」で、解約の画面を開いた
@@ -207,6 +209,7 @@ public enum ClientUsageEvent: Sendable, Equatable {
         case .goalScreenOpened: "goal_screen_opened"
         case .termsAgreementSheetShown: "terms_agreement_sheet_shown"
         case .termsAgreed: "terms_agreed"
+        case .signedOut: "signed_out"
         case .accountDeletionGuideOpened: "account_deletion_guide_opened"
         case .manageSubscriptionsOpened: "manage_subscriptions_opened"
         case .paywallOpened: "paywall_opened"
@@ -224,7 +227,7 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .notificationPermissionRequested, .notificationSettingsOpened, .textSent,
             .presetTapped, .resentAsConversation, .replyRegenerateTapped, .replyFirstTextShown,
             .replyMealOpened, .goalSetup, .weeklyReviewOpened, .goalScreenOpened,
-            .termsAgreementSheetShown, .termsAgreed, .accountDeletionGuideOpened,
+            .termsAgreementSheetShown, .termsAgreed, .signedOut, .accountDeletionGuideOpened,
             .manageSubscriptionsOpened, .paywallOpened, .paywallClosed:
             nil
         case .screen(.timeline):
@@ -256,7 +259,7 @@ public enum ClientUsageEvent: Sendable, Equatable {
             .dishDeleted,
             .unansweredNoticeLineTapped,
             .notificationSettingsOpened, .replyMealOpened, .termsAgreementSheetShown, .termsAgreed,
-            .accountDeletionGuideOpened, .manageSubscriptionsOpened:
+            .signedOut, .accountDeletionGuideOpened, .manageSubscriptionsOpened:
             [:]
         case .resentAsConversation(let deletedMealCount):
             ["deleted_meal_count": .count(deletedMealCount)]

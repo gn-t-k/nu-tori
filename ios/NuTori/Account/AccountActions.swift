@@ -5,6 +5,10 @@ struct AccountActions {
     let signedInAccountId: () async -> String?
     let turnOnUsageData: () async -> Void
     let turnOffUsageData: () async -> Void
+    /// 端末の記録は残してサインインの画面に置き換わる
+    let signOut: () async -> Void
+    /// 送り待ちがあるときだけサインアウトを確かめるため
+    let hasPendingWrites: () async -> Bool
     /// 消せなかったときだけ理由を返す。消せたときとセッションが切れていたときは、サインインの画面に置き換わる
     let deleteAccount: () async -> AccountDeletionFailure?
     /// このアプリの通知の許可を読む。設定から戻るたびに読み直す

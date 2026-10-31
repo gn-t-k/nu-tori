@@ -1,12 +1,22 @@
 # Mac で iOS のアプリを確かめる
 
 - MobileBuildMCP で、変えたら `test_sim` を回し、関係する画面を開いて `screenshot` で確かめる。`test_sim` が行き先を見つけられずに失敗したら、開発者に `xcodebuild -downloadPlatform iOS`（数 GB）を頼む。computer use は、これらで確かめられないときにだけ使う
-- UI を変えたら、状態ごとのプレビューを RenderPreview（下の「Xcode の道具」）で描いて確かめる。ライトのほか、ダーク（`Color Scheme`）と最大の文字（`Dynamic Type` の `AX 5`）も `previewVariantOverrides` で描く
+- UI を変えたら、状態ごとのプレビューを、ライトのほか、ダークと最大の文字（AX5）でも描いて確かめる。`scripts/preview-sheet` で並べて描く（下の「プレビューを並べて確かめる」）
 - Mac のシェルは zsh で、合うファイルの無いグロブは「no matches found」で止まる。`grep --include='*.swift'` のように、グロブは引用符で囲む
 - ディスクが溜まったら、`scripts/clean-builds` を回す。引数なしで、元の worktree が無い DerivedData と MobileBuildMCP の置き場、済んだ worktree を並べ、`--delete` で前の2つを消す。済んだ worktree は消さないので、並んだものを見て消すかを決める。`scripts/check` と MobileBuildMCP のビルドは worktree の中の `ios/.build/DerivedData` に置き、worktree と一緒に消えるので、並ぶ DerivedData は Xcode の道具（下の「Xcode の道具」）が作ったもの
 - `scripts/check` と MobileBuildMCP は同じ DerivedData を使うので、同じ worktree で同時に回すと、あとから始めたほうが `build.db: database is locked` で落ちる。終わってからやり直す
 - `ios` の中を探すときは、`rg` か Grep の道具を使う。どちらも `.gitignore` で Swift のビルド生成物（`.build/`）を飛ばし、`.gitignore` を読まないときもリポジトリ直下の `.ignore` で飛ばす。`grep -r` は生成物まで読み、120 秒を超えた
 - 整形の正は、`ios/.swift-version` の版の Linux の swift-format にする。Xcode に同梱の版と違うことがあるので、macOS では整形を確かめない
+
+## プレビューを並べて確かめる
+
+`scripts/preview-sheet <プレビューのファイル>` は、下の「Xcode の道具」の2〜5を自分で済ませ、プレビューの状態ごとに、ライト・ダーク・AX5 を横に並べた画像を作る。使い方は引数なしで出る。初めて開くワークツリーでは、「Xcode の道具」の2のとおり、開発者に Mac で承認してもらう。
+
+- 読むのは並べた画像から始める。同じ行のライト・ダーク・AX5 で、行や部品の形がそろっているかを見比べる。個々の画像は、並べた画像で怪しいものだけ開く
+- 状態の多い画面や、いくつもの画面を見回るときは、サブエージェントに渡し、崩れていた状態と、その個々の画像のパスだけを返してもらう
+- シミュレータで撮った画面（`screenshot`）を見比べるときは、`scripts/tile-images` で並べる。使い方は引数なしで出る
+
+**Why:** 画面を確かめるセッションが、スクリーンショットを数十枚読んで文脈が 400K 前後まで膨らみ、写っていた崩れ（日のまとめのタンパク質の行だけ縦）を見落とした。並べるスクリプトもセッションごとに作り直していた（#562）
 
 ## Xcode の道具
 

@@ -16,8 +16,7 @@ export const findReceivedAtOfEstimation = (
 };
 
 // 予定のもとの書き込みを受け取った時刻。その予定から、見送りと保留でつながった前の予定を辿った、いちばん早い予定の時刻。
-// 見送りから作る次の日の予定と、保留から再開した予定は、前の予定とつながず別の予定なので、
-// due_at の並びで、すぐ前が見送った・保留した予定である間だけ遡る
+// 見送りから作る次の日の予定と、保留から再開した予定は、前の予定とつながず別の予定なので、due_at の並びで、すぐ前が見送った・保留した予定である間だけ遡る
 const findReceivedAtOfSchedule = (
   schedules: readonly EstimationSchedule[],
   scheduleId: string,

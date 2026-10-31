@@ -1,4 +1,7 @@
 // 組み込みのルールで確かめられない好み（docs/agents/languages/typescript.md）を確かめる
+import { existsSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
+
 export default {
   meta: { name: "nu-tori" },
   rules: {
@@ -104,10 +107,7 @@ export default {
             return;
           }
           const title = titleText(node.arguments[0]);
-          if (
-            title !== undefined &&
-            !/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(title)
-          ) {
+          if (title !== undefined && !japaneseText.test(title)) {
             context.report({
               node: node.arguments[0],
               message: "まとまりの名前は日本語で書く（docs/agents/testing.md「テストの構造」）",
@@ -152,6 +152,93 @@ export default {
           }
         },
       }),
+    },
+    "import-through-index": {
+      create: (context) => {
+        const check = (source) => {
+          if (
+            source?.type !== "Literal" ||
+            typeof source.value !== "string" ||
+            !source.value.startsWith(".")
+          ) {
+            return;
+          }
+          const importer = path.dirname(context.filename);
+          const target = resolveModule(path.resolve(importer, source.value));
+          if (target === undefined) {
+            return;
+          }
+          for (
+            let directory = path.dirname(target);
+            !isInside(importer, directory);
+            directory = path.dirname(directory)
+          ) {
+            const index = resolveModule(path.join(directory, "index"));
+            if (index !== undefined && reexportedModules(index).includes(target)) {
+              context.report({
+                node: source,
+                message: `${relativeSpecifier(importer, directory)}/index.ts が再 export しているので、中のファイルを直に import せず ${relativeSpecifier(importer, directory)} から import する。要る名前を index.ts が出していなければ足す（docs/agents/languages/typescript.md「ファイルと公開するもの」）`,
+              });
+              return;
+            }
+          }
+        };
+        return {
+          ImportDeclaration: (node) => check(node.source),
+          ImportExpression: (node) => check(node.source),
+          ExportNamedDeclaration: (node) => check(node.source),
+          ExportAllDeclaration: (node) => check(node.source),
+        };
+      },
+    },
+    "no-wrapped-comment": {
+      create: (context) => ({
+        Program: () => {
+          const comments = context.sourceCode
+            .getAllComments()
+            .filter(
+              (comment) => comment.type === "Line" && isWholeLine(context.sourceCode, comment),
+            );
+          for (const [index, comment] of comments.entries()) {
+            const next = comments[index + 1];
+            // 次の行が「- 」で始まるなら、箇条書きの項目を並べたもので、文を折り返したものではない
+            if (
+              next !== undefined &&
+              next.loc.start.line === comment.loc.end.line + 1 &&
+              /(、|を|が|は|に|で|へ|て|(?<!も)の)\s*$/u.test(comment.value) &&
+              !/^\s*- /u.test(next.value)
+            ) {
+              context.report({
+                node: comment,
+                message:
+                  "コメントの文を途中で折り返さず、1行で書く。改行は人が必要と思ったときに文の切れ目で入れる（docs/agents/coding-style.md「コードを説明する情報」）",
+              });
+            }
+          }
+        },
+      }),
+    },
+    "no-wording-in-test": {
+      create: (context) => {
+        const check = (node, text) => {
+          if (japaneseText.test(text) && !isTitleOfTest(node)) {
+            context.report({
+              node,
+              message:
+                "文言はテストで照らさず、書き出したページを開いて見る。テストは状態・ヘッダー・Cookie・リンクと目印の id を見る（site/AGENTS.md「確かめる」）",
+            });
+          }
+        };
+        return {
+          Literal: (node) => {
+            if (typeof node.value === "string") {
+              check(node, node.value);
+            }
+          },
+          TemplateLiteral: (node) =>
+            check(node, node.quasis.map((quasi) => quasi.value.cooked).join("")),
+        };
+      },
     },
   },
 };
@@ -230,3 +317,49 @@ const moduleExportName = (node) => (node.type === "Identifier" ? node.name : nod
 // ケバブケースのファイル名と、キャメルケース・パスカルケースの名前を、区切りと大文字小文字を除いて比べる
 const sameWords = (name, fileName) =>
   name.toLowerCase() === fileName.replaceAll("-", "").toLowerCase();
+
+const japaneseText = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
+
+const isTitleOfTest = (node) =>
+  node.parent?.type === "CallExpression" &&
+  node.parent.arguments[0] === node &&
+  (isDescribe(node.parent.callee) || isTest(node.parent.callee));
+
+const isWholeLine = (sourceCode, comment) =>
+  sourceCode.lines[comment.loc.start.line - 1].slice(0, comment.loc.start.column).trim() === "";
+
+// site は拡張子つきで import する（site/tsconfig.json の allowImportingTsExtensions）
+const resolveModule = (specifierPath) =>
+  [
+    specifierPath,
+    `${specifierPath}.ts`,
+    `${specifierPath}.tsx`,
+    path.join(specifierPath, "index.ts"),
+    path.join(specifierPath, "index.tsx"),
+  ].find((candidate) => existsSync(candidate) && statSync(candidate).isFile());
+
+const isInside = (directory, ancestor) => !path.relative(ancestor, directory).startsWith("..");
+
+const relativeSpecifier = (from, to) => {
+  const relative = path.relative(from, to);
+  return relative.startsWith(".") ? relative : `./${relative}`;
+};
+
+// エディタのように同じプロセスで何度も回すときに、直した index.ts を読み直すよう、読んだときの更新の時刻と一緒に持つ
+const reexportedModulesByIndex = new Map();
+
+const reexportedModules = (index) => {
+  const { mtimeMs } = statSync(index);
+  const cached = reexportedModulesByIndex.get(index);
+  if (cached?.mtimeMs === mtimeMs) {
+    return cached.modules;
+  }
+  const specifiers = [
+    ...readFileSync(index, "utf8").matchAll(/^export\b[^;]*?\bfrom\s*["'](\.{1,2}\/[^"']+)["']/gmu),
+  ].map((match) => match[1]);
+  const modules = specifiers.map((specifier) =>
+    resolveModule(path.resolve(path.dirname(index), specifier)),
+  );
+  reexportedModulesByIndex.set(index, { mtimeMs, modules });
+  return modules;
+};

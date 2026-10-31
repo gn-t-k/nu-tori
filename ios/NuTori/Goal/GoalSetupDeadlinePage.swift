@@ -2,8 +2,7 @@ import NuToriAPI
 import NuToriCore
 import SwiftUI
 
-/// 期限のページ。チップ「1か月後・2か月後・3か月後・6か月後」（6か月後が選べる最後の日を越えるときは「26週後」）と、
-/// 「期限」の行の標準の DatePicker（compact）。選べる日は開始の日から 28〜182 日で、その幅を1行で書く。選んでから「次へ」
+/// 期限のページ。チップ「1か月後・2か月後・3か月後・6か月後」（6か月後が選べる最後の日を越えるときは「26週後」）と、「期限」の行の標準の DatePicker（compact）。選べる日は開始の日から 28〜182 日で、その幅を1行で書く。選んでから「次へ」
 struct GoalSetupDeadlinePage: View {
     let content: GoalSetupFlowContent
     let actions: GoalSetupFlowActions

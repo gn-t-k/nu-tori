@@ -45,13 +45,11 @@ export type KindFollows<TSourceName extends string> = {
   afterSourceApplied: (receiptId: WriteReceiptId) => readonly RecordId[];
 };
 
-// 書き込みを受け付けるかの決定。控えに載せる結果、変更の並びに書き込みの記録を載せ直すか、後に続く種類を走らせるかは、
-// 帳簿が決定の種類から決める（種類は書かない）
+// 書き込みを受け付けるかの決定。控えに載せる結果、変更の並びに書き込みの記録を載せ直すか、後に続く種類を走らせるかは、帳簿が決定の種類から決める（種類は書かない）
 // - applied: 当てる。書き込みの記録の変更を控えと結んで載せ、後に続く種類を走らせる
 // - unchanged: 今の値と同じなので何も書かない。控えは applied にするが、変更を載せず、後に続く種類も走らせない
 // - ignored_duplicate: 同じ記録がもうあるので捨てる
-// - ignored_tombstone: 削除の印のある記録への書き込みを捨てる。削除の印を取り終えた端末にも、作り直した記録を残させないよう、
-//   書き込みの記録の変更を載せ直す
+// - ignored_tombstone: 削除の印のある記録への書き込みを捨てる。削除の印を取り終えた端末にも、作り直した記録を残させないよう、書き込みの記録の変更を載せ直す
 // - kept_corrected: 直してある記録なので、元のサンプルが消えても残す
 // - rejected: 受け付けない
 export type WriteDecision<TAddedName extends string = never> =

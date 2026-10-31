@@ -185,4 +185,34 @@ struct RootModelTests {
             #expect(device.model.screen == .signIn(.signInAgain(hasPendingWrites: false), .ready))
         }
     }
+
+    @MainActor
+    @Suite("目標の設定を開き、受け付けなかった1行と同意のシートがあるあいだにサインアウトしたとき")
+    struct SignedOut {
+        let device: RootModelDevice
+
+        init() async throws {
+            let record = try WeightRecord.manual(
+                72.4, at: "2026-09-21T07:12:00+09:00", in: "Asia/Tokyo")
+            device = try RootModelDevice(termsAgreementRequired: true) { cache in
+                cache.weightRecordCache.upsert(record)
+            }
+            await device.model.open()
+            await device.model.goalSetup.open(from: .noticeCard, on: .timeline)
+            await device.reject(.weightRecord(record, serverHasValue: true))
+            try #require(device.model.goalSetup.flow != nil)
+            try #require(device.model.rejectedLines.count == 1)
+            try #require(device.model.termsAgreementSheet != nil)
+        }
+
+        @Test("サインインし直しの画面に替え、目標の設定の流れと受け付けなかった1行と同意のシートを片づけること")
+        func clearsPreviousAccount() async {
+            await device.model.signOut()
+
+            #expect(device.model.screen == .signIn(.signInAgain(hasPendingWrites: false), .ready))
+            #expect(device.model.goalSetup.flow == nil)
+            #expect(device.model.rejectedLines.isEmpty)
+            #expect(device.model.termsAgreementSheet == nil)
+        }
+    }
 }

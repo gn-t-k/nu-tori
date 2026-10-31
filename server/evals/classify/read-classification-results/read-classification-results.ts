@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ClassificationErrorKind } from "../judge-classification-error/judge-classification-error";
+import type { ClassificationErrorKind } from "../judge-classification-error";
 
 // promptfoo の結果（-o の JSON）から、Haiku 5.5 の2種類の間違いの数を読む。
 // 呼び出しに失敗した件があると数が欠けるので、数えずに失敗の数と、失敗した文章ごとの理由（エラーの1行目。スタックを除く）を返す（回し直す）。

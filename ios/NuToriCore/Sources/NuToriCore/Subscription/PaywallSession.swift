@@ -1,14 +1,13 @@
 public import Foundation
 public import Observation
 
-/// 課金画面を1回開いてから閉じるまで。購入者のトークンを求め、`SubscriptionStoreView` で買えた取引と「購入を復元」を知らせ、
-/// 結果の1行と閉じるかを決め、開いた・閉じたを PostHog に送る
+/// 課金画面を1回開いてから閉じるまで。購入者のトークンを求め、`SubscriptionStoreView` で買えた取引と「購入を復元」を知らせ、結果の1行と閉じるかを決め、開いた・閉じたを PostHog に送る
 @MainActor
 @Observable
 public final class PaywallSession {
     /// 購入の選択肢に渡す購入者のトークン。受け取るまで買えない
     public private(set) var purchaseToken: PurchaseToken = .requesting
-    /// 購入ボタンの上に出す1行
+    /// 購入と復元の結果の1行
     public private(set) var message: String?
     /// 結びついたので、シートを閉じる
     public private(set) var isFinished = false

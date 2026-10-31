@@ -10,8 +10,7 @@ import { LlmCallInvalidResponseError } from "../../../domain/llm-call-invalid-re
 import type { LlmCallTimedOutError } from "../../../domain/llm-call-timed-out-error";
 import type { TokenUsage } from "../../../domain/token-usage";
 
-// 推定の2つの呼び出し（①②）に共通の頼み方。モデルを決め、思考を切り、構造化出力で答えさせ、
-// 時間の上限をかける。提供元の失敗は catchAnthropicFailure が LLM の呼び出しの失敗に写す。応答の中身（モデルの答えのテキスト）は残さず、読めた形と使ったトークンだけを返す
+// 推定の2つの呼び出し（①②）に共通の頼み方。モデルを決め、思考を切り、構造化出力で答えさせ、時間の上限をかける。提供元の失敗は catchAnthropicFailure が LLM の呼び出しの失敗に写す。応答の中身（モデルの答えのテキスト）は残さず、読めた形と使ったトークンだけを返す
 export const requestStructuredOutput = <TSchema extends z.ZodType>(
   client: Anthropic,
   call: {

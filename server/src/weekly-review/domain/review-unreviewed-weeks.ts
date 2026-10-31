@@ -194,8 +194,7 @@ export const reviewUnreviewedWeeks = (
 // 推定の始まりから 4 週後と 8 週後の見直しで、推定が初期値からどれだけ動いたかを見る
 const reviewNumbersComparedWithInitial: readonly number[] = [4, 8];
 
-// 見直せた週の、新しい推定と、それを使った1日の目安。1日の目安は、今の目標か、期限後の維持に移る週は維持の目標に書き、
-// 前の週からの変化は今の目標の前の週の1日の目安から抑える
+// 見直せた週の、新しい推定と、それを使った1日の目安。1日の目安は、今の目標か、期限後の維持に移る週は維持の目標に書き、前の週からの変化は今の目標の前の週の1日の目安から抑える
 const computeReviewedOutcome = (
   stores: WeeklyReviewStores,
   {

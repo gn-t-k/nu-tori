@@ -688,4 +688,116 @@ struct AccountSessionTests {
             }
         }
     }
+
+    @Suite("サインアウトするとき")
+    struct SigningOut {
+        @Suite("送り待ちがあるとき")
+        struct WithPendingWrites {
+            let device: AccountDevice
+            let session: AccountSession
+            let log: CallLog
+
+            init() throws {
+                let log = CallLog()
+                self.log = log
+                device = try .signedIn(pendingWeightRecordWrites: [.fixtureCreating()], log: log)
+                session = device.session()
+            }
+
+            @Test("送り待ちがあると答えること")
+            func reportsPendingWrites() async throws {
+                #expect(try await session.hasPendingWrites())
+            }
+
+            @Test("送り待ちがあるときの、サインインし直しの画面にすること")
+            func returnsSignInAgain() async throws {
+                let destination = try await session.signOut()
+
+                #expect(destination == .signIn(.signInAgain(hasPendingWrites: true)))
+            }
+
+            @Test("セッションを捨て、印を残し、記録と送り待ちは消さないこと")
+            func discardsSessionAndKeepsRecords() async throws {
+                _ = try await session.signOut()
+
+                #expect(device.keychain.token == nil)
+                #expect(device.deviceStore.hasMark)
+                #expect(device.syncStore.eraseAllCount == 0)
+                #expect(device.syncStore.records.count == 1)
+                #expect(device.syncStore.pendingWeightRecords.count == 1)
+                #expect(device.deviceStore.account == AccountDevice.previousAccount)
+                #expect(device.backgroundTransfers.cancelAndDeleteCount == 0)
+                #expect(device.healthAnchors.deleteCount == 0)
+            }
+
+            @Test("サインアウトを PostHog に送り切ってから、写真の送信を取り消し、セッションを捨て、PostHog と Sentry を外す順に進めること")
+            func followsTheOrder() async throws {
+                _ = try await session.signOut()
+
+                #expect(device.analytics.captured == [.signedOut])
+                let events = log.events
+                let capture = try #require(events.firstIndex(of: "analytics.capture"))
+                let flush = try #require(events.firstIndex(of: "analytics.flush"))
+                let cancel = try #require(
+                    events.firstIndex(of: "backgroundTransfers.cancelUploads"))
+                let delete = try #require(events.firstIndex(of: "keychain.delete"))
+                let reset = try #require(events.firstIndex(of: "analytics.reset"))
+                #expect(capture < flush)
+                #expect(flush < cancel)
+                #expect(cancel < delete)
+                #expect(delete < reset)
+                #expect(!events.contains("backgroundTransfers.cancelAndDeleteAll"))
+                #expect(device.errorReporting.clearUserCount == 1)
+            }
+
+            @Test("そのあと開くと、送り待ちがあるときのサインインし直しの画面になること")
+            func showsSignInAgainAfterwards() async throws {
+                _ = try await session.signOut()
+
+                let destination = try await session.destinationOnOpen()
+
+                #expect(destination == .signIn(.signInAgain(hasPendingWrites: true)))
+            }
+        }
+
+        @Suite("送り待ちが無いとき")
+        struct WithoutPendingWrites {
+            let session: AccountSession
+
+            init() throws {
+                session = try AccountDevice.signedIn().session()
+            }
+
+            @Test("送り待ちが無いと答えること")
+            func reportsNoPendingWrites() async throws {
+                #expect(try await !session.hasPendingWrites())
+            }
+
+            @Test("送り待ちが無いときの、サインインし直しの画面にすること")
+            func returnsSignInAgain() async throws {
+                let destination = try await session.signOut()
+
+                #expect(destination == .signIn(.signInAgain(hasPendingWrites: false)))
+            }
+        }
+
+        @Suite("PostHog の列が送り切れないとき")
+        struct AnalyticsNeverFlushes {
+            let device: AccountDevice
+            let session: AccountSession
+
+            init() throws {
+                device = try .signedIn(analytics: { .neverFlushes(log: $0) })
+                session = device.session()
+            }
+
+            @Test("諦めて、サインアウトを進めること")
+            func givesUpFlushing() async throws {
+                _ = try await session.signOut()
+
+                #expect(device.analytics.flushCount == 1)
+                #expect(device.keychain.token == nil)
+            }
+        }
+    }
 }

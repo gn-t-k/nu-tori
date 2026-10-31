@@ -3,8 +3,7 @@ import XCTest
 /// 開いたときに並べる分より長いタイムラインを、並べたいちばん古い日の上端まで遡って止める → その前の日が足され、見ていた所からは動かない。
 ///
 /// 上端で止めたら古い日を足し、見ていた日を上端に置き直すと決める規則は NuToriCore の単体テスト（TimelineViewportTests の「並べる日」）が見る。
-/// ここで見るのは SwiftUI の癖: 上端にいるかがスクロールの位置（onScrollGeometryChange）から届くこと、
-/// 上に日を足すと中身が下へずれるが、足した更新のあとの ScrollViewProxy の scrollTo で、見ていた日が上端に戻ること
+/// ここで見るのは SwiftUI の癖: 上端にいるかがスクロールの位置（onScrollGeometryChange）から届くこと、上に日を足すと中身が下へずれるが、足した更新のあとの ScrollViewProxy の scrollTo で、見ていた日が上端に戻ること
 @MainActor
 final class ListOlderDaysAfterScrollingToStartUITests: XCTestCase {
     private var app = XCUIApplication()

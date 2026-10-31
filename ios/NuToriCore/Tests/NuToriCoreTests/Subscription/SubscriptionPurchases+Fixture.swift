@@ -8,6 +8,7 @@ extension SubscriptionPurchases {
         store: SubscriptionStoreMock,
         transport: ClientTransportMock,
         applyReportedChanges: @escaping @Sendable ([SyncChange]) async throws -> Void = { _ in },
+        errorReporting: ErrorReportingSessionMock = .ok(),
         newRequestId: @escaping @Sendable () -> UUID = { UUID() }
     ) -> SubscriptionPurchases {
         SubscriptionPurchases(
@@ -19,6 +20,7 @@ extension SubscriptionPurchases {
                 sessionToken: { "session-1" }
             ),
             applyReportedChanges: applyReportedChanges,
+            errorReporting: errorReporting,
             newRequestId: newRequestId
         )
     }

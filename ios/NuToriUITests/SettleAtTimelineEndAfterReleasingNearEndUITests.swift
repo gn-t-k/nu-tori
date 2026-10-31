@@ -4,8 +4,7 @@ import XCTest
 /// 写真の選択は起動の値で差し替える（選ぶ画面を開かずに1枚選んだことにする）
 ///
 /// 入力欄の下に隠れた所で指を離したら下端へ動かすと決める規則は NuToriCore の単体テスト（TimelineViewportTests の「一番下を追う」と「タイムラインの下端の位置」）が見る。
-/// ここで見るのは SwiftUI の癖: 見えている所（onScrollGeometryChange の visibleRect）が入力欄に隠れた分（contentInsets.bottom）まで含んで届くこと、
-/// 指を離して止まったときに、相が「触っている」から「止まった」へ移って届くこと、そこから動きをつけた scrollTo が下端に着くこと
+/// ここで見るのは SwiftUI の癖: 見えている所（onScrollGeometryChange の visibleRect）が入力欄に隠れた分（contentInsets.bottom）まで含んで届くこと、指を離して止まったときに、相が「触っている」から「止まった」へ移って届くこと、そこから動きをつけた scrollTo が下端に着くこと
 @MainActor
 final class SettleAtTimelineEndAfterReleasingNearEndUITests: XCTestCase {
     private var app = XCUIApplication()

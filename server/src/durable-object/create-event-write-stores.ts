@@ -10,8 +10,7 @@ import { createReplyEventWriteStore } from "../reply/durable-object/create-reply
 import { createSentTextStore } from "../sent-text/durable-object/create-sent-text-store";
 import { createSentTextStatusStore } from "../sent-text-status/durable-object/create-sent-text-status-store";
 
-// 推定と返事の流れの出来事を書く口が要る置き場。出来事を書く置き場と、書く前とあとの状態を比べるための種類の置き場と、
-// 推定を終えたときの出来事のために推定の予定と試みを読む置き場。
+// 推定と返事の流れの出来事を書く口が要る置き場。出来事を書く置き場と、書く前とあとの状態を比べるための種類の置き場と、推定を終えたときの出来事のために推定の予定と試みを読む置き場。
 // 出来事を書く置き場は、記録の変化を書く入口と、登録簿の種類の置き場（書き込みの口）にしか渡さない
 export const createEventWriteStores = (db: DrizzleSqliteDODatabase) => ({
   meal: createMealStore(db),

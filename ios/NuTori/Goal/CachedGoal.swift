@@ -79,8 +79,7 @@ nonisolated final class CachedGoal {
         deadlineConfirmationTimeZoneIdentifier = goal.deadlineConfirmation?.timeZone.identifier
     }
 
-    /// 読めない日付・タイムゾーン・向き・速さの案・終わり方の行と、期限の無い減量・増量の行、
-    /// 閉じたこと・達成・期限の日の確定の値の一部だけがある行は nil
+    /// 読めない日付・タイムゾーン・向き・速さの案・終わり方の行と、期限の無い減量・増量の行、閉じたこと・達成・期限の日の確定の値の一部だけがある行は nil
     func goal() -> Goal? {
         guard let startedDay = CalendarDay(yearMonthDay: startedDay),
             let timeZone = TimeZone(identifier: timeZoneIdentifier),
