@@ -42,7 +42,10 @@
                     PickedPhotos(
                         count: $0,
                         loadingSeconds: environment["UI_TEST_PICKED_PHOTOS_LOADING_SECONDS"]
-                            .flatMap(Double.init) ?? 0)
+                            .flatMap(Double.init) ?? 0,
+                        files: environment["UI_TEST_PICKED_PHOTO_FILES"].map {
+                            $0.split(separator: "\n").map { URL(filePath: String($0)) }
+                        })
                 },
                 lockoutDefaultsName: environment["UI_TEST_LOCKOUT_DEFAULTS"],
                 // UI テストは起動の値の TZ でタイムゾーンを決めるので、起動したときのタイムゾーンで止める
@@ -56,6 +59,14 @@
             let count: Int
             /// 読み終えるまでにかける秒数。読んでいるあいだの仮のカードを確かめるため
             let loadingSeconds: Double
+            /// 選んだことにする写真のファイル（シミュレーターから読める Mac のパス）。nil なら写真ごとに色を変えた無地の写真にする
+            let files: [URL]?
+
+            /// 選んだことにする写真の JPEG
+            var jpegs: [Data] {
+                files.map(UITestMealPhotos.jpegs(contentsOf:))
+                    ?? UITestMealPhotos.jpegs(count: count)
+            }
         }
 
         var appleSignInResult: AppleSignInResult {
@@ -265,6 +276,8 @@
             case goalAchieved = "goal-achieved"
             /// 昨日で無料体験が終わり、サブスクリプション切れ。買うと月額のサブスクリプション中に結びつく
             case subscriptionExpired = "subscription-expired"
+            /// 掲載情報と LP の手順の絵を撮る見本の人。記録と出どころは `listingSampleScenario()`
+            case listingSample = "listing-sample"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

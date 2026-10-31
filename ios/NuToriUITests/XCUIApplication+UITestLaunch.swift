@@ -14,7 +14,8 @@ extension XCUIApplication {
         dayPassesOnReturn: Bool = false,
         cacheHoldsRecords: Bool = false,
         timeZone: String?,
-        textSize: UITestTextSize? = nil
+        textSize: UITestTextSize? = nil,
+        japaneseLocale: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["UI_TEST_ACCOUNT"] = account
@@ -30,6 +31,9 @@ extension XCUIApplication {
             app.launchEnvironment["UI_TEST_PICKED_PHOTOS"] = String(pickedPhotos.count)
             app.launchEnvironment["UI_TEST_PICKED_PHOTOS_LOADING_SECONDS"] = String(
                 pickedPhotos.loadingSeconds)
+            if let files = pickedPhotos.files {
+                app.launchEnvironment["UI_TEST_PICKED_PHOTO_FILES"] = files.joined(separator: "\n")
+            }
         }
         // 同じ名前を渡して開き直すと、前に開いたときの締め出しを覚えている
         if let lockoutDefaults {
@@ -50,6 +54,10 @@ extension XCUIApplication {
         }
         if let textSize {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", textSize.rawValue]
+        }
+        // 英語のランナー（CI）でも、日本の利用者と同じ日付と数の書き方にする
+        if japaneseLocale {
+            app.launchArguments += ["-AppleLanguages", "(ja)", "-AppleLocale", "ja_JP"]
         }
         app.launch()
         return app
