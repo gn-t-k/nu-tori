@@ -16,7 +16,7 @@ extension XCUIApplication {
         timeZone: String?,
         textSize: UITestTextSize? = nil,
         japaneseLocale: Bool = false,
-        listingReplyLines: Int? = nil
+        listingReplyShape: Int? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["UI_TEST_ACCOUNT"] = account
@@ -36,9 +36,9 @@ extension XCUIApplication {
                 app.launchEnvironment["UI_TEST_PICKED_PHOTO_FILES"] = files.joined(separator: "\n")
             }
         }
-        // 見本の人の昨日の夜の返事に並べる行の数（`ListingScreenshots`）
-        if let listingReplyLines {
-            app.launchEnvironment["UI_TEST_LISTING_REPLY_LINES"] = String(listingReplyLines)
+        // 見本の人の昨日の夜の返事の形の番号（`ListingScreenshots`）
+        if let listingReplyShape {
+            app.launchEnvironment["UI_TEST_LISTING_REPLY_SHAPE"] = String(listingReplyShape)
         }
         // 同じ名前を渡して開き直すと、前に開いたときの締め出しを覚えている
         if let lockoutDefaults {

@@ -170,8 +170,9 @@
             "- 間食は控えめにできています",
         ]
 
-        /// その日の 21:00 に「ここまでの食事のフィードバック」を送り、返事が届いた。返事は1行の前置きと、`replyLines` の先頭から `lines` 行
-        func feedback(on day: Day, lines: Int) -> [SyncChange] {
+        /// その日の 21:00 に「ここまでの食事のフィードバック」を送り、返事が届いた。
+        /// 返事は1行の前置きと、`replyLines` の先頭から `shape / 2` 行。`shape` が奇数なら、前置きと行のあいだを1行空ける（行より小さい幅で高さを変えるため）
+        func feedback(on day: Day, shape: Int) -> [SyncChange] {
             let sentTextId = Self.id(0x79, 0)
             return [
                 .sentText(
@@ -184,7 +185,8 @@
                 .aiUtterance(
                     SyncedAiUtterance(
                         id: Self.id(0x7a, 0),
-                        body: (["今日も3食とも記録できています。"] + Self.replyLines.prefix(lines))
+                        body: (["今日も3食とも記録できています。"] + (shape % 2 == 1 ? [""] : [])
+                            + Self.replyLines.prefix(shape / 2))
                             .joined(separator: "\n"),
                         sentTextId: sentTextId, mealIds: [])),
             ]
@@ -234,7 +236,7 @@
         /// 今日（止めた時計の日）より後の記録は置かない。昨日までは毎日、LP の版 a の見本の3食（`ListingSampleDish`）を書いて送った。
         /// 出し方のページの見本の人は毎日1日の目安ちょうど食べたことにしているが、3食の合計（1,440 kcal）はそれより少ない。
         /// 食べた量は1日の丸の満ち方と週の振り返りにしか出ず、見本の場面はどちらの数も撮らないので、LP の見本の食事のほうにそろえる。
-        /// 昨日の 21:00 には「ここまでの食事のフィードバック」を送って返事が届いた。返事の行の数（`listingReplyLines`）は、タイムラインの上の端で行が切れないよう、撮る UI テストが選ぶ
+        /// 昨日の 21:00 には「ここまでの食事のフィードバック」を送って返事が届いた。返事の形（行の数と空き。`listingReplyShape`）は、タイムラインの上の端で行が切れないよう、撮る UI テストが選ぶ
         func listingSampleScenario(_ estimation: ListingSampleEstimation) -> FakeSyncServer.Scenario
         {
             let today = clock.today()
@@ -250,7 +252,7 @@
                     + days.enumerated().filter { sample.day($0.element.calendarDay) < today }
                     .flatMap { index, day in sample.meals(of: day, at: index) }
                     + (days.last { sample.day($0.calendarDay) < today }.map {
-                        sample.feedback(on: $0, lines: listingReplyLines)
+                        sample.feedback(on: $0, shape: listingReplyShape)
                     } ?? [])
                     + [
                         .weightTrend(

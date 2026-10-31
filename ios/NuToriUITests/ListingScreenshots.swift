@@ -18,12 +18,12 @@ final class ListingScreenshots: XCTestCase {
     }
 
     /// タイムラインは開くと一番下に着き、上の端（1日の丸の帯の下）にどの行が来るかは、その上に積んだ記録の高さで決まる。
-    /// 昨日の夜の返事の行の数を 0 から1行ずつ増やして開き直し、上の端で行が半分隠れない数で撮る。
-    /// 1行の高さは、行のあいだの空き（吹き出しやカードのあいだ、日の見出しの上下）と同じくらいなので、どこかの数で空きに当たる
+    /// 昨日の夜の返事の形（行の数と、前置きの下の空き）を変えて開き直し、上の端で行が半分隠れない形で撮る。
+    /// 1行の高さは行のあいだの空き（吹き出しやカードのあいだ、日の見出しの上下）より少し大きいので、前置きの下の空きで、その間も埋める
     private func shoot(_ scene: ListingScene) {
         var clipped: [String] = []
-        for replyLines in 0...ListingScene.maxReplyLines {
-            let app = scene.launch(replyLines: replyLines)
+        for replyShape in 0...ListingScene.maxReplyShape {
+            let app = scene.launch(replyShape: replyShape)
             defer { app.terminate() }
             guard scene.prepare(app) else {
                 XCTFail("\(scene.rawValue) の出るべきものが出ないので、撮らない")
@@ -37,11 +37,12 @@ final class ListingScreenshots: XCTestCase {
                     return
                 }
             }
-            // 返事の行を増やし切っても切れているときは、最後の画面を撮って落とす。どの行が何 pt 隠れたかを見て、見本の記録を直すため
-            guard clipped.isEmpty || replyLines == ListingScene.maxReplyLines else { continue }
+            // どの形でも切れているときは、最後の画面を撮って落とす。どの行が何 pt 隠れたかを見て、見本の記録を直すため
+            guard clipped.isEmpty || replyShape == ListingScene.maxReplyShape else { continue }
             if !clipped.isEmpty {
                 XCTFail("\(scene.rawValue) の上の端で行が切れている: \(clipped.joined(separator: "、"))")
             }
+            print("\(scene.rawValue) は返事の形 \(replyShape) で撮る")
             // 状態の表示も入れるため、アプリの窓でなく画面全体を撮る
             let attachment = XCTAttachment(
                 uniformTypeIdentifier: "public.png", name: scene.rawValue,
