@@ -10,5 +10,15 @@
 	<array>
 		<string>fetch</string>
 	</array>
+	<!--
+	回る向きは縦だけにする。横向きで使う場面は想定していない。
+	横に回ると、写真を選んで閉じたあとの画面の切り替えの途中で配置の計算が止まり、iOS に止められた。
+	https://github.com/gn-t-k/nu-tori/issues/817
+	build settings（INFOPLIST_KEY_…）に置かないのは、Xcode が project.pbxproj を書き直すときにこのコメントを消すため
+	-->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
 </dict>
 </plist>
