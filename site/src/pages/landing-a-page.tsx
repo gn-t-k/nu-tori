@@ -220,18 +220,22 @@ export const landingAPage = createLandingVariantPage({
                 アカウントを作ってから30日、支払いの登録なしで、すべての機能を使えます。終わっても、自動でサブスクリプションにはなりません。続けたいときにだけ、月額か年額を選びます。
               </p>
             </div>
-            <div class="lp-plate lp-prices">
-              <p class="lp-price">
-                <span class="lp-secondary">月額</span>
-                <b>{formatYen(subscriptionPrices.monthlyYen)}</b>
-                <span class="lp-secondary">税込</span>
-              </p>
-              <p class="lp-price">
-                <span class="lp-secondary">年額</span>
-                <b>{formatYen(subscriptionPrices.yearlyYen)}</b>
-                <span class="lp-secondary">税込</span>
-              </p>
-            </div>
+            <dl class="lp-prices">
+              <div>
+                <dt>月額</dt>
+                <dd>
+                  <b>{formatYen(subscriptionPrices.monthlyYen)}</b>
+                  <span class="lp-secondary">税込</span>
+                </dd>
+              </div>
+              <div>
+                <dt>年額</dt>
+                <dd>
+                  <b>{formatYen(subscriptionPrices.yearlyYen)}</b>
+                  <span class="lp-secondary">税込</span>
+                </dd>
+              </div>
+            </dl>
           </div>
           {/* バッジは1ページに1つなので、最後は文のリンクにする（#594 の13） */}
           <p class="lp-wrap lp-closing">
