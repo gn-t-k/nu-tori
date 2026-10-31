@@ -1,0 +1,150 @@
+{
+  "photoMeals": [
+    {
+      "key": "oyakodon",
+      "dish": "親子丼",
+      "ingredients": [
+        {
+          "name": "ご飯",
+          "quantity": 200,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "鶏もも肉",
+          "quantity": 80,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "卵",
+          "quantity": 1,
+          "unit": "個",
+          "source": "food_composition"
+        },
+        {
+          "name": "割り下",
+          "quantity": 30,
+          "unit": "ml",
+          "source": "estimated"
+        }
+      ],
+      "totals": {
+        "energyKcal": 568,
+        "proteinG": 23.85,
+        "fatG": 15.85,
+        "carbohydrateG": 75.95
+      }
+    },
+    {
+      "key": "curry",
+      "dish": "カレーライス",
+      "ingredients": [
+        {
+          "name": "ご飯",
+          "quantity": 200,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "牛肉（かた）",
+          "quantity": 50,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "じゃがいも",
+          "quantity": 50,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "たまねぎ",
+          "quantity": 40,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "にんじん",
+          "quantity": 20,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "カレールウ",
+          "quantity": 20,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "福神漬",
+          "quantity": 10,
+          "unit": "g",
+          "source": "food_composition"
+        }
+      ],
+      "totals": {
+        "energyKcal": 553.6,
+        "proteinG": 15.91,
+        "fatG": 11.64,
+        "carbohydrateG": 89.39
+      }
+    },
+    {
+      "key": "onigiri",
+      "dish": "おにぎり",
+      "ingredients": [
+        {
+          "name": "ご飯",
+          "quantity": 200,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "焼きのり",
+          "quantity": 2,
+          "unit": "g",
+          "source": "food_composition"
+        }
+      ],
+      "totals": {
+        "energyKcal": 317.94,
+        "proteinG": 4.64,
+        "fatG": 0.44,
+        "carbohydrateG": 69.23
+      }
+    }
+  ],
+  "textMeals": [
+    {
+      "key": "ochazuke",
+      "dish": "お茶漬け",
+      "ingredients": [
+        {
+          "name": "ご飯",
+          "quantity": 150,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "お茶漬けの素",
+          "quantity": 6,
+          "unit": "g",
+          "source": "food_composition"
+        },
+        {
+          "name": "緑茶",
+          "quantity": 150,
+          "unit": "ml",
+          "source": "food_composition"
+        }
+      ],
+      "totals": {
+        "energyKcal": 252.06,
+        "proteinG": 4.38,
+        "fatG": 0.46,
+        "carbohydrateG": 54.02
+      }
+    }
+  ]
+}

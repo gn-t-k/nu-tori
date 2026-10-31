@@ -43,9 +43,9 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 
 - 記録の種類を足す・直すとき、同期の帳簿（`src/domain/sync-ledger/`）に触るとき、端末の書き込みの外（受け口の要求、アラーム）で記録を変えるとき、書き込みで PostHog に送る出来事を足すときは、`docs/agents/server-sync-ledger.md` を読む
 
-## 出し方のページの例
+## 出し方のページと LP の例
 
-- 出し方のページ（`site/src/pages/daily-guide-page.tsx`）の「Aさんの例」の数字（`site/src/pages/daily-guide/daily-guide-example.json`）は、`scripts/print-daily-guide-example.ts` がドメイン層の関数で出す。推定消費カロリー・1日の目安・毎週の見直しの決まりを変えたら、`scripts/check server --fix` で書き出し直し、ページの本文が新しい数字と合うかを読む（筋が変わると、ページの書き出しが止まる）
+- 出し方のページ（`site/src/pages/daily-guide-page.tsx`）の「Aさんの例」の数字（`site/src/pages/daily-guide/daily-guide-example.json`）は `scripts/print-daily-guide-example.ts` が、LP の版 a の見本（`site/src/pages/landing-a-page.tsx` の「写真を選ぶ」とチャットの見本）の数字（`site/src/pages/landing-a/landing-a-examples.json`）は `scripts/print-landing-a-examples.ts` が、ドメイン層の関数と成分表で出す。成分表のデータか、推定消費カロリー・1日の目安・毎週の見直しの決まりを変えたら、`scripts/check server --fix` で書き出し直し、ページの本文が新しい数字と合うかを読む（出し方のページは、筋が変わると書き出しが止まる）
 
 ## 認証
 

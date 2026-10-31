@@ -1,6 +1,6 @@
 import example from "./daily-guide-example.json";
 
-// json は server/scripts/print-daily-guide-example.ts が書き出すので、手で書き換えない（server/AGENTS.md の「出し方のページの例」）
+// json は server/scripts/print-daily-guide-example.ts が書き出すので、手で書き換えない（server/AGENTS.md の「出し方のページと LP の例」）
 export const dailyGuideExample = (() => {
   const [firstReview, secondReview, thirdReview, fourthReview] = example.reviews;
   const firstDay = example.days[0];

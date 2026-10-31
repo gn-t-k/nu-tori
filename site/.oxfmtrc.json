@@ -3,6 +3,7 @@
   "ignorePatterns": [
     "worker-configuration.d.ts",
     "dist",
-    "src/pages/daily-guide/daily-guide-example.json"
+    "src/pages/daily-guide/daily-guide-example.json",
+    "src/pages/landing-a/landing-a-examples.json"
   ]
 }

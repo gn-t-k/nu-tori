@@ -8,6 +8,14 @@
   --on-surface-tertiary: rgba(60, 60, 67, 0.3);
   --separator: rgba(60, 60, 67, 0.29);
   --primary: #6155f5;
+  --fill: #efeff0;
+  --protein: #f07f1a;
+  --fat: #15803d;
+  --carbohydrate: #2c7be5;
+  /* DESIGN.md の own-record-card。アプリの OwnRecordCard と同じく、Primary を 22% 敷く */
+  --own-record: color-mix(in srgb, var(--primary) 22%, var(--surface));
+  /* LP の文の副の色。DESIGN.md に無い値で、アプリの secondaryLabel は地と 4.5:1 に届かないので、LP の文だけ届く灰色にする（#594 の解決コメントの10）。アプリの部品の中はアプリと同じ secondaryLabel のまま */
+  --lp-secondary: #636366;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -19,6 +27,11 @@
     --on-surface-tertiary: rgba(235, 235, 245, 0.3);
     --separator: rgba(84, 84, 88, 0.6);
     --primary: #6d7cff;
+    --fill: #323236;
+    --protein: #e8903a;
+    --fat: #228c48;
+    --carbohydrate: #4290f4;
+    --lp-secondary: #aeaeb2;
   }
 }
 
@@ -249,10 +262,25 @@ td {
   fill: none;
 }
 
-.figure .guide {
+/* 5週の図の段。色を付ける線と控えめな線は、図ごとにどちらの値を見せたいかで決まる */
+.figure .step {
+  stroke: var(--primary);
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.figure .step.muted {
   stroke: var(--on-surface-secondary);
   stroke-width: 2;
-  fill: none;
+}
+
+/* 推定消費カロリーと1日の目安の差。線より奥に薄く敷く */
+.figure .difference {
+  fill: var(--primary);
+  fill-opacity: 0.1;
+  stroke: none;
 }
 
 .figure .truth {
@@ -347,5 +375,601 @@ td {
   .eq-row {
     grid-template-columns: 1fr;
     gap: 0;
+  }
+}
+
+/* LP の版。## の節ごとに灰色の地と白い帯を交互にし、帯は画面の幅いっぱいに敷く（#594 の解決コメントの8）。
+   ほかのページの読む幅（680px）を外し、ヘッダーと足を LP の幅にそろえる */
+main:has(> .lp) {
+  max-width: none;
+  padding: 0;
+}
+
+body:has(.lp) .site-header,
+body:has(.lp) .site-footer {
+  max-width: 1040px;
+}
+
+.lp-wrap {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
+  box-sizing: border-box;
+}
+
+.lp-band {
+  padding: 64px 0;
+}
+
+.lp-band-surface {
+  background: var(--surface);
+}
+
+.lp h1,
+.lp h2 {
+  /* 日本語の見出しを語の途中で折り返さない。入りきらないときだけ、どこでも折り返す */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.lp h2 {
+  /* 大きさは px で書く（scripts/check が DESIGN.md の最小と比べるため）。狭い幅の大きさは下の @media に置く */
+  font-size: 30px;
+  line-height: 1.3;
+  margin: 0 0 16px;
+}
+
+.lp p {
+  margin: 0 0 12px;
+}
+
+.lp-secondary,
+.lp-fine {
+  color: var(--lp-secondary);
+}
+
+.lp-fine {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.lp-hero {
+  padding-top: 24px;
+  text-align: center;
+}
+
+.lp-hero h1 {
+  font-size: 56px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.lp .lp-lead {
+  font-size: 20px;
+  color: var(--lp-secondary);
+  max-width: 34em;
+  margin: 16px auto 0;
+}
+
+.lp-actions {
+  margin-top: 16px;
+}
+
+.lp-actions p {
+  margin: 0;
+  font-size: 15px;
+}
+
+.lp-steps {
+  list-style: none;
+  padding: 0;
+  margin: 48px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  text-align: left;
+}
+
+.lp-steps li {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.lp-steps b {
+  font-size: 18px;
+}
+
+.lp-steps span {
+  color: var(--lp-secondary);
+}
+
+/* iPhone のスクリーンショット（1290×2796）の縦横比 */
+.lp-shot {
+  aspect-ratio: 1290 / 2796;
+  width: min(100%, 200px);
+  margin: 0 auto 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--separator);
+}
+
+.lp-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px 48px;
+  align-items: start;
+}
+
+/* 白い帯の中の、アプリの部品を載せる灰色の板（#594 の解決コメントの9） */
+.lp-plate {
+  background: var(--background);
+  border-radius: 18px;
+  padding: 24px;
+}
+
+.lp-example,
+.lp-example-panel {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+/* display: grid が hidden の既定の display: none を上書きするので、隠したパネルを戻す */
+.lp-example-panel[hidden] {
+  display: none;
+}
+
+.lp-segmented {
+  display: flex;
+  background: var(--fill);
+  border-radius: 9px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.lp-segmented button {
+  flex: 1;
+  /* 見た目はアプリの区切りのボタンと同じ細さに近いが、押せる範囲は DESIGN.md の touch-target の 44 にする */
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--on-surface);
+  font-family: inherit;
+  font-weight: inherit;
+  font-size: 13px;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.lp-segmented button[aria-pressed="true"] {
+  background: var(--surface);
+  font-weight: 600;
+}
+
+/* 数と単位のように、あいだで折り返さない語 */
+.lp-nowrap {
+  white-space: nowrap;
+}
+
+/* 成分表の節の3つの手順 */
+.lp-method {
+  margin: 0 0 20px;
+  padding: 0 0 0 1.5em;
+  display: grid;
+  gap: 16px;
+}
+
+.lp-method li::marker {
+  color: var(--primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-method li > b,
+.lp-method li > span {
+  display: block;
+}
+
+.lp-method li > span {
+  color: var(--lp-secondary);
+}
+
+/* 昼ごはんの日の時刻を、左の縦線に点を打って追う */
+.lp-day {
+  --lp-day-indent: 20px;
+  --lp-day-line: 2px;
+  --lp-day-dot: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 var(--lp-day-indent);
+  border-left: var(--lp-day-line) solid var(--separator);
+  display: grid;
+  gap: 20px;
+}
+
+.lp-day li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+}
+
+.lp-day li::before {
+  content: "";
+  position: absolute;
+  /* 点の中心を縦線の中心に合わせる */
+  left: calc(-1 * (var(--lp-day-indent) + var(--lp-day-line) / 2 + var(--lp-day-dot) / 2));
+  top: 6px;
+  width: var(--lp-day-dot);
+  height: var(--lp-day-dot);
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+.lp-day li > span {
+  color: var(--lp-secondary);
+}
+
+.lp-day-time {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-day-card {
+  max-width: 300px;
+  margin-top: 8px;
+}
+
+/* .lp p の margin より強くするため、.lp を付ける */
+.lp .lp-day-sum {
+  margin-top: 24px;
+  font-weight: 600;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* 料金は線で区切った表にする。札や台にすると、アプリの画面の見本と同じ見た目になるため */
+.lp-prices {
+  margin: 0;
+  border-top: 1px solid var(--separator);
+}
+
+.lp-prices div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.lp-prices dt {
+  color: var(--lp-secondary);
+}
+
+.lp-prices dd {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.lp-prices b {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-prices dd span {
+  font-size: 13px;
+}
+
+.lp .lp-closing {
+  margin-top: 48px;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+/* LP に載せるアプリの部品。DESIGN.md のトークンと ios/NuTori の組み方に合わせる */
+.app-secondary {
+  color: var(--on-surface-secondary);
+}
+
+.app-meal {
+  background: var(--own-record);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.app-meal img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.app-meal-body {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+}
+
+.app-meal-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.app-meal-name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.app-meal-time {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--on-surface-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-meal-nutrition {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--on-surface-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-chevron {
+  flex: none;
+  color: var(--on-surface-tertiary);
+}
+
+.app-text-meal {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.lp .app-bubble {
+  margin: 0;
+  padding: 12px;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.app-text-meal .app-meal {
+  border-radius: 0;
+}
+
+/* タイムラインの下のほう。自分の記録は右に寄せ、時刻をカードの外の左下に置く（DESIGN.md の own-record-time） */
+.app-timeline {
+  display: grid;
+  gap: 8px;
+}
+
+.app-own {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* 食事のカードは画面の 72%（OwnRecordCard）、文章とその食事のかたまりは吹き出しの 78%（SentTextBubbleView の BubbleWidth） */
+.app-own > .app-meal {
+  width: 72%;
+}
+
+.app-own > .app-text-meal {
+  width: 78%;
+}
+
+.app-own-time {
+  flex: none;
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--on-surface-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-composer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.app-composer-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  background: var(--fill);
+  color: var(--primary);
+}
+
+.app-composer-camera {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.app-composer-field {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--on-surface-tertiary);
+  font-size: 17px;
+  line-height: 36px;
+}
+
+.app-list {
+  background: var(--surface);
+  border-radius: 10px;
+  list-style: none;
+  padding: 0;
+}
+
+.lp .app-list {
+  margin: 0;
+}
+
+.lp .app-list-head {
+  margin: 0 16px 6px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--on-surface-secondary);
+}
+
+.app-list-row {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 11px 16px;
+  box-sizing: border-box;
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.app-list-row + .app-list-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  border-top: 0.5px solid var(--separator);
+}
+
+.app-editable {
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-meal-totals {
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.lp .app-meal-totals p {
+  margin: 0;
+}
+
+.app-meal-totals-kcal b {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-meal-totals-kcal span {
+  font-size: 15px;
+  color: var(--on-surface-secondary);
+}
+
+.app-meal-totals .app-secondary {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.app-pfc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 13px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-key {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  margin-right: 6px;
+}
+
+.app-key-protein {
+  background: var(--protein);
+}
+
+.app-key-fat {
+  background: var(--fat);
+}
+
+.app-key-carbohydrate {
+  background: var(--carbohydrate);
+}
+
+@media (max-width: 760px) {
+  .lp-band {
+    padding: 48px 0;
+  }
+
+  .lp h2 {
+    font-size: 24px;
+  }
+
+  .lp-hero h1 {
+    font-size: 40px;
+  }
+
+  .lp .lp-lead {
+    font-size: 17px;
+  }
+
+  .lp-hero {
+    padding-top: 16px;
+  }
+
+  .lp-steps,
+  .lp-feature {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lp-steps {
+    gap: 20px;
+    margin-top: 32px;
+  }
+
+  /* 携帯の幅では3枚を縦に積むと長くなるので、絵を左、文を右に並べる */
+  .lp-steps li:has(> .lp-shot) {
+    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    column-gap: 16px;
+  }
+
+  .lp-shot {
+    grid-row: 1 / span 2;
+    width: 100%;
+    margin: 0;
+    border-radius: 12px;
+  }
+
+  .lp-plate {
+    padding: 16px;
+  }
+}
+
+/* 携帯の幅では、見出しの1語（「あなたにちょうどいい」）が1行に収まる大きさにする */
+@media (max-width: 480px) {
+  .lp-hero h1 {
+    font-size: 30px;
   }
 }

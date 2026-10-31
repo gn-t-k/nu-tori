@@ -84,8 +84,8 @@ target_files() {
             if [ "$target" = ios ]; then paths="$paths|server/openapi\.json\$"; fi
             # site の Lint は、server の独自のルールを読む
             if [ "$target" = site ]; then paths="$paths|server/oxlint-plugin\.js\$"; fi
-            # 出し方のページの例の数字は、server の確かめが書き出したものと比べる
-            if [ "$target" = server ]; then paths="$paths|site/src/pages/daily-guide/daily-guide-example\.json\$"; fi
+            # 出し方のページの例と LP の版 a の見本の数字は、server の確かめが書き出したものと比べる
+            if [ "$target" = server ]; then paths="$paths|site/src/pages/daily-guide/daily-guide-example\.json\$|site/src/pages/landing-a/landing-a-examples\.json\$"; fi
             # site のページの文字の大きさは、DESIGN.md の typography の最小と比べる
             if [ "$target" = site ]; then paths="$paths|DESIGN\.md\$"; fi
             ;;
@@ -568,6 +568,17 @@ check_server() {
     fi
     if ! diff -u "$example_path" - <<< "$example"; then
         echo "site/src/pages/daily-guide/daily-guide-example.json が古い。scripts/check server --fix で書き出し直す" >&2
+        return 1
+    fi
+
+    step "LP の版 a の見本の数字が、ドメイン層の関数で出した値と合っているか"
+    local landing_examples landing_examples_path="$root/site/src/pages/landing-a/landing-a-examples.json"
+    landing_examples="$(cd "$server" && pnpm exec tsx scripts/print-landing-a-examples.ts)"
+    if $fix; then
+        echo "$landing_examples" > "$landing_examples_path"
+    fi
+    if ! diff -u "$landing_examples_path" - <<< "$landing_examples"; then
+        echo "site/src/pages/landing-a/landing-a-examples.json が古い。scripts/check server --fix で書き出し直す" >&2
         return 1
     fi
 
