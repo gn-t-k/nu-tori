@@ -123,7 +123,9 @@ enum ListingScene: String, CaseIterable {
         .launched(
             account: "signed-in", api: api, healthLatestKilograms: nil,
             pickedPhotos: photo.map { UITestPickedPhotos(count: 1, files: [Self.photoPath($0)]) },
-            now: now, timeZone: Self.timeZone, japaneseLocale: true,
+            now: now,
+            // 前に開いたときに取り終えた記録をキャッシュに持って開く。空から取りに行くと、今朝の体重が届く前に体重の知らせの時刻（8:00）を過ぎたと判じて、知らせのカードを出すことがある
+            cacheHoldsRecords: true, timeZone: Self.timeZone, japaneseLocale: true,
             listingReplyShape: replyShape)
     }
 
