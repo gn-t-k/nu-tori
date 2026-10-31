@@ -1,4 +1,5 @@
-// 合成のコマンドの入口。site/ で `node screenshots/compose-screenshots-command.ts <生の画面のフォルダ> [--bezel <枠の PNG>]` と回す（site/AGENTS.md「合成する」）
+// 合成のコマンドの入口。site/ で `node screenshots/compose-screenshots-command.ts <生の画面のフォルダ> [--bezel <枠の PNG>] [--landing-only]` と回す（site/AGENTS.md「合成する」）
+// --landing-only は LP の手順の絵だけを書き出す。掲載用の生の画面がまだ撮れないうちに LP の絵を作るため
 import { access } from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
@@ -11,12 +12,15 @@ const defaultBezelPath = path.join(siteDirectory, "screenshots", "bezel", "iphon
 
 const {
   positionals: [rawDirectory],
-  values: { bezel: bezelPath = defaultBezelPath },
-} = parseArgs({ allowPositionals: true, options: { bezel: { type: "string" } } });
+  values: { bezel: bezelPath = defaultBezelPath, "landing-only": landingOnly = false },
+} = parseArgs({
+  allowPositionals: true,
+  options: { bezel: { type: "string" }, "landing-only": { type: "boolean" } },
+});
 
 if (rawDirectory === undefined) {
   throw new Error(
-    "生の画面のフォルダを渡す: node screenshots/compose-screenshots-command.ts <フォルダ> [--bezel <枠の PNG>]",
+    "生の画面のフォルダを渡す: node screenshots/compose-screenshots-command.ts <フォルダ> [--bezel <枠の PNG>] [--landing-only]",
   );
 }
 await access(bezelPath).catch(() => {
@@ -30,4 +34,8 @@ await composeScreenshots({
   bezelPath: path.resolve(bezelPath),
   publicDirectory: path.join(siteDirectory, "public"),
   stepShotsPath: path.join(siteDirectory, "src", "pages", "landing-a", "step-shots.json"),
+  // 掲載用の5枚は、見出しを持つ掲載情報のモジュール（src/app-store-screenshots.ts）のそばに置き、wizard がここから上げる
+  listingDirectory: landingOnly
+    ? undefined
+    : path.join(siteDirectory, "src", "app-store-screenshot-images"),
 });

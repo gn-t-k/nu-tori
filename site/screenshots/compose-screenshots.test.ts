@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { composeScreenshots } from "./compose-screenshots.ts";
 import { readImageSize } from "./testing/read-image-size.ts";
+import { readPngSize } from "./testing/read-png-size.ts";
 import { writePng } from "./testing/write-png.ts";
 
 describe("合成のコマンド", () => {
@@ -132,4 +133,71 @@ describe("合成のコマンド", () => {
       });
     });
   });
+
+  describe("掲載用のスクリーンショット", () => {
+    describe("生の画面が8つそろっているとき", () => {
+      let listingDirectory: string;
+
+      beforeEach(async () => {
+        const rawDirectory = await writeRawScreens(allRawScreens);
+        const bezelPath = await writeSubstituteBezel();
+        listingDirectory = path.join(workDirectory, "listing");
+        await composeScreenshots({
+          rawDirectory,
+          bezelPath,
+          publicDirectory: path.join(workDirectory, "public"),
+          stepShotsPath: path.join(workDirectory, "step-shots.json"),
+          listingDirectory,
+        });
+      });
+
+      test("01 から 05 の5枚を書き出すこと", async () => {
+        const files = await readdir(listingDirectory);
+        expect(files.toSorted()).toEqual(["01.png", "02.png", "03.png", "04.png", "05.png"]);
+      });
+
+      // App Store の iPhone の 6.9 インチの大きさで、アルファのチャンネルを持たない PNG
+      test("1320×2868 の透過なしで書き出すこと", async () => {
+        for (const name of ["01", "02", "03", "04", "05"]) {
+          const size = await readPngSize(path.join(listingDirectory, `${name}.png`));
+          expect(size).toEqual({ width: 1320, height: 2868, hasAlpha: false });
+        }
+      });
+    });
+
+    describe("掲載用だけに使う生の画面が足りないとき", () => {
+      let compose: () => Promise<void>;
+
+      beforeEach(async () => {
+        const rawDirectory = await writeRawScreens(
+          allRawScreens.filter((name) => name !== "text-meal" && name !== "weekly-review"),
+        );
+        const bezelPath = await writeSubstituteBezel();
+        compose = () =>
+          composeScreenshots({
+            rawDirectory,
+            bezelPath,
+            publicDirectory: path.join(workDirectory, "public"),
+            stepShotsPath: path.join(workDirectory, "step-shots.json"),
+            listingDirectory: path.join(workDirectory, "listing"),
+          });
+      });
+
+      test("足りない名前を挙げて止まること", async () => {
+        await expect(compose()).rejects.toThrow(/text-meal, weekly-review/u);
+      });
+    });
+  });
 });
+
+// 撮る UI テストとの約束の、生の画面の名前の全部（LP の3つと、掲載用だけに使う5つ）
+const allRawScreens = [
+  "step-weigh",
+  "step-photo",
+  "step-guide",
+  "photo-estimated",
+  "text-meal",
+  "dish-detail",
+  "weekly-review",
+  "eat-while-estimating",
+];
