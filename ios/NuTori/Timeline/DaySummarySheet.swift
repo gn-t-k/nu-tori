@@ -325,9 +325,6 @@ struct DaySummarySheet: View {
     {
         VStack(spacing: 8) {
             ForEach(PFC.allCases, id: \.self) { pfc in
-                if pfc != .protein {
-                    Divider()
-                }
                 pfcFact(pfc, figures: figures, dailyGuide: dailyGuide, layout: layout)
             }
         }
