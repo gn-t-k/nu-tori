@@ -159,6 +159,8 @@ public struct Timeline: Sendable {
     public enum ItemSpacing: Equatable, Sendable {
         case close
         case apart
+        /// 日の最初の項目。前に項目が無く、日の見出しのすぐ下に置く
+        case dayStart
     }
 
     /// タイムラインの項目の話し手
@@ -239,10 +241,10 @@ public struct Timeline: Sendable {
                 })
         }
 
-        /// 話し手の替わり目を空けて、自分の吹き出しのすぐ下の返事が、前の吹き出しの続きに見えないようにする。日の最初の項目は、日の見出しの上と同じだけ空けて、見出しをどちらの日にも寄せず区切りに見せる（#844）。
+        /// 話し手の替わり目を空けて、自分の吹き出しのすぐ下の返事が、前の吹き出しの続きに見えないようにする。日の見出しは話し手ではないので、日の最初の項目は話し手で決めず、日の始まりとして返す（間は画面が決める。#844）。
         /// 会話の区切りを持たず、隣り合う2つだけで決める。日をまたぐ会話や、あとから入った食事で、間がずれないため（#449 の解決コメント）
         public func spacing(before item: Item) -> ItemSpacing {
-            guard let index = items.firstIndex(of: item), index > 0 else { return .apart }
+            guard let index = items.firstIndex(of: item), index > 0 else { return .dayStart }
             return items[index - 1].speaker == item.speaker ? .close : .apart
         }
 

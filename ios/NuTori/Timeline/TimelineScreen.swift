@@ -289,10 +289,9 @@ struct TimelineScreen: View {
                         Spacer(minLength: 0)
                         // 並べる日を新しいほうに絞り、遅れて読む並び（LazyVStack）にしない。理由は TimelineViewport
                         VStack(alignment: .leading) {
-                            // 日と日のあいだは、日の見出しの下（日の最初の行の前）と同じだけ空ける（#844）。
                             // 日が無いときに空の入れ物を置くと、下のカードの上に間隔が1つ増えるので置かない
                             if !listedDays.isEmpty {
-                                VStack(alignment: .leading, spacing: Self.gap(.apart)) {
+                                VStack(alignment: .leading, spacing: Self.dayBoundaryGap) {
                                     ForEach(listedDays, id: \.day) { day in
                                         daySection(day, in: timeline)
                                             .id(day.day)
@@ -441,15 +440,20 @@ struct TimelineScreen: View {
     /// タイムラインの中身の全体。下の余白まで含めた下端へ動かすときに名指しする
     private static let contentId = "timeline-content"
 
-    /// 話し手の替わり目と日の区切りの見た目（#449 の解決コメント、#844）。項目の前を詰めるか空けるかは `Timeline.Day.spacing(before:)` が決め、日と日のあいだはいつも空ける。
+    /// 項目の前の間（#449 の解決コメント、#844）。話し手の替わり目か日の始まりかは `Timeline.Day.spacing(before:)` が決める。
     /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、話し手の替わり目と日の区切りを余白だけで見せるため、ここは数値で決める。
-    /// 詰めるのは VStack の標準の間隔と同じ 8、空けるのは DESIGN.md のまとまりの間（section-gap）の 24
+    /// 詰めるのは VStack の標準の間隔と同じ 8、空けるのは DESIGN.md のまとまりの間（section-gap）の 24。日の始まりは日の見出しの上と同じ `dayBoundaryGap` にそろえる
     private static func gap(_ spacing: Timeline.ItemSpacing) -> CGFloat {
         switch spacing {
         case .close: 8
         case .apart: 24
+        case .dayStart: dayBoundaryGap
         }
     }
+
+    /// 日の見出しの上（日と日のあいだ）と下（日の最初の項目の前）の間。見出しをどちらの日にも寄せず、区切りに見せる（#844）。
+    /// DESIGN.md のまとまりの間（section-gap）の 24
+    private static let dayBoundaryGap: CGFloat = 24
 
     @ViewBuilder private func itemView(_ item: Timeline.Item, in timeline: Timeline) -> some View {
         switch item {

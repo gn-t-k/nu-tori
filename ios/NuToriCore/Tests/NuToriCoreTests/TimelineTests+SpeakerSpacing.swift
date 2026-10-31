@@ -98,9 +98,9 @@ extension TimelineTests {
             #expect(spacings[Timeline.Item.weightRecord(night).id] == .apart)
         }
 
-        @Test("日の最初の項目を、日の見出しから空けること")
+        @Test("日の最初の項目を、話し手でなく日の始まりとして分けること")
         func firstItemOfDay() {
-            #expect(spacings[Timeline.Item.weightRecord(morning).id] == .apart)
+            #expect(spacings[Timeline.Item.weightRecord(morning).id] == .dayStart)
         }
 
         /// 送った文章の吹き出しの項目の ID
