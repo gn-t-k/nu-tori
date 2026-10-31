@@ -22,6 +22,8 @@
         let dayPassesOnReturn: Bool
         /// 場面の記録を、前に開いたときに取り終えてキャッシュに持っている状態で始める。false なら、開いてから取りに行く
         let cacheHoldsRecords: Bool
+        /// 見本の人（`listingSampleScenario(_:)`）の昨日の夜の返事の形の番号（`ListingSample.feedback(on:shape:)`）。上の端で行が切れない番号を、撮る UI テストの場面（`ListingScene`）が渡す
+        let listingReplyShape: Int
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -51,7 +53,9 @@
                 // UI テストは起動の値の TZ でタイムゾーンを決めるので、起動したときのタイムゾーンで止める
                 clock: frozenClock(environment["UI_TEST_NOW"]),
                 dayPassesOnReturn: environment["UI_TEST_DAY_PASSES_ON_RETURN"] != nil,
-                cacheHoldsRecords: environment["UI_TEST_CACHE_HOLDS_RECORDS"] != nil
+                cacheHoldsRecords: environment["UI_TEST_CACHE_HOLDS_RECORDS"] != nil,
+                listingReplyShape: environment["UI_TEST_LISTING_REPLY_SHAPE"].flatMap(Int.init)
+                    ?? 0
             )
         }
 
@@ -278,6 +282,10 @@
             case subscriptionExpired = "subscription-expired"
             /// 掲載情報と LP の手順の絵を撮る見本の人。記録と出どころは `listingSampleScenario()`
             case listingSample = "listing-sample"
+            /// `listingSample` に加えて、選んだ写真の食事の推定を次の取得で終え、カレーライスにする
+            case listingSamplePhotoEstimated = "listing-sample-photo-estimated"
+            /// `listingSample` に加えて、「朝はお茶漬けを食べた」を食事と読み分け、推定してお茶漬けにする
+            case listingSampleTextMeal = "listing-sample-text-meal"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める

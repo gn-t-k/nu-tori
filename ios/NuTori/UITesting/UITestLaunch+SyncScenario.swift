@@ -79,7 +79,11 @@
             case .subscriptionExpired:
                 return subscriptionExpired()
             case .listingSample:
-                return listingSampleScenario()
+                return listingSampleScenario(.waitsForCorrection)
+            case .listingSamplePhotoEstimated:
+                return listingSampleScenario(.estimatesPhoto)
+            case .listingSampleTextMeal:
+                return listingSampleScenario(.estimatesText)
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             }
