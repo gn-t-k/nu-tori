@@ -219,9 +219,6 @@ export const landingAPage = createLandingVariantPage({
               <p>
                 アカウントを作ってから30日、支払いの登録なしで、すべての機能を使えます。終わっても、自動でサブスクリプションにはなりません。続けたいときにだけ、月額か年額を選びます。
               </p>
-              <p class="lp-fine">
-                無料体験が終わったあとも、体重の記録と、これまでの記録の見返しはそのまま使えます。
-              </p>
             </div>
             <div class="lp-plate lp-prices">
               <p class="lp-price">
