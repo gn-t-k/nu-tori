@@ -25,25 +25,29 @@ enum ListingScene: String, CaseIterable {
     /// 場面の記録と時計で開く。記録は、アプリの UI テストの差し替えの見本の人（`UITestLaunch.listingSampleScenario(_:)`）。
     /// アプリの時計は、撮る画面の状態の表示（9:41）とそろえ、タイムゾーンは日本に固める。
     /// `stepGuide` だけ月曜にする。1日の目安が変わった知らせと週の振り返りのカードは見直した月曜の日に置くので、水曜には火曜と水曜の記録の上へ流れて見えない
-    @MainActor func launch() -> XCUIApplication {
+    /// `replyLines` は、昨日の夜の返事に並べる行の数。上の端で行が切れない数を `ListingScreenshots` が探す
+    @MainActor func launch(replyLines: Int) -> XCUIApplication {
         switch self {
         case .stepWeigh, .weeklyReview:
-            open(api: "listing-sample")
+            open(api: "listing-sample", replyLines: replyLines)
         case .stepGuide:
-            open(api: "listing-sample", now: .listingSampleMonday)
+            open(api: "listing-sample", now: .listingSampleMonday, replyLines: replyLines)
         case .stepPhoto:
             // 写真は LP の見本と同じ Wikimedia Commons の CC0（Ocdp）のおにぎりで、nu-tori の利用者の食事ではない。
             // 出どころは site/src/pages/landing-a/example-photo-meals.ts。リポジトリに2つ置かないよう、LP の写真をそのまま読む
-            open(api: "listing-sample", photo: "onigiri")
+            open(api: "listing-sample", photo: "onigiri", replyLines: replyLines)
         case .photoEstimated, .dishDetail:
             // 写真は LP の「撮るだけ」の節と昼ごはんの日の見本のカレーライス（出どころは stepPhoto と同じ）。推定の結果も LP の見本と同じ料理・材料・量
-            open(api: "listing-sample-photo-estimated", photo: "curry")
+            open(api: "listing-sample-photo-estimated", photo: "curry", replyLines: replyLines)
         case .eatWhileEstimating:
-            open(api: "listing-sample", photo: "curry")
+            open(api: "listing-sample", photo: "curry", replyLines: replyLines)
         case .textMeal:
-            open(api: "listing-sample-text-meal")
+            open(api: "listing-sample-text-meal", replyLines: replyLines)
         }
     }
+
+    /// 昨日の夜の返事に並べられる行の数（アプリの `ListingSample.replyLines` の数）
+    static let maxReplyLines = 8
 
     /// タイムラインを撮る場面か。撮る前に、上の端で行が半分隠れていないかを見る
     var showsTimeline: Bool {
@@ -114,12 +118,14 @@ enum ListingScene: String, CaseIterable {
     private static let timeZone = "Asia/Tokyo"
 
     @MainActor private func open(
-        api: String, now: UITestNow = .listingSampleWednesday, photo: String? = nil
+        api: String, now: UITestNow = .listingSampleWednesday, photo: String? = nil,
+        replyLines: Int
     ) -> XCUIApplication {
         .launched(
             account: "signed-in", api: api, healthLatestKilograms: nil,
             pickedPhotos: photo.map { UITestPickedPhotos(count: 1, files: [Self.photoPath($0)]) },
-            now: now, timeZone: Self.timeZone, japaneseLocale: true)
+            now: now, timeZone: Self.timeZone, japaneseLocale: true,
+            listingReplyLines: replyLines)
     }
 
     /// 今朝 7:00 の体重（daily-guide-example.json の 2026-01-21 の weightKg）が出て、読み込み中でない

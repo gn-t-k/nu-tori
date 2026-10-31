@@ -22,6 +22,8 @@
         let dayPassesOnReturn: Bool
         /// 場面の記録を、前に開いたときに取り終えてキャッシュに持っている状態で始める。false なら、開いてから取りに行く
         let cacheHoldsRecords: Bool
+        /// 見本の人（`listingSampleScenario(_:)`）の昨日の夜の返事に並べる行の数。上の端で行が切れない数を、撮る UI テストが探して渡す
+        let listingReplyLines: Int
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -51,7 +53,9 @@
                 // UI テストは起動の値の TZ でタイムゾーンを決めるので、起動したときのタイムゾーンで止める
                 clock: frozenClock(environment["UI_TEST_NOW"]),
                 dayPassesOnReturn: environment["UI_TEST_DAY_PASSES_ON_RETURN"] != nil,
-                cacheHoldsRecords: environment["UI_TEST_CACHE_HOLDS_RECORDS"] != nil
+                cacheHoldsRecords: environment["UI_TEST_CACHE_HOLDS_RECORDS"] != nil,
+                listingReplyLines: environment["UI_TEST_LISTING_REPLY_LINES"].flatMap(Int.init)
+                    ?? 0
             )
         }
 

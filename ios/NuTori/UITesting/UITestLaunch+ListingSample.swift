@@ -158,6 +158,38 @@
             }
         }
 
+        /// 返事に並べる行。昨日の3食（`dailyMeals`）について書く
+        static let replyLines = [
+            "- 朝のおにぎりは炭水化物が中心です",
+            "- 昼の親子丼でたんぱく質がとれています",
+            "- 夜のカレーは脂質が多めです",
+            "- 3食の合計は目安より少なめです",
+            "- 明日の朝は卵を足すとよさそうです",
+            "- 野菜をもう一品足せるとよいです",
+            "- 汁物を足すと満足感が上がります",
+            "- 間食は控えめにできています",
+        ]
+
+        /// その日の 21:00 に「ここまでの食事のフィードバック」を送り、返事が届いた。返事は1行の前置きと、`replyLines` の先頭から `lines` 行
+        func feedback(on day: Day, lines: Int) -> [SyncChange] {
+            let sentTextId = Self.id(0x79, 0)
+            return [
+                .sentText(
+                    SyncedSentText(
+                        id: sentTextId, body: TextPreset.mealFeedbackSoFar.text,
+                        sentAt: date(day.calendarDay, hour: 21, minute: 0), timeZone: timeZone)),
+                .sentTextStatus(
+                    SyncedSentTextStatus(
+                        sentTextId: sentTextId, classification: .conversation, reply: .replied)),
+                .aiUtterance(
+                    SyncedAiUtterance(
+                        id: Self.id(0x7a, 0),
+                        body: (["今日も3食とも記録できています。"] + Self.replyLines.prefix(lines))
+                            .joined(separator: "\n"),
+                        sentTextId: sentTextId, mealIds: [])),
+            ]
+        }
+
         func day(_ text: String) -> CalendarDay {
             guard let day = CalendarDay(yearMonthDay: text) else {
                 preconditionFailure("YYYY-MM-DD の形でない \(text)")
@@ -201,7 +233,8 @@
         /// 1月5日（月）に、体重の傾向 78.4 kg から 12 週で 74.4 kg へ減らす目標を立て、毎週月曜の 0:05 に見直した。
         /// 今日（止めた時計の日）より後の記録は置かない。昨日までは毎日、LP の版 a の見本の3食（`ListingSampleDish`）を書いて送った。
         /// 出し方のページの見本の人は毎日1日の目安ちょうど食べたことにしているが、3食の合計（1,440 kcal）はそれより少ない。
-        /// 食べた量は1日の丸の満ち方と週の振り返りにしか出ず、見本の場面はどちらの数も撮らないので、LP の見本の食事のほうにそろえる
+        /// 食べた量は1日の丸の満ち方と週の振り返りにしか出ず、見本の場面はどちらの数も撮らないので、LP の見本の食事のほうにそろえる。
+        /// 昨日の 21:00 には「ここまでの食事のフィードバック」を送って返事が届いた。返事の行の数（`listingReplyLines`）は、タイムラインの上の端で行が切れないよう、撮る UI テストが選ぶ
         func listingSampleScenario(_ estimation: ListingSampleEstimation) -> FakeSyncServer.Scenario
         {
             let today = clock.today()
@@ -216,6 +249,9 @@
                     + days.enumerated().map { index, day in sample.weight(of: day, at: index) }
                     + days.enumerated().filter { sample.day($0.element.calendarDay) < today }
                     .flatMap { index, day in sample.meals(of: day, at: index) }
+                    + (days.last { sample.day($0.calendarDay) < today }.map {
+                        sample.feedback(on: $0, lines: listingReplyLines)
+                    } ?? [])
                     + [
                         .weightTrend(
                             SyncedWeightTrend(
