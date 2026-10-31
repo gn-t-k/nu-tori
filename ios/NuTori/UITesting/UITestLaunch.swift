@@ -22,7 +22,7 @@
         let dayPassesOnReturn: Bool
         /// 場面の記録を、前に開いたときに取り終えてキャッシュに持っている状態で始める。false なら、開いてから取りに行く
         let cacheHoldsRecords: Bool
-        /// 見本の人（`listingSampleScenario(_:)`）の昨日の夜の返事の形の番号（`ListingSample.feedback(on:shape:)`）。上の端で行が切れない番号を、撮る UI テストが探して渡す
+        /// 見本の人（`listingSampleScenario(_:)`）の昨日の夜の返事の形の番号（`ListingSample.feedback(on:shape:)`）。上の端で行が切れない番号を、撮る UI テストの場面（`ListingScene`）が渡す
         let listingReplyShape: Int
 
         static var current: UITestLaunch? {

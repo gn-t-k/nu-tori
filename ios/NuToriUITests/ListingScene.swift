@@ -25,37 +25,37 @@ enum ListingScene: String, CaseIterable {
     /// 場面の記録と時計で開く。記録は、アプリの UI テストの差し替えの見本の人（`UITestLaunch.listingSampleScenario(_:)`）。
     /// アプリの時計は、撮る画面の状態の表示（9:41）とそろえ、タイムゾーンは日本に固める。
     /// `stepGuide` だけ月曜にする。1日の目安が変わった知らせと週の振り返りのカードは見直した月曜の日に置くので、水曜には火曜と水曜の記録の上へ流れて見えない
-    /// `replyShape` は、昨日の夜の返事の形の番号（行の数の2倍と、前置きの下を空けるなら1）。上の端で行が切れない番号を `ListingScreenshots` が探す
-    @MainActor func launch(replyShape: Int) -> XCUIApplication {
+    @MainActor func launch() -> XCUIApplication {
         switch self {
         case .stepWeigh, .weeklyReview:
-            open(api: "listing-sample", replyShape: replyShape)
+            open(api: "listing-sample")
         case .stepGuide:
-            open(api: "listing-sample", now: .listingSampleMonday, replyShape: replyShape)
+            open(api: "listing-sample", now: .listingSampleMonday)
         case .stepPhoto:
             // 写真は LP の見本と同じ Wikimedia Commons の CC0（Ocdp）のおにぎりで、nu-tori の利用者の食事ではない。
             // 出どころは site/src/pages/landing-a/example-photo-meals.ts。リポジトリに2つ置かないよう、LP の写真をそのまま読む
-            open(api: "listing-sample", photo: "onigiri", replyShape: replyShape)
+            open(api: "listing-sample", photo: "onigiri")
         case .photoEstimated, .dishDetail:
             // 写真は LP の「撮るだけ」の節と昼ごはんの日の見本のカレーライス（出どころは stepPhoto と同じ）。推定の結果も LP の見本と同じ料理・材料・量
-            open(api: "listing-sample-photo-estimated", photo: "curry", replyShape: replyShape)
+            open(api: "listing-sample-photo-estimated", photo: "curry")
         case .eatWhileEstimating:
-            open(api: "listing-sample", photo: "curry", replyShape: replyShape)
+            open(api: "listing-sample", photo: "curry")
         case .textMeal:
-            open(api: "listing-sample-text-meal", replyShape: replyShape)
+            open(api: "listing-sample-text-meal")
         }
     }
 
-    /// 昨日の夜の返事の形の番号の最大。アプリの `ListingSample.replyLines` の8行を並べ、前置きの下を空けた形
-    static let maxReplyShape = 17
-
-    /// タイムラインを撮る場面か。撮る前に、上の端で行が半分隠れていないかを見る
-    var showsTimeline: Bool {
+    /// 昨日の夜の返事の形の番号（アプリの `ListingSample.feedback(on:shape:)`。行の数の2倍と、前置きを置かないなら1）。
+    /// タイムラインは開くと一番下に着き、上の端（1日の丸の帯の下）にどの行が来るかは、その上に積んだ記録の高さで決まる。
+    /// 上の端で吹き出しやカードが半分切れないよう、場面ごとに iPhone 18 Pro Max のシミュレーターで撮り比べて選んだ（#858）。
+    /// stepWeigh と textMeal はどの形でも少し切れるので、見出しが読める形にした。画面が変わって切れたら選び直す（テストでは確かめない）
+    private var replyShape: Int {
         switch self {
-        case .stepWeigh, .stepPhoto, .stepGuide, .photoEstimated, .textMeal, .eatWhileEstimating:
-            true
-        case .dishDetail, .weeklyReview:
-            false
+        case .stepWeigh, .textMeal: 16
+        case .stepPhoto, .eatWhileEstimating: 4
+        case .stepGuide: 2
+        case .photoEstimated: 10
+        case .dishDetail, .weeklyReview: 0
         }
     }
 
@@ -118,8 +118,7 @@ enum ListingScene: String, CaseIterable {
     private static let timeZone = "Asia/Tokyo"
 
     @MainActor private func open(
-        api: String, now: UITestNow = .listingSampleWednesday, photo: String? = nil,
-        replyShape: Int
+        api: String, now: UITestNow = .listingSampleWednesday, photo: String? = nil
     ) -> XCUIApplication {
         .launched(
             account: "signed-in", api: api, healthLatestKilograms: nil,
