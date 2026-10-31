@@ -48,6 +48,8 @@ export default defineConfig({
     }),
   ],
   test: {
+    // 合成のコマンドのテスト（screenshots/）は Node で回す（vitest.screenshots.config.ts）
+    include: ["src/**/*.test.ts"],
     restoreMocks: true,
   },
 });

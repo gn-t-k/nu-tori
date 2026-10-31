@@ -10,3 +10,5 @@ worker-configuration.d.ts
 .scratch/
 .claude/worktrees/
 *.local.js
+# Apple Design Resources の端末の枠。使用許諾で配り直せないので置かない（site/AGENTS.md「合成する」）
+site/screenshots/bezel/
