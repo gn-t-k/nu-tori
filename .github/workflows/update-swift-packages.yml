@@ -91,8 +91,10 @@ jobs:
         run: |
           while IFS=$'\t' read -r name current latest release; do
             export ISSUE_TITLE="Swift Package の $name に新しい major の版 ${latest%%.*} が出た"
-            number="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=all&per_page=100" \
-              --jq '.[] | select(.title == env.ISSUE_TITLE and .pull_request == null) | .number' | head -n 1)"
+            # パイプで head に渡すと gh api の失敗が消え、同じ題の Issue があっても2つ目を立てるので、受けてから最初の1つを取る
+            numbers="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=all&per_page=100" \
+              --jq '.[] | select(.title == env.ISSUE_TITLE and .pull_request == null) | .number')"
+            number="${numbers%%$'\n'*}"
             if [ -n "$number" ]; then
               echo "#$number があるので立てない（閉じていても）: $ISSUE_TITLE"
               continue
