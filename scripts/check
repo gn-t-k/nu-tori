@@ -637,6 +637,8 @@ check_site() {
 
     step "型検査（tsc）"
     (cd "$site" && pnpm exec tsc)
+    # 合成のコマンドは Node で動き、DOM の型を使うので、別の tsconfig で見る
+    (cd "$site" && pnpm exec tsc -p screenshots)
 
     # テストは、出すときと同じ形（書き出したページと、wrangler が束ねた Worker）に要求を投げるので、先に作る
     step "ページの書き出し（vite build）"
@@ -655,6 +657,18 @@ check_site() {
 
     step "テスト（Vitest）"
     (cd "$site" && pnpm exec vitest run)
+
+    # 合成のコマンドは Playwright の Chromium で画像を書き出す。入っていれば何もしない
+    step "合成のコマンドの Chromium（playwright install）"
+    local install_options=(--only-shell chromium)
+    # Linux では Chromium が要るシステムのライブラリも入れる。入れる権限が無ければ、入っているものとして進める
+    if [ "$(uname -s)" = Linux ] && { [ "$(id -u)" = 0 ] || sudo -n true 2> /dev/null; }; then
+        install_options=(--with-deps "${install_options[@]}")
+    fi
+    (cd "$site" && pnpm exec playwright install "${install_options[@]}")
+
+    step "合成のコマンドのテスト（Vitest、Node）"
+    (cd "$site" && pnpm exec vitest run --config vitest.screenshots.config.ts)
 }
 
 # 整形と Lint だけ（--lint）
@@ -721,7 +735,7 @@ print_usage() {
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
   server       整形、Lint、サーバーを正本にする定数の値、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
-  site         公開のページ（nu-tori.app）の整形、Lint、型検査、書き出しと、書き出したページを載せた Worker のテスト
+  site         公開のページ（nu-tori.app）の整形、Lint、型検査、書き出しと、書き出したページを載せた Worker のテストと、合成のコマンドのテスト
   scripts      scripts/ と .claude/hooks/ のシェルの Lint（ShellCheck）。--fix でも直さない
   --fix        直せるものを直してから確かめる
   --lint       ios と server と site の整形と Lint だけを回す（scripts はもともと Lint だけ）。対象を省くと、引数なしと同じ選び方をする
