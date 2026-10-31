@@ -2,6 +2,15 @@
 
 App Store の掲載情報は、名前・サブタイトル・キーワード・説明文・プロモーション用テキスト・スクリーンショットの見出しを指す。
 
+## 掲載情報の置き場と変える手順
+
+- 掲載情報の正本は `site/src/app-store-connect-listing.ts`（スクリーンショットの見出しと載せる生の画面は `site/src/app-store-screenshots.ts`）。掲載用の画像は `site/src/app-store-screenshot-images/` に置く。App Store Connect の値は、ここから wizard で入れたものとし、App Store Connect で直接書き換えない。足し方は `site/AGENTS.md` の「掲載情報を直す」
+- 変えるときは次の順にする
+  1. モジュールを直す PR を出す。字数・キーワードの重なり・金額・説明文に要るもの（利用規約とプライバシーポリシーの URL、医療の一文）は `scripts/check site` のテストが確かめる
+  2. 見出しか画面が変わったら、撮り直して合成し直し、画像を同じ PR か続く PR でコミットする（`site/AGENTS.md` の「合成する」）
+  3. main に入ったら、開発者が wizard で App Store Connect に入れる。仮の文（`status: "draft"`）が残っているあいだは、wizard が入れる段を始めない
+- プロモーション用テキストだけは、新しい版を出さずに App Store Connect で変えられる。そのときも 1 の PR を先に出し、3 で入れる。ほかの欄は、次の版を審査に出すときに入る。名前は最初の提出のあとは新しい版でしか直せない
+
 - 判断には根拠を添える。根拠は、出典つきの調査（`docs/research/`）か、計測の数字（App Store Connect のキャンペーンごとの数、Cloudflare Web Analytics、PostHog）
 - 根拠が開発者の実感や一般論だけのときは「推測」と書き、確かめる段取り（外部テスターへの聞き取り、LP の A/B、プロダクトページの最適化）を添える
 - 競合のレビューを引くときは、書いた人の名前を書かず、短い抜粋だけにする
