@@ -946,3 +946,123 @@ body:has(.lp) .site-footer {
     padding: 16px;
   }
 }
+
+/* PROTOTYPE: 切り替えの帯と G 節の料金の案 */
+.proto-switcher {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 9999px;
+  background: #1c1c1e;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.proto-switcher button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 9999px;
+  background: #3a3a3c;
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.proto-g-tile {
+  background: var(--background);
+}
+
+.lp .proto-g-table {
+  margin: 0;
+  border-top: 1px solid var(--separator);
+}
+
+.proto-g-table div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.proto-g-table dt {
+  color: var(--lp-secondary);
+}
+
+.proto-g-table dd {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.proto-g-table b {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.proto-g-table dd span {
+  font-size: 13px;
+}
+
+.proto-g-single {
+  max-width: 40em;
+}
+
+.lp .proto-g-inline {
+  margin: 8px 0 0;
+  font-size: 18px;
+}
+
+.proto-g-inline b {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.proto-g-dot {
+  margin: 0 8px;
+  color: var(--lp-secondary);
+}
+
+.lp .proto-g-flow {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+
+.proto-g-flow li {
+  display: grid;
+  gap: 2px;
+  padding: 0 0 20px 24px;
+  border-left: 2px solid var(--separator);
+  position: relative;
+}
+
+.proto-g-flow li:last-child {
+  padding-bottom: 0;
+  border-left-color: transparent;
+}
+
+.proto-g-flow li::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+.proto-g-flow li > span:first-child {
+  font-size: 13px;
+}

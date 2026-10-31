@@ -1,9 +1,7 @@
 import { AppStoreBadge } from "../app-store-badge";
 import { appStoreListing } from "../app-store-listing";
 import { createLandingVariantPage } from "../create-landing-variant-page";
-import { formatYen } from "../format-yen";
 import { landingPageHead } from "../landing-page-head";
-import { subscriptionPrices } from "../subscription-prices";
 import { AppTextMeal } from "./landing-a/app-text-meal";
 import { AppMealCard } from "./landing-a/app-meal-card";
 import { examplePhotoMeals } from "./landing-a/example-photo-meals";
@@ -11,6 +9,7 @@ import { exampleTextMeals } from "./landing-a/example-text-meals";
 import { AppComposer } from "./landing-a/app-composer";
 import { LunchDay } from "./landing-a/lunch-day";
 import { MealPhotoPicker } from "./landing-a/meal-photo-picker";
+import { GSectionPrototype } from "./landing-a/prototype-g-section";
 import { SoftwareApplicationJsonLd } from "./landing-a/software-application-json-ld";
 import { dailyGuideExample } from "./daily-guide/daily-guide-example";
 import { WeeksFigure } from "./daily-guide/weeks-figure";
@@ -212,34 +211,10 @@ export const landingAPage = createLandingVariantPage({
           </div>
         </section>
 
-        <section class="lp-band lp-band-surface">
-          <div class="lp-wrap lp-feature">
-            <div>
-              <h2>30日の無料体験と料金</h2>
-              <p>
-                アカウントを作ってから30日、支払いの登録なしで、すべての機能を使えます。終わっても、自動でサブスクリプションにはなりません。続けたいときにだけ、月額か年額を選びます。
-              </p>
-            </div>
-            <div class="lp-plate lp-prices">
-              <p class="lp-price">
-                <span class="lp-secondary">月額</span>
-                <b>{formatYen(subscriptionPrices.monthlyYen)}</b>
-                <span class="lp-secondary">税込</span>
-              </p>
-              <p class="lp-price">
-                <span class="lp-secondary">年額</span>
-                <b>{formatYen(subscriptionPrices.yearlyYen)}</b>
-                <span class="lp-secondary">税込</span>
-              </p>
-            </div>
-          </div>
-          {/* バッジは1ページに1つなので、最後は文のリンクにする（#594 の13） */}
-          <p class="lp-wrap lp-closing">
-            <a href={appStoreUrl}>App Store で nu-tori を見る</a>
-          </p>
-        </section>
+        <GSectionPrototype appStoreUrl={appStoreUrl} />
         <SoftwareApplicationJsonLd />
         <script src="/landing-a.js" defer />
+        <script src="/prototype-switcher.js" defer />
       </div>
     );
   },
