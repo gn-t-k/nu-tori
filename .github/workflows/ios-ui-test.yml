@@ -12,16 +12,27 @@ on:
       - "scripts/check"
       - ".github/workflows/ios-ui-test.yml"
       - "!ios/**/*.md"
+  # 見本の場面の生の画面を撮る回（ios-screenshots）も、別のファイルにせずここで手で始める。
+  # 既定のブランチに無いワークフローは手で始められないので、別のファイルにすると、main に入るまでブランチの上で回せない。
+  # このファイルは main にあるので、`gh workflow run ios-ui-test.yml --ref <ブランチ> -f target=ios-screenshots` で、ブランチの上のこのファイルが回る（docs/agents/ios-release.md）
   workflow_dispatch:
+    inputs:
+      target:
+        description: 回すもの（ios-ui-test は UI テスト、ios-screenshots は見本の場面の生の画面を撮る）
+        type: choice
+        options: [ios-ui-test, ios-screenshots]
+        default: ios-ui-test
 
 concurrency:
-  group: ios-ui-test-${{ github.ref }}
+  group: ios-ui-test-${{ github.ref }}-${{ inputs.target || 'ios-ui-test' }}
 
 permissions:
   contents: read
 
 jobs:
   ios-ui-test:
+    # main への push では inputs が空なので、UI テストを回す
+    if: inputs.target != 'ios-screenshots'
     runs-on: xcode-27
     # 通った回は長くて 50 分。止まった回で、待つセッションが時間切れになった（#745）
     timeout-minutes: 100
@@ -65,6 +76,23 @@ jobs:
           name: ios-ui-test-report
           path: ios/.build/report
           retention-days: 3
+
+  # 生の画面はリポジトリに置かず、成果物に上げる。合成のコマンドは、落とした成果物のフォルダを受ける
+  ios-screenshots:
+    if: inputs.target == 'ios-screenshots'
+    runs-on: xcode-27
+    # ビルドと3場面で 20 分ほどの見込み。止まった回を既定の 6 時間残さない
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/check ios-screenshots
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: success() || failure()
+        with:
+          name: listing-raw-screens
+          path: ios/.build/listing-screens
+          if-no-files-found: error
+          retention-days: 7
 
   # main で落ちたら、落ちたテストごとに Issue を立て、緑に戻ったら閉じる。テストの前に止まった回は、落ちたテストが無いので、ワークフローの名前の Issue を立てる
   # ほかのブランチで手で始めた回は、その場で見る人がいるので立てない

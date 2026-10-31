@@ -5,6 +5,22 @@
 - Xcode Cloud のワークフローは「main から内部テスト」の1つ。枠（月 25 時間）に収めるため、main の `ios/` が変わったとき（と手で始めたとき）だけ動かし、アクションは Archive（Distribution Preparation は App Store Connect。外部テストと App Store に出せるのはこれだけ）だけにする。配る先は内部テストのグループ「初回リリーステストユーザーグループ」。設定は Xcode の Report navigator の Cloud のタブで直す
 - Xcode Cloud の秘密の値は、ワークフローの Environment に Secret で置く。アーカイブのあとに `ios/ci_scripts/ci_post_xcodebuild.sh` が dSYM を Sentry に上げ、`SENTRY_AUTH_TOKEN`（Sentry の組織のトークン）が無ければ飛ばす
 
+## スクリーンショット
+
+掲載情報と LP の手順の絵に使う生の画面（見本の場面を撮った、枠も見出しも無い画面）は、撮る入口 `scripts/check ios-screenshots` で撮る。見本の場面の決まりは `ios/AGENTS.md` の「見本の場面」。
+
+- 撮る入口は、アプリをビルドし、6.9 インチ（1320×2868）の決めた1つの機種（`scripts/check` の `screenshot_device_type`。合成の枠と同じ機種にし、無ければ止まる）のシミュレーターを作って、状態の表示を 9:41・電波と Wi-Fi と電池が満ちた形に、明るい表示と既定の文字の大きさに固めてから、UI テストの `ListingScreenshots` だけを回す。撮った画面は `ios/.build/listing-screens/<場面>.png` に書き出す（大きさが 1320×2868 でなければ落ちる）。ふつうの UI テストの回（`scripts/check ios-ui-test`）は `ListingScreenshots` を除く
+- 画面を変えたら撮り直す。Mac のセッションは手元で `scripts/check ios-screenshots` を回してよい。クラウドのセッションは、撮るワークフローを回して成果物を落とす
+
+  ```bash
+  gh workflow run ios-ui-test.yml --ref <ブランチ> -f target=ios-screenshots
+  gh run list --workflow ios-ui-test.yml --branch <ブランチ> --limit 1
+  gh run download <回の ID> --name listing-raw-screens --dir <置き場>
+  ```
+
+  撮るワークフローは `ios-ui-test.yml` の `target` の入力で、ブランチの上で回せる（既定のブランチに無いワークフローは手で始められないため、ファイルを分けない）。成果物 `listing-raw-screens` は7日で消える
+- 生の画面はリポジトリに置かない。合成の結果だけを置く
+
 ## 実機の確認
 
 エージェントには実機を操作する道が無いので、人が確かめる。

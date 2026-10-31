@@ -51,7 +51,7 @@ struct RootView: View {
                         try? await Task.sleep(for: .seconds(picked.loadingSeconds))
                         await model.perform(
                             .recordPickedMeals(
-                                UITestMealPhotos.jpegs(count: picked.count).map(
+                                picked.jpegs.map(
                                     PhotoMetadata.mealPhotoOriginal(readingExifOf:)),
                                 pickedAt: pickedAt))
                     })

@@ -78,6 +78,8 @@
                 return weeklyReview(.achieved)
             case .subscriptionExpired:
                 return subscriptionExpired()
+            case .listingSample:
+                return listingSampleScenario()
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             }

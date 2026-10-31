@@ -1,0 +1,9 @@
+{
+  // 合成のコマンドは Node で動き、Chromium の中で回す関数（page.evaluate）が DOM の型を使うので、Worker の型を読む site/tsconfig.json と分ける
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "types": ["node"]
+  },
+  "include": [".", "../vitest.screenshots.config.ts"]
+}
