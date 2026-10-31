@@ -144,6 +144,45 @@ struct MealCardTests {
         }
     }
 
+    @Suite("カードの外に出す送った時刻")
+    struct SentTime {
+        @Suite("前の日に撮った写真を今日選んだとき")
+        struct PickedFromEarlierDay {
+            let card: MealCard
+
+            init() throws {
+                card = try MealCard(
+                    meal: Meal.fixture(
+                        eatenAt: "2026-09-23T19:40:00+09:00", sentAt: "2026-09-24T08:05:00+09:00"),
+                    status: nil, recordedOnThisDevice: true)
+            }
+
+            @Test("送った時刻の時:分だけにすること")
+            func showsSentClockOnly() {
+                #expect(card.sentTime == ClockTime(hour: 8, minute: 5))
+            }
+        }
+
+        @Suite("撮ったときと違うタイムゾーンで送ったとき")
+        struct SentInAnotherTimeZone {
+            let card: MealCard
+
+            init() throws {
+                // 東京で撮り、ロサンゼルスに着いた 9月23日 18:30 に送った。撮った時差の時計なら 10:30 になる
+                card = try MealCard(
+                    meal: Meal.fixture(
+                        eatenAt: "2026-09-23T03:00:00Z", utcOffsetSeconds: 9 * 3600,
+                        sentAt: "2026-09-24T01:30:00Z", in: "America/Los_Angeles"),
+                    status: nil, recordedOnThisDevice: true)
+            }
+
+            @Test("送ったときのタイムゾーンの時計で時刻を出すこと")
+            func usesSentTimeZone() {
+                #expect(card.sentTime == ClockTime(hour: 18, minute: 30))
+            }
+        }
+    }
+
     @Suite("写真の並べ方")
     struct Photos {
         let ids: [UUID]

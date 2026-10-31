@@ -4,12 +4,12 @@
     import UIKit
 
     #Preview("状態ごと", arguments: MealCardView.Sample.allCases) { sample in
-        // タイムラインと同じく、時刻はカードの外に置く
-        MealCardView(card: sample.card, showsEatenTime: false) { photoId in
+        // タイムラインと同じく、外に送った時刻、中に撮った時刻を置く
+        MealCardView(card: sample.card) { photoId in
             sample.holdsPhotos ? UIImage.sampleMealPhoto(for: photoId) : nil
         }
         .modifier(OwnRecordCard())
-        .ownRecordTime(sample.card.eatenTimeText)
+        .ownRecordTime(sample.card.sentTimeText)
         .padding()
         .background(Color(.systemGroupedBackground))
     }

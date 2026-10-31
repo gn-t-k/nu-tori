@@ -1,7 +1,7 @@
 import NuToriCore
 
 extension MealCard {
-    /// カードと、返事の下の指し示す食事の行に出す時刻
+    /// カードの中と、返事の下の指し示す食事の行に出す撮った時刻
     var eatenTimeText: String {
         switch eatenTime {
         case .clock(let clock):
@@ -9,5 +9,10 @@ extension MealCard {
         case .dayAndClock(let day, let clock):
             "\(TimelineDayText.label(for: day))\(WeightAmountText.clock(clock))"
         }
+    }
+
+    /// タイムラインのカードの外に出す送った時刻
+    var sentTimeText: String {
+        WeightAmountText.clock(sentTime)
     }
 }

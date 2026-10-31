@@ -460,15 +460,17 @@ struct TimelineScreen: View {
         case .meal(let card):
             // どの状態のカードも、押すと食事の画面へ潜る
             NavigationLink(value: TimelineNavigation.Route.meal(card.meal.id)) {
-                MealCardView(card: card, showsEatenTime: false) { photoId in
+                MealCardView(card: card) { photoId in
                     await mealActions.loadPhoto(card.meal.id, photoId)
                 }
                 .modifier(OwnRecordCard())
             }
             .buttonStyle(.plain)
             .undeliveredRecord(timeline.isUndelivered(item))
+            // 外の時刻は読ませないので、送った時刻はリンクの値で読む。撮った時刻はカードの中の読み上げに入る
+            .accessibilityValue("\(card.sentTimeText)に送った")
             .accessibilityIdentifier("meal-card")
-            .ownRecordTime(card.eatenTimeText)
+            .ownRecordTime(card.sentTimeText)
         case .rejectedMealLine(let line):
             RejectedLineText(text: line.text, subject: .meal)
         case .sentText(let bubble):

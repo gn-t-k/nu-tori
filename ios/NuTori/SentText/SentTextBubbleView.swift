@@ -131,7 +131,7 @@ struct SentTextBubbleView: View {
         Button {
             openMeal(card)
         } label: {
-            MealCardView(card: card, showsEatenTime: true) { photoId in
+            MealCardView(card: card) { photoId in
                 await loadPhoto(card.meal.id, photoId)
             }
             // 行の地はかたまりの側に付くので、地の無いラベルは文字のところしか押せない。› と余白も押せるよう、ラベルの全体を押せる形にする
