@@ -153,9 +153,10 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          number="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
-            --jq '.[] | select((.title | contains(env.TITLE_KEY)) and .pull_request == null) | .number' | head -n 1)"
-          echo "number=$number" >> "$GITHUB_OUTPUT"
+          # パイプで head に渡すと gh api の失敗が消え、開いた Issue があっても2つ目を立てるので、受けてから最初の1つを取る
+          numbers="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            --jq '.[] | select((.title | contains(env.TITLE_KEY)) and .pull_request == null) | .number')"
+          echo "number=${numbers%%$'\n'*}" >> "$GITHUB_OUTPUT"
       - name: 開いている Issue に、また落ちたことを書き足す
         if: steps.open-issue.outputs.number != ''
         env:
@@ -241,8 +242,10 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          number="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
-            --jq '.[] | select((.title | contains(env.TITLE_KEY)) and .pull_request == null) | .number' | head -n 1)"
+          # パイプで head に渡すと gh api の失敗が消え、開いた Issue を閉じずに終わるので、受けてから最初の1つを取る
+          numbers="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+            --jq '.[] | select((.title | contains(env.TITLE_KEY)) and .pull_request == null) | .number')"
+          number="${numbers%%$'\n'*}"
           if [ -z "$number" ]; then
             echo "この PR の Issue は開いていないので、何もしない"
             exit 0
