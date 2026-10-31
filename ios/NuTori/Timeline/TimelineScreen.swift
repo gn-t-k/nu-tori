@@ -289,9 +289,15 @@ struct TimelineScreen: View {
                         Spacer(minLength: 0)
                         // 並べる日を新しいほうに絞り、遅れて読む並び（LazyVStack）にしない。理由は TimelineViewport
                         VStack(alignment: .leading) {
-                            ForEach(listedDays, id: \.day) { day in
-                                daySection(day, in: timeline)
-                                    .id(day.day)
+                            // 日と日のあいだは、日の見出しの下（日の最初の行の前）と同じだけ空ける（#844）。
+                            // 日が無いときに空の入れ物を置くと、下のカードの上に間隔が1つ増えるので置かない
+                            if !listedDays.isEmpty {
+                                VStack(alignment: .leading, spacing: Self.gap(.apart)) {
+                                    ForEach(listedDays, id: \.day) { day in
+                                        daySection(day, in: timeline)
+                                            .id(day.day)
+                                    }
+                                }
                             }
                             ForEach(loadingPickedPhotos) { loading in
                                 PickedPhotosLoadingCard(photoCount: loading.photoCount)
@@ -413,7 +419,7 @@ struct TimelineScreen: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             ForEach(day.items) { item in
                 itemView(item, in: timeline)
-                    .padding(.top, Self.gap(before: item, in: day))
+                    .padding(.top, Self.gap(day.spacing(before: item)))
             }
         }
         // 中の行が自分の識別子を保つよう、区切りは入れ物にしてから名前を付ける
@@ -435,11 +441,11 @@ struct TimelineScreen: View {
     /// タイムラインの中身の全体。下の余白まで含めた下端へ動かすときに名指しする
     private static let contentId = "timeline-content"
 
-    /// 話し手の替わり目の見た目（#449 の解決コメント）。詰めるか空けるかは `Timeline.Day.spacing(before:)` が決める。
-    /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、話し手の替わり目を余白だけで見せるため、ここは数値で決める。
+    /// 話し手の替わり目と日の区切りの見た目（#449 の解決コメント、#844）。項目の前を詰めるか空けるかは `Timeline.Day.spacing(before:)` が決め、日と日のあいだはいつも空ける。
+    /// DESIGN.md の Layout は余白を SwiftUI の標準に任せて自前の数値を持たないが、話し手の替わり目と日の区切りを余白だけで見せるため、ここは数値で決める。
     /// 詰めるのは VStack の標準の間隔と同じ 8、空けるのは DESIGN.md のまとまりの間（section-gap）の 24
-    private static func gap(before item: Timeline.Item, in day: Timeline.Day) -> CGFloat {
-        switch day.spacing(before: item) {
+    private static func gap(_ spacing: Timeline.ItemSpacing) -> CGFloat {
+        switch spacing {
         case .close: 8
         case .apart: 24
         }

@@ -98,9 +98,9 @@ extension TimelineTests {
             #expect(spacings[Timeline.Item.weightRecord(night).id] == .apart)
         }
 
-        @Test("日の最初の項目を詰めること")
+        @Test("日の最初の項目を、日の見出しから空けること")
         func firstItemOfDay() {
-            #expect(spacings[Timeline.Item.weightRecord(morning).id] == .close)
+            #expect(spacings[Timeline.Item.weightRecord(morning).id] == .apart)
         }
 
         /// 送った文章の吹き出しの項目の ID
@@ -123,34 +123,6 @@ extension TimelineTests {
         /// 知らせの項目の ID
         private func itemId(of notice: Notice) -> String {
             Timeline.Item.notice(NoticeCard(notice: notice, form: .awaitingAnswer)).id
-        }
-    }
-
-    @Suite("返事が日の最初の項目のとき")
-    struct ReplyFirstInDay {
-        let reply: Timeline.Item
-        let day: Timeline.Day
-
-        init() throws {
-            let morning = try SentText.fixture("おはよう", sentAt: "2026-09-25T07:00:00+09:00")
-            reply = .reply(
-                TimelineReply(
-                    id: UUID(), sentTextId: UUID(), body: "おはようございます。", isGrowing: false,
-                    referencedMeals: []))
-            day = Timeline.Day(
-                day: CalendarDay(year: 2026, month: 9, day: 25),
-                items: [
-                    reply,
-                    .sentText(
-                        SentTextBubble(
-                            sentText: morning, meals: [], replyLine: nil, rejectedLine: nil)),
-                ],
-                food: .noMeals, dailyGuide: nil)
-        }
-
-        @Test("詰めること")
-        func closesFirstReply() {
-            #expect(day.spacing(before: reply) == .close)
         }
     }
 }
