@@ -7,6 +7,10 @@ enum UITestNow: String {
     case morningBeforeNotice = "2026-10-05T06:30"
     /// 体重の知らせの時刻を過ぎた朝。今日の体重記録が無ければ知らせが出る
     case morningAfterNotice = "2026-10-05T09:00"
+    /// 見本の人（`ListingScene`）の水曜の朝。撮る画面の状態の表示（9:41）とそろえる
+    case listingSampleWednesday = "2026-01-21T09:41"
+    /// 見本の人の、2回めの見直しをした月曜の朝。撮る画面の状態の表示（9:41）とそろえる
+    case listingSampleMonday = "2026-01-19T09:41"
 
     /// 止めた時刻を、そのタイムゾーンの時刻として読む。テストの側で、アプリと同じ「今日」を数えるため。
     /// アプリの側の `DeviceClock.frozen(atLaunchValue:in:elapsed:)` と同じ形で読む

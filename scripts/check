@@ -25,7 +25,7 @@ main() {
                 repeat="$2"
                 shift
                 ;;
-            ios | ios-app | ios-ui-test | server | site | scripts) targets="$targets $1" ;;
+            ios | ios-app | ios-ui-test | ios-screenshots | server | site | scripts) targets="$targets $1" ;;
             *) usage_error ;;
         esac
         shift
@@ -33,8 +33,8 @@ main() {
     if [ -n "${only_testing[*]-}$repeat" ] && [[ "$targets " != *" ios-ui-test "* ]]; then
         usage_error
     fi
-    # ios-app と ios-ui-test は整形と Lint を回さないので、--lint と組み合わせない
-    if $lint_only && [[ "$targets " == *" ios-app "* || "$targets " == *" ios-ui-test "* ]]; then
+    # ios-app と ios-ui-test と ios-screenshots は整形と Lint を回さないので、--lint と組み合わせない
+    if $lint_only && [[ "$targets " == *" ios-app "* || "$targets " == *" ios-ui-test "* || "$targets " == *" ios-screenshots "* ]]; then
         usage_error
     fi
 
@@ -55,6 +55,7 @@ check_target() {
         ios) if $lint_only; then lint_ios; else check_ios; fi ;;
         ios-app) check_ios_app ;;
         ios-ui-test) check_ios_ui_test ;;
+        ios-screenshots) check_ios_screenshots ;;
         server) if $lint_only; then lint_server; else check_server; fi ;;
         site) if $lint_only; then lint_site; else check_site; fi ;;
         # Lint だけなので、--lint でも同じものを回す
@@ -529,9 +530,82 @@ check_ios_ui_test() {
         -derivedDataPath "$derived_data" \
         -resultBundlePath "$results" \
         -collect-test-diagnostics never \
+        -skip-testing:"NuToriUITests/$listing_screenshots_test" \
         ${only_testing[@]+"${only_testing[@]}"} \
         ${repeat_options[@]+"${repeat_options[@]}"} \
         test-without-building
+}
+
+# 掲載情報と LP の手順の絵に使う生の画面を、見本の場面ごとに撮り、ios/.build/listing-screens/<場面>.png に書き出す。
+# ふつうの UI テストの回に入れないのは、撮るのは画面を変えたあとに手で始めるもので、毎回の UI テストの時間を延ばさないため。場面の一覧は ios/NuToriUITests/ListingScene.swift
+check_ios_screenshots() {
+    if ! command -v xcodebuild > /dev/null; then
+        echo "ios-screenshots は macOS でだけ動く" >&2
+        return 1
+    fi
+    step "アプリと UI テストのビルド"
+    local build_simulator
+    build_simulator="$(latest_iphone_simulator)"
+    xcodebuild \
+        -project "$ios/NuTori.xcodeproj" \
+        -scheme NuTori \
+        -destination "id=$build_simulator" \
+        -derivedDataPath "$derived_data" \
+        -disableAutomaticPackageResolution \
+        build-for-testing
+
+    step "6.9 インチのシミュレーターを用意する"
+    local runtime
+    runtime="$(list_simulators_with_runtime | jq -r --arg id "$build_simulator" '.[] | select(.udid == $id) | .runtime')"
+    # 掲載のスクリーンショットの 6.9 インチ（1320×2868）の機種。毎回作って on_exit で消し、前の回の状態を持ち越さない
+    ui_test_simulator="$(xcrun simctl create "nu-tori screenshots $$" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max "$runtime")"
+    boot_ui_test_simulator
+    xcrun simctl ui "$ui_test_simulator" appearance light
+    xcrun simctl ui "$ui_test_simulator" content_size large
+    # 9:41 と、電波と Wi-Fi と電池が満ちた形に固める。充電中の印を出さないよう、電池は放電中の 100% にする
+    xcrun simctl status_bar "$ui_test_simulator" override \
+        --time 9:41 \
+        --dataNetwork wifi --wifiMode active --wifiBars 3 \
+        --cellularMode active --cellularBars 4 --operatorName "" \
+        --batteryState discharging --batteryLevel 100
+
+    step "見本の場面を撮る"
+    local results="$ios/.build/ListingScreenshots.xcresult" screens="$ios/.build/listing-screens" status=0
+    rm -rf "$results" "$screens"
+    xcodebuild \
+        -project "$ios/NuTori.xcodeproj" \
+        -scheme NuTori \
+        -destination "id=$ui_test_simulator" \
+        -derivedDataPath "$derived_data" \
+        -resultBundlePath "$results" \
+        -collect-test-diagnostics never \
+        -only-testing:"NuToriUITests/$listing_screenshots_test" \
+        test-without-building || status=$?
+    # 撮れなかった場面があっても、撮れた場面は書き出す
+    if [ ! -d "$results" ]; then
+        echo "xcresult が無い（撮る前に止まった）" >&2
+        return 1
+    fi
+
+    step "生の画面を場面の名前で書き出す"
+    local attachments="$ios/.build/listing-attachments" name file width height
+    rm -rf "$attachments"
+    mkdir -p "$attachments" "$screens"
+    xcrun xcresulttool export attachments --path "$results" --output-path "$attachments" > /dev/null
+    # 添付の名前は「<場面>_<番号>_<UUID>.png」で書き出される
+    while IFS=$'\t' read -r name file; do
+        cp "$attachments/$file" "$screens/$name.png"
+        width="$(sips -g pixelWidth "$screens/$name.png" | awk '/pixelWidth/ { print $2 }')"
+        height="$(sips -g pixelHeight "$screens/$name.png" | awk '/pixelHeight/ { print $2 }')"
+        if [ "$width" != 1320 ] || [ "$height" != 2868 ]; then
+            echo "$name.png が 1320×2868 でない（${width}×${height}）" >&2
+            status=1
+        fi
+        echo "  $screens/$name.png"
+    done < <(jq -r '.[].attachments[] | select(.exportedFileName | endswith(".png"))
+        | [(.suggestedHumanReadableName | sub("_[0-9]+_[0-9A-F-]+\\.png$"; "")), .exportedFileName] | @tsv' \
+        "$attachments/manifest.json")
+    return "$status"
 }
 
 check_ios_package() {
@@ -711,7 +785,7 @@ check_scripts() {
 
 print_usage() {
     cat << 'USAGE'
-使い方: scripts/check [ios | ios-app | ios-ui-test | server | site | scripts] [--fix]
+使い方: scripts/check [ios | ios-app | ios-ui-test | ios-screenshots | server | site | scripts] [--fix]
        scripts/check [ios | server | site | scripts] --lint [--fix]
        scripts/check ios-ui-test [--only <クラス>[/<メソッド>]]... [--repeat <回数>]
        scripts/check --pick-targets < <変わったファイルの一覧>
@@ -719,7 +793,9 @@ print_usage() {
                文書（*.md）だけなら何も回さない。比べる先が取れなければすべて。全部を回すときは ios server site scripts と並べる
   ios          整形、Lint、サーバーを正本にする定数の値、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
-  ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）
+  ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）。見本の場面を撮るテストは除く
+  ios-screenshots  アプリのビルドに続けて、見本の場面の生の画面を撮り、ios/.build/listing-screens/<場面>.png に書き出す（macOS だけ）。
+               引数なしでは回さない。回し方は docs/agents/ios-release.md の「スクリーンショット」
   server       整形、Lint、サーバーを正本にする定数の値、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   site         公開のページ（nu-tori.app）の整形、Lint、型検査、書き出しと、書き出したページを載せた Worker のテスト
   scripts      scripts/ と .claude/hooks/ のシェルの Lint（ShellCheck）。--fix でも直さない
@@ -988,6 +1064,8 @@ swiftlint=""
 shellcheck_version=v0.11.0
 shellcheck=""
 ui_test_simulator=""
+# 見本の場面を撮る UI テストのクラス。ふつうの UI テストの回から除き、ios-screenshots でだけ回す
+listing_screenshots_test=ListingScreenshots
 current_step=""
 only_testing=()
 repeat=""
