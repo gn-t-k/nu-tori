@@ -118,10 +118,15 @@ public struct MealCard: Hashable, Sendable {
         }
     }
 
-    /// カードに出す時刻。撮った日がカードを置く日と違えば（前の日の写真を選んだ）、撮った日を添える
+    /// カードの中に出す撮った時刻。撮った日がカードを置く日と違えば（前の日の写真を選んだ）、撮った日を添える
     public var eatenTime: EatenTime {
         let clock = meal.eatenClockTime
         return meal.day == meal.cardDay ? .clock(clock) : .dayAndClock(meal.day, clock)
+    }
+
+    /// カードの外に出す送った時刻。カードは送った日に置くので、日は添えない
+    public var sentTime: ClockTime {
+        ClockTime(containing: meal.sentAt, in: meal.sentTimeZone)
     }
 
     /// カードの上に出す写真の並べ方
