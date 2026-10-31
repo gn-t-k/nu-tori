@@ -205,8 +205,7 @@ export const landingAPage = createLandingVariantPage({
               caption={
                 <>
                   {dailyGuideExample.person.goalWeeks}週間で{exampleLossKg}&nbsp;kg
-                  減量する目標を立てた場合の最初の5週間です。最初は消費カロリーを実際の消費カロリーより高く推定してしまいましたが、週を追うごとに実際の消費カロリーに近い値を推定できるようになります。計算はアプリと同じです（
-                  <a href="/daily-guide">1日の目安の出し方</a>）。
+                  減量する目標を立てた場合の最初の5週間です。最初は消費カロリーを実際の消費カロリーより高く推定してしまいましたが、週を追うごとに実際の消費カロリーに近い値を推定できるようになります。
                 </>
               }
             />
