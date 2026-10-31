@@ -505,18 +505,13 @@ check_ios_ui_test() {
     check_ios_app
 
     step "UI テスト"
-    local results="$ios/.build/NuTori.xcresult" kana_keyboard="ja_JP-Kana@sw=Kana;hw=Automatic"
+    local results="$ios/.build/NuTori.xcresult"
     # 1台のシミュレータでは同じアプリの UI テストを同時に回せないので、ほかのチェックアウトとぶつからないよう、回すたびに複製を作って消す
     # 消すのは on_exit
     clone_ui_test_simulator
     # 起動をテストの中でさせると、アプリの起動が時間切れになることがある
     boot_ui_test_simulator
-    # Simulator.app でハードウェアキーボードを一度つなぐと、シミュレータがそれを覚えてソフトウェアキーボードを画面の外へ最小化し、キーを押すテストが落ちる。まっさらなシミュレータ（CI）では起きないので、Mac でもそろえる
-    xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false
-    # キーボードの並びと最初に出るキーボードはシミュレータの言語で決まり、英語のランナー（CI）ではかなが出ない。かなを打つテストのために、どこでもかなを入れて、最後に使ったキーボードにする（最初に出る）。テストの中で地球儀のキーで切り替えると、初めての案内がキーボードを覆う
-    xcrun simctl spawn "$ui_test_simulator" defaults write -g AppleKeyboards -array "$kana_keyboard" "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji"
-    xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences KeyboardLastUsed "$kana_keyboard"
-    warm_up_keyboard_daemon
+    prepare_ui_test_keyboard
     rm -rf "$results"
     local repeat_options=()
     if [ -n "$repeat" ]; then
@@ -534,6 +529,17 @@ check_ios_ui_test() {
         ${only_testing[@]+"${only_testing[@]}"} \
         ${repeat_options[@]+"${repeat_options[@]}"} \
         test-without-building
+}
+
+# UI テストのシミュレーターで、キーを押すテストとかなを打つテストが動くキーボードにする
+prepare_ui_test_keyboard() {
+    local kana_keyboard="ja_JP-Kana@sw=Kana;hw=Automatic"
+    # Simulator.app でハードウェアキーボードを一度つなぐと、シミュレータがそれを覚えてソフトウェアキーボードを画面の外へ最小化し、キーを押すテストが落ちる。まっさらなシミュレータ（CI）では起きないので、Mac でもそろえる
+    xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false
+    # キーボードの並びと最初に出るキーボードはシミュレータの言語で決まり、英語のランナー（CI）ではかなが出ない。かなを打つテストのために、どこでもかなを入れて、最後に使ったキーボードにする（最初に出る）。テストの中で地球儀のキーで切り替えると、初めての案内がキーボードを覆う
+    xcrun simctl spawn "$ui_test_simulator" defaults write -g AppleKeyboards -array "$kana_keyboard" "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji"
+    xcrun simctl spawn "$ui_test_simulator" defaults write com.apple.keyboard.preferences KeyboardLastUsed "$kana_keyboard"
+    warm_up_keyboard_daemon
 }
 
 # 掲載情報と LP の手順の絵に使う生の画面を、見本の場面ごとに撮り、ios/.build/listing-screens/<場面>.png に書き出す。
@@ -565,6 +571,8 @@ check_ios_screenshots() {
     fi
     ui_test_simulator="$(xcrun simctl create "nu-tori screenshots $$" "$screenshot_device_type" "$runtime")"
     boot_ui_test_simulator
+    # 撮り忘れた食事の場面（text-meal）で、かなを打つ
+    prepare_ui_test_keyboard
     xcrun simctl ui "$ui_test_simulator" appearance light
     xcrun simctl ui "$ui_test_simulator" content_size large
     # 9:41 と、電波と Wi-Fi と電池が満ちた形に固める。充電中の印を出さないよう、電池は放電中の 100% にする

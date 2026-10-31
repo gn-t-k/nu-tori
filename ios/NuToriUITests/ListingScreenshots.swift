@@ -18,6 +18,18 @@ final class ListingScreenshots: XCTestCase {
                     XCTFail("\(scene.rawValue) の出るべきものが出ないので、撮らない")
                     return
                 }
+                // 上の端で行が切れていても撮る。見本の記録を直すとき、切れた画面と、どの行が何 pt 隠れたかを見比べるため
+                if scene.showsTimeline {
+                    do {
+                        let clipped = try app.elementsClippedAtTimelineTop()
+                        if !clipped.isEmpty {
+                            XCTFail(
+                                "\(scene.rawValue) の上の端で行が切れている: \(clipped.joined(separator: "、"))")
+                        }
+                    } catch {
+                        XCTFail("\(scene.rawValue) のタイムラインを写せない: \(error)")
+                    }
+                }
                 // 状態の表示も入れるため、アプリの窓でなく画面全体を撮る
                 let attachment = XCTAttachment(
                     uniformTypeIdentifier: "public.png", name: scene.rawValue,

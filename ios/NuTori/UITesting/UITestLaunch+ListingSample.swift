@@ -118,6 +118,46 @@
                     version: 1, imported: nil))
         }
 
+        /// 毎日の3食。どれも書いて送った食事（写真の食事は、ほかの端末の写真を取りに行く道が UI テストに無いので置かない）
+        struct Meal {
+            let hour: Int
+            let minute: Int
+            let text: String
+            let dish: ListingSampleDish
+        }
+
+        static let dailyMeals = [
+            Meal(hour: 7, minute: 30, text: "朝はおにぎり", dish: .onigiri),
+            Meal(hour: 12, minute: 30, text: "昼は親子丼", dish: .oyakodon),
+            Meal(hour: 19, minute: 0, text: "夜はカレーライス", dish: .curry),
+        ]
+
+        /// その日の3食を、送った文章と、食事と読み分けて推定を終えた食事にする
+        func meals(of day: Day, at dayIndex: Int) -> [SyncChange] {
+            Self.dailyMeals.enumerated().flatMap { mealIndex, meal -> [SyncChange] in
+                let base = dayIndex * 10 + mealIndex
+                let sentTextId = Self.id(0x75, base)
+                let mealId = Self.id(0x76, base)
+                let sentAt = date(day.calendarDay, hour: meal.hour, minute: meal.minute)
+                return [
+                    .sentText(
+                        SyncedSentText(
+                            id: sentTextId, body: meal.text, sentAt: sentAt, timeZone: timeZone)),
+                    .sentTextStatus(
+                        SyncedSentTextStatus(
+                            sentTextId: sentTextId, classification: .meal, reply: .notRequested)),
+                    .meal(
+                        SyncedMeal(
+                            id: mealId, eatenAt: sentAt,
+                            eatenUtcOffsetSeconds: timeZone.secondsFromGMT(for: sentAt),
+                            sentAt: sentAt, sentTimeZone: timeZone,
+                            entryMethod: .written(sentTextId: sentTextId), photoIds: [])),
+                    .mealEstimationStatus(.init(mealId: mealId, status: .estimated)),
+                ]
+                    + meal.dish.changes(mealId: mealId) { Self.id(0x77, base * 10 + $0) }
+            }
+        }
+
         func day(_ text: String) -> CalendarDay {
             guard let day = CalendarDay(yearMonthDay: text) else {
                 preconditionFailure("YYYY-MM-DD の形でない \(text)")
@@ -159,8 +199,11 @@
         /// 例の筋が変わって JSON を書き出し直したら、ここも写し直す。
         ///
         /// 1月5日（月）に、体重の傾向 78.4 kg から 12 週で 74.4 kg へ減らす目標を立て、毎週月曜の 0:05 に見直した。
-        /// 今日（止めた時計の日）より後の記録は置かない。写真の食事の推定は、時刻を直すまで終えない（推定を待つカードを撮るため）
-        func listingSampleScenario() -> FakeSyncServer.Scenario {
+        /// 今日（止めた時計の日）より後の記録は置かない。昨日までは毎日、LP の版 a の見本の3食（`ListingSampleDish`）を書いて送った。
+        /// 出し方のページの見本の人は毎日1日の目安ちょうど食べたことにしているが、3食の合計（1,440 kcal）はそれより少ない。
+        /// 食べた量は1日の丸の満ち方と週の振り返りにしか出ず、見本の場面はどちらの数も撮らないので、LP の見本の食事のほうにそろえる
+        func listingSampleScenario(_ estimation: ListingSampleEstimation) -> FakeSyncServer.Scenario
+        {
             let today = clock.today()
             let sample = ListingSample(timeZone: clock.timeZone())
             let weeks = ListingSample.weeks.filter { sample.day($0.effectiveOn) <= today }
@@ -171,6 +214,8 @@
                         sample.records(of: week, at: index)
                     }
                     + days.enumerated().map { index, day in sample.weight(of: day, at: index) }
+                    + days.enumerated().filter { sample.day($0.element.calendarDay) < today }
+                    .flatMap { index, day in sample.meals(of: day, at: index) }
                     + [
                         .weightTrend(
                             SyncedWeightTrend(
@@ -181,7 +226,49 @@
                                 }))
                     ],
                 startedOn: ListingSample.goalStartedOn,
-                mealEstimation: .afterEatenAtCorrected)
+                estimatedDishes: estimation.estimatedDishes,
+                mealEstimation: estimation.mealEstimation,
+                answerSentText: estimation.answerSentText)
+        }
+    }
+
+    /// 見本の場面で、今日の食事をどこまで推定するか
+    nonisolated enum ListingSampleEstimation {
+        /// 写真の食事の推定を、時刻を直すまで終えない（推定を待つカードを撮るため）
+        case waitsForCorrection
+        /// 選んだ写真（LP のカレーライスの写真）の食事の推定を、次の取得で終える
+        case estimatesPhoto
+        /// LP の撮り忘れた食事の文（`site/src/pages/landing-a-page.tsx` の `forgottenMealText`）を食事と読み分け、推定を終える
+        case estimatesText
+
+        static let forgottenMealText = "朝はお茶漬けを食べた"
+
+        var estimatedDishes: @Sendable (UUID) -> [SyncChange] {
+            switch self {
+            case .waitsForCorrection: { _ in [] }
+            case .estimatesPhoto:
+                { mealId in ListingSampleDish.curry.changes(mealId: mealId) { _ in UUID() } }
+            case .estimatesText:
+                { mealId in ListingSampleDish.ochazuke.changes(mealId: mealId) { _ in UUID() } }
+            }
+        }
+
+        var mealEstimation: FakeSyncServer.MealEstimation {
+            switch self {
+            case .waitsForCorrection: .afterEatenAtCorrected
+            case .estimatesPhoto, .estimatesText: .afterPulls(1)
+            }
+        }
+
+        var answerSentText: @Sendable (String) -> FakeSyncServer.SentTextAnswer? {
+            switch self {
+            case .waitsForCorrection, .estimatesPhoto: { _ in nil }
+            case .estimatesText:
+                { body in
+                    body == Self.forgottenMealText
+                        ? .meal(replyAsConversation: "お茶漬けの話ですね。") : nil
+                }
+            }
         }
     }
 #endif
