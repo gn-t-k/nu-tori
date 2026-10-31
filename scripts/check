@@ -557,8 +557,13 @@ check_ios_screenshots() {
     step "6.9 インチのシミュレーターを用意する"
     local runtime
     runtime="$(list_simulators_with_runtime | jq -r --arg id "$build_simulator" '.[] | select(.udid == $id) | .runtime')"
-    # 掲載のスクリーンショットの 6.9 インチ（1320×2868）の機種。毎回作って on_exit で消し、前の回の状態を持ち越さない
-    ui_test_simulator="$(xcrun simctl create "nu-tori screenshots $$" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max "$runtime")"
+    # 掲載のスクリーンショットの 6.9 インチ（1320×2868）の機種。合成の枠は1つの機種の絵で、撮った機種とずれると Dynamic Island と角が合わないので、1つに固定し、ほかの機種に落とさない。
+    # 毎回作って on_exit で消し、前の回の状態を持ち越さない
+    if ! xcrun simctl list devicetypes -j | jq -e --arg type "$screenshot_device_type" '.devicetypes | any(.identifier == $type)' > /dev/null; then
+        echo "撮る機種 ${screenshot_device_type##*.} のシミュレーターが無い。Xcode を上げるか、合成の枠と一緒に機種を替える" >&2
+        return 1
+    fi
+    ui_test_simulator="$(xcrun simctl create "nu-tori screenshots $$" "$screenshot_device_type" "$runtime")"
     boot_ui_test_simulator
     xcrun simctl ui "$ui_test_simulator" appearance light
     xcrun simctl ui "$ui_test_simulator" content_size large
@@ -1066,6 +1071,8 @@ shellcheck=""
 ui_test_simulator=""
 # 見本の場面を撮る UI テストのクラス。ふつうの UI テストの回から除き、ios-screenshots でだけ回す
 listing_screenshots_test=ListingScreenshots
+# 見本の場面を撮る機種。合成の枠（Apple の端末の枠）と同じ機種にする。替えるときは枠も替える
+screenshot_device_type=com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro-Max
 current_step=""
 only_testing=()
 repeat=""
