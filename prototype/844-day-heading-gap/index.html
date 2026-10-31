@@ -1,0 +1,209 @@
+<title>日の見出しの空き</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- 試作（#844）。捨てるコード。タイムラインの日の見出しの上下の空きを4案、?variant=A|B|C|D で切り替えて見比べる。?all=1 で4案を並べる -->
+<style>
+/* スマホの枠の中にタイムラインを模す。色と大きさは DESIGN.md のトークン */
+:root {
+  --bg: #F2F2F7; --surface: #FFFFFF; --fg: #000000;
+  --fg2: rgba(60,60,67,.6); --sep: rgba(60,60,67,.29);
+  --tint: #6155F5; --on-tint: #FFFFFF; --own: color-mix(in srgb, #6155F5 22%, #FFFFFF);
+  --track: #E5E5EA; --p: #F07F1A; --f: #15803D; --c: #2C7BE5;
+  --page: #E4E3EC; --bar: #1C1C1E; --bar-fg: #FFFFFF; --mark: rgba(255,56,60,.16); --mark-line: #FF383C;
+  --font: -apple-system, "SF Pro Text", "Hiragino Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,.6); --sep: rgba(84,84,88,.6);
+  --tint: #6D7CFF; --own: color-mix(in srgb, #6D7CFF 30%, #1C1C1E);
+  --track: #2C2C2E; --p: #E8903A; --f: #228C48; --c: #4290F4;
+  --page: #111114; --bar: #F2F2F7; --bar-fg: #000000; --mark: rgba(255,66,69,.22); --mark-line: #FF4245; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,.6); --sep: rgba(84,84,88,.6);
+  --tint: #6D7CFF; --own: color-mix(in srgb, #6D7CFF 30%, #1C1C1E);
+  --track: #2C2C2E; --p: #E8903A; --f: #228C48; --c: #4290F4;
+  --page: #111114; --bar: #F2F2F7; --bar-fg: #000000; --mark: rgba(255,66,69,.22); --mark-line: #FF4245; color-scheme: dark }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--fg); font-family: var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 96px; }
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 20px; grid-template-columns: minmax(0, 390px) minmax(0, 1fr); align-items: start; }
+.wrap.all { max-width: none; grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+.phones { display: grid; gap: 16px; }
+.wrap.all .phones { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.cap { font-size: 14px; font-weight: 600; margin: 0 0 6px 4px; }
+.cap span { font-weight: 400; color: var(--fg2); }
+
+/* 画面 */
+.phone { background: var(--bg); border-radius: 36px; border: 1px solid var(--sep); overflow: hidden; display: flex; flex-direction: column; height: 1000px; }
+.top { background: color-mix(in srgb, var(--bg) 85%, transparent); border-bottom: .5px solid var(--sep); padding: 12px 16px 8px; }
+.top .title { text-align: center; font-size: 17px; font-weight: 600; }
+.strip { display: flex; justify-content: space-between; margin-top: 10px; }
+.strip div { display: grid; justify-items: center; gap: 2px; font-size: 11px; color: var(--fg2); }
+.strip i { width: 28px; height: 28px; border-radius: 50%; border: 4.5px solid var(--track); }
+.strip .on i { border-color: var(--c) var(--p) var(--f) var(--track); }
+.strip .now { color: var(--tint); font-weight: 600; }
+.scroll { flex: 1; overflow-y: auto; }
+.content { padding: 16px; display: flex; flex-direction: column; }
+.composer { border-top: .5px solid var(--sep); padding: 8px 16px 20px; display: flex; gap: 8px; align-items: center; }
+.composer i { width: 36px; height: 36px; border-radius: 50%; background: var(--track); flex: none; }
+.composer i:first-child { background: var(--tint); }
+.composer span { flex: 1; height: 36px; border-radius: 18px; border: .5px solid var(--sep); padding: 8px 14px; font-size: 15px; color: var(--fg2); }
+
+/* 日の見出し（footnote・secondary・中央） */
+.day-head { font-size: 13px; line-height: 18px; color: var(--fg2); text-align: center; position: relative; }
+/* 空きを色で見せる（右の切り替え） */
+.show-gaps .gap { background: var(--mark); position: relative; }
+.show-gaps .gap.head::after { content: attr(data-v); position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--mark-line); font-family: ui-monospace, Menlo, monospace; }
+.gap { flex: none; }
+
+/* 行 */
+.row-own { align-self: flex-end; max-width: 78%; display: flex; flex-direction: column; align-items: flex-end; }
+.own-card { background: var(--own); border-radius: 12px; padding: 16px; font-size: 15px; line-height: 20px; width: 100%; }
+.own-card .sub { color: var(--fg2); font-size: 13px; }
+.own-card b { font-size: 17px; }
+.time { font-size: 11px; color: var(--fg2); align-self: flex-start; margin-top: 2px; }
+.row-with-time { display: flex; align-items: flex-end; gap: 4px; align-self: flex-end; max-width: 78%; }
+.row-with-time .time { margin: 0; flex: none; }
+.bubble { background: var(--tint); color: var(--on-tint); border-radius: 18px; padding: 8px 14px; font-size: 17px; line-height: 22px; }
+.reply { font-size: 17px; line-height: 24px; padding-right: 24px; }
+.notice { background: var(--surface); border-radius: 12px; padding: 16px; font-size: 15px; line-height: 20px; }
+.notice .h { font-weight: 600; margin-bottom: 4px; }
+.notice .btn { margin-top: 12px; display: inline-block; background: var(--tint); color: var(--on-tint); border-radius: 999px; padding: 8px 16px; font-weight: 600; }
+.photo { width: 100%; height: 70px; border-radius: 8px; background: linear-gradient(135deg, #d8b48a, #a8c27a); margin-bottom: 8px; }
+
+/* 右の説明 */
+.notes { display: grid; gap: 14px; font-size: 15px; line-height: 1.6; min-width: 0; }
+.notes h1 { font-size: 20px; margin: 0; text-wrap: balance; }
+.notes h3 { font-size: 13px; letter-spacing: .04em; color: var(--fg2); margin: 6px 0 0; }
+.notes p { margin: 0; }
+.ctrl { display: flex; flex-wrap: wrap; gap: 8px; }
+.ctrl label { display: flex; gap: 6px; align-items: center; background: var(--surface); border-radius: 8px; padding: 6px 10px; font-size: 14px; cursor: pointer; }
+.state { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--surface); border-radius: 8px; padding: 10px; white-space: pre-wrap; overflow-x: auto; }
+.wrap.all .notes { max-width: 760px; }
+
+/* 切り替えのバー（試作の外側） */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--bar); color: var(--bar-fg); border-radius: 999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.25); font-size: 14px; max-width: calc(100% - 32px); }
+.switcher button { background: none; border: 0; color: inherit; font: inherit; font-size: 18px; padding: 6px 12px; cursor: pointer; border-radius: 999px; }
+.switcher .all-btn { font-size: 13px; border: 1px solid currentColor; padding: 4px 10px; opacity: .8; }
+.switcher span { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+
+<div class="wrap" id="wrap">
+  <div class="phones" id="phones"></div>
+  <div class="notes">
+    <h1 id="vtitle"></h1>
+    <p id="vdesc"></p>
+    <h3>見る場面</h3>
+    <p>3日ぶんを並べています。10月27日は自分の体重で始まる日、28日は知らせ（アプリのカード）で始まる日、29日は自分の発言で始まり返事で終わる日。前の日の最後の行が、自分の記録・返事・知らせのそれぞれのときの見出しの上の空きも見えます。</p>
+    <h3>試す条件</h3>
+    <div class="ctrl">
+      <label><input type="checkbox" id="showGaps"> 見出しの上下の空きを赤で塗る</label>
+      <label><input type="checkbox" id="bigText"> 文字を大きく（Dynamic Type をまねて 1.25 倍）</label>
+    </div>
+    <h3>今の値</h3>
+    <div class="state" id="state"></div>
+    <p class="foot" style="font-size:13px;color:var(--fg2)">見出しの上の空きは、今は日と日を並べる VStack の既定の間隔（8 ほど）。下の空きは、その日の最初の行の前の間隔で、今は <code>Timeline.Day.spacing(before:)</code> が最初の行を詰める（8）。行と行のあいだ（話し手が同じなら 8、替わり目は 24）はどの案でも変えない。</p>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="案の切り替え">
+  <button id="prev" aria-label="前の案">‹</button>
+  <span id="label"></span>
+  <button id="next" aria-label="次の案">›</button>
+  <button id="all" class="all-btn">4案を並べる</button>
+</div>
+
+<script>
+const VARIANTS = {
+  A: { name: '今のまま', above: 8, below: 8, desc: '上も下も 8。前の日の最後の行と、次の日の見出しと最初の行が、同じ間隔で続く。' },
+  B: { name: '上 24・下 12', above: 24, below: 12, desc: '上をまとまりの間（section-gap）の 24、下をカードの間（card-gap）の 12。見出しが次の日の側に寄って見える。' },
+  C: { name: '上 24・下 8', above: 24, below: 8, desc: '上だけ section-gap の 24 に広げ、下は今の 8 のまま。見出しが次の日の最初の行にくっつく。' },
+  D: { name: '上下とも 24', above: 24, below: 24, desc: '上下とも section-gap の 24。見出しが前後の日のどちらにも寄らず、区切りとして浮く。' },
+};
+const keys = Object.keys(VARIANTS);
+const params = new URLSearchParams(location.search);
+let variant = params.get('variant'); if (!keys.includes(variant)) variant = 'A';
+let showAll = params.get('all') === '1';
+
+// 1日ぶんの行。speaker が同じなら 8、替わり目は 24（今の実装のまま）
+const DAYS = [
+  { label: '10月27日（月）', items: [
+    { sp: 'me', html: ownWeight('07:12', '63.4', '前の日より −0.2') },
+    { sp: 'me', html: ownMeal('12:30', 'カレーライス', '720 kcal') },
+    { sp: 'ai', html: `<div class="reply">お昼はしっかり食べましたね。夜は野菜と汁物で軽めにすると、今日の目安に収まりそうです。</div>` },
+  ]},
+  { label: '10月28日（火）', items: [
+    { sp: 'app', html: `<div class="notice"><div class="h">体重を記録しましょう</div>いつもは 7時ごろに測っています。<br><span class="btn">体重を記録</span></div>` },
+    { sp: 'me', html: ownWeight('08:40', '63.1', '前の日より −0.3') },
+    { sp: 'me', html: ownMeal('19:05', '鮭の塩焼き定食', '610 kcal') },
+  ]},
+  { label: '10月29日（水）', items: [
+    { sp: 'me', html: `<div class="row-with-time"><span class="time">07:30</span><div class="bubble">昨日の夜は少し食べすぎたかも</div></div>` },
+    { sp: 'ai', html: `<div class="reply">昨日は目安より 120 kcal 多いくらいで、1日なら気にしなくて大丈夫です。今週の平均で見ていきましょう。</div>` },
+  ]},
+];
+function ownWeight(t, kg, sub) {
+  return `<div class="row-own"><div class="own-card"><b>${kg}</b> kg<div class="sub">${sub}</div></div><span class="time">${t}</span></div>`;
+}
+function ownMeal(t, name, kcal) {
+  return `<div class="row-own"><div class="own-card"><div class="photo"></div>${name}<div class="sub">${kcal}</div></div><span class="time">${t}</span></div>`;
+}
+
+const $ = (id) => document.getElementById(id);
+const gap = (px, cls = '', v = '') => `<div class="gap ${cls}" style="height:${px}px" data-v="${v}"></div>`;
+
+function timeline(v) {
+  const { above, below } = VARIANTS[v];
+  let out = '';
+  DAYS.forEach((day, di) => {
+    if (di > 0) out += gap(above, 'head', `上 ${above}`);
+    out += `<div class="day-head">${day.label}</div>`;
+    day.items.forEach((item, i) => {
+      if (i === 0) out += gap(below, 'head', `下 ${below}`);
+      else out += gap(day.items[i - 1].sp === item.sp ? 8 : 24);
+      out += item.html;
+    });
+  });
+  return out;
+}
+
+function phone(v) {
+  const big = $('bigText').checked;
+  return `<div class="phone${$('showGaps').checked ? ' show-gaps' : ''}" style="${big ? 'zoom:1.25' : ''}">
+    <div class="top"><div class="title">10月29日（水）</div>
+      <div class="strip">${['木','金','土','日','月','火','水'].map((d, i) => `<div class="${i >= 4 ? 'on' : ''} ${i === 6 ? 'now' : ''}"><i></i>${d}</div>`).join('')}</div></div>
+    <div class="scroll"><div class="content">${timeline(v)}</div></div>
+    <div class="composer"><i></i><i></i><i></i><span>書く</span></div>
+  </div>`;
+}
+
+function render() {
+  $('wrap').classList.toggle('all', showAll);
+  const shown = showAll ? keys : [variant];
+  $('phones').innerHTML = shown.map(k => `<div>${showAll ? `<p class="cap">${k}　${VARIANTS[k].name} <span>上 ${VARIANTS[k].above}・下 ${VARIANTS[k].below}</span></p>` : ''}${phone(k)}</div>`).join('');
+  // 下端（いちばん新しい日）から見せる。実機も下端から開く
+  document.querySelectorAll('.scroll').forEach(s => s.scrollTop = s.scrollHeight);
+  const cur = VARIANTS[variant];
+  $('vtitle').textContent = showAll ? '4案を並べて見る' : `${variant}　${cur.name}`;
+  $('vdesc').textContent = showAll ? '左から A（今のまま）、B（上 24・下 12）、C（上 24・下 8）、D（上下とも 24）。' : cur.desc;
+  $('label').textContent = showAll ? '全部' : `${variant}（${cur.name}）`;
+  $('all').textContent = showAll ? '1案ずつ見る' : '4案を並べる';
+  $('state').textContent = JSON.stringify({ variant: showAll ? 'all' : variant, 見出しの上: showAll ? '-' : cur.above, 見出しの下: showAll ? '-' : cur.below, 同じ話し手の行の間: 8, 話し手の替わり目: 24, 空きを塗る: $('showGaps').checked, 大きな文字: $('bigText').checked }, null, 2);
+  const p = new URLSearchParams(); p.set('variant', variant); if (showAll) p.set('all', '1');
+  history.replaceState(null, '', '?' + p);
+}
+function step(d) { showAll = false; variant = keys[(keys.indexOf(variant) + d + keys.length) % keys.length]; render(); }
+$('prev').onclick = () => step(-1);
+$('next').onclick = () => step(1);
+$('all').onclick = () => { showAll = !showAll; render(); };
+$('showGaps').onchange = render;
+$('bigText').onchange = render;
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') step(-1);
+  if (e.key === 'ArrowRight') step(1);
+});
+render();
+</script>
