@@ -53,8 +53,7 @@ enum ListingScene: String, CaseIterable {
         switch self {
         case .textMeal: 16
         case .stepWeigh, .photoEstimated: 10
-        case .stepPhoto: 4
-        case .stepGuide: 2
+        case .stepPhoto, .stepGuide: 4
         case .dish, .weeklyReview: 0
         }
     }
