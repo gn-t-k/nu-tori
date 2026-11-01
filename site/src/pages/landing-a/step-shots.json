@@ -1,0 +1,17 @@
+{
+  "step-weigh": {
+    "src": "/landing-a/steps/step-weigh.webp",
+    "width": 200,
+    "height": 408
+  },
+  "step-photo": {
+    "src": "/landing-a/steps/step-photo.webp",
+    "width": 200,
+    "height": 408
+  },
+  "step-guide": {
+    "src": "/landing-a/steps/step-guide.webp",
+    "width": 200,
+    "height": 408
+  }
+}

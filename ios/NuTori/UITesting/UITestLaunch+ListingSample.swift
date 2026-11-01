@@ -238,12 +238,18 @@
         /// 出し方のページの見本の人は毎日1日の目安ちょうど食べたことにしているが、3食の合計（1,440 kcal）はそれより少ない。
         /// 食べた量は1日の丸の満ち方と週の振り返りにしか出ず、見本の場面はどちらの数も撮らないので、LP の見本の食事のほうにそろえる。
         /// 昨日の 21:00 には「ここまでの食事のフィードバック」を送って返事が届いた。返事の形（行の数と前置き。`listingReplyShape`）は、タイムラインの上の端で行が切れないよう、撮る UI テストの場面（`ListingScene`）が選ぶ
-        func listingSampleScenario(_ estimation: ListingSampleEstimation) -> FakeSyncServer.Scenario
-        {
+        ///
+        /// `weighedToday` が false なら、今朝の体重とその日の体重の傾向を置かない（まだ量っていない朝）
+        func listingSampleScenario(
+            _ estimation: ListingSampleEstimation, weighedToday: Bool = true
+        ) -> FakeSyncServer.Scenario {
             let today = clock.today()
             let sample = ListingSample(timeZone: clock.timeZone())
             let weeks = ListingSample.weeks.filter { sample.day($0.effectiveOn) <= today }
-            let days = ListingSample.days.filter { sample.day($0.calendarDay) <= today }
+            let days = ListingSample.days.filter {
+                weighedToday
+                    ? sample.day($0.calendarDay) <= today : sample.day($0.calendarDay) < today
+            }
             return .init(
                 records: [.goal(sample.goal)]
                     + weeks.enumerated().flatMap { index, week in
