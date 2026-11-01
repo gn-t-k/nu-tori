@@ -42,9 +42,12 @@ export const loadBezel = async (page: Page, bezelPath: string): Promise<Bezel> =
     while (top > 0 && isClear(probeX, top - 1)) top--;
     let bottom = centerY;
     while (bottom < height - 1 && isClear(probeX, bottom + 1)) bottom++;
-    // 穴の左上の角から斜めに進み、透ける所までの長さから角の丸みの半径を出す（円の角では、その長さは各軸で r(1 - 1/√2)）
+    // 穴の左上の角から斜めに進み、穴に入るまでの長さから角の丸みの半径を出す（円の角では、その長さは各軸で r(1 - 1/√2)）。
+    // 枠の縁が細い枠（iPhone 18 Pro Max）では、穴を囲む四角の角が端末の外に出て透けているので、枠に当たるまで進んでから、枠を抜けて透ける所を探す
+    const limit = (right - left) / 2;
     let diagonal = 0;
-    while (diagonal < (right - left) / 2 && !isClear(left + diagonal, top + diagonal)) diagonal++;
+    while (diagonal < limit && isClear(left + diagonal, top + diagonal)) diagonal++;
+    while (diagonal < limit && !isClear(left + diagonal, top + diagonal)) diagonal++;
     return {
       width,
       height,

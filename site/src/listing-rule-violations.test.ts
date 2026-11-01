@@ -157,7 +157,11 @@ describe("掲載情報の決まり", () => {
           ...appStoreConnectListing,
           screenshots: appStoreConnectListing.screenshots.map((screenshot, index) =>
             index === 4
-              ? { ...screenshot, headline: { status: "draft", text: examplePriceText } }
+              ? {
+                  ...screenshot,
+                  headline: { status: "draft", text: examplePriceText },
+                  emphasis: examplePriceText,
+                }
               : screenshot,
           ),
         };
@@ -165,6 +169,40 @@ describe("掲載情報の決まり", () => {
 
       test("見出しに金額があると挙げること", () => {
         expect(listingRuleViolations(listing)).toEqual(["price-in-screenshot-headline"]);
+      });
+    });
+  });
+
+  describe("スクリーンショットの要の語", () => {
+    let listing: AppStoreConnectListing;
+
+    describe("要の語が見出しの文に無いとき", () => {
+      beforeEach(() => {
+        listing = {
+          ...appStoreConnectListing,
+          screenshots: appStoreConnectListing.screenshots.map((screenshot, index) =>
+            index === 2 ? { ...screenshot, emphasis: "e" } : screenshot,
+          ),
+        };
+      });
+
+      test("要の語が見出しに無いと挙げること", () => {
+        expect(listingRuleViolations(listing)).toEqual(["screenshot-emphasis-not-in-headline"]);
+      });
+    });
+
+    describe("要の語が空のとき", () => {
+      beforeEach(() => {
+        listing = {
+          ...appStoreConnectListing,
+          screenshots: appStoreConnectListing.screenshots.map((screenshot, index) =>
+            index === 2 ? { ...screenshot, emphasis: "" } : screenshot,
+          ),
+        };
+      });
+
+      test("要の語が見出しに無いと挙げること", () => {
+        expect(listingRuleViolations(listing)).toEqual(["screenshot-emphasis-not-in-headline"]);
       });
     });
   });
