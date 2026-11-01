@@ -286,7 +286,7 @@
             case listingSamplePhotoEstimated = "listing-sample-photo-estimated"
             /// `listingSample` に加えて、「朝はお茶漬けを食べた」を食事と読み分け、推定してお茶漬けにする
             case listingSampleTextMeal = "listing-sample-text-meal"
-            /// `listingSample` から今朝の体重を除いた。体重の知らせの時刻（8:00）を過ぎているので、タイムラインにステッパーつきの知らせが出る
+            /// `listingSample` から今朝の体重を除いた。体重の知らせの時刻（8:00）を過ぎていれば、タイムラインにステッパーつきの知らせが出る
             case listingSampleBeforeWeighing = "listing-sample-before-weighing"
         }
 
