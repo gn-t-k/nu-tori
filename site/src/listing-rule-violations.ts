@@ -21,6 +21,13 @@ export const listingRuleViolations = (listing: AppStoreConnectListing): ListingR
       "price-in-screenshot-headline",
       listing.screenshots.some(({ headline }) => hasPrice(headline.text)),
     ],
+    // 合成のコマンドが見出しの中で色を変える要の語は、見出しの文に含まれていなければならない（#867 の解決コメントの1）
+    [
+      "screenshot-emphasis-not-in-headline",
+      listing.screenshots.some(
+        ({ headline, emphasis }) => emphasis === "" || !headline.text.includes(emphasis),
+      ),
+    ],
     // 自動更新のサブスクリプションは、利用規約とプライバシーポリシーへのリンクを載せる（3.1.2）
     ["terms-url-missing", !description.includes(listing.urls.terms)],
     ["privacy-policy-url-missing", !description.includes(listing.urls.privacyPolicy)],
@@ -40,6 +47,7 @@ export type ListingRuleViolation =
   | "duplicate-keyword"
   | "price-in-description"
   | "price-in-screenshot-headline"
+  | "screenshot-emphasis-not-in-headline"
   | "terms-url-missing"
   | "privacy-policy-url-missing"
   | "medical-disclaimer-missing";
