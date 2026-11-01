@@ -1,3 +1,5 @@
+import { runInDurableObject } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
@@ -5,10 +7,12 @@ import { updateDishWrite } from "../../dish/http/testing/update-dish-write";
 import { addDays } from "../../domain/add-days";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
 import { generateRecordId } from "../../domain/record-id";
+import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
+import { requireLastSequence } from "../../http/sync-routes/testing/require-last-sequence";
 import { signInTestAccount } from "../../http/testing";
 import { putMealPhoto } from "../../http/meal-photo-routes/testing/put-meal-photo";
 import { createMealWrite } from "../../meal/http/testing/create-meal-write";
@@ -18,6 +22,7 @@ import {
 } from "../../observability/testing";
 import { markTestUser } from "../../subscription-status/http/testing/mark-test-user";
 import { placeFreeTrialLastDay } from "../../subscription-status/http/testing/place-free-trial-last-day";
+import { unmarkTestUser } from "../../subscription-status/http/testing/unmark-test-user";
 import { mockCreateEstimationProviderOk } from "../durable-object/create-estimation-provider/create-estimation-provider.mock";
 import { insertCountedEstimations } from "./testing/insert-counted-estimations";
 import { recordEstimatedMeal } from "./testing/record-estimated-meal";
@@ -32,6 +37,7 @@ describe("サブスクリプション切れのときの推定", () => {
   let clock: ReturnType<typeof useFakeClock>;
   let today: string;
   let pullStatusesOf: (kind: string) => Promise<Record<string, unknown>[]>;
+  let pullSubscriptionStatusesAfter: (afterSequence: number) => Promise<Record<string, unknown>[]>;
   let countRows: (table: string) => Promise<number>;
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
@@ -44,6 +50,10 @@ describe("サブスクリプション切れのときの推定", () => {
     pullStatusesOf = async (kind) =>
       (await (await pullSyncChanges(sessionToken)).json<PullResult>()).changes
         .filter((change) => change.kind === kind)
+        .map(({ record }) => record);
+    pullSubscriptionStatusesAfter = async (afterSequence) =>
+      (await (await pullSyncChanges(sessionToken, { afterSequence })).json<PullResult>()).changes
+        .filter(({ kind }) => kind === "subscription_status")
         .map(({ record }) => record);
     countRows = async (table) => (await readRows(accountId, `SELECT * FROM ${table}`)).length;
   });
@@ -140,13 +150,7 @@ describe("サブスクリプション切れのときの推定", () => {
       });
 
       test("アラームで、テストユーザーのサブスクリプションの状態の変更を足すこと", async () => {
-        expect(
-          (
-            await (await pullSyncChanges(sessionToken, { afterSequence })).json<PullResult>()
-          ).changes
-            .filter(({ kind }) => kind === "subscription_status")
-            .map(({ record }) => record),
-        ).toEqual([{ type: "test_user" }]);
+        expect(await pullSubscriptionStatusesAfter(afterSequence)).toEqual([{ type: "test_user" }]);
       });
 
       test("保留した食事を推定すること", async () => {
@@ -255,6 +259,48 @@ describe("サブスクリプション切れのときの推定", () => {
       expect(await pullStatusesOf("dish_estimation_status")).toEqual([
         { dishId, status: "awaiting_subscription" },
       ]);
+    });
+
+    describe("そのあとテストユーザーの旗を立て、記録の無い送り切った印のある送る要求を送ったとき", () => {
+      beforeEach(async () => {
+        await markTestUser(accountId);
+        clock.advance(1000);
+        await pushSyncWrites(sessionToken, { writes: [], isFinalBatch: true });
+      });
+
+      test("今すぐアラームを張ること", async () => {
+        expect(
+          await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
+            state.storage.getAlarm(),
+          ),
+        ).toBe(Date.now());
+      });
+
+      describe("アラームが動いて端末にテストユーザーの状態が届き、旗を外して料理の名前を直したとき", () => {
+        let afterSequence: number;
+        beforeEach(async () => {
+          await runEstimationAlarm(accountId);
+          afterSequence = requireLastSequence(
+            (await (await pullSyncChanges(sessionToken)).json<PullResult>()).changes,
+          );
+          await unmarkTestUser(accountId);
+          clock.advance(1000);
+          await pushSyncWrites(sessionToken, {
+            writes: [updateDishWrite(dishId, { name: "天丼" })],
+          });
+          await runEstimationAlarm(accountId);
+        });
+
+        test("サブスクリプション切れの状態の変更が届くこと", async () => {
+          expect(await pullSubscriptionStatusesAfter(afterSequence)).toEqual([
+            {
+              type: "regular",
+              freeTrial: { type: "available", lastDay: addDays(today, -10) },
+              subscription: { type: "none" },
+            },
+          ]);
+        });
+      });
     });
 
     describe("そのあとテストユーザーの旗を立て、1時間たってから別の食事を送ったとき", () => {

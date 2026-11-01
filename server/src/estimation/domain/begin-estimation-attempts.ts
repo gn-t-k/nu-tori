@@ -7,6 +7,7 @@ import type { UsageEvent } from "../../domain/usage-event";
 import type { Meal } from "../../meal/domain/meal";
 import type { SentText } from "../../sent-text/domain/sent-text";
 import { isSubscriptionExpired } from "../../subscription-status/domain/is-subscription-expired";
+import { readSubscriptionFacts } from "../../subscription-status/domain/read-subscription-facts";
 import { readSubscriptionStatus } from "../../subscription-status/domain/read-subscription-status";
 import type { SubscriptionStatus } from "../../subscription-status/domain/subscription-status";
 import { abandonEstimation } from "./abandon-estimation";
@@ -37,7 +38,7 @@ export type WrittenMealTarget = {
 
 // アラームから呼ぶ。1つのトランザクションで、時刻が来た待っている予定（食事か料理が対象）から推定を始めて最初の試みを書き、次に試みる時刻が来た続いている推定の試みを書く。途中で止まった試みで上限に達した推定は、もう呼ばずに諦める。
 // 予定の数える日の推定が1日の上限に達していれば、推定を始めず、次の日の 0:00 の予定を同じ対象に足して見送る。
-// 予定の数える日でサブスクリプション切れなら、推定を始めず保留する。使えるようになっていれば（テストユーザーの旗を立てたなど）、待っている予定を探す前に、保留した推定を再開する
+// 予定の数える日でサブスクリプション切れなら、推定を始めず保留し、サブスクリプションの状態の変更を足す（テストユーザーの旗を外した端末は、切れを知る時機がほかに無く、課金画面に届けないため）。使えるようになっていれば（テストユーザーの旗を立てたなど）、待っている予定を探す前に、保留した推定を再開する
 export const beginEstimationAttempts = (
   writeRecordChanges: RecordChangeWriter,
   stores: Pick<
@@ -82,6 +83,7 @@ export const beginEstimationAttempts = (
     resumeHeldEstimations(stores, writes, now);
     // 待っている予定があるときだけ読む（最初のサインインより前のアカウントのアラームでも、予定が無ければ読まない）
     let subscriptionStatus: SubscriptionStatus | undefined;
+    let hasHeld = false;
     // 始めた推定の試みは呼び出し中なので、下の続いている推定では次に試みる時刻がまだ来ていない
     for (const { scheduleId, target, countedOn } of stores.estimationSchedule.findWaitingSchedules(
       now,
@@ -90,6 +92,7 @@ export const beginEstimationAttempts = (
       if (isSubscriptionExpired(subscriptionStatus, { countedOn, at: now })) {
         writes.hold({ scheduleId, target, heldAt: now });
         usageEvents.push({ name: "estimation_deferred", reason: "subscription_expired" });
+        hasHeld = true;
         continue;
       }
       if (stores.estimation.countEstimationsCountedOn(countedOn) >= maximumDailyEstimations) {
@@ -114,6 +117,12 @@ export const beginEstimationAttempts = (
       const estimationId = generateRecordId();
       writes.beginEstimation({ id: estimationId, scheduleId, target, startedAt: now });
       beginAttempt(estimationId, target);
+    }
+    if (hasHeld) {
+      addChange({
+        recordType: "subscription_status",
+        recordId: readSubscriptionFacts(stores.subscriptionStatus).firstSignInId,
+      });
     }
 
     for (const {
