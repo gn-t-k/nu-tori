@@ -7,12 +7,6 @@ import XCTest
 enum ListingScene: String, CaseIterable {
     /// 朝、まだ量っていない体重を、タイムラインの体重の知らせのステッパーで 77.8 kg に合わせたところ（LP の手順1）
     case stepWeigh = "step-weigh"
-    // 見比べるための仮の場面（#857）。候補 a の返事の形の違いと、候補 b（体重のシート）
-    case stepWeighA4 = "step-weigh-a4"
-    case stepWeighA10 = "step-weigh-a10"
-    case stepWeighA0 = "step-weigh-a0"
-    case stepWeighSheet = "step-weigh-sheet"
-    case stepWeighSheet4 = "step-weigh-sheet4"
     /// 食べる前に撮った写真が、推定を待ちながらタイムラインに並んだところ（LP の手順2）
     case stepPhoto = "step-photo"
     /// 毎週の見直しで1日の目安が変わった知らせ（LP の手順3）
@@ -31,8 +25,7 @@ enum ListingScene: String, CaseIterable {
     /// `stepGuide` だけ月曜にする。1日の目安が変わった知らせと週の振り返りのカードは見直した月曜の日に置くので、水曜には火曜と水曜の記録の上へ流れて見えない
     @MainActor func launch() -> XCUIApplication {
         switch self {
-        case .stepWeigh, .stepWeighA4, .stepWeighA10, .stepWeighA0, .stepWeighSheet,
-            .stepWeighSheet4:
+        case .stepWeigh:
             // 今朝の体重がまだ無く、体重の知らせの時刻（8:00）を過ぎた朝
             open(api: "listing-sample-before-weighing")
         case .weeklyReview:
@@ -54,16 +47,13 @@ enum ListingScene: String, CaseIterable {
     /// 昨日の夜の返事の形の番号（アプリの `ListingSample.feedback(on:shape:)`。行の数の2倍と、前置きを置かないなら1）。
     /// タイムラインは開くと一番下に着き、上の端（1日の丸の帯の下）にどの行が来るかは、その上に積んだ記録の高さで決まる。
     /// 上の端で吹き出しやカードが半分切れないよう、場面ごとに iPhone 18 Pro Max のシミュレーターで撮り比べて選んだ（#858）。
-    /// stepWeigh と textMeal はどの形でも少し切れるので、見出しが読める形にした。画面が変わって切れたら選び直す（テストでは確かめない）
+    /// textMeal はどの形でも少し切れるので、見出しが読める形にした。画面が変わって切れたら選び直す（テストでは確かめない）
     private var replyShape: Int {
         switch self {
-        case .stepWeigh, .stepWeighSheet, .textMeal: 16
-        case .stepWeighA4, .stepWeighSheet4: 4
-        case .stepWeighA10: 10
-        case .stepWeighA0: 0
+        case .textMeal: 16
+        case .stepWeigh, .photoEstimated: 10
         case .stepPhoto: 4
         case .stepGuide: 2
-        case .photoEstimated: 10
         case .dish, .weeklyReview: 0
         }
     }
@@ -71,13 +61,8 @@ enum ListingScene: String, CaseIterable {
     /// 撮る前の操作をし、出るべきものが出るまで待つ。出なければ false（空の画面や読み込み中を撮らない）
     @MainActor func prepare(_ app: XCUIApplication) -> Bool {
         switch self {
-        case .stepWeigh, .stepWeighA4, .stepWeighA10, .stepWeighA0:
+        case .stepWeigh:
             return Self.stepWeight(in: app.otherElements["weight-notice"], app: app)
-        case .stepWeighSheet, .stepWeighSheet4:
-            let record = app.buttons["composer-weight-unrecorded"]
-            guard record.waitForExistence(timeout: 10) else { return false }
-            record.tap()
-            return Self.stepWeight(in: app.otherElements["weight-entry-sheet"], app: app)
         case .stepPhoto:
             // 送り終えて推定中が届くと、カードの状態の1行が出る。この場面の偽のサーバーは推定を終えない
             return Self.pickPhoto(app, until: "推定しています…")
@@ -153,7 +138,7 @@ enum ListingScene: String, CaseIterable {
             && !app.staticTexts["記録を読み込んでいます…"].exists
     }
 
-    /// 体重のステッパー（知らせの中かシートの中）の初めの値（前回の 1月20日の 77.7 kg）を 0.1 kg 上げ、今朝の体重（daily-guide-example.json の 2026-01-21 の weightKg、77.8 kg）にする。キーボードは出さない
+    /// 体重のステッパー（知らせの中。体重のシートの中でも同じ）の初めの値（前回の 1月20日の 77.7 kg）を 0.1 kg 上げ、今朝の体重（daily-guide-example.json の 2026-01-21 の weightKg、77.8 kg）にする。キーボードは出さない
     @MainActor private static func stepWeight(in container: XCUIElement, app: XCUIApplication)
         -> Bool
     {
@@ -164,7 +149,7 @@ enum ListingScene: String, CaseIterable {
             NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "77.8", "77.8")
         ).firstMatch
         guard shown.waitForExistence(timeout: 5) else { return false }
-        // シートが上がる動きと、ステッパーの値の動きが終わるまで少し待つ
+        // ステッパーの値の動き（シートなら上がる動きも）が終わるまで少し待つ
         Thread.sleep(forTimeInterval: 1)
         return !app.keyboards.firstMatch.exists
     }
