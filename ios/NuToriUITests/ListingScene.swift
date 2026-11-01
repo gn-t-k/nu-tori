@@ -15,12 +15,10 @@ enum ListingScene: String, CaseIterable {
     case photoEstimated = "photo-estimated"
     /// 撮り忘れて書いた食事が推定されたところ
     case textMeal = "text-meal"
-    /// 料理と量と、栄養の出どころ（成分表）。推定された食事の画面
-    case dishDetail = "dish-detail"
+    /// 推定された料理の材料と量と、主な栄養。カレーライスの料理の画面（食事の画面の料理の行から潜った先）
+    case dish = "dish"
     /// 週の見直しと目標の経過。目標の画面（体重の傾向、見直しで変わった1日の目安、週の振り返りへの1行）
     case weeklyReview = "weekly-review"
-    /// 撮ったあと、確定を押さずに次の操作に移れるところ。推定を待つカードを置いたまま、入力欄がすぐ使える
-    case eatWhileEstimating = "eat-while-estimating"
 
     /// 場面の記録と時計で開く。記録は、アプリの UI テストの差し替えの見本の人（`UITestLaunch.listingSampleScenario(_:)`）。
     /// アプリの時計は、撮る画面の状態の表示（9:41）とそろえ、タイムゾーンは日本に固める。
@@ -35,11 +33,9 @@ enum ListingScene: String, CaseIterable {
             // 写真は LP の見本と同じ Wikimedia Commons の CC0（Ocdp）のおにぎりで、nu-tori の利用者の食事ではない。
             // 出どころは site/src/pages/landing-a/example-photo-meals.ts。リポジトリに2つ置かないよう、LP の写真をそのまま読む
             open(api: "listing-sample", photo: "onigiri")
-        case .photoEstimated, .dishDetail:
+        case .photoEstimated, .dish:
             // 写真は LP の「撮るだけ」の節と昼ごはんの日の見本のカレーライス（出どころは stepPhoto と同じ）。推定の結果も LP の見本と同じ料理・材料・量
             open(api: "listing-sample-photo-estimated", photo: "curry")
-        case .eatWhileEstimating:
-            open(api: "listing-sample", photo: "curry")
         case .textMeal:
             open(api: "listing-sample-text-meal")
         }
@@ -52,10 +48,10 @@ enum ListingScene: String, CaseIterable {
     private var replyShape: Int {
         switch self {
         case .stepWeigh, .textMeal: 16
-        case .stepPhoto, .eatWhileEstimating: 4
+        case .stepPhoto: 4
         case .stepGuide: 2
         case .photoEstimated: 10
-        case .dishDetail, .weeklyReview: 0
+        case .dish, .weeklyReview: 0
         }
     }
 
@@ -64,7 +60,7 @@ enum ListingScene: String, CaseIterable {
         switch self {
         case .stepWeigh:
             return Self.waitForTodaysWeight(app)
-        case .stepPhoto, .eatWhileEstimating:
+        case .stepPhoto:
             // 送り終えて推定中が届くと、カードの状態の1行が出る。この場面の偽のサーバーは推定を終えない
             return Self.pickPhoto(app, until: "推定しています…")
         case .stepGuide:
@@ -75,17 +71,21 @@ enum ListingScene: String, CaseIterable {
         case .photoEstimated:
             // 推定が届くと、カードの名前の場所が料理の名前になる
             return Self.pickPhoto(app, until: "カレーライス")
-        case .dishDetail:
+        case .dish:
             guard Self.pickPhoto(app, until: "カレーライス") else { return false }
             Self.todaysPhotoMealCard(app).tap()
             guard app.navigationBars["食事"].waitForExistence(timeout: 5) else { return false }
-            // 合計の下の「栄養の出どころ: 成分表 7」と、料理の行
-            let totals = app.descendants(matching: .any)["meal-totals"]
-            guard totals.waitForExistence(timeout: 5), totals.label.contains("成分表"),
-                app.buttons["meal-dish"].waitForExistence(timeout: 5)
+            let curry = app.buttons.matching(
+                NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "meal-dish", "カレーライス")
+            ).firstMatch
+            guard curry.waitForExistence(timeout: 5) else { return false }
+            curry.tap()
+            guard app.navigationBars["カレーライス"].waitForExistence(timeout: 5) else { return false }
+            // 材料の量の欄（ごはん・牛肉・じゃがいも…の行）が出てから撮る
+            guard app.textFields["dish-ingredient-quantity"].firstMatch.waitForExistence(timeout: 5)
             else { return false }
-            // 写真はこの端末の元の写真から読むのですぐ出るが、読み終えたことは読み上げに出ないので、描き終えるまで少し待つ
-            Thread.sleep(forTimeInterval: 2)
+            // プッシュで潜る動きが終わるまで少し待つ
+            Thread.sleep(forTimeInterval: 1)
             return true
         case .weeklyReview:
             guard Self.waitForTodaysWeight(app) else { return false }
