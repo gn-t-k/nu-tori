@@ -1,36 +1,41 @@
 import type { ListingCopy } from "./listing-copy.ts";
 
 // 掲載用のスクリーンショット5枚の見出しと、載せる生の画面。合成のコマンドが Node のまま読むので、ほかのモジュールを import しない（型は消えるのでよい）。
-// 並びと載せる生の画面と見出しの線は #867 の解決コメントの2。見出しの文は仮の文で、本番の文は #862 で書く
+// 並びと載せる生の画面と見出しの線は #867 の解決コメントの2で、#862 で本番の文にした
 export const appStoreScreenshots: readonly AppStoreScreenshot[] = [
   {
     name: "01",
-    headline: { status: "draft", text: "続けるほど、ちょうどいい量が分かる" },
+    // 何が手に入るか。サブタイトルの線から「あなたに」を落とした。画面は「1日の目安が変わりました」の知らせ
+    headline: { status: "final", text: "続けるほど、ちょうどいい量が分かる" },
     emphasis: "ちょうどいい量",
     screen: "step-guide",
   },
   {
     name: "02",
-    headline: { status: "draft", text: "撮って送るだけ" },
-    emphasis: "撮って",
+    // LP の手順とプロモーション用テキストの「食べる前に撮る」を足し、いつ撮るかを言う
+    headline: { status: "final", text: "食べる前に、撮って送るだけ" },
+    emphasis: "撮って送る",
     screen: "photo-estimated",
   },
   {
     name: "03",
-    headline: { status: "draft", text: "撮り忘れたら、書いて送るだけ" },
-    emphasis: "書いて",
+    // 2枚目と「〜て送るだけ」でそろえ、要の語も「撮って送る」と対にする
+    headline: { status: "final", text: "撮り忘れたら、書いて送るだけ" },
+    emphasis: "書いて送る",
     screen: "text-meal",
   },
   {
     name: "04",
-    headline: { status: "draft", text: "材料ごとに、量から栄養を計算" },
-    emphasis: "材料ごと",
+    // 画面に出ている材料ごとのグラム数と主な栄養の並びをそのまま言う
+    headline: { status: "final", text: "材料ごとの量から、栄養を計算" },
+    emphasis: "材料ごとの量",
     screen: "dish",
   },
   {
     name: "05",
-    headline: { status: "draft", text: "目標までの道のりが見える" },
-    emphasis: "道のり",
+    // 画面の「このままだと期限に 2.7 kg 届きません」と体重の傾向の線を、見出しの語にした
+    headline: { status: "final", text: "このままで目標に届くかが見える" },
+    emphasis: "目標に届くか",
     screen: "weekly-review",
   },
 ];
