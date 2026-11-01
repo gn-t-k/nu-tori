@@ -81,7 +81,7 @@ jobs:
   ios-screenshots:
     if: inputs.target == 'ios-screenshots'
     runs-on: xcode-27
-    # ビルドと8場面で 30 分ほどの見込み。止まった回を既定の 6 時間残さない
+    # ビルドと、7場面を撮るのと、時計を確かめるため1場面を2回開くので、30 分ほどの見込み。止まった回を既定の 6 時間残さない
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
