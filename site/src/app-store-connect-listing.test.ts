@@ -8,6 +8,11 @@ import {
 describe("仮の文の欄", () => {
   let listing: AppStoreConnectListing;
 
+  // 本番の文は #862 で書いた。仮の文に戻すと wizard が App Store Connect に入れる段を始めない
+  test("今の掲載情報では挙げないこと", () => {
+    expect(draftListingFields(appStoreConnectListing)).toEqual([]);
+  });
+
   describe("文言がどれも本番の文のとき", () => {
     beforeEach(() => {
       listing = {
