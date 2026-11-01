@@ -37,9 +37,7 @@ export const composeScreenshots = async ({
 }): Promise<void> => {
   const requiredScreens = new Set<string>(landingStepScreens);
   if (listingDirectory !== undefined) {
-    for (const { screens } of appStoreScreenshots) {
-      for (const name of screens) requiredScreens.add(name);
-    }
+    for (const { screen } of appStoreScreenshots) requiredScreens.add(screen);
   }
   const missing: string[] = [];
   for (const name of requiredScreens) {
@@ -125,7 +123,8 @@ const renderFramedScreen = async ({
   }
 };
 
-// 掲載用の1枚を、地の色と見出しと、枠に入れた生の画面を並べた PNG にする。地を塗るので、PNG はアルファのチャンネルを持たない（App Store が透過を受け付けないため）
+// 掲載用の1枚を、primary の地に白の見出しを置き、その下に枠に入れた生の画面を1台置いた PNG にする（#867 の解決コメントの1、試作 prototype/867-listing-screenshots の案A）。
+// 地を塗るので、PNG はアルファのチャンネルを持たない（App Store が透過を受け付けないため）
 const renderListingScreenshot = async ({
   browser,
   bezel,
@@ -140,18 +139,10 @@ const renderListingScreenshot = async ({
   // App Store の iPhone の 6.9 インチの大きさ
   const width = 1320;
   const height = 2868;
-  const headlineHeight = 640;
-  const gap = 48;
-  const margin = 80;
-  const count = screenshot.screens.length;
-  // 枠は画面の幅と、見出しの下の高さの両方に収まる大きさにする。Apple の決まりで、端末は切らずに全体を見せる
-  const deviceWidth = Math.floor(
-    Math.min(
-      (width - margin * 2 - gap * (count - 1)) / count,
-      ((height - headlineHeight - margin) * bezel.width) / bezel.height,
-      1000,
-    ),
-  );
+  // 端末はキャンバスの高さの約75%で、下に寄せる。枠は切らずに全体を見せる（Apple の決まり）
+  const deviceHeight = 2180;
+  const deviceBottom = 110;
+  const deviceWidth = (deviceHeight * bezel.width) / bezel.height;
   const context = await browser.newContext({
     viewport: { width, height },
     deviceScaleFactor: 1,
@@ -160,43 +151,72 @@ const renderListingScreenshot = async ({
   try {
     await context.route("**/*", (route) => route.abort());
     const page = await context.newPage();
-    const devices: string[] = [];
-    for (const name of screenshot.screens) {
-      const screenDataUrl = `data:image/png;base64,${(await readFile(path.join(rawDirectory, `${name}.png`))).toString("base64")}`;
-      devices.push(
-        `<div style="width: ${deviceWidth}px; flex: none">${framedScreenHtml(bezel, screenDataUrl)}</div>`,
-      );
-    }
-    // 見出しの字の大きさは DESIGN.md の typography に無い。App Store の検索の結果に縮んで出ても読めるよう、画像の幅に合わせて大きくする
+    const screenDataUrl = `data:image/png;base64,${(await readFile(path.join(rawDirectory, `${screenshot.screen}.png`))).toString("base64")}`;
+    // 見出しの字の大きさと要の語の色は DESIGN.md の typography と colors に無い。App Store の検索の結果に縮んで出ても読めるよう大きくする。
+    // 要の語は primary の地で目立つ黄色にする（#867 の試作の案A で開発者と決めた値）。白は DESIGN.md の on-primary
     const headlineStyle = [
-      `height: ${headlineHeight}px`,
-      "box-sizing: border-box",
-      `padding: 0 ${margin}px`,
-      "display: flex",
-      "align-items: center",
-      "justify-content: center",
+      "position: absolute",
+      "left: 90px",
+      "right: 90px",
+      "top: 170px",
       "margin: 0",
-      "font-size: 88px",
-      "font-weight: 700",
-      "line-height: 1.35",
+      "font-size: 112px",
+      "font-weight: 800",
+      "line-height: 1.3",
+      "letter-spacing: 0.01em",
       "text-align: center",
       "word-break: auto-phrase",
       "text-wrap: balance",
-      "color: var(--on-surface)",
+      "color: #ffffff",
+    ].join("; ");
+    const deviceStyle = [
+      "position: absolute",
+      `left: ${(width - deviceWidth) / 2}px`,
+      `bottom: ${deviceBottom}px`,
+      `width: ${deviceWidth}px`,
     ].join("; ");
     await page.setContent(
       [
         "<!doctype html>",
         `<style>${await readFile(siteCssPath, "utf8")}</style>`,
-        `<style>html, body { margin: 0; width: ${width}px; height: ${height}px; overflow: hidden; background: var(--background); }</style>`,
-        `<h1 style="${headlineStyle}">${escapeHtml(screenshot.headline.text)}</h1>`,
-        `<div style="height: ${height - headlineHeight - margin}px; display: flex; align-items: center; justify-content: center; gap: ${gap}px">${devices.join("")}</div>`,
+        `<style>html, body { margin: 0; width: ${width}px; height: ${height}px; overflow: hidden; position: relative; background: var(--primary); }</style>`,
+        `<h1 lang="ja" style="${headlineStyle}">${headlineHtml(screenshot)}</h1>`,
+        `<div style="${deviceStyle}">${framedScreenHtml(bezel, screenDataUrl)}</div>`,
       ].join(""),
     );
+    // 見出しは2行まで（#867 の解決コメントの1）。112px で3行になる文は、2行に収まるまで字を小さくする。端末に重ならないよう、収まらなければ止まる
+    const fits = await page.evaluate(
+      ({ sizes, lineHeight }) => {
+        const headline = document.querySelector("h1");
+        if (headline === null) return false;
+        for (const size of sizes) {
+          headline.style.fontSize = `${size}px`;
+          if (headline.getBoundingClientRect().height <= size * lineHeight * 2 + 1) return true;
+        }
+        return false;
+      },
+      { sizes: [112, 108, 104, 100, 96], lineHeight: 1.3 },
+    );
+    if (!fits) {
+      throw new Error(`見出しが2行に収まらない: ${screenshot.name}（${screenshot.headline.text}）`);
+    }
     return await page.screenshot({ type: "png" });
   } finally {
     await context.close();
   }
+};
+
+// 見出しの文の、要の語の最初の1か所だけを色を変えた span で包む
+const headlineHtml = ({ headline, emphasis }: AppStoreScreenshot) => {
+  const at = headline.text.indexOf(emphasis);
+  if (emphasis === "" || at === -1) {
+    throw new Error(`見出しに要の語が無い: 「${emphasis}」（${headline.text}）`);
+  }
+  return [
+    escapeHtml(headline.text.slice(0, at)),
+    `<span style="color: #ffe27a; white-space: nowrap">${escapeHtml(emphasis)}</span>`,
+    escapeHtml(headline.text.slice(at + emphasis.length)),
+  ].join("");
 };
 
 const escapeHtml = (text: string) =>

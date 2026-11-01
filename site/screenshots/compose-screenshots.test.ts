@@ -135,7 +135,7 @@ describe("合成のコマンド", () => {
   });
 
   describe("掲載用のスクリーンショット", () => {
-    describe("生の画面が8つそろっているとき", () => {
+    describe("生の画面が7つそろっているとき", () => {
       let listingDirectory: string;
 
       beforeEach(async () => {
@@ -190,14 +190,13 @@ describe("合成のコマンド", () => {
   });
 });
 
-// 撮る UI テストとの約束の、生の画面の名前の全部（LP の3つと、掲載用だけに使う5つ）
+// 撮る UI テストとの約束の、生の画面の名前の全部（LP の3つと、掲載用だけに使う4つ）
 const allRawScreens = [
   "step-weigh",
   "step-photo",
   "step-guide",
   "photo-estimated",
   "text-meal",
-  "dish-detail",
+  "dish",
   "weekly-review",
-  "eat-while-estimating",
 ];
