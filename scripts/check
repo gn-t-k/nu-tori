@@ -489,7 +489,9 @@ check_ios_app() {
     check_ios_package
 
     step "アプリと UI テストのビルド"
-    build_ios_for_testing "$(latest_iphone_simulator)"
+    local simulator
+    simulator="$(latest_iphone_simulator)"
+    build_ios_for_testing "$simulator"
 }
 
 # アプリと UI テストを、渡した ID のシミュレーター向けにビルドする

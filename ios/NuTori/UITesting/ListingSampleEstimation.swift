@@ -11,8 +11,6 @@
         /// LP の撮り忘れた食事の文（`site/src/pages/landing-a-page.tsx` の `forgottenMealText`）を食事と読み分け、推定を終える
         case estimatesText
 
-        static let forgottenMealText = "朝はお茶漬けを食べた"
-
         var estimatedDishes: @Sendable (UUID) -> [SyncChange] {
             switch self {
             case .waitsForCorrection: { _ in [] }
@@ -35,7 +33,8 @@
             case .waitsForCorrection, .estimatesPhoto: { _ in nil }
             case .estimatesText:
                 { body in
-                    body == Self.forgottenMealText
+                    let forgottenMealText = "朝はお茶漬けを食べた"
+                    return body == forgottenMealText
                         ? .meal(replyAsConversation: "お茶漬けの話ですね。") : nil
                 }
             }

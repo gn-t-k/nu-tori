@@ -38,7 +38,7 @@ extension XCUIApplication {
             app.launchEnvironment["UI_TEST_PICKED_PHOTOS_LOADING_SECONDS"] = String(
                 pickedPhotos.loadingSeconds)
         }
-        // 見本の人の昨日の夜の返事の行の数（`ListingScreenshots`）
+        // 見本の人の昨日の夜の返事の行の数（`ListingScene`）
         if let listingReplyLineCount {
             app.launchEnvironment["UI_TEST_LISTING_REPLY_LINE_COUNT"] = String(
                 listingReplyLineCount)

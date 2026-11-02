@@ -243,7 +243,7 @@ const exists = async (filePath: string) =>
     () => false,
   );
 
-// step-shots.json の形。手順の絵の置き場と幅・高さ（CSS のピクセル）。LP の版 a の中身のチケット #660 が読む（まだ読んでいない）
+// step-shots.json の形。手順の絵の置き場と幅・高さ（CSS のピクセル）
 type LandingStepShots = Record<
   (typeof landingStepScreens)[number],
   { src: string; width: number; height: number }
