@@ -10,7 +10,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "1.1.0",
     "@hono/zod-openapi": "1.6.3",
-    "@peculiar/x509": "2.2.0",
+    "@peculiar/x509": "3.1.0",
     "@praha/byethrow": "0.12.0",
     "@praha/error-factory": "1.4.1",
     "@sentry/cloudflare": "11.8.0",
