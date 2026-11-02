@@ -1,0 +1,289 @@
+<title>体重の知らせとボタン</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 試作（#872）。捨てるもの。上に問いと切り替え、下にスマホの画面を案の数だけ並べる。色は DESIGN.md のトークン */
+:root {
+  --page: #E9E8F0;
+  --ink: #1B1A24;
+  --ink-2: #5E5C6E;
+  --line: #D3D1DE;
+  --panel: #FFFFFF;
+  --primary: #6155F5;
+  --on-primary: #FFFFFF;
+  --bg: #F2F2F7;
+  --surface: #FFFFFF;
+  --on-surface: #000000;
+  --secondary: rgba(60, 60, 67, 0.6);
+  --tertiary: rgba(60, 60, 67, 0.3);
+  --fill: #EFEFF0;
+  --own: color-mix(in srgb, #6155F5 22%, #FFFFFF);
+  --bar: rgba(249, 249, 251, 0.94);
+  --warn: #B4540A;
+  --ok: #157A3A;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #131218; --ink: #ECEBF3; --ink-2: #A3A1B4; --line: #34323F; --panel: #1D1C24;
+  --primary: #6D7CFF; --bg: #000000; --surface: #1C1C1E; --on-surface: #FFFFFF;
+  --secondary: rgba(235, 235, 245, 0.6); --tertiary: rgba(235, 235, 245, 0.3); --fill: #323236;
+  --own: color-mix(in srgb, #6D7CFF 30%, #1C1C1E); --bar: rgba(22, 22, 24, 0.94);
+  --warn: #F0A050; --ok: #5BC77F; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #131218; --ink: #ECEBF3; --ink-2: #A3A1B4; --line: #34323F; --panel: #1D1C24;
+  --primary: #6D7CFF; --bg: #000000; --surface: #1C1C1E; --on-surface: #FFFFFF;
+  --secondary: rgba(235, 235, 245, 0.6); --tertiary: rgba(235, 235, 245, 0.3); --fill: #323236;
+  --own: color-mix(in srgb, #6D7CFF 30%, #1C1C1E); --bar: rgba(22, 22, 24, 0.94);
+  --warn: #F0A050; --ok: #5BC77F; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--page); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 96px }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 20px }
+header { display: grid; gap: 6px; max-width: 70ch }
+.eyebrow { font-size: 12px; letter-spacing: .08em; color: var(--ink-2) }
+h1 { font-size: 22px; line-height: 1.35; margin: 0; text-wrap: balance }
+header p { margin: 0; color: var(--ink-2) }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center }
+.seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px }
+.seg button { border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--page) }
+.seg button:focus-visible, .chip:focus-visible, .phone button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px }
+.chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; cursor: pointer }
+
+.grid { display: grid; gap: 28px 20px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); align-items: start }
+.grid.single { grid-template-columns: minmax(0, 360px); justify-content: center }
+.col { display: grid; gap: 12px; min-width: 0 }
+.col h2 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: baseline }
+.col h2 .key { font-size: 12px; font-weight: 600; color: var(--on-primary); background: var(--ink-2); border-radius: 6px; padding: 1px 7px }
+.col.rec h2 .key { background: var(--primary) }
+.note { font-size: 13px; color: var(--ink-2); display: grid; gap: 4px; margin: 0; padding: 0; list-style: none }
+.note li { padding-left: 14px; position: relative }
+.note li::before { content: ""; position: absolute; left: 2px; top: .7em; width: 5px; height: 5px; border-radius: 50% }
+.note .pro::before { background: var(--ok) }
+.note .con::before { background: var(--warn) }
+
+/* スマホ */
+.phone { width: 100%; max-width: 360px; aspect-ratio: 360 / 700; border-radius: 36px; border: 8px solid #101014; background: var(--bg);
+  position: relative; overflow: hidden; display: flex; flex-direction: column; color: var(--on-surface); font-size: 15px; line-height: 1.35 }
+.status { height: 34px; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600 }
+.timeline { flex: 1; overflow: hidden; position: relative }
+.scroller { position: absolute; inset: 0 0 auto; padding: 4px 12px 12px; display: grid; gap: 12px; transition: transform .35s ease }
+@media (prefers-reduced-motion: reduce) { .scroller { transition: none } }
+.day { font-size: 12px; font-weight: 600; color: var(--secondary); text-align: center; padding-top: 4px }
+.own { background: var(--own); border-radius: 12px; padding: 12px 14px; margin-left: 48px; font-size: 15px }
+.own small { display: block; color: var(--secondary); font-size: 12px }
+.time { font-size: 11px; color: var(--secondary); margin: -8px 0 0 48px }
+.reply { font-size: 15px; padding-right: 32px }
+.card { background: var(--surface); border-radius: 12px; padding: 14px; display: grid; gap: 10px }
+.card .head { display: flex; justify-content: space-between; align-items: baseline }
+.card .head b { font-size: 15px }
+.card .head span { font-size: 12px; color: var(--secondary) }
+.card p { margin: 0; font-size: 13px; color: var(--secondary) }
+.stepper { display: flex; align-items: center; justify-content: space-between; gap: 8px }
+.stepper .sb { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--fill); color: var(--primary); font-size: 22px; cursor: pointer }
+.stepper .val { font-size: 22px; font-variant-numeric: tabular-nums; flex: 1; text-align: center; background: var(--fill); border-radius: 10px; padding: 6px 0 }
+.card .actions { display: flex; justify-content: flex-end }
+.btn-p { border: 0; background: var(--primary); color: var(--on-primary); font: inherit; font-size: 15px; font-weight: 600; height: 36px; padding: 0 16px; border-radius: 999px; cursor: pointer }
+.btn-s { border: 0; background: var(--fill); color: var(--primary); font: inherit; font-size: 15px; font-weight: 600; height: 36px; padding: 0 16px; border-radius: 999px; cursor: pointer }
+.btn-p[disabled] { opacity: .35; cursor: default }
+
+.composer { flex: none; background: var(--bar); border-top: .5px solid var(--tertiary); padding: 8px 12px 14px; display: grid; gap: 8px }
+.presets { display: flex; gap: 6px; overflow: hidden }
+.presets span { background: var(--surface); border-radius: 999px; font-size: 12px; padding: 6px 10px; white-space: nowrap }
+.row { display: flex; gap: 10px; align-items: center }
+.circ { width: 44px; height: 44px; flex: none; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer }
+.circ svg { width: 20px; height: 20px }
+.circ.p { background: var(--primary); color: var(--on-primary) }
+.circ.g { background: var(--fill); color: var(--primary) }
+.field { flex: 1; min-width: 0; height: 36px; border-radius: 18px; background: var(--surface); color: var(--tertiary); font-size: 15px; display: flex; align-items: center; padding: 0 14px }
+.capsule { height: 44px; border: 0; border-radius: 999px; background: var(--primary); color: var(--on-primary); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer }
+.ainote { font-size: 11px; color: var(--secondary); text-align: center }
+
+.hit { outline: 3px solid var(--warn); outline-offset: 2px }
+.sheet { position: absolute; inset: auto 0 0; height: 52%; background: var(--surface); border-radius: 14px 14px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.18);
+  padding: 10px 16px; display: grid; align-content: start; gap: 14px; transform: translateY(105%); transition: transform .3s ease }
+.sheet.open { transform: none }
+.sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--tertiary); margin: 0 auto }
+.sheet .top { display: flex; justify-content: space-between; align-items: center }
+.sheet .top b { font-size: 17px }
+.sheet .x { background: none; border: 0; color: var(--primary); font: inherit; cursor: pointer }
+.sheet small { color: var(--secondary); font-size: 13px; text-align: center }
+
+.log { font-size: 12px; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-height: 3.2em; font-variant-numeric: tabular-nums }
+.log b { color: var(--ink) }
+
+.bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 4px;
+  background: var(--ink); color: var(--page); border-radius: 999px; padding: 4px; box-shadow: 0 6px 24px rgba(0,0,0,.25); z-index: 20 }
+.bar button { background: none; border: 0; color: inherit; font: inherit; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px }
+.bar span { font-size: 13px; padding: 0 8px; min-width: 12em; text-align: center }
+.bar[hidden] { display: none }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">試作 · #872 · 捨てるもの</div>
+    <h1>今日の体重の知らせが出ているあいだ、どのボタンを主にするか</h1>
+    <p>朝、まだ体重を記録していないときのタイムライン。知らせのカードの「記録」と、入力欄の「体重を記録」が両方塗られていて、どちらを押せばよいか迷う。ボタンは押せます（押すと何が起きるかを下の欄に出します）。</p>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="見せ方">
+      <button id="mode-all" aria-pressed="true">並べる</button>
+      <button id="mode-one" aria-pressed="false">1つずつ</button>
+    </div>
+    <div class="seg" role="group" aria-label="スクロール">
+      <button id="scroll-top" aria-pressed="true">カードが見える</button>
+      <button id="scroll-down" aria-pressed="false">カードを上へ流した</button>
+    </div>
+    <button class="chip" id="reset">はじめに戻す</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="bar" id="bar" hidden>
+  <button id="prev" aria-label="前の案">←</button>
+  <span id="label"></span>
+  <button id="next" aria-label="次の案">→</button>
+</div>
+
+<script>
+const ICON = {
+  cam: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 4l-1.5 2H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-3.5L15 4H9zm3 4.5a4.5 4.5 0 110 9 4.5 4.5 0 010-9z"/></svg>',
+  photo: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zm0 13h16l-5-6-4 5-3-3-4 4zM8 7.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z"/></svg>',
+  scale: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2zm7 3a6 6 0 00-5.6 3.9l2 .7A4 4 0 0112 8a4 4 0 013.6 2.6l-2.4 1.3a1.5 1.5 0 10.9 1.5l3.6-2A6 6 0 0012 6z"/></svg>'
+};
+
+// 案ごとの決まり。card: カードの形、composer: 未記録のときの入力欄の「体重」
+const VARIANTS = [
+  { key: '今', name: '今のまま', card: 'stepper-primary', composer: 'capsule',
+    pros: ['変えるものが無い'],
+    cons: ['塗ったボタンが2つ並び、片方はその場で記録、片方はシートを開く'] },
+  { key: 'A', name: '入力欄を灰色の丸に', rec: true, card: 'stepper-primary', composer: 'circle-while-card',
+    pros: ['目標の知らせのときの決まり（DESIGN.md の入力欄の節）と同じ', '変えるのは入力欄の条件だけ'],
+    cons: ['カードを上へ流して見えなくなっても丸のまま（右上の切り替えで確かめられる）'] },
+  { key: 'B', name: 'カードは知らせるだけ', card: 'text-only', composer: 'capsule',
+    pros: ['記録の入口が入力欄の1つになる'],
+    cons: ['カードの中で記録できなくなる（1回押すぶん手間が増える）', 'カードの中のステッパーと、開いてから記録までの所要時間の計測を捨てる'] },
+  { key: 'C', name: 'カードの「記録」を灰色に', card: 'stepper-secondary', composer: 'capsule',
+    pros: ['入力欄の見た目はいつも同じ'],
+    cons: ['カードのステッパーで値を合わせたのに、主の操作が別の場所にあるように見える', 'DESIGN.md の「主な操作（記録）は塗ったボタン」から外れる'] },
+];
+
+const state = { mode: 'all', scrolled: false, current: 1, phones: {} };
+function fresh() { return { value: 62.4, recorded: false, sheet: false, hit: null, log: 'まだ何も押していません。' }; }
+VARIANTS.forEach(v => state.phones[v.key] = fresh());
+
+function composerWeight(v, p) {
+  if (p.recorded) return 'circle';
+  if (v.composer === 'capsule') return 'capsule';
+  if (v.composer === 'circle-while-card') return 'circle'; // カードが出ているあいだ（スクロールは見ない）
+  return 'capsule';
+}
+
+function cardHTML(v, p) {
+  if (p.recorded) return '';
+  const head = '<div class="head"><b>今日の体重</b><span>8:00</span></div><p>いつもはこの時間までに記録しています。</p>';
+  if (v.card === 'text-only')
+    return `<div class="card" data-id="card">${head}<p>下の「体重を記録」から記録できます。</p></div>`;
+  const btn = v.card === 'stepper-secondary' ? 'btn-s' : 'btn-p';
+  return `<div class="card" data-id="card">${head}
+    <div class="stepper"><button class="sb" data-act="minus" aria-label="0.1 kg 減らす">−</button><div class="val">${p.value.toFixed(1)} kg</div><button class="sb" data-act="plus" aria-label="0.1 kg 増やす">＋</button></div>
+    <div class="actions"><button class="${btn} ${p.hit === 'card' ? 'hit' : ''}" data-act="card-record">記録</button></div></div>`;
+}
+
+function phoneHTML(v) {
+  const p = state.phones[v.key];
+  const w = composerWeight(v, p);
+  const recorded = p.recorded ? `<div class="own"><small>体重</small>${p.value.toFixed(1)} kg</div><div class="time">7:42</div>` : '';
+  const shift = state.scrolled ? 'translateY(-46%)' : 'none';
+  return `<div class="phone" data-key="${v.key}">
+    <div class="status"><span>7:42</span><span>●●● ▮</span></div>
+    <div class="timeline"><div class="scroller" style="transform:${shift}">
+      <div class="day">11月1日（日）</div>
+      <div class="own">鶏むねとブロッコリーのサラダ<small>420 kcal · P 38 · F 14 · C 30</small></div><div class="time">19:10</div>
+      <div class="reply">たんぱく質がしっかり取れています。今日の残りは 310 kcal です。</div>
+      <div class="own">ヨーグルトとバナナ<small>210 kcal · P 9 · F 4 · C 36</small></div><div class="time">21:30</div>
+      <div class="day">11月2日（月）</div>
+      ${cardHTML(v, p)}
+      ${recorded}
+    </div></div>
+    <div class="composer">
+      <div class="presets"><span>朝ごはんまだ</span><span>今日は外食</span><span>お腹すいた</span></div>
+      <div class="row">
+        <button class="circ p" aria-label="撮る">${ICON.cam}</button>
+        <button class="circ g" aria-label="写真">${ICON.photo}</button>
+        ${w === 'circle' ? `<button class="circ g ${p.hit === 'composer' ? 'hit' : ''}" data-act="open-sheet" aria-label="体重">${ICON.scale}</button>` : ''}
+        <div class="field">書く</div>
+      </div>
+      ${w === 'capsule' ? `<button class="capsule ${p.hit === 'composer' ? 'hit' : ''}" data-act="open-sheet">体重を記録</button>` : ''}
+      <div class="ainote">返事は AI が書きます</div>
+    </div>
+    <div class="sheet ${p.sheet ? 'open' : ''}">
+      <div class="grab"></div>
+      <div class="top"><button class="x" data-act="close-sheet">閉じる</button><b>体重</b><button class="btn-p" data-act="sheet-record">記録</button></div>
+      <div class="stepper"><button class="sb" data-act="minus" aria-label="0.1 kg 減らす">−</button><div class="val">${p.value.toFixed(1)} kg</div><button class="sb" data-act="plus" aria-label="0.1 kg 増やす">＋</button></div>
+      <small>前回 62.4 kg（11月1日）</small>
+    </div>
+  </div>`;
+}
+
+function colHTML(v) {
+  const p = state.phones[v.key];
+  return `<section class="col ${v.rec ? 'rec' : ''}">
+    <h2><span class="key">${v.key}</span>${v.name}</h2>
+    ${phoneHTML(v)}
+    <div class="log" aria-live="polite">${p.log}</div>
+    <ul class="note">${v.pros.map(t => `<li class="pro">${t}</li>`).join('')}${v.cons.map(t => `<li class="con">${t}</li>`).join('')}</ul>
+  </section>`;
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  const list = state.mode === 'all' ? VARIANTS : [VARIANTS[state.current]];
+  grid.className = 'grid' + (state.mode === 'one' ? ' single' : '');
+  grid.innerHTML = list.map(colHTML).join('');
+  document.getElementById('mode-all').setAttribute('aria-pressed', state.mode === 'all');
+  document.getElementById('mode-one').setAttribute('aria-pressed', state.mode === 'one');
+  document.getElementById('scroll-top').setAttribute('aria-pressed', !state.scrolled);
+  document.getElementById('scroll-down').setAttribute('aria-pressed', state.scrolled);
+  const bar = document.getElementById('bar');
+  bar.hidden = state.mode !== 'one';
+  const v = VARIANTS[state.current];
+  document.getElementById('label').textContent = `${v.key}（${v.name}）`;
+  try { localStorage.setItem('p872', JSON.stringify({ mode: state.mode, current: state.current })); } catch (e) {}
+  if (state.mode === 'one') { try { history.replaceState(null, '', '#variant-' + (v.key === '今' ? 'now' : v.key)); } catch (e) {} }
+}
+
+document.getElementById('grid').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const key = b.closest('.phone').dataset.key; const p = state.phones[key];
+  const act = b.dataset.act;
+  if (act === 'plus') { p.value = Math.round((p.value + 0.1) * 10) / 10; }
+  if (act === 'minus') { p.value = Math.round((p.value - 0.1) * 10) / 10; }
+  if (act === 'card-record') { p.recorded = true; p.hit = 'card'; p.log = `<b>カードの「記録」</b>：その場で ${p.value.toFixed(1)} kg を記録。カードが消え、入力欄の「体重」は灰色の丸になる。`; }
+  if (act === 'open-sheet') { p.sheet = true; p.hit = 'composer'; p.log = p.recorded ? '<b>入力欄の「体重」</b>：今日の記録を直すシートが開く。' : `<b>入力欄の「体重」</b>：体重のシートが開く（カードとは別の場所で、同じことをもう一度する）。`; }
+  if (act === 'close-sheet') { p.sheet = false; }
+  if (act === 'sheet-record') { p.sheet = false; p.recorded = true; p.log = `<b>シートの「記録」</b>：${p.value.toFixed(1)} kg を記録。知らせのカードも消える。`; }
+  render();
+});
+document.getElementById('mode-all').onclick = () => { state.mode = 'all'; render(); };
+document.getElementById('mode-one').onclick = () => { state.mode = 'one'; render(); };
+document.getElementById('scroll-top').onclick = () => { state.scrolled = false; render(); };
+document.getElementById('scroll-down').onclick = () => { state.scrolled = true; render(); };
+document.getElementById('reset').onclick = () => { VARIANTS.forEach(v => state.phones[v.key] = fresh()); state.scrolled = false; render(); };
+const step = d => { state.current = (state.current + d + VARIANTS.length) % VARIANTS.length; render(); };
+document.getElementById('prev').onclick = () => step(-1);
+document.getElementById('next').onclick = () => step(1);
+document.addEventListener('keydown', e => {
+  if (state.mode !== 'one' || e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1);
+});
+(function boot() {
+  try { const s = JSON.parse(localStorage.getItem('p872') || 'null'); if (s) { state.mode = s.mode; state.current = s.current; } } catch (e) {}
+  const m = location.hash.match(/^#variant-(now|A|B|C)$/);
+  if (m) { state.mode = 'one'; state.current = { now: 0, A: 1, B: 2, C: 3 }[m[1]]; }
+  render();
+})();
+</script>
