@@ -12,12 +12,13 @@ import { AppComposer } from "./landing-a/app-composer";
 import { LunchDay } from "./landing-a/lunch-day";
 import { MealPhotoPicker } from "./landing-a/meal-photo-picker";
 import { SoftwareApplicationJsonLd } from "./landing-a/software-application-json-ld";
+import stepShots from "./landing-a/step-shots.json";
 import { dailyGuideExample } from "./daily-guide/daily-guide-example";
 import { WeeksFigure } from "./daily-guide/weeks-figure";
 
 // LP の版 a。並びと見た目は #594 の解決コメントの1〜11（https://github.com/gn-t-k/nu-tori/issues/594#issuecomment-6306406922）と、その試作の版8。
 // 文は PR #809 で開発者と節ごとに決めた本番の文言で、掲載情報をこの文に合わせるのは #816。
-// 手順の絵は、仕様3のスクリーンショットの仕組みの画像ができたら足す（手順には、画像が入るまで場所取り（lp-shot）を置いてある）。iPhone の絵は自分で描かない。
+// 手順の絵は、合成のコマンド（site/AGENTS.md の「合成する」）が本物の生の画面から書き出した画像を、書き出した幅と高さで置く（#857）。iPhone の絵は自分で描かない。
 // LP_VARIANTS（wrangler.jsonc）に "a" を入れるまで、外からは見えない
 export const landingAPage = createLandingVariantPage({
   variant: "a",
@@ -57,17 +58,23 @@ export const landingAPage = createLandingVariantPage({
             </div>
             <ol class="lp-steps">
               <li>
-                <div class="lp-shot" aria-hidden="true" />
+                <StepShot shot={stepShots["step-weigh"]} alt="今日の体重を記録するアプリの画面" />
                 <b>体重を量る</b>
                 <span>ヘルスケアと同期します。アプリから入力することもできます。</span>
               </li>
               <li>
-                <div class="lp-shot" aria-hidden="true" />
+                <StepShot
+                  shot={stepShots["step-photo"]}
+                  alt="撮った食事の写真を送ったアプリの画面"
+                />
                 <b>食べる前に撮る</b>
                 <span>撮り忘れたら「{forgottenMealText}」と書けばOKです。</span>
               </li>
               <li>
-                <div class="lp-shot" aria-hidden="true" />
+                <StepShot
+                  shot={stepShots["step-guide"]}
+                  alt="1日の目安が変わったと知らせるアプリの画面"
+                />
                 <b>目安が合っていく</b>
                 <span>体重の動きと食べた量から、1日の量を毎週計算し直します。</span>
               </li>
@@ -248,3 +255,11 @@ export const landingAPage = createLandingVariantPage({
     );
   },
 });
+
+const StepShot = ({
+  shot: { src, width, height },
+  alt,
+}: {
+  shot: { src: string; width: number; height: number };
+  alt: string;
+}) => <img class="lp-shot" src={src} alt={alt} width={width} height={height} />;

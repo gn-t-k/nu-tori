@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
+import stepShots from "./pages/landing-a/step-shots.json";
 import { notFoundPage } from "./pages/not-found-page";
 import { securityHeaders } from "./security-headers";
 import { canonicalPathOf } from "./site-page";
@@ -357,6 +358,16 @@ describe("nu-tori.app の配信", () => {
           ],
         });
         expect(jsonLds[0]).not.toHaveProperty("aggregateRating");
+      });
+
+      test("版 a が、合成のコマンドが書き出した手順の絵3枚を、書き出した幅と高さで持つこと", () => {
+        const images = [...variantABody.matchAll(/<img [^>]*>/g)].map(([image]) => image);
+        for (const { src, width, height } of Object.values(stepShots)) {
+          const image = images.find((candidate) => candidate.includes(` src="${src}"`));
+          expect(image).toBeDefined();
+          expect(image).toContain(` width="${width}"`);
+          expect(image).toContain(` height="${height}"`);
+        }
       });
 
       test("版 a が読むスクリプトと画像が、自分のオリジンから 200 で返ること", async () => {

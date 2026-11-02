@@ -74,7 +74,7 @@ describe("合成のコマンド", () => {
         expect(files.toSorted()).toEqual(["step-guide.webp", "step-photo.webp", "step-weigh.webp"]);
       });
 
-      // 枠の縦横比が 1:2 で、LP の場所取りの幅が 200 なので、JSON には 200×400 を書き、絵はその2倍の密度
+      // 枠の縦横比が 1:2 で、LP の手順の絵の幅が 200 なので、JSON には 200×400 を書き、絵はその2倍の密度
       test("幅と高さを JSON に書き、その2倍の密度で書き出すこと", async () => {
         const shots: unknown = JSON.parse(
           await readFile(path.join(workDirectory, "step-shots.json"), "utf8"),
