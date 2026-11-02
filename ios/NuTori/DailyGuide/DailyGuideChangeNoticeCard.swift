@@ -2,7 +2,7 @@ import NuToriCore
 import SwiftUI
 
 /// 1日の目安の変更の知らせ（仕様の `change` D）。振り返りのカードのすぐ下に置き、答えを持たない。
-/// 見出しと時刻、大きく新しい値と変わった量、P・F・C、理由の文、まとめて見直したときの1行、右下に「目標 ›」
+/// 見出し、大きく新しい値と変わった量、P・F・C、理由の文、まとめて見直したときの1行、右下に「目標 ›」
 struct DailyGuideChangeNoticeCard: View {
     let notice: DailyGuideChangeNotice
     /// 「目標 ›」。目標の画面を開く
@@ -10,19 +10,9 @@ struct DailyGuideChangeNoticeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("1日の目安が変わりました")
-                    .font(.subheadline.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer()
-                Text(
-                    WeightAmountText.clock(
-                        ClockTime(containing: notice.review.reviewedAt, in: notice.review.timeZone))
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-            }
+            Text("1日の目安が変わりました")
+                .font(.subheadline.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 6) {
                 // 大きな文字で1つの文につなげると、変わった量が「−」の後ろで折り返すので、横に収まらなければ値の下に置く
                 ViewThatFits(in: .horizontal) {

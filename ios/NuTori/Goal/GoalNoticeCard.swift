@@ -1,7 +1,7 @@
 import NuToriCore
 import SwiftUI
 
-/// 目標の達成・期限・期限後の維持の知らせ（仕様の `notices` B）。見出しと時刻、本文、右下に塗ったボタン1つ。
+/// 目標の達成・期限・期限後の維持の知らせ（仕様の `notices` B）。見出し、本文、右下に塗ったボタン1つ。
 /// 答えを持たないので「あとで」を置かない。今の目標でなくなった目標の知らせは、ボタンを押せなくし、すぐ下に理由の1行を添える（DESIGN.md の「押せないボタン」）
 struct GoalNoticeCard: View {
     let notice: GoalNotice
@@ -10,19 +10,9 @@ struct GoalNoticeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(notice.headline)
-                    .font(.subheadline.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer()
-                Text(
-                    WeightAmountText.clock(
-                        ClockTime(containing: notice.issuedAt, in: notice.timeZone))
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-            }
+            Text(notice.headline)
+                .font(.subheadline.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
             Text(notice.body)
                 .font(.subheadline)
                 .monospacedDigit()

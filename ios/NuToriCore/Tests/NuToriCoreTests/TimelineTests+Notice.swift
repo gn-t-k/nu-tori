@@ -47,13 +47,10 @@ extension TimelineTests {
                         == NoticeCard(notice: notice, form: .awaitingAnswer))
             }
 
-            @Test("1行目に出す時刻を、出したときのタイムゾーンの時計の時刻にすること")
-            func clockTimeInIssuedTimeZone() throws {
-                let card = try #require(
-                    timeline.days.last?.items.compactMap { item -> NoticeCard? in
-                        if case .notice(let card) = item { card } else { nil }
-                    }.first)
-                #expect(card.clockTime == ClockTime(hour: 8, minute: 15))
+            @Test("文に、出したときのタイムゾーンの時計の時刻を書くこと")
+            func bodyHasClockTimeInIssuedTimeZone() throws {
+                let card = try #require(timeline.days.last?.noticeCards.first)
+                #expect(card.body == "いつもは 8:15 までに記録しています。")
             }
         }
 
@@ -99,6 +96,7 @@ extension TimelineTests {
         struct UnansweredPastDay {
             let notice: Notice
             let timeline: Timeline
+            let card: NoticeCard
 
             init() throws {
                 notice = try .missedWeightRecord(issuedAt: "2026-09-23T08:15:00+09:00")
@@ -110,6 +108,7 @@ extension TimelineTests {
                     firstDay: CalendarDay(year: 2026, month: 9, day: 23),
                     today: PlacingNotices.today
                 )
+                card = try #require(timeline.days.first?.noticeCards.first)
             }
 
             @Test("その日に、前の日の形で置くこと")
@@ -129,6 +128,11 @@ extension TimelineTests {
             @Test("答えていない知らせの1行を出さないこと")
             func hidesUnansweredLine() {
                 #expect(timeline.noticeAwaitingAnswer == nil)
+            }
+
+            @Test("今日の知らせと同じ文にすること")
+            func bodySameAsToday() {
+                #expect(card.body == "いつもは 8:15 までに記録しています。")
             }
         }
     }
@@ -206,6 +210,15 @@ extension TimelineTests {
                 #expect(
                     timeline.landing(for: .notice(id: noticeId)) == .end)
             }
+        }
+    }
+}
+
+extension Timeline.Day {
+    /// その日に置いた体重の知らせ
+    fileprivate var noticeCards: [NoticeCard] {
+        items.compactMap { item in
+            if case .notice(let card) = item { card } else { nil }
         }
     }
 }

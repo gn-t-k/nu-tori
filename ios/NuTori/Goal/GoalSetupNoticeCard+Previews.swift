@@ -5,7 +5,6 @@
     #Preview("状態ごと", arguments: GoalSetupNoticeCard.Sample.allCases) { sample in
         ScrollView {
             GoalSetupNoticeCard(
-                notice: .sampleGoalSetup(on: .sampleToday, answered: sample.answered),
                 currentGoal: sample.currentGoal,
                 flow: sample.flow,
                 timeZone: DeviceClock.live.timeZone,
@@ -26,13 +25,6 @@
             case expanded
             /// 目標が決まったあと。「目標を決めました」の形
             case decided
-
-            var answered: Bool {
-                switch self {
-                case .unanswered, .paused, .expanded: false
-                case .decided: true
-                }
-            }
 
             var currentGoal: CurrentGoal? {
                 switch self {

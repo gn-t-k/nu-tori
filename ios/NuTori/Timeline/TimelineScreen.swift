@@ -541,7 +541,6 @@ struct TimelineScreen: View {
             .id(item.id)
         case .goalSetupNotice(let notice):
             GoalSetupNoticeCard(
-                notice: notice,
                 currentGoal: snapshot.currentGoal,
                 flow: goalSetupFlow,
                 timeZone: timeZone,
