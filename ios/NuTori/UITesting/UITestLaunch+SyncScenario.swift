@@ -78,6 +78,14 @@
                 return weeklyReview(.achieved)
             case .subscriptionExpired:
                 return subscriptionExpired()
+            case .listingSample:
+                return listingSampleScenario(.waitsForCorrection)
+            case .listingSamplePhotoEstimated:
+                return listingSampleScenario(.estimatesPhoto)
+            case .listingSampleTextMeal:
+                return listingSampleScenario(.estimatesText)
+            case .listingSampleBeforeWeighing:
+                return listingSampleScenario(.waitsForCorrection, weighedToday: false)
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             }

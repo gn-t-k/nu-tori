@@ -11,7 +11,8 @@ final class ShowPickedPhotosLoadingUITests: XCTestCase {
         continueAfterFailure = false
         app = .launched(
             account: "signed-in", api: "meal-estimation", healthLatestKilograms: nil,
-            pickedPhotos: UITestPickedPhotos(count: 3, loadingSeconds: 3), timeZone: "Asia/Tokyo")
+            pickedPhotos: UITestPickedPhotos(source: .solidColors(count: 3), loadingSeconds: 3),
+            timeZone: "Asia/Tokyo")
         XCTAssertTrue(app.buttons["composer-photos"].waitForExistence(timeout: 5))
     }
 

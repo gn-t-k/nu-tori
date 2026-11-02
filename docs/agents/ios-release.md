@@ -5,6 +5,33 @@
 - Xcode Cloud のワークフローは「main から内部テスト」の1つ。枠（月 25 時間）に収めるため、main の `ios/` が変わったとき（と手で始めたとき）だけ動かし、アクションは Archive（Distribution Preparation は App Store Connect。外部テストと App Store に出せるのはこれだけ）だけにする。配る先は内部テストのグループ「初回リリーステストユーザーグループ」。設定は Xcode の Report navigator の Cloud のタブで直す
 - Xcode Cloud の秘密の値は、ワークフローの Environment に Secret で置く。アーカイブのあとに `ios/ci_scripts/ci_post_xcodebuild.sh` が dSYM を Sentry に上げ、`SENTRY_AUTH_TOKEN`（Sentry の組織のトークン）が無ければ飛ばす
 
+## スクリーンショット
+
+掲載情報と LP の手順の絵に使う生の画面（見本の場面を撮った、枠も見出しも無い画面）は、撮る入口 `scripts/check ios-screenshots` で撮る。見本の場面の決まりは `ios/AGENTS.md` の「見本の場面」。
+
+- 撮る入口は、アプリをビルドし、6.9 インチ（1320×2868）の決めた1つの機種（`scripts/check` の `screenshot_device_type`。合成の枠と同じ機種にし、無ければ止まる）のシミュレーターを作って、状態の表示を 9:41・電波と Wi-Fi と電池が満ちた形に、明るい表示と既定の文字の大きさに固めてから、UI テストの `ListingScreenshots` だけを回す。撮った画面は `ios/.build/listing-screens/<場面>.png` に書き出す（大きさが 1320×2868 でなければ落ちる）。ふつうの UI テストの回（`scripts/check ios-ui-test`）は `ListingScreenshots` を除く
+- 画面を変えたら撮り直す。Mac のセッションは手元で `scripts/check ios-screenshots` を回してよい。クラウドのセッションは、撮るワークフローを回して成果物を落とす
+
+  ```bash
+  gh workflow run ios-ui-test.yml --ref <ブランチ> -f target=ios-screenshots
+  gh run list --workflow ios-ui-test.yml --branch <ブランチ> --limit 1
+  gh run download <回の ID> --name listing-raw-screens --dir <置き場>
+  ```
+
+  撮るワークフローは `ios-ui-test.yml` の `target` の入力で、ブランチの上で回せる（既定のブランチに無いワークフローは手で始められないため、ファイルを分けない）。成果物 `listing-raw-screens` は7日で消える
+- 生の画面はリポジトリに置かない。合成の結果だけを置く
+
+### 上げる前に、large の大きさだけで足りるかを確かめる
+
+合成の結果（`site/src/app-store-screenshot-images/01〜05.png`）は 1320×2868（6.9 インチ、large）だけ。App Store Connect のスクリーンショットの仕様のページ（2026-11-01）は、必須を「iPhone with Dynamic Island (medium display) を最低1枚」と書いている。large だけで足りるかは文書から決められないので、開発者が初めて上げる前に App Store Connect の画面で確かめる（#867 の解決コメントの3）。
+
+1. App Store Connect で nu-tori の提出する版のページを開き、「App プレビューとスクリーンショット」の iPhone の欄で、どの大きさが必須として出ているかを見る
+2. 6.9 インチの欄に 01〜05.png をこの順で上げる
+3. 「メディアマネージャですべてのサイズを表示」を開き、6.3 インチ（medium）などほかの大きさが「6.9 インチのものを使用」になっているか、上げる必要が残っているかを見る。版のページを保存し、スクリーンショットが足りないという警告が出ないかも見る
+4. 足りていれば、ここで終わり。足りなければ、medium の大きさ（6.3 インチ、1206×2622）も書き出す Issue を立てる。合成のコマンドは large しか書き出さず、生の画面も 6.9 インチの機種で撮っているので、撮る機種と合成の両方が要る
+
+確かめた結果（足りた・足りない、見た日）は、このファイルのこの節に1行で書き足す。
+
 ## 実機の確認
 
 エージェントには実機を操作する道が無いので、人が確かめる。

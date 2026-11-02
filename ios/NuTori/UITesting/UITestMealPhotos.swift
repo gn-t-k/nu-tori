@@ -19,5 +19,17 @@
                 }
             }
         }
+
+        /// ファイルの写真を JPEG にし直したもの。撮影時刻の付帯情報は落とす。読めないファイルはその場で止める
+        static func jpegs(contentsOf files: [URL]) -> [Data] {
+            files.map { file in
+                guard let image = UIImage(contentsOfFile: file.path(percentEncoded: false)),
+                    let jpeg = image.jpegData(compressionQuality: 0.8)
+                else {
+                    preconditionFailure("UI テストの写真 \(file.path(percentEncoded: false)) を読めない")
+                }
+                return jpeg
+            }
+        }
     }
 #endif

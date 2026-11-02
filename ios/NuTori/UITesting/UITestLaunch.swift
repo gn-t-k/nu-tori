@@ -22,6 +22,8 @@
         let dayPassesOnReturn: Bool
         /// 場面の記録を、前に開いたときに取り終えてキャッシュに持っている状態で始める。false なら、開いてから取りに行く
         let cacheHoldsRecords: Bool
+        /// 見本の人（`listingSampleScenario(_:)`）の昨日の夜の返事の行の数（`ListingSample.feedback(on:lineCount:)`）。撮る UI テストの場面（`ListingScene`）が渡す
+        let listingReplyLineCount: Int
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -38,9 +40,9 @@
                     == "not-yet-requested" ? .notYetRequested : .alreadyRequested,
                 healthLatestKilograms: environment["UI_TEST_HEALTH_LATEST_KG"].flatMap(Double.init),
                 healthWriteAuthorized: environment["UI_TEST_HEALTH_WRITE"] != "denied",
-                pickedPhotos: environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init).map {
+                pickedPhotos: PickedPhotos.Source(environment: environment).map {
                     PickedPhotos(
-                        count: $0,
+                        source: $0,
                         loadingSeconds: environment["UI_TEST_PICKED_PHOTOS_LOADING_SECONDS"]
                             .flatMap(Double.init) ?? 0)
                 },
@@ -48,14 +50,51 @@
                 // UI テストは起動の値の TZ でタイムゾーンを決めるので、起動したときのタイムゾーンで止める
                 clock: frozenClock(environment["UI_TEST_NOW"]),
                 dayPassesOnReturn: environment["UI_TEST_DAY_PASSES_ON_RETURN"] != nil,
-                cacheHoldsRecords: environment["UI_TEST_CACHE_HOLDS_RECORDS"] != nil
+                cacheHoldsRecords: environment["UI_TEST_CACHE_HOLDS_RECORDS"] != nil,
+                listingReplyLineCount: environment["UI_TEST_LISTING_REPLY_LINE_COUNT"].flatMap(
+                    Int.init) ?? 0
             )
         }
 
         struct PickedPhotos {
-            let count: Int
+            let source: Source
             /// 読み終えるまでにかける秒数。読んでいるあいだの仮のカードを確かめるため
             let loadingSeconds: Double
+
+            /// 選んだことにする写真の出どころ
+            enum Source {
+                /// 写真ごとに色を変えた無地の写真を、この枚数
+                case solidColors(count: Int)
+                /// このファイルの写真（シミュレーターから読める Mac のパス）
+                case files([URL])
+
+                /// 起動の値は、枚数かファイルのどちらか一方だけが渡る。どちらも無ければ nil
+                init?(environment: [String: String]) {
+                    if let files = environment["UI_TEST_PICKED_PHOTO_FILES"] {
+                        self = .files(
+                            files.split(separator: "\n").map { URL(filePath: String($0)) })
+                    } else if let count = environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init) {
+                        self = .solidColors(count: count)
+                    } else {
+                        return nil
+                    }
+                }
+            }
+
+            var count: Int {
+                switch source {
+                case .solidColors(let count): count
+                case .files(let files): files.count
+                }
+            }
+
+            /// 選んだことにする写真の JPEG
+            var jpegs: [Data] {
+                switch source {
+                case .solidColors(let count): UITestMealPhotos.jpegs(count: count)
+                case .files(let files): UITestMealPhotos.jpegs(contentsOf: files)
+                }
+            }
         }
 
         var appleSignInResult: AppleSignInResult {
@@ -265,6 +304,14 @@
             case goalAchieved = "goal-achieved"
             /// 昨日で無料体験が終わり、サブスクリプション切れ。買うと月額のサブスクリプション中に結びつく
             case subscriptionExpired = "subscription-expired"
+            /// 掲載情報と LP の手順の絵を撮る見本の人。記録と出どころは `listingSampleScenario()`
+            case listingSample = "listing-sample"
+            /// `listingSample` に加えて、選んだ写真の食事の推定を次の取得で終え、カレーライスにする
+            case listingSamplePhotoEstimated = "listing-sample-photo-estimated"
+            /// `listingSample` に加えて、「朝はお茶漬けを食べた」を食事と読み分け、推定してお茶漬けにする
+            case listingSampleTextMeal = "listing-sample-text-meal"
+            /// `listingSample` から今朝の体重を除いた。体重の知らせの時刻（8:00）を過ぎていれば、タイムラインにステッパーつきの知らせが出る
+            case listingSampleBeforeWeighing = "listing-sample-before-weighing"
         }
 
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める
