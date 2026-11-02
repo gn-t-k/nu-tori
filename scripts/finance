@@ -27,15 +27,17 @@ const computeCloudflareMonthlyCost = async ({ token, month }) => {
   // 請求期間の起点（最初に買った日）が範囲に入らないと何も返らず、返る行は範囲の中の最初の起点の日から始まる
   // 請求期間は 31 日より短いので、月の頭の 31 日前から読めば、月の頭を含む請求期間の起点が必ず入る
   // 範囲が2つの請求期間にまたがっても、終わりまでの行が返ることを 2026-11-02 に確かめた
+  const DAY = 86_400_000;
   const from = isoDate(new Date(start.getTime() - 31 * DAY));
   const usage = await fetchCloudflareResult(token, `${account}/billable-usage?from=${from}&to=${isoDate(end)}`);
   const inMonth = usage
-    .map((row) => ({ row, day: new Date(row.ChargePeriodStart) }))
-    .filter(({ row, day }) => {
+    .map((row) => {
+      const day = new Date(row.ChargePeriodStart);
       // 読めない日は、黙って外すと額が少なく出るので止まる
       if (Number.isNaN(day.getTime())) throw new ExpectedFailure(`読めない日の行がある: ${row.ChargePeriodStart}`);
-      return day >= start && day < end;
-    });
+      return { row, day };
+    })
+    .filter(({ day }) => day >= start && day < end);
   const days = new Set(inMonth.map(({ day }) => isoDate(day)));
   // 保存の量（D1・KV・R2）の行は毎日出るので、月の頭か終わりの日が無ければ、行が欠けたとみて止まる
   const lastDay = isoDate(new Date(end.getTime() - DAY));
@@ -74,8 +76,6 @@ const computeCloudflareMonthlyCost = async ({ token, month }) => {
       "Cloudflare の billable-usage（日ごとの従量の行のうち、ChargePeriodStart がその月の UTC の日の ContractedCost の合計）と subscriptions（その月の終わりより前に始まった定額の契約の price を月あたりにしたもの）",
   };
 };
-
-const DAY = 86_400_000;
 
 const monthRange = (month) => {
   const [year, monthIndex] = month.split("-").map(Number);
