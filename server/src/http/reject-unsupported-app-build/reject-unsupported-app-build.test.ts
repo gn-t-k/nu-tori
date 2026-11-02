@@ -114,11 +114,7 @@ describe("古いビルドの締め出し", () => {
         expect({
           requests: await readRows(accountId, "SELECT * FROM sync_request_logs"),
           receipts: await readRows(accountId, "SELECT * FROM sync_write_receipts"),
-          // 最初のサインインが足すサブスクリプションの状態の変更は除く
-          changes: await readRows(
-            accountId,
-            "SELECT * FROM record_changes WHERE record_type <> 'subscription_status'",
-          ),
+          changes: await readRows(accountId, "SELECT * FROM record_changes"),
         }).toEqual({ requests: [], receipts: [], changes: [] });
       });
     });

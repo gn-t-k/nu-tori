@@ -12,7 +12,6 @@ import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-u
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
-import { requireLastSequence } from "../../http/sync-routes/testing/require-last-sequence";
 import { signInTestAccount } from "../../http/testing";
 import { putMealPhoto } from "../../http/meal-photo-routes/testing/put-meal-photo";
 import { createMealWrite } from "../../meal/http/testing/create-meal-write";
@@ -22,7 +21,6 @@ import {
 } from "../../observability/testing";
 import { markTestUser } from "../../subscription-status/http/testing/mark-test-user";
 import { placeFreeTrialLastDay } from "../../subscription-status/http/testing/place-free-trial-last-day";
-import { unmarkTestUser } from "../../subscription-status/http/testing/unmark-test-user";
 import { mockCreateEstimationProviderOk } from "../durable-object/create-estimation-provider/create-estimation-provider.mock";
 import { insertCountedEstimations } from "./testing/insert-counted-estimations";
 import { recordEstimatedMeal } from "./testing/record-estimated-meal";
@@ -149,7 +147,7 @@ describe("サブスクリプション切れのときの推定", () => {
         await runEstimationAlarm(accountId);
       });
 
-      test("アラームで、テストユーザーのサブスクリプションの状態の変更を足すこと", async () => {
+      test("テストユーザーのサブスクリプションの状態の変更が届くこと", async () => {
         expect(await pullSubscriptionStatusesAfter(afterSequence)).toEqual([{ type: "test_user" }]);
       });
 
@@ -274,32 +272,6 @@ describe("サブスクリプション切れのときの推定", () => {
             state.storage.getAlarm(),
           ),
         ).toBe(Date.now());
-      });
-
-      describe("アラームが動いて端末にテストユーザーの状態が届き、旗を外して料理の名前を直したとき", () => {
-        let afterSequence: number;
-        beforeEach(async () => {
-          await runEstimationAlarm(accountId);
-          afterSequence = requireLastSequence(
-            (await (await pullSyncChanges(sessionToken)).json<PullResult>()).changes,
-          );
-          await unmarkTestUser(accountId);
-          clock.advance(1000);
-          await pushSyncWrites(sessionToken, {
-            writes: [updateDishWrite(dishId, { name: "天丼" })],
-          });
-          await runEstimationAlarm(accountId);
-        });
-
-        test("サブスクリプション切れの状態の変更が届くこと", async () => {
-          expect(await pullSubscriptionStatusesAfter(afterSequence)).toEqual([
-            {
-              type: "regular",
-              freeTrial: { type: "available", lastDay: addDays(today, -10) },
-              subscription: { type: "none" },
-            },
-          ]);
-        });
       });
     });
 

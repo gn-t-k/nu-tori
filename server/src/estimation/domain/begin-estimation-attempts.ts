@@ -7,7 +7,6 @@ import type { UsageEvent } from "../../domain/usage-event";
 import type { Meal } from "../../meal/domain/meal";
 import type { SentText } from "../../sent-text/domain/sent-text";
 import { isSubscriptionExpired } from "../../subscription-status/domain/is-subscription-expired";
-import { readSubscriptionFacts } from "../../subscription-status/domain/read-subscription-facts";
 import { readSubscriptionStatus } from "../../subscription-status/domain/read-subscription-status";
 import type { SubscriptionStatus } from "../../subscription-status/domain/subscription-status";
 import { abandonEstimation } from "./abandon-estimation";
@@ -83,7 +82,6 @@ export const beginEstimationAttempts = (
     resumeHeldEstimations(stores, writes, now);
     // 待っている予定があるときだけ読む（最初のサインインより前のアカウントのアラームでも、予定が無ければ読まない）
     let subscriptionStatus: SubscriptionStatus | undefined;
-    let hasHeld = false;
     // 始めた推定の試みは呼び出し中なので、下の続いている推定では次に試みる時刻がまだ来ていない
     for (const { scheduleId, target, countedOn } of stores.estimationSchedule.findWaitingSchedules(
       now,
@@ -92,7 +90,6 @@ export const beginEstimationAttempts = (
       if (isSubscriptionExpired(subscriptionStatus, { countedOn, at: now })) {
         writes.hold({ scheduleId, target, heldAt: now });
         usageEvents.push({ name: "estimation_deferred", reason: "subscription_expired" });
-        hasHeld = true;
         continue;
       }
       if (stores.estimation.countEstimationsCountedOn(countedOn) >= maximumDailyEstimations) {
@@ -117,12 +114,6 @@ export const beginEstimationAttempts = (
       const estimationId = generateRecordId();
       writes.beginEstimation({ id: estimationId, scheduleId, target, startedAt: now });
       beginAttempt(estimationId, target);
-    }
-    if (hasHeld) {
-      addChange({
-        recordType: "subscription_status",
-        recordId: readSubscriptionFacts(stores.subscriptionStatus).firstSignInId,
-      });
     }
 
     for (const {

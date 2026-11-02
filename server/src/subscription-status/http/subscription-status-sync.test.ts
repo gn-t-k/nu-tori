@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { generateRecordId, type RecordId, recordIdSchema } from "../../domain/record-id";
-import { createRecordChangeWriter } from "../../durable-object/create-record-change-writer";
 import { durableObjectTables } from "../../durable-object/durable-object-tables";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { durableObjectFactory } from "../../durable-object/testing/durable-object-factory";
@@ -17,7 +16,7 @@ import { subscriptionD1Tables } from "../../subscription/d1/subscription-d1-tabl
 type Factory = ReturnType<typeof durableObjectFactory>;
 
 // 課金を入れた日は、テストでは vitest.config.ts の値（2026-01-01）。
-// まだ取引を書く口が無いので、表に行を置き、記録の変化を書く入口で状態の記録の変更を足す
+// 表に行を置いて取りに行く。状態の変更は、取りに来た要求が、最後に帳簿に載せた状態と比べて足す（#881）
 describe("サブスクリプションの状態の同期", () => {
   let accountId: string;
   let firstSignInId: RecordId;
@@ -42,9 +41,6 @@ describe("サブスクリプションの状態の同期", () => {
     seed = (rows) =>
       runInDurableObject(account, async (_, state) => {
         await rows(durableObjectFactory(drizzle(state.storage, { schema: durableObjectTables })));
-        createRecordChangeWriter(state.storage)(({ addChange }) => {
-          addChange({ recordType: "subscription_status", recordId: firstSignInId });
-        });
       });
     pullStatus = async () => {
       const { changes } = await (await pullSyncChanges(signedIn.sessionToken)).json<PullResult>();
