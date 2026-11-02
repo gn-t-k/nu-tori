@@ -502,11 +502,8 @@ describe("同期", () => {
   describe("使い始めた日がまだ決まっていないとき", () => {
     let pulled: PullResult;
     beforeEach(async () => {
-      // 最初のサインインを書く前と同じにするため、一緒に足したサブスクリプションの状態の変更も消す
+      // 最初のサインインを書く前と同じにする
       await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) => {
-        state.storage.sql.exec(
-          "DELETE FROM record_changes WHERE record_type = 'subscription_status'",
-        );
         state.storage.sql.exec("DELETE FROM first_sign_ins");
       });
       pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();

@@ -29,6 +29,7 @@ import {
 import { agreeToTerms } from "../../terms-agreement/domain/agree-to-terms";
 import { findTermsAgreementRequirement } from "../../terms-agreement/domain/find-terms-agreement-requirement";
 import { recordSignInTermsAgreement } from "../../terms-agreement/domain/record-sign-in-terms-agreement";
+import { catchUpSubscriptionStatusChange } from "../../subscription-status/domain/catch-up-subscription-status-change";
 import { reviewUnreviewedWeeks } from "../../weekly-review/domain/review-unreviewed-weeks";
 import type { AccountResponse, LoggedAccountResponse } from "./account-response";
 import type { AccountStores } from "./account-stores";
@@ -77,6 +78,7 @@ export const accountRequests = {
       timeZone: request.clientState.timeZone,
       now,
     });
+    catchUpSubscriptionStatusChange(stores.writeRecordChanges, stores.records, now);
     const { usageEvents, ...pulled } = pullSyncChanges(stores.ledger, stores.records, {
       ...request,
       receivedAt: now,

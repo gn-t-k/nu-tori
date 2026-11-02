@@ -11,7 +11,8 @@ import { writeAppStoreTransaction } from "./write-app-store-transaction";
 
 // 端末の取引の知らせと App Store のサーバー通知が、記録の変化を書く入口の run の中で事実を書く流れ。
 // 受け取り、運んだ取引の写し、出どころの事実（writeSourceFacts。状態が変わりうる事実を書いたら true を返す）の順に書く。
-// 取引・取り消し・出どころの事実のどれかを書いたら、サブスクリプションの状態の変更を足し、保留した推定を再開して、出来事を作る
+// 取引・取り消し・出どころの事実のどれかを書いたら、保留した推定を再開して、出来事を作る。
+// サブスクリプションの状態の変更は、端末が取りに来たときに足す（#881）
 export const writeReceivedSubscriptionFacts = (
   stores: {
     subscriptionTransaction: SubscriptionTransactionStore;
@@ -20,10 +21,9 @@ export const writeReceivedSubscriptionFacts = (
       "estimationSchedule" | "latestTimeZone" | "meal" | "subscriptionStatus" | "firstSignIn"
     >;
   },
-  { addChange, estimation }: Pick<RecordChangeWrites, "addChange" | "estimation">,
+  { estimation }: Pick<RecordChangeWrites, "estimation">,
   received: {
     receiptId: RecordId;
-    firstSignInId: RecordId;
     transaction: AppStoreSubscriptionTransaction;
     now: Date;
   },
@@ -33,7 +33,7 @@ export const writeReceivedSubscriptionFacts = (
   }) => boolean,
 ): { resumedTargets: EstimationTarget[]; usageEvents: UsageEvent[] } => {
   const { subscriptionTransaction: store, records } = stores;
-  const { receiptId, firstSignInId, transaction, now } = received;
+  const { receiptId, transaction, now } = received;
   store.insertReceipt({ id: receiptId, receivedAt: now });
   const { subscriptionId, subscriptionTransactionId, wroteTransaction, wroteRevocation } =
     writeAppStoreTransaction(store, receiptId, transaction);
@@ -41,7 +41,6 @@ export const writeReceivedSubscriptionFacts = (
   if (!wroteTransaction && !wroteRevocation && !wroteSourceFact) {
     return { resumedTargets: [], usageEvents: [] };
   }
-  addChange({ recordType: "subscription_status", recordId: firstSignInId });
   return {
     // 使えるかを書いた事実で判定するので、事実の行のあとに呼ぶ
     resumedTargets: resumeHeldEstimations(records, estimation, now),

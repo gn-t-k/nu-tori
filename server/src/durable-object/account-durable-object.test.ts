@@ -50,9 +50,9 @@ describe("アカウントの Durable Object", () => {
       await callRecordFirstSignIn(accountId);
     });
 
-    // 無料体験の最後の日は 2030-01-30 で、あと3日の日は 2030-01-28
-    test("課金の確かめの時刻（無料体験のあと3日の日の始まり）にアラームを張ること", async () => {
-      expect(await readAlarm(accountId)).toBe(Date.parse("2030-01-27T15:00:00Z"));
+    // 無料体験の最後の日は 2030-01-30 で、終わりは 2030-01-31 の始まり
+    test("課金の確かめの時刻（無料体験の終わり）にアラームを張ること", async () => {
+      expect(await readAlarm(accountId)).toBe(Date.parse("2030-01-30T15:00:00Z"));
     });
   });
 
@@ -88,7 +88,7 @@ describe("アカウントの Durable Object", () => {
       for (const { name, call } of Object.values(requestCalls)) {
         test(`${name}のあと、課金の確かめの時刻に張り直すこと`, async () => {
           await call(accountId);
-          expect(await readAlarm(accountId)).toBe(Date.parse("2030-01-27T15:00:00Z"));
+          expect(await readAlarm(accountId)).toBe(Date.parse("2030-01-30T15:00:00Z"));
         });
       }
     });

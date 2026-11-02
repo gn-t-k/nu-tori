@@ -9,6 +9,7 @@ import createSentTextAndReplyTables from "../../durable-object-migrations/0008_c
 import createGoalTables from "../../durable-object-migrations/0009_create_goal_tables.sql";
 import createWeeklyReviewAndGoalProgressTables from "../../durable-object-migrations/0010_create_weekly_review_and_goal_progress_tables.sql";
 import createSubscriptionTables from "../../durable-object-migrations/0011_create_subscription_tables.sql";
+import createLedgeredSubscriptionStatuses from "../../durable-object-migrations/0012_create_ledgered_subscription_statuses.sql";
 import type { DurableObjectMigration } from "./apply-durable-object-migrations";
 
 // 版の順に並べる。SQL は ../../durable-object-migrations/ に置き、import で読む
@@ -24,4 +25,5 @@ export const durableObjectMigrations: readonly DurableObjectMigration[] = [
   { version: 9, sql: createGoalTables },
   { version: 10, sql: createWeeklyReviewAndGoalProgressTables },
   { version: 11, sql: createSubscriptionTables },
+  { version: 12, sql: createLedgeredSubscriptionStatuses },
 ];

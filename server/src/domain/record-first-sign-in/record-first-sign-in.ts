@@ -7,7 +7,7 @@ import { createSubscriptionExpiredEvent } from "../../subscription-status/domain
 import type { FirstSignInStore } from "./first-sign-in-store";
 
 // 使い始めた日は一度決めたら変えない。タイムゾーンが届かないか読めないときは UTC の日付にする。
-// サブスクリプションの状態の記録の ID は最初のサインインの ID なので、同じトランザクションで状態の変更を足す。
+// サブスクリプションの状態の記録の ID は最初のサインインの ID。状態の変更は、端末が取りに来たときに足す（#881）。
 // 前に無料体験を使った Apple ID なら、同じトランザクションで無料体験なしの印も付ける（2回目からのサインインでは付けない）。
 // 印を付けたアカウントは、取引も無料体験も無く今サブスクリプション切れなので、切れた出来事を返す（#647 の「観測」）。
 // 作ったばかりのアカウントはテストユーザーの旗を持てないので、旗は読まない
@@ -20,7 +20,7 @@ export const recordFirstSignIn = (
     isFreeTrialUsedByEarlierAccount: boolean;
   },
 ): UsageEvent[] =>
-  writeRecordChanges(({ addChange }): UsageEvent[] => {
+  writeRecordChanges((): UsageEvent[] => {
     if (store.exists()) {
       return [];
     }
@@ -35,7 +35,6 @@ export const recordFirstSignIn = (
       signedInAt: signIn.signedInAt,
       timeZone,
     });
-    addChange({ recordType: "subscription_status", recordId: id });
     if (!signIn.isFreeTrialUsedByEarlierAccount) {
       return [];
     }

@@ -11,22 +11,22 @@ describe("課金の仕事が動く時刻", () => {
       facts = freeTrialFacts();
     });
 
-    test("あと3日の日の前なら、あと3日の日の東京の 0:00 に動くこと", () => {
+    test("無料体験の終わりの前なら、終わり（最後の日の次の日の東京の 0:00）に動くこと", () => {
       expect(
         findSubscriptionCheck(facts, "Asia/Tokyo", new Date("2026-10-30T00:00:00.000Z")),
-      ).toEqual({ nextAt: new Date("2026-10-30T15:00:00.000Z"), isDue: false });
+      ).toEqual({ nextAt: new Date("2026-11-02T15:00:00.000Z"), isDue: false });
     });
 
-    test("あと3日の日の 0:00 ちょうどなら、そこで動いたことにし、次は最後の日の 0:00 に動くこと", () => {
-      expect(
-        findSubscriptionCheck(facts, "Asia/Tokyo", new Date("2026-10-30T15:00:00.000Z")),
-      ).toEqual({ nextAt: new Date("2026-11-01T15:00:00.000Z"), isDue: true });
-    });
-
-    test("最後の日のうちなら、最後の日の 0:00 から 24 時間の内なので動いたことにし、次は無料体験の終わり（次の日の 0:00）に動くこと", () => {
+    test("あと3日の日と最後の日の 0:00 では動かないこと（状態の値が変わらないため。#881）", () => {
       expect(
         findSubscriptionCheck(facts, "Asia/Tokyo", new Date("2026-11-02T03:00:00.000Z")),
-      ).toEqual({ nextAt: new Date("2026-11-02T15:00:00.000Z"), isDue: true });
+      ).toEqual({ nextAt: new Date("2026-11-02T15:00:00.000Z"), isDue: false });
+    });
+
+    test("無料体験の終わりの 0:00 ちょうどなら、そこで動いたことにすること", () => {
+      expect(
+        findSubscriptionCheck(facts, "Asia/Tokyo", new Date("2026-11-02T15:00:00.000Z")),
+      ).toEqual({ nextAt: undefined, isDue: true });
     });
 
     test("無料体験の終わりから 24 時間を過ぎたら、もう動かないこと", () => {
@@ -42,16 +42,10 @@ describe("課金の仕事が動く時刻", () => {
       facts = freeTrialFacts();
     });
 
-    test("あと3日の日の 0:00 を夏時間で出すこと", () => {
+    test("無料体験の終わりの 0:00 を、夏時間が終わったあとの時差で出すこと", () => {
       expect(
         findSubscriptionCheck(facts, "America/New_York", new Date("2026-10-30T00:00:00.000Z")),
-      ).toEqual({ nextAt: new Date("2026-10-31T04:00:00.000Z"), isDue: false });
-    });
-
-    test("最後の日の 0:00 を、夏時間が終わったあとの時差で出すこと", () => {
-      expect(
-        findSubscriptionCheck(facts, "America/New_York", new Date("2026-10-31T04:00:00.000Z")),
-      ).toEqual({ nextAt: new Date("2026-11-02T05:00:00.000Z"), isDue: true });
+      ).toEqual({ nextAt: new Date("2026-11-03T05:00:00.000Z"), isDue: false });
     });
   });
 
