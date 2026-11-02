@@ -63,7 +63,7 @@ export const reportSubscriptionTransaction = (
       return writeReceivedSubscriptionFacts(
         stores,
         writes,
-        { receiptId: report.requestId, firstSignInId, transaction: report.transaction, now },
+        { receiptId: report.requestId, transaction: report.transaction, now },
         ({ subscriptionTransactionId }) => {
           store.insertTransactionReportReceipt({
             subscriptionReceiptId: report.requestId,

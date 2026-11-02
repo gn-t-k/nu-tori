@@ -461,7 +461,7 @@ describe("食事の写真", () => {
       expect(alarmFailure).toEqual(expect.objectContaining({ message: "R2 に届かない" }));
     });
 
-    // 課金の仕事の区切り（無料体験のあと3日の日）には張るので、今より後であることを見る
+    // 課金の仕事の時刻（無料体験の終わり）には張るので、今より後であることを見る
     test("消し直しのために、アラームを今に張り直さないこと", async () => {
       expect(
         await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>

@@ -5,8 +5,10 @@ import type { SubscriptionTransactionFact } from "../../subscription/domain/subs
 export type SubscriptionStatusStore = {
   // 最初のサインインがまだ無ければ undefined
   findFacts: () => SubscriptionStatusFacts | undefined;
-  // 帳簿に状態の記録の変更が1つでもあるか。課金を入れる前からのアカウントは、最初のサインインで変更を足していない
-  hasRecordedChange: () => boolean;
+  // 帳簿に状態の変更を最後に載せたときの状態（JSON の文字列）。まだ載せていなければ undefined
+  findLedgeredStatus: () => string | undefined;
+  // 帳簿に状態の変更を載せたときの状態を書き足す。記録の変化を書く入口の run の中で呼ぶ
+  insertLedgeredStatus: (ledgered: { status: string; ledgeredAt: Date }) => void;
 };
 
 export type SubscriptionStatusFacts = {

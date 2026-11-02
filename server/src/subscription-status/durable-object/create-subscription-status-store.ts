@@ -1,13 +1,13 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { recordIdSchema } from "../../domain/record-id";
 import { firstSignInTables } from "../../durable-object/first-sign-in-tables";
-import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import { subscriptionTables } from "../../subscription/durable-object/subscription-tables";
 import type { SubscriptionStatusStore } from "../domain/subscription-status-store";
+import { subscriptionStatusTables } from "./subscription-status-tables";
 
 const { firstSignIns } = firstSignInTables;
-const { recordChanges } = syncLedgerTables;
+const { ledgeredSubscriptionStatuses } = subscriptionStatusTables;
 const {
   appStoreSubscriptions,
   subscriptionTransactions,
@@ -24,13 +24,16 @@ export const createSubscriptionStatusStore = (
   db: DrizzleSqliteDODatabase,
   account: { isTestUser: boolean; billingStartedOn: string },
 ): SubscriptionStatusStore => ({
-  hasRecordedChange: () =>
+  findLedgeredStatus: () =>
     db
-      .select({ sequence: recordChanges.sequence })
-      .from(recordChanges)
-      .where(eq(recordChanges.recordType, "subscription_status"))
+      .select({ status: ledgeredSubscriptionStatuses.status })
+      .from(ledgeredSubscriptionStatuses)
+      .orderBy(desc(ledgeredSubscriptionStatuses.sequence))
       .limit(1)
-      .get() !== undefined,
+      .get()?.status,
+  insertLedgeredStatus: (ledgered) => {
+    db.insert(ledgeredSubscriptionStatuses).values(ledgered).run();
+  },
   findFacts: () => {
     const firstSignIn = db
       .select({ id: firstSignIns.id, startedOn: firstSignIns.startedOn })

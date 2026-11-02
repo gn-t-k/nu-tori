@@ -3,7 +3,7 @@ import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
-import { withoutSignInChanges } from "../../http/sync-routes/testing/without-sign-in-changes";
+import { withoutSubscriptionStatusChanges } from "../../http/sync-routes/testing/without-subscription-status-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
 import { sourceDeletedWeightRecordWrite } from "../../weight-record/http/testing/source-deleted-weight-record-write";
@@ -45,7 +45,7 @@ describe("知らせの同期", () => {
 
     test("取りに行くと、答えの無い知らせが返ること", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(withoutSignInChanges(pulled.changes)).toEqual([
+      expect(withoutSubscriptionStatusChanges(pulled.changes)).toEqual([
         {
           sequence: expect.any(Number),
           kind: "notice",
@@ -83,7 +83,7 @@ describe("知らせの同期", () => {
 
     test("取りに行くと、対象の日付も答えも無い知らせが返ること", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(withoutSignInChanges(pulled.changes)).toEqual([
+      expect(withoutSubscriptionStatusChanges(pulled.changes)).toEqual([
         {
           sequence: expect.any(Number),
           kind: "notice",
@@ -119,7 +119,7 @@ describe("知らせの同期", () => {
       test("先の知らせの値を変えないこと", async () => {
         const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
         expect(
-          withoutSignInChanges(pulled.changes).map(({ record }) => record["issuedAt"]),
+          withoutSubscriptionStatusChanges(pulled.changes).map(({ record }) => record["issuedAt"]),
         ).toEqual([1_767_225_600_000]);
       });
     });
@@ -140,7 +140,9 @@ describe("知らせの同期", () => {
 
       test("取りに行くと、答えを添えた、対象の日付の無い知らせが返ること", async () => {
         const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-        expect(withoutSignInChanges(pulled.changes).map(({ record }) => record)).toEqual([
+        expect(
+          withoutSubscriptionStatusChanges(pulled.changes).map(({ record }) => record),
+        ).toEqual([
           {
             id: noticeId,
             noticeType: "goal_setup",
@@ -168,7 +170,9 @@ describe("知らせの同期", () => {
         test("先の答えが残ること", async () => {
           const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
           expect(
-            withoutSignInChanges(pulled.changes).map(({ record }) => record["response"]),
+            withoutSubscriptionStatusChanges(pulled.changes).map(
+              ({ record }) => record["response"],
+            ),
           ).toEqual([{ respondedAt: 1_767_229_200_000, timeZone: "Asia/Tokyo" }]);
         });
       });
@@ -201,7 +205,7 @@ describe("知らせの同期", () => {
       test("先の知らせの値を変えないこと", async () => {
         const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
         expect(
-          withoutSignInChanges(pulled.changes).map(({ record }) => record["issuedAt"]),
+          withoutSubscriptionStatusChanges(pulled.changes).map(({ record }) => record["issuedAt"]),
         ).toEqual([1_767_225_600_000]);
       });
     });
@@ -224,7 +228,7 @@ describe("知らせの同期", () => {
 
       test("知らせを残さないこと", async () => {
         const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-        expect(withoutSignInChanges(pulled.changes)).toEqual([]);
+        expect(withoutSubscriptionStatusChanges(pulled.changes)).toEqual([]);
       });
     });
 
@@ -362,7 +366,7 @@ describe("知らせの同期", () => {
         const pulled = await (
           await pullSyncChanges(sessionToken, { afterSequence: created.nextAfterSequence })
         ).json<PullResult>();
-        expect(withoutSignInChanges(pulled.changes)).toEqual([
+        expect(withoutSubscriptionStatusChanges(pulled.changes)).toEqual([
           {
             sequence: expect.any(Number),
             kind: "notice",
@@ -396,7 +400,9 @@ describe("知らせの同期", () => {
         test("先の答えが残ること", async () => {
           const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
           expect(
-            withoutSignInChanges(pulled.changes).map(({ record }) => record["response"]),
+            withoutSubscriptionStatusChanges(pulled.changes).map(
+              ({ record }) => record["response"],
+            ),
           ).toEqual([{ respondedAt: 1_767_229_200_000, timeZone: "America/Los_Angeles" }]);
         });
       });
@@ -411,7 +417,9 @@ describe("知らせの同期", () => {
         test("答えていない形に戻らないこと", async () => {
           const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
           expect(
-            withoutSignInChanges(pulled.changes).map(({ record }) => record["response"]),
+            withoutSubscriptionStatusChanges(pulled.changes).map(
+              ({ record }) => record["response"],
+            ),
           ).toEqual([{ respondedAt: 1_767_229_200_000, timeZone: "America/Los_Angeles" }]);
         });
       });
@@ -431,7 +439,7 @@ describe("知らせの同期", () => {
       test("答えが残ること", async () => {
         const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
         expect(
-          withoutSignInChanges(pulled.changes)
+          withoutSubscriptionStatusChanges(pulled.changes)
             .filter(({ kind }) => kind === "notice")
             .map(({ record }) => record["response"]),
         ).toEqual([{ respondedAt: 1_767_229_200_000, timeZone: "Asia/Tokyo" }]);

@@ -18,8 +18,7 @@ export const findDeadlineExpiredEvent = (
   ) {
     return undefined;
   }
-  const { freeTrial, subscriptionEnd } = computeSubscriptionBoundaries(facts, timeZone);
-  const freeTrialEnd = freeTrial?.endsAt;
+  const { freeTrialEnd, subscriptionEnd } = computeSubscriptionBoundaries(facts, timeZone);
   const accessEnd =
     subscriptionEnd === undefined || (freeTrialEnd !== undefined && freeTrialEnd > subscriptionEnd)
       ? freeTrialEnd

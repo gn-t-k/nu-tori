@@ -38,8 +38,7 @@ export const receiveAppStoreServerNotification = (
   now: Date,
 ): { result: AppStoreServerNotificationResult; usageEvents: UsageEvent[] } => {
   const { subscriptionTransaction: store } = stores;
-  const firstSignInId = stores.records.subscriptionStatus.findFacts()?.firstSignInId;
-  if (firstSignInId === undefined) {
+  if (stores.records.subscriptionStatus.findFacts() === undefined) {
     throw new Error("最初のサインインの無いアカウントに App Store のサーバー通知が届いた");
   }
   return writeRecordChanges((writes) => {
@@ -56,7 +55,7 @@ export const receiveAppStoreServerNotification = (
     const { usageEvents } = writeReceivedSubscriptionFacts(
       stores,
       writes,
-      { receiptId, firstSignInId, transaction: notification.transaction, now },
+      { receiptId, transaction: notification.transaction, now },
       ({ subscriptionId, subscriptionTransactionId }) => {
         store.insertNotificationReceipt({
           subscriptionReceiptId: receiptId,

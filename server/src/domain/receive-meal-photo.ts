@@ -17,7 +17,7 @@ export const receiveMealPhoto = (
 ): R.ResultAsync<void, MealPhotoReceiptFailedError> => {
   const { photoId, receivedAt } = request;
   if (stores.mealPhoto.hasReceipt(photoId) || stores.mealPhoto.hasDeletion(photoId)) {
-    return R.succeed(Promise.resolve());
+    return Promise.resolve(R.succeed());
   }
   // R2 はトランザクションに入らないので、置いてから控える。置いているあいだに食事が消えたら、控えたあとに消し残しとして消す
   return R.pipe(
