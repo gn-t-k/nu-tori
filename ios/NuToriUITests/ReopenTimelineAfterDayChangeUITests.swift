@@ -13,7 +13,8 @@ final class ReopenTimelineAfterDayChangeUITests: XCTestCase {
         continueAfterFailure = false
         app = .launched(
             account: "signed-in", api: "meal-estimation", healthLatestKilograms: nil,
-            pickedPhotos: UITestPickedPhotos(count: 1), now: .morningBeforeNotice,
+            pickedPhotos: UITestPickedPhotos(source: .solidColors(count: 1)),
+            now: .morningBeforeNotice,
             dayPassesOnReturn: true,
             timeZone: "Asia/Tokyo")
         XCTAssertTrue(app.buttons["composer-photos"].waitForExistence(timeout: 5))

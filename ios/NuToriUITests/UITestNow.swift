@@ -9,7 +9,7 @@ enum UITestNow: String {
     case morningAfterNotice = "2026-10-05T09:00"
     /// 見本の人（`ListingScene`）の水曜の朝。撮る画面の状態の表示（9:41）とそろえる
     case listingSampleWednesday = "2026-01-21T09:41"
-    /// 見本の人の、2回めの見直しをした月曜の、体重を量る 7:00 より前の朝。今朝の体重が無く、体重の知らせの時刻（8:00）より前なので、0:05 の見直しの知らせがタイムラインの一番下に来る。状態の表示の 9:41 とはそろわない（`ListingScene.stepGuide`）
+    /// 見本の人の、2回めの見直しをした月曜の、体重を量る 7:00 より前の朝。なぜこの時刻かは `ListingScene.launch()`
     case listingSampleMondayBeforeWeighing = "2026-01-19T06:30"
 
     /// 止めた時刻を、そのタイムゾーンの時刻として読む。テストの側で、アプリと同じ「今日」を数えるため。

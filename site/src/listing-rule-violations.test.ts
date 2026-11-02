@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import {
-  appStoreConnectListing,
-  medicalDisclaimer,
-  type AppStoreConnectListing,
-} from "./app-store-connect-listing";
+import { appStoreConnectListing, type AppStoreConnectListing } from "./app-store-connect-listing";
 import { listingRuleViolations } from "./listing-rule-violations";
+import { medicalDisclaimer } from "./medical-disclaimer";
 import { examplePriceText } from "./testing/example-price-text";
 
 describe("掲載情報の決まり", () => {

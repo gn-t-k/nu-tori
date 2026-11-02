@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 // 書き出した WebP の幅・高さと透過の有無を、ファイルの頭から読む（https://developers.google.com/speed/webp/docs/riff_container）
-export const readImageSize = async (
+export const readWebpSize = async (
   filePath: string,
 ): Promise<{ width: number; height: number; hasAlpha: boolean }> => {
   const bytes = await readFile(filePath);

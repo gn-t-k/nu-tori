@@ -489,8 +489,12 @@ check_ios_app() {
     check_ios_package
 
     step "アプリと UI テストのビルド"
-    local simulator
-    simulator="$(latest_iphone_simulator)"
+    build_ios_for_testing "$(latest_iphone_simulator)"
+}
+
+# アプリと UI テストを、渡した ID のシミュレーター向けにビルドする
+build_ios_for_testing() {
+    local simulator="$1"
     xcodebuild \
         -project "$ios/NuTori.xcodeproj" \
         -scheme NuTori \
@@ -552,13 +556,7 @@ check_ios_screenshots() {
     step "アプリと UI テストのビルド"
     local build_simulator
     build_simulator="$(latest_iphone_simulator)"
-    xcodebuild \
-        -project "$ios/NuTori.xcodeproj" \
-        -scheme NuTori \
-        -destination "id=$build_simulator" \
-        -derivedDataPath "$derived_data" \
-        -disableAutomaticPackageResolution \
-        build-for-testing
+    build_ios_for_testing "$build_simulator"
 
     step "6.9 インチのシミュレーターを用意する"
     local runtime
