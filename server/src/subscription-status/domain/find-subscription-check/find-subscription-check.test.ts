@@ -17,9 +17,15 @@ describe("課金の仕事が動く時刻", () => {
       ).toEqual({ nextAt: new Date("2026-11-02T15:00:00.000Z"), isDue: false });
     });
 
-    test("あと3日の日と最後の日の 0:00 では動かないこと（状態の値が変わらないため。#881）", () => {
+    test("あと3日の日の 0:00 ちょうどでも、動いたことにしないこと", () => {
       expect(
-        findSubscriptionCheck(facts, "Asia/Tokyo", new Date("2026-11-02T03:00:00.000Z")),
+        findSubscriptionCheck(facts, "Asia/Tokyo", new Date("2026-10-30T15:00:00.000Z")),
+      ).toEqual({ nextAt: new Date("2026-11-02T15:00:00.000Z"), isDue: false });
+    });
+
+    test("最後の日の 0:00 ちょうどでも、動いたことにしないこと", () => {
+      expect(
+        findSubscriptionCheck(facts, "Asia/Tokyo", new Date("2026-11-01T15:00:00.000Z")),
       ).toEqual({ nextAt: new Date("2026-11-02T15:00:00.000Z"), isDue: false });
     });
 

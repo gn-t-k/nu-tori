@@ -4,7 +4,6 @@ import { hasPassedWithinDay } from "../has-passed-within-day";
 import type { SubscriptionStatusFacts } from "../subscription-status-store";
 
 // 課金の仕事（アラーム）が動く時刻。切れた出来事を送るため、無料体験の終わり（最後の日の次の日の始まり）とサブスクリプションの終わりのうち、今より後のいちばん早いものが nextAt。isDue は、そのどれかを過ぎてから 24 時間の内か。
-// 状態の変更は足さない（取りに来たときに足す。#881）
 export const findSubscriptionCheck = (
   facts: Omit<SubscriptionStatusFacts, "firstSignInId" | "isTestUser">,
   timeZone: string,

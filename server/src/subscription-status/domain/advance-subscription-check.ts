@@ -8,7 +8,7 @@ import { readSubscriptionCheck } from "./read-subscription-check";
 import { readSubscriptionFacts } from "./read-subscription-facts";
 
 // 課金の仕事（アラーム）の入口。無料体験とサブスクリプションの終わりに切れた出来事を作り、使えるようになっていれば保留した推定を再開する。
-// 状態の変更は足さない（取りに来たときに足す。#881）。時機でなければ何もしない。送る出来事（切れた）を返す
+// 時機でなければ何もしない。送る出来事（切れた）を返す
 export const advanceSubscriptionCheck = (
   writeRecordChanges: RecordChangeWriter,
   stores: Pick<

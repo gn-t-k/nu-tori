@@ -11,8 +11,7 @@ import { writeAppStoreTransaction } from "./write-app-store-transaction";
 
 // 端末の取引の知らせと App Store のサーバー通知が、記録の変化を書く入口の run の中で事実を書く流れ。
 // 受け取り、運んだ取引の写し、出どころの事実（writeSourceFacts。状態が変わりうる事実を書いたら true を返す）の順に書く。
-// 取引・取り消し・出どころの事実のどれかを書いたら、保留した推定を再開して、出来事を作る。
-// サブスクリプションの状態の変更は、端末が取りに来たときに足す（#881）
+// 取引・取り消し・出どころの事実のどれかを書いたら、保留した推定を再開して、出来事を作る
 export const writeReceivedSubscriptionFacts = (
   stores: {
     subscriptionTransaction: SubscriptionTransactionStore;

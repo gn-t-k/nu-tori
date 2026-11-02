@@ -3,7 +3,7 @@ import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { signInTestAccount } from "../../http/testing";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
-import { withoutSignInChanges } from "../../http/sync-routes/testing/without-sign-in-changes";
+import { withoutSubscriptionStatusChanges } from "../../http/sync-routes/testing/without-subscription-status-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
 import { updateAccountSettingsWrite } from "./testing/update-account-settings-write";
@@ -40,7 +40,7 @@ describe("アカウントの設定の同期", () => {
 
     test("取りに行くと、アカウントの設定が返ること", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(withoutSignInChanges(pulled.changes)).toEqual([
+      expect(withoutSubscriptionStatusChanges(pulled.changes)).toEqual([
         {
           sequence: expect.any(Number),
           kind: "account_settings",
@@ -70,7 +70,9 @@ describe("アカウントの設定の同期", () => {
     test("あとに受け取ったほうの値を1件だけ返すこと", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
       expect(
-        withoutSignInChanges(pulled.changes).map(({ record }) => record["sendsUsageData"]),
+        withoutSubscriptionStatusChanges(pulled.changes).map(
+          ({ record }) => record["sendsUsageData"],
+        ),
       ).toEqual([true]);
     });
 

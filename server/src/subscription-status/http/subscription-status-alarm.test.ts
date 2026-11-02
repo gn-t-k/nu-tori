@@ -14,7 +14,7 @@ import { createWeightRecordWrite } from "../../weight-record/http/testing/create
 import { markTestUser } from "./testing/mark-test-user";
 import { placeFreeTrialLastDay } from "./testing/place-free-trial-last-day";
 
-// 課金の仕事（アラーム）が動く時刻。状態の変更は足さない（取りに来たときに足す。#881）。同期の要求は Asia/Tokyo で送る
+// 課金の仕事（アラーム）が動く時刻。同期の要求は Asia/Tokyo で送る
 describe("課金の仕事のアラーム", () => {
   let accountId: string;
   let sessionToken: string;

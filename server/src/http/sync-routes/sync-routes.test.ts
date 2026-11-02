@@ -14,7 +14,7 @@ import { weightTrendRecordId } from "../../weight-trend/domain/weight-trend-reco
 import { app } from "../app";
 import { enableUsageEventSending } from "./testing/enable-usage-event-sending";
 import { pullSyncChanges, type PullResult } from "./testing/pull-sync-changes";
-import { withoutSignInChanges } from "./testing/without-sign-in-changes";
+import { withoutSubscriptionStatusChanges } from "./testing/without-subscription-status-changes";
 import { pushSyncWrites, type PushResults } from "./testing/push-sync-writes";
 import { readRows } from "./testing/read-rows";
 import { runInDurableObject } from "cloudflare:test";
@@ -47,7 +47,7 @@ describe("同期", () => {
 
     test("記録も変更も増えないこと", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(withoutSignInChanges(pulled.changes).map(({ kind }) => kind)).toEqual([
+      expect(withoutSubscriptionStatusChanges(pulled.changes).map(({ kind }) => kind)).toEqual([
         "weight_record",
         "weight_trend",
       ]);
@@ -378,10 +378,9 @@ describe("同期", () => {
 
     test("受け付けなかった記録は保存しないこと", async () => {
       const pulled = await (await pullSyncChanges(sessionToken)).json<PullResult>();
-      expect(withoutSignInChanges(pulled.changes).map(({ recordId }) => recordId)).toEqual([
-        acceptable.weightRecord["id"],
-        weightTrendRecordId,
-      ]);
+      expect(
+        withoutSubscriptionStatusChanges(pulled.changes).map(({ recordId }) => recordId),
+      ).toEqual([acceptable.weightRecord["id"], weightTrendRecordId]);
     });
 
     describe("受け付けなかった書き込みを送り直したとき", () => {
@@ -428,7 +427,7 @@ describe("同期", () => {
         "SELECT sync_request_log_id FROM sync_push_logs",
       );
       expect({
-        changes: withoutSignInChanges(pulled.changes),
+        changes: withoutSubscriptionStatusChanges(pulled.changes),
         pushRequestLogs: requestLogs,
       }).toEqual({
         changes: [],

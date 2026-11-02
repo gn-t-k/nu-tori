@@ -16,7 +16,7 @@ import { postGoalSetup } from "../../http/goal-setup-routes/testing/post-goal-se
 import { recordDailyWeights } from "../../http/goal-setup-routes/testing/record-daily-weights";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
-import { withoutSignInChanges } from "../../http/sync-routes/testing/without-sign-in-changes";
+import { withoutSubscriptionStatusChanges } from "../../http/sync-routes/testing/without-subscription-status-changes";
 import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-usage-event-sending";
 import { signInTestAccount } from "../../http/testing";
 import {
@@ -93,7 +93,7 @@ describe("期限後の維持に移る見直し", () => {
           change.kind === kind && (recordId === undefined || change.recordId === recordId),
       );
     pullChanges = async () =>
-      withoutSignInChanges(
+      withoutSubscriptionStatusChanges(
         (await (await pullSyncChanges(sessionToken)).json<PullResult>()).changes,
       ).map(({ kind, recordId, record }) => ({ kind, recordId, record }));
     // M の日本時間の正午
