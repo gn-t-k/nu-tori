@@ -13,25 +13,6 @@ describe("仮の文の欄", () => {
     expect(draftListingFields(appStoreConnectListing)).toEqual([]);
   });
 
-  describe("文言がどれも本番の文のとき", () => {
-    beforeEach(() => {
-      listing = {
-        ...appStoreConnectListing,
-        subtitle: { ...appStoreConnectListing.subtitle, status: "final" },
-        promotionalText: { ...appStoreConnectListing.promotionalText, status: "final" },
-        description: { ...appStoreConnectListing.description, status: "final" },
-        screenshots: appStoreConnectListing.screenshots.map((screenshot) => ({
-          ...screenshot,
-          headline: { ...screenshot.headline, status: "final" },
-        })),
-      };
-    });
-
-    test("挙げないこと", () => {
-      expect(draftListingFields(listing)).toEqual([]);
-    });
-  });
-
   describe("説明文と2枚目の見出しが仮の文のとき", () => {
     beforeEach(() => {
       listing = {

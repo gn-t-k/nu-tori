@@ -1,4 +1,5 @@
-import { medicalDisclaimer, type AppStoreConnectListing } from "./app-store-connect-listing";
+import type { AppStoreConnectListing } from "./app-store-connect-listing";
+import { medicalDisclaimer } from "./medical-disclaimer";
 
 // 掲載情報が App Store の上限と、nu-tori の決まり（仕様 #853「テストの決定」）に外れるところを、決まった順で挙げる
 export const listingRuleViolations = (listing: AppStoreConnectListing): ListingRuleViolation[] => {

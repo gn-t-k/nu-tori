@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { composeScreenshots } from "./compose-screenshots.ts";
-import { readImageSize } from "./testing/read-image-size.ts";
 import { readPngSize } from "./testing/read-png-size.ts";
+import { readWebpSize } from "./testing/read-webp-size.ts";
 import { writePng } from "./testing/write-png.ts";
 
 describe("合成のコマンド", () => {
@@ -52,17 +52,20 @@ describe("合成のコマンド", () => {
 
   describe("LP の手順の絵", () => {
     describe("生の画面が3つそろっているとき", () => {
+      let rawDirectory: string;
+      let bezelPath: string;
       let publicDirectory: string;
 
       beforeEach(async () => {
-        const rawDirectory = await writeRawScreens(["step-weigh", "step-photo", "step-guide"]);
-        const bezelPath = await writeSubstituteBezel();
+        rawDirectory = await writeRawScreens(["step-weigh", "step-photo", "step-guide"]);
+        bezelPath = await writeSubstituteBezel();
         publicDirectory = path.join(workDirectory, "public");
         await composeScreenshots({
           rawDirectory,
           bezelPath,
           publicDirectory,
           stepShotsPath: path.join(workDirectory, "step-shots.json"),
+          listingDirectory: undefined,
         });
       });
 
@@ -71,8 +74,8 @@ describe("合成のコマンド", () => {
         expect(files.toSorted()).toEqual(["step-guide.webp", "step-photo.webp", "step-weigh.webp"]);
       });
 
-      // 枠の縦横比が 1:2 で、LP の場所取りの幅が 200 なので、LP は 200×400 で置き、絵はその2倍の密度
-      test("LP が読む幅と高さを書き、その2倍の密度で書き出すこと", async () => {
+      // 枠の縦横比が 1:2 で、LP の場所取りの幅が 200 なので、JSON には 200×400 を書き、絵はその2倍の密度
+      test("幅と高さを JSON に書き、その2倍の密度で書き出すこと", async () => {
         const shots: unknown = JSON.parse(
           await readFile(path.join(workDirectory, "step-shots.json"), "utf8"),
         );
@@ -82,7 +85,7 @@ describe("合成のコマンド", () => {
           "step-guide": { src: "/landing-a/steps/step-guide.webp", width: 200, height: 400 },
         });
         for (const name of ["step-weigh", "step-photo", "step-guide"]) {
-          const size = await readImageSize(
+          const size = await readWebpSize(
             path.join(publicDirectory, "landing-a", "steps", `${name}.webp`),
           );
           expect(size).toEqual({ width: 400, height: 800, hasAlpha: true });
@@ -95,10 +98,11 @@ describe("合成のコマンド", () => {
         beforeEach(async () => {
           againDirectory = path.join(workDirectory, "again");
           await composeScreenshots({
-            rawDirectory: path.join(workDirectory, "raw"),
-            bezelPath: path.join(workDirectory, "bezel.png"),
+            rawDirectory,
+            bezelPath,
             publicDirectory: againDirectory,
             stepShotsPath: path.join(againDirectory, "step-shots.json"),
+            listingDirectory: undefined,
           });
         });
 
@@ -125,6 +129,7 @@ describe("合成のコマンド", () => {
             bezelPath,
             publicDirectory: path.join(workDirectory, "public"),
             stepShotsPath: path.join(workDirectory, "step-shots.json"),
+            listingDirectory: undefined,
           });
       });
 

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import type { Page } from "playwright";
+import { pngDataUrl } from "./png-data-url.ts";
 
 // 端末の枠の画像と、その中で画面が透けている穴の位置。数はすべて枠の画像のピクセル
 export type Bezel = {
@@ -11,7 +12,7 @@ export type Bezel = {
 
 // Apple Design Resources の iPhone の枠（PNG）は、画面の所が透けている。枠ごとに穴の位置を書かずに済むよう、穴を画像から読む
 export const loadBezel = async (page: Page, bezelPath: string): Promise<Bezel> => {
-  const dataUrl = `data:image/png;base64,${(await readFile(bezelPath)).toString("base64")}`;
+  const dataUrl = pngDataUrl(await readFile(bezelPath));
   const measured = await page.evaluate(async (source) => {
     const image = new Image();
     image.src = source;

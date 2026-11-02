@@ -16,7 +16,7 @@ extension XCUIApplication {
         timeZone: String?,
         textSize: UITestTextSize? = nil,
         japaneseLocale: Bool = false,
-        listingReplyShape: Int? = nil
+        listingReplyLineCount: Int? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["UI_TEST_ACCOUNT"] = account
@@ -27,18 +27,21 @@ extension XCUIApplication {
             app.launchEnvironment["UI_TEST_HEALTH_LATEST_KG"] = healthLatestKilograms
         }
         app.launchEnvironment["UI_TEST_HEALTH_WRITE"] = healthWrite
-        // 入力欄の「写真」で、選ぶ画面を開かずに、この枚数の写真を選んだことにし、読み終えるまでにこの秒数をかける
+        // 入力欄の「写真」で、選ぶ画面を開かずに、この枚数かこのファイルの写真を選んだことにし、読み終えるまでにこの秒数をかける
         if let pickedPhotos {
-            app.launchEnvironment["UI_TEST_PICKED_PHOTOS"] = String(pickedPhotos.count)
-            app.launchEnvironment["UI_TEST_PICKED_PHOTOS_LOADING_SECONDS"] = String(
-                pickedPhotos.loadingSeconds)
-            if let files = pickedPhotos.files {
+            switch pickedPhotos.source {
+            case .solidColors(let count):
+                app.launchEnvironment["UI_TEST_PICKED_PHOTOS"] = String(count)
+            case .files(let files):
                 app.launchEnvironment["UI_TEST_PICKED_PHOTO_FILES"] = files.joined(separator: "\n")
             }
+            app.launchEnvironment["UI_TEST_PICKED_PHOTOS_LOADING_SECONDS"] = String(
+                pickedPhotos.loadingSeconds)
         }
-        // 見本の人の昨日の夜の返事の形の番号（`ListingScreenshots`）
-        if let listingReplyShape {
-            app.launchEnvironment["UI_TEST_LISTING_REPLY_SHAPE"] = String(listingReplyShape)
+        // 見本の人の昨日の夜の返事の行の数（`ListingScreenshots`）
+        if let listingReplyLineCount {
+            app.launchEnvironment["UI_TEST_LISTING_REPLY_LINE_COUNT"] = String(
+                listingReplyLineCount)
         }
         // 同じ名前を渡して開き直すと、前に開いたときの締め出しを覚えている
         if let lockoutDefaults {

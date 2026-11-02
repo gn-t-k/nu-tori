@@ -1,5 +1,6 @@
 import { appStoreScreenshots, type AppStoreScreenshot } from "./app-store-screenshots.ts";
 import type { ListingCopy } from "./listing-copy.ts";
+import { medicalDisclaimer } from "./medical-disclaimer";
 import { dailyGuidePage } from "./pages/daily-guide-page";
 import { privacyPage } from "./pages/privacy-page";
 import { supportPage } from "./pages/support-page";
@@ -11,8 +12,6 @@ import { sitePages } from "./site-pages";
 // App Store Connect に開発者が wizard で入れる掲載情報の正本（仕様 #853「掲載情報のモジュール」）。
 // アプリの ID と提供者のトークン（app-store-listing.ts）と違い、ページには出さない。テストと合成のコマンドと wizard が読む（site/AGENTS.md「掲載情報を直す」）
 // サブタイトル・プロモーション用テキスト・説明文の線は #816 の解決コメントが正本で、#862 で本番の文にした（スクリーンショットの見出しは app-store-screenshots.ts）
-
-export const medicalDisclaimer = "医療の助言ではありません。持病のある方は医師に相談してください。";
 
 // 公開のページの URL を、ページの一覧から作る。一覧から外したページを指していたら止まる
 const publicPageUrl = (page: SitePage): string => {

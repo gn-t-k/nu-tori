@@ -22,8 +22,8 @@
         let dayPassesOnReturn: Bool
         /// 場面の記録を、前に開いたときに取り終えてキャッシュに持っている状態で始める。false なら、開いてから取りに行く
         let cacheHoldsRecords: Bool
-        /// 見本の人（`listingSampleScenario(_:)`）の昨日の夜の返事の形の番号（`ListingSample.feedback(on:shape:)`）。上の端で行が切れない番号を、撮る UI テストの場面（`ListingScene`）が渡す
-        let listingReplyShape: Int
+        /// 見本の人（`listingSampleScenario(_:)`）の昨日の夜の返事の行の数（`ListingSample.feedback(on:lineCount:)`）。撮る UI テストの場面（`ListingScene`）が渡す
+        let listingReplyLineCount: Int
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -40,36 +40,60 @@
                     == "not-yet-requested" ? .notYetRequested : .alreadyRequested,
                 healthLatestKilograms: environment["UI_TEST_HEALTH_LATEST_KG"].flatMap(Double.init),
                 healthWriteAuthorized: environment["UI_TEST_HEALTH_WRITE"] != "denied",
-                pickedPhotos: environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init).map {
+                pickedPhotos: PickedPhotos.Source(environment: environment).map {
                     PickedPhotos(
-                        count: $0,
+                        source: $0,
                         loadingSeconds: environment["UI_TEST_PICKED_PHOTOS_LOADING_SECONDS"]
-                            .flatMap(Double.init) ?? 0,
-                        files: environment["UI_TEST_PICKED_PHOTO_FILES"].map {
-                            $0.split(separator: "\n").map { URL(filePath: String($0)) }
-                        })
+                            .flatMap(Double.init) ?? 0)
                 },
                 lockoutDefaultsName: environment["UI_TEST_LOCKOUT_DEFAULTS"],
                 // UI テストは起動の値の TZ でタイムゾーンを決めるので、起動したときのタイムゾーンで止める
                 clock: frozenClock(environment["UI_TEST_NOW"]),
                 dayPassesOnReturn: environment["UI_TEST_DAY_PASSES_ON_RETURN"] != nil,
                 cacheHoldsRecords: environment["UI_TEST_CACHE_HOLDS_RECORDS"] != nil,
-                listingReplyShape: environment["UI_TEST_LISTING_REPLY_SHAPE"].flatMap(Int.init)
-                    ?? 0
+                listingReplyLineCount: environment["UI_TEST_LISTING_REPLY_LINE_COUNT"].flatMap(
+                    Int.init) ?? 0
             )
         }
 
         struct PickedPhotos {
-            let count: Int
+            let source: Source
             /// 読み終えるまでにかける秒数。読んでいるあいだの仮のカードを確かめるため
             let loadingSeconds: Double
-            /// 選んだことにする写真のファイル（シミュレーターから読める Mac のパス）。nil なら写真ごとに色を変えた無地の写真にする
-            let files: [URL]?
+
+            /// 選んだことにする写真の出どころ
+            enum Source {
+                /// 写真ごとに色を変えた無地の写真を、この枚数
+                case solidColors(count: Int)
+                /// このファイルの写真（シミュレーターから読める Mac のパス）
+                case files([URL])
+
+                /// 起動の値は、枚数かファイルのどちらか一方だけが渡る。どちらも無ければ nil
+                init?(environment: [String: String]) {
+                    if let files = environment["UI_TEST_PICKED_PHOTO_FILES"] {
+                        self = .files(
+                            files.split(separator: "\n").map { URL(filePath: String($0)) })
+                    } else if let count = environment["UI_TEST_PICKED_PHOTOS"].flatMap(Int.init) {
+                        self = .solidColors(count: count)
+                    } else {
+                        return nil
+                    }
+                }
+            }
+
+            var count: Int {
+                switch source {
+                case .solidColors(let count): count
+                case .files(let files): files.count
+                }
+            }
 
             /// 選んだことにする写真の JPEG
             var jpegs: [Data] {
-                files.map(UITestMealPhotos.jpegs(contentsOf:))
-                    ?? UITestMealPhotos.jpegs(count: count)
+                switch source {
+                case .solidColors(let count): UITestMealPhotos.jpegs(count: count)
+                case .files(let files): UITestMealPhotos.jpegs(contentsOf: files)
+                }
             }
         }
 

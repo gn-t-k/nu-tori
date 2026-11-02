@@ -52,7 +52,7 @@ export type AppStoreScreenshot = {
 };
 
 // 生の画面の名前。撮る UI テストとの約束（仕様 #853 の「撮る画面」）
-export type RawScreenName =
+type RawScreenName =
   | "step-weigh"
   | "step-photo"
   | "step-guide"

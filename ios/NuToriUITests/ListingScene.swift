@@ -45,24 +45,11 @@ enum ListingScene: String, CaseIterable {
         }
     }
 
-    /// 昨日の夜の返事の形の番号（アプリの `ListingSample.feedback(on:shape:)`。行の数の2倍と、前置きを置かないなら1）。
-    /// タイムラインは開くと一番下に着き、上の端（1日の丸の帯の下）にどの行が来るかは、その上に積んだ記録の高さで決まる。
-    /// 上の端で吹き出しやカードが半分切れないよう、場面ごとに iPhone 18 Pro Max のシミュレーターで撮り比べて選んだ（#858）。
-    /// textMeal はどの形でも少し切れるので、見出しが読める形にした。画面が変わって切れたら選び直す（テストでは確かめない）
-    private var replyShape: Int {
-        switch self {
-        case .textMeal: 16
-        case .stepWeigh, .photoEstimated: 10
-        case .stepPhoto, .stepGuide: 4
-        case .dish, .weeklyReview: 0
-        }
-    }
-
     /// 撮る前の操作をし、出るべきものが出るまで待つ。出なければ false（空の画面や読み込み中を撮らない）
     @MainActor func prepare(_ app: XCUIApplication) -> Bool {
         switch self {
         case .stepWeigh:
-            return Self.stepWeight(in: app.otherElements["weight-notice"], app: app)
+            return Self.stepWeight(app)
         case .stepPhoto:
             // 送り終えて推定中が届くと、カードの状態の1行が出る。この場面の偽のサーバーは推定を終えない
             return Self.pickPhoto(app, until: "推定しています…")
@@ -122,18 +109,32 @@ enum ListingScene: String, CaseIterable {
         }
     }
 
-    private static let timeZone = "Asia/Tokyo"
+    /// 昨日の夜の返事の行の数（アプリの `ListingSample.feedback(on:lineCount:)`）。
+    /// タイムラインは開くと一番下に着き、上の端（1日の丸の帯の下）にどの行が来るかは、その上に積んだ記録の高さで決まる。
+    /// 上の端で吹き出しやカードが半分切れないよう、場面ごとに iPhone 18 Pro Max のシミュレーターで撮り比べて選んだ（#858）。
+    /// textMeal はどの行の数でも少し切れるので、見出しが読める数にした。画面が変わって切れたら選び直す（テストでは確かめない）
+    private var replyLineCount: Int {
+        switch self {
+        case .textMeal: 8
+        case .stepWeigh, .photoEstimated: 5
+        case .stepPhoto, .stepGuide: 2
+        case .dish, .weeklyReview: 0
+        }
+    }
 
     @MainActor private func open(
         api: String, now: UITestNow = .listingSampleWednesday, photo: String? = nil
     ) -> XCUIApplication {
-        .launched(
+        let timeZone = "Asia/Tokyo"
+        return .launched(
             account: "signed-in", api: api, healthLatestKilograms: nil,
-            pickedPhotos: photo.map { UITestPickedPhotos(count: 1, files: [Self.photoPath($0)]) },
+            pickedPhotos: photo.map {
+                UITestPickedPhotos(source: .files([Self.photoPath($0)]))
+            },
             now: now,
             // 前に開いたときに取り終えた記録をキャッシュに持って開く。空から取りに行くと、今朝の体重が届く前に体重の知らせの時刻（8:00）を過ぎたと判じて、知らせのカードを出すことがある
-            cacheHoldsRecords: true, timeZone: Self.timeZone, japaneseLocale: true,
-            listingReplyShape: replyShape)
+            cacheHoldsRecords: true, timeZone: timeZone, japaneseLocale: true,
+            listingReplyLineCount: replyLineCount)
     }
 
     /// 今朝 7:00 の体重（daily-guide-example.json の 2026-01-21 の weightKg）が出て、読み込み中でない
@@ -142,18 +143,17 @@ enum ListingScene: String, CaseIterable {
             && !app.staticTexts["記録を読み込んでいます…"].exists
     }
 
-    /// 体重のステッパー（知らせの中。体重のシートの中でも同じ）の初めの値（前回の 1月20日の 77.7 kg）を 0.1 kg 上げ、今朝の体重（daily-guide-example.json の 2026-01-21 の weightKg、77.8 kg）にする。キーボードは出さない
-    @MainActor private static func stepWeight(in container: XCUIElement, app: XCUIApplication)
-        -> Bool
-    {
-        let increase = container.buttons["0.1 kg 増やす"]
+    /// 体重の知らせのステッパーの初めの値（前回の 1月20日の 77.7 kg）を 0.1 kg 上げ、今朝の体重（daily-guide-example.json の 2026-01-21 の weightKg、77.8 kg）にする。キーボードは出さない
+    @MainActor private static func stepWeight(_ app: XCUIApplication) -> Bool {
+        let notice = app.otherElements["weight-notice"]
+        let increase = notice.buttons["0.1 kg 増やす"]
         guard increase.waitForExistence(timeout: 10) else { return false }
         increase.tap()
-        let shown = container.descendants(matching: .any).matching(
+        let shown = notice.descendants(matching: .any).matching(
             NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "77.8", "77.8")
         ).firstMatch
         guard shown.waitForExistence(timeout: 5) else { return false }
-        // ステッパーの値の動き（シートなら上がる動きも）が終わるまで少し待つ
+        // ステッパーの値の動きが終わるまで少し待つ
         Thread.sleep(forTimeInterval: 1)
         return !app.keyboards.firstMatch.exists
     }
