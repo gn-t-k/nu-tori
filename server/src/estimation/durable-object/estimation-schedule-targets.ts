@@ -30,12 +30,6 @@ export const estimationScheduleTargets = {
           .innerJoin(dishes, eq(dishes.id, dishEstimationSchedules.dishId)),
       )
       .as("estimation_schedule_targets"),
-  toTarget: ({
-    mealId,
-    dishId,
-  }: {
-    mealId: RecordId;
-    dishId: RecordId | null;
-  }): EstimationTarget =>
+  toTarget: ({ mealId, dishId }: { mealId: RecordId; dishId: RecordId | null }): EstimationTarget =>
     dishId === null ? { type: "meal", mealId } : { type: "dish", dishId, mealId },
 };
