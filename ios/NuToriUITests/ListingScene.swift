@@ -22,7 +22,8 @@ enum ListingScene: String, CaseIterable {
 
     /// 場面の記録と時計で開く。記録は、アプリの UI テストの差し替えの見本の人（`UITestLaunch.listingSampleScenario(_:)`）。
     /// アプリの時計は、撮る画面の状態の表示（9:41）とそろえ、タイムゾーンは日本に固める。
-    /// `stepGuide` だけ月曜にする。1日の目安が変わった知らせと週の振り返りのカードは見直した月曜の日に置くので、水曜には火曜と水曜の記録の上へ流れて見えない
+    /// `stepGuide` だけ例外で、月曜の 6:30 にする。1日の目安が変わった知らせと週の振り返りのカードは見直した月曜の日に置くので、水曜には火曜と水曜の記録の上へ流れて見えない。
+    /// 9:41 だと今朝 7:00 の体重が知らせの下に写るので、その前の朝にして、見せたい知らせをタイムラインの一番下にする。状態の表示は 9:41 のままで、時刻のずれは画面に出ない
     @MainActor func launch() -> XCUIApplication {
         switch self {
         case .stepWeigh:
@@ -31,7 +32,7 @@ enum ListingScene: String, CaseIterable {
         case .weeklyReview:
             open(api: "listing-sample")
         case .stepGuide:
-            open(api: "listing-sample", now: .listingSampleMonday)
+            open(api: "listing-sample-before-weighing", now: .listingSampleMondayBeforeWeighing)
         case .stepPhoto:
             // 写真は LP の見本と同じ Wikimedia Commons の CC0（Ocdp）のおにぎりで、nu-tori の利用者の食事ではない。
             // 出どころは site/src/pages/landing-a/example-photo-meals.ts。リポジトリに2つ置かないよう、LP の写真をそのまま読む
@@ -52,8 +53,7 @@ enum ListingScene: String, CaseIterable {
         switch self {
         case .textMeal: 16
         case .stepWeigh, .photoEstimated: 10
-        case .stepPhoto: 4
-        case .stepGuide: 2
+        case .stepPhoto, .stepGuide: 4
         case .dish, .weeklyReview: 0
         }
     }
@@ -68,9 +68,13 @@ enum ListingScene: String, CaseIterable {
             return Self.pickPhoto(app, until: "推定しています…")
         case .stepGuide:
             // 今日の 0:05 の見直しで、1日の目安が 1,900 kcal から 1,750 kcal に変わった（daily-guide-example.json の reviews の2つめ）
-            return app.descendants(matching: .any)["daily-guide-change-notice"]
+            let changed =
+                app.descendants(matching: .any)["daily-guide-change-notice"]
                 .waitForExistence(timeout: 10)
                 && app.buttons["weekly-review-card"].exists
+            // 知らせが一番下にある。今朝 7:00 の体重（77.7 kg）も、体重の知らせのカードも、その下に出ていない
+            return changed && !app.staticText(containing: "77.7 kg").exists
+                && !app.otherElements["weight-notice"].exists
         case .photoEstimated:
             // 推定が届くと、カードの名前の場所が料理の名前になる
             return Self.pickPhoto(app, until: "カレーライス")
