@@ -280,7 +280,7 @@ struct TimelineScreen: View {
     }
 
     private func timelineList(_ timeline: Timeline) -> some View {
-        let listedDays = viewport.listedDays(of: timeline.days)
+        let drawnDays = viewport.drawnDays(of: timeline.days)
         return GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView {
@@ -290,9 +290,9 @@ struct TimelineScreen: View {
                         // 並べる日を新しいほうに絞り、遅れて読む並び（LazyVStack）にしない。理由は TimelineViewport
                         VStack(alignment: .leading) {
                             // 日が無いときに空の入れ物を置くと、下のカードの上に間隔が1つ増えるので置かない
-                            if !listedDays.isEmpty {
+                            if !drawnDays.isEmpty {
                                 VStack(alignment: .leading, spacing: Self.dayBoundaryGap) {
-                                    ForEach(listedDays, id: \.day) { day in
+                                    ForEach(drawnDays, id: \.day) { day in
                                         daySection(day, in: timeline)
                                             .id(day.day)
                                     }

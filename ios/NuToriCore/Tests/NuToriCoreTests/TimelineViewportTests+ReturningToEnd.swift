@@ -157,17 +157,19 @@ extension TimelineViewportTests {
             }
         }
 
-        @Suite("日のまとめで日を選んだとき")
+        @Suite("日のまとめで、項目のある日を選んだとき")
         struct DayChosen {
+            let days: [Timeline.Day]
             var viewport: TimelineViewport
 
-            init() {
+            init() throws {
+                days = try ListedDays.days(recordCounts: [1, 0])
                 viewport = TimelineViewportTests.opened()
             }
 
             @Test("並んでから、その日の区切りへ動かすこと")
             mutating func scrollsToDay() {
-                viewport.dayChosen(TimelineViewportTests.yesterday, in: [])
+                viewport.dayChosen(TimelineViewportTests.yesterday, in: days)
 
                 #expect(
                     viewport.waitingInstructions == [

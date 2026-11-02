@@ -3,7 +3,7 @@ import NuToriCore
 import Testing
 
 extension TimelineViewportTests {
-    /// 1回に並べるのは、項目が 30 個たまるか 30 日になるまで
+    /// 1回に並べるのは、項目が 30 個たまるまで。見出しを描かない日（今日でなく項目も無い日）は区切りを置かないので数えない
     @Suite("並べる日")
     struct ListedDays {
         /// 今日までの日の並び。`recordCounts` は古い日から今日への、日ごとの体重記録の数
@@ -106,9 +106,9 @@ extension TimelineViewportTests {
                 viewport = ListedDays.opened(with: days)
             }
 
-            @Test("新しいほうから30日を並べること")
-            func listsNewestThirtyDays() {
-                #expect(Array(viewport.listedDays(of: days)) == Array(days.suffix(30)))
+            @Test("空の日は区切りを置かず画面が伸びないので、全部の日を並べること")
+            func listsAllDays() {
+                #expect(Array(viewport.listedDays(of: days)) == days)
             }
         }
 
