@@ -103,10 +103,6 @@ public struct TimelineSnapshot: Sendable {
     /// 同期で届いた体重の傾向。体重記録が無ければ nil
     public var weightTrend: WeightTrend? { goalRecords.weightTrend }
 
-    public var weightRecordedToday: Bool {
-        weightRecords.contains { $0.day == today }
-    }
-
     /// サブスクリプション切れのあいだは、入力欄を押せなくし、返事を作り直す操作を出さない
     public var requiresSubscription: Bool {
         subscriptionStanding?.isExpired ?? false

@@ -22,7 +22,7 @@ final class SubscribeFromComposerChipAfterFreeTrialUITests: XCTestCase {
         XCTAssertFalse(app.buttons["composer-capture"].isEnabled)
         XCTAssertFalse(app.buttons["composer-photos"].isEnabled)
         XCTAssertFalse(app.composerField.isEnabled)
-        XCTAssertTrue(app.buttons["composer-weight-unrecorded"].isEnabled)
+        XCTAssertTrue(app.buttons["composer-weight"].isEnabled)
         attachScreenshot(of: app, named: "無料体験が終わった入力欄")
 
         app.buttons["composer-subscription-chip"].tap()
