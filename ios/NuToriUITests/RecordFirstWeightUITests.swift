@@ -17,6 +17,7 @@ final class RecordFirstWeightUITests: XCTestCase {
         XCTAssertTrue(
             app.otherElements["weight-entry-sheet"].textFields["体重の値"].waitForExistence(
                 timeout: 5))
+        XCTAssertTrue(app.waitUntilWeightEntrySheetIsExpanded())
         app.typeSeventyKilograms()
         app.weightEntryRecordButton.tap()
         XCTAssertTrue(app.staticText(containing: "70.0 kg").waitForExistence(timeout: 5))
