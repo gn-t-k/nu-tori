@@ -98,6 +98,24 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 - Query API はいまは無料だが、PostHog はいずれ課金すると書いている。上限はプロジェクトごとに 1 時間 2,400 回・1 分 240 回・同時 3 本・実行 10 秒で、ほかに個人の API キーで読む分には、プロジェクトごとに 1 時間に読む量の予算がある（量は公開されていない）。どれかを超えると `429` が返り、読む量の予算なら `api_queries_budget_exceeded` が付く
 - プロジェクトの ID か鍵の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどちらかの置き場に2つとも置くよう頼む
 
+## お金の数字を読む
+
+月の固定費と予算の残りは、非公開の Artifact のダッシュボード「nu-tori のお金」（https://claude.ai/artifact/HsGSVBjymQjzaGhqSHPCRH 、Dashboard の型）に、月に1行ずつ書く。式と取る先の正本は #591 の解決コメントと、#759・#760 の閉じたときのコメント。
+
+```mermaid
+flowchart LR
+  T["定期のタスク<br/>毎月3日 10:17（日本時間）"] -->|"scripts/finance cloudflare 前の月"| D["ダッシュボードの months"]
+  P["開発者がセッションで伝える<br/>Anthropic の額・予算・年額のもの"] -->|"Claude が書き換える"| D
+  P --> S["ダッシュボードの settings"]
+```
+
+- **数字はダッシュボードにだけ書く**。リポジトリのファイル・Issue・PR・コミット・コメント・ログに、金額を書かない。`scripts/finance` の出力は呼んだセッションの中だけで使い、ファイルに残さない（アップロードに使った JSON は、上げたらすぐ消す）
+- Cloudflare: `scripts/finance cloudflare <YYYY-MM>`。額の数え方と呼ぶ口は、スクリプトに書いてある
+- 鍵は、クラウドの環境 `nu-tori-finance` にだけある `NU_TORI_CLOUDFLARE_BILLING_READ_TOKEN`（アカウントのトークンで `Billing Read` だけ）。アカウントの ID はトークンから引く。ほかの環境では `Not authenticated` で止まる。ほかに `NU_TORI_ASC_FINANCE_KEY_ID`・`NU_TORI_ASC_FINANCE_ISSUER_ID`・`NU_TORI_ASC_FINANCE_PRIVATE_KEY`（App Store Connect の役割 Finance のキー）があり、サブスクリプションの数字（#761）で使う
+- 定期のタスクは「nu-tori のお金: 前の月の固定費を書く」（`trig_01Mudhdy293FZCTT2AQ8Rff1`、環境 `nu-tori-finance`、毎回新しいセッション）。手順はタスクの指示に書いてあり、その月の行に Cloudflare の額があれば何もしない
+- Anthropic の利用額は API で読めない（個人の組織で Admin API が使えない、#759）。開発者が Console の `nu-tori-production` の額を伝えたら、その月の行の `anthropic_usd` と `anthropic_from` を書く。予算・年額のもの（Apple Developer の年会費、ドメイン）・始めた月・為替は `settings` の行の `value` と `from` を書き換える。ページに入力欄は作らない
+- ダッシュボードの数字を書き換えるとき（どのセッションからでもよい）: ArtifactData で `datasets/months` か `datasets/settings` を読み、`source.url` の JSON を Artifact の read で取り、直した JSON をアップロードして（Artifact の publish に `url`・`file_path`・`asset: true`）、データセットの `source.url` と `updated` を書き換え、古い JSON を消す。ページ（`files/index.html`）を変えたら、`data/users/me` の `check` を読んで確かめる
+
 ## 本番の知らせを Issue にする
 
 `.github/workflows/production-alerts.yml` が毎時 17 分に `scripts/production-alerts sentry` を回し、本番（`environment:production`）の Sentry の、新しい・急に増えた・再発した課題を、`needs-triage` の Issue にしてロックする。エージェントは `/triage` で拾い、中身は `scripts/sentry` で読む。調べた経緯は `docs/research/alerts-to-issues.md`。

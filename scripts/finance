@@ -1,0 +1,126 @@
+#!/usr/bin/env node
+// 月1回の定期のタスクが、前の月の利用額を読む。GET だけを送り、呼ぶ口と月の区切り方をここ1か所に置く
+// 出力は金額を含むので、ファイルにもログにも残さず、呼んだセッションの中だけで使う（docs/agents/tooling.md の「お金の数字を読む」）
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const main = async () => {
+  const [command, month] = process.argv.slice(2);
+  if (command !== "cloudflare" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month ?? "")) {
+    throw new ExpectedFailure("使い方: scripts/finance cloudflare <YYYY-MM>（終わった月だけ。月は UTC で区切る）");
+  }
+  if (monthRange(month).end > new Date()) throw new ExpectedFailure(`${month} はまだ終わっていない。終わった月を渡す`);
+  const token = process.env.NU_TORI_CLOUDFLARE_BILLING_READ_TOKEN;
+  if (!token) throw new ExpectedFailure("Not authenticated: NU_TORI_CLOUDFLARE_BILLING_READ_TOKEN が無い");
+  console.log(JSON.stringify(await computeCloudflareMonthlyCost({ token, month }), null, 2));
+};
+
+// その月に使った額 = 従量の分（日ごとの行のうち、その月の日の分）+ 定額の契約の月あたりの額
+// 払った額（billing/history）にしないのは、請求書がドメインの年額も含み、年額のもの ÷ 12 と二重に数えるため（#760）
+const computeCloudflareMonthlyCost = async ({ token, month }) => {
+  const { start, end } = monthRange(month);
+  const accounts = await fetchCloudflareResult(token, "/accounts");
+  // 鍵は1つのアカウントのトークンで、ほかのアカウントの額を混ぜないよう、1つでなければ止まる
+  if (accounts.length !== 1) throw new ExpectedFailure(`トークンが見るアカウントが1つでない（${accounts.length}）`);
+  const account = `/accounts/${accounts[0].id}`;
+
+  // 請求期間の起点（最初に買った日）が範囲に入らないと何も返らず、返る行は範囲の中の最初の起点の日から始まる
+  // 請求期間は 31 日より短いので、月の頭の 31 日前から読めば、月の頭を含む請求期間の起点が必ず入る
+  // 範囲が2つの請求期間にまたがっても、終わりまでの行が返ることを 2026-11-02 に確かめた
+  const DAY = 86_400_000;
+  const from = isoDate(new Date(start.getTime() - 31 * DAY));
+  const usage = await fetchCloudflareResult(token, `${account}/billable-usage?from=${from}&to=${isoDate(end)}`);
+  const inMonth = usage
+    .map((row) => {
+      const day = new Date(row.ChargePeriodStart);
+      // 読めない日は、黙って外すと額が少なく出るので止まる
+      if (Number.isNaN(day.getTime())) throw new ExpectedFailure(`読めない日の行がある: ${row.ChargePeriodStart}`);
+      return { row, day };
+    })
+    .filter(({ day }) => day >= start && day < end);
+  const days = new Set(inMonth.map(({ day }) => isoDate(day)));
+  // 保存の量（D1・KV・R2）の行は毎日出るので、月の頭か終わりの日が無ければ、行が欠けたとみて止まる
+  const lastDay = isoDate(new Date(end.getTime() - DAY));
+  if (!days.has(isoDate(start)) || !days.has(lastDay)) {
+    throw new ExpectedFailure(`${isoDate(start)} か ${lastDay} の従量の行が無い。まだ出ていないか、範囲の読み方が変わった`);
+  }
+  const currencies = new Set(inMonth.map(({ row }) => row.BillingCurrency));
+  if ([...currencies].some((currency) => currency !== "USD")) {
+    throw new ExpectedFailure(`ドルでない行がある: ${[...currencies].join(", ")}`);
+  }
+  const usageUsd = sum(inMonth.map(({ row }) => Number(row.ContractedCost)));
+
+  // 今の契約を、その月の終わりより前に始まったものだけ数える。月の途中で止めた契約は一覧に残らないので数えない
+  const subscriptions = (await fetchCloudflareResult(token, `${account}/subscriptions`)).filter(
+    (subscription) => new Date(subscription.created_date) < end,
+  );
+  const monthsPerPeriod = { monthly: 1, quarterly: 3, yearly: 12 };
+  const subscriptionsUsd = sum(
+    subscriptions.map((subscription) => {
+      if (subscription.currency !== "USD") {
+        throw new ExpectedFailure(`ドルでない契約がある: ${subscription.rate_plan?.id} ${subscription.currency}`);
+      }
+      const months = monthsPerPeriod[subscription.frequency];
+      if (!months) throw new ExpectedFailure(`知らない請求の間隔: ${subscription.rate_plan?.id} ${subscription.frequency}`);
+      return Number(subscription.price) / months;
+    }),
+  );
+
+  return {
+    month,
+    usd: round(usageUsd + subscriptionsUsd),
+    usageUsd: round(usageUsd),
+    subscriptionsUsd: round(subscriptionsUsd),
+    subscriptions: subscriptions.map((subscription) => subscription.rate_plan?.id),
+    source:
+      "Cloudflare の billable-usage（日ごとの従量の行のうち、ChargePeriodStart がその月の UTC の日の ContractedCost の合計）と subscriptions（その月の終わりより前に始まった定額の契約の price を月あたりにしたもの）",
+  };
+};
+
+const monthRange = (month) => {
+  const [year, monthIndex] = month.split("-").map(Number);
+  return { start: new Date(Date.UTC(year, monthIndex - 1, 1)), end: new Date(Date.UTC(year, monthIndex, 1)) };
+};
+
+const isoDate = (date) => date.toISOString().slice(0, 10);
+
+const sum = (values) => {
+  if (values.some((value) => !Number.isFinite(value))) throw new ExpectedFailure("数でない額がある");
+  return values.reduce((total, value) => total + value, 0);
+};
+
+const round = (value) => Math.round(value * 100) / 100;
+
+// Billing Read は請求先の住所や支払い方法も読めるので、呼ぶ口をここに挙げたものに絞る
+const CLOUDFLARE_PATHS = [/^\/accounts$/, /^\/accounts\/[0-9a-f]{32}\/(billable-usage|subscriptions)$/];
+
+const fetchCloudflareResult = async (token, pathAndQuery) => {
+  const url = new URL(`https://api.cloudflare.com/client/v4${pathAndQuery}`);
+  const path = url.pathname.replace(/^\/client\/v4/, "");
+  if (url.host !== "api.cloudflare.com" || !CLOUDFLARE_PATHS.some((allowed) => allowed.test(path))) {
+    throw new ExpectedFailure(`この口は呼ばない: ${path}`);
+  }
+  const response = await fetch(url, { method: "GET", headers: { Authorization: `Bearer ${token}` } });
+  const body = await response.text();
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    throw new ExpectedFailure(`${response.status} JSON でない応答: ${body.slice(0, 200)}`);
+  }
+  // 誤りの本文は errors だけを出す。result には請求の中身が入りうる
+  if (!response.ok || !parsed.success) {
+    throw new ExpectedFailure(`${response.status} ${path}: ${JSON.stringify(parsed.errors)}`);
+  }
+  if (parsed.result_info?.total_pages > 1) throw new ExpectedFailure(`${path} が2ページ以上ある。ページをたどる口を足す`);
+  return parsed.result;
+};
+
+// 自分で出す文（使い方、未認証、HTTP の状態、断る文）は文だけを、想定外の失敗はスタックと cause まで出す
+class ExpectedFailure extends Error {}
+
+// process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
+main().catch((error) => {
+  console.error(error instanceof ExpectedFailure ? error.message : error);
+  process.exitCode = 1;
+});
