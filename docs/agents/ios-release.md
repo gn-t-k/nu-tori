@@ -48,7 +48,7 @@ flowchart LR
 
 エージェントの App Store Connect の鍵は読むだけ（`docs/agents/tooling.md` の「App Store Connect を読む」）なので、入れるのは開発者。
 
-- 開発者が Mac で `scripts/app-store-connect-listing-wizard` を回す。確かめることと入れる欄は、wizard の段に従う。本番の値（最低バージョン、LLM の費用の上限、App Store のサーバー通知の URL）が出す版に合わなければ、wizard は入れる前に止まる
+- 開発者が Mac で `scripts/app-store-connect-listing-wizard` を回す。確かめることと入れる欄は、wizard の段に従う。本番の値（最低バージョン、LLM の費用の上限、App Store のサーバー通知の URL）が決めたとおりでなければ、wizard は入れる前に止まる
 - 値は掲載情報のモジュール（`site/src/app-store-connect-listing.ts`）から出す。wizard に写してある答えの出どころは、App のプライバシーが「[App Privacy の回答の表を作る](https://github.com/gn-t-k/nu-tori/issues/861#issuecomment-6548836403)」の解決コメントの表、年齢制限指定が「[App Store の掲載情報を決める](https://github.com/gn-t-k/nu-tori/issues/597#issuecomment-6406051504)」の解決コメントの 12（Health or Wellness Topics だけが当たり、9+ になる）。出どころの答えを変えたら、wizard も直す
 - 掲載情報を変えた版でも、同じ wizard を回す（`docs/agents/marketing.md` の「掲載情報の置き場と変える手順」）。入れ終えた段は Enter で進める
 - 「App Review に関する情報」の「サインインが必要です」を外すのは、この欄がデモアカウントを渡すためのものだから。nu-tori は Sign in with Apple だけで、デモアカウントを渡さない（#597 の解決コメントの 13）。審査の人は自分の Apple アカウントでサインインし、その道は審査へのメモに書く
