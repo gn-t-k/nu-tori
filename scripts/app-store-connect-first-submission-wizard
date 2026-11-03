@@ -200,10 +200,11 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 
 
-# nu-tori の掲載情報と設定を App Store Connect に入れる。値は掲載情報のモジュール（site/src/app-store-connect-listing.ts）から出し、1欄ずつクリップボードに写す
-# 段に書いた答えの出どころは docs/agents/ios-release.md の「App Store に出す」。何も .env や GitHub に書かない
+# 最初の提出（#863）で、nu-tori の掲載情報と設定を App Store Connect に入れる。1回だけ回し、main には置かない（取り出し方は docs/agents/ios-release.md の「App Store に出す」）
+# 値は掲載情報のモジュール（site/src/app-store-connect-listing.ts）から出し、1欄ずつクリップボードに写す。段に書いた答えの出どころは同じ節。何も .env や GitHub に書かない
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# 取り出して別の置き場から回すので、置き場でなく、回したときのリポジトリを見る
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 APP_ID="6816842705"
 ASC_APP="https://appstoreconnect.apple.com/apps/${APP_ID}/distribution"
 # 本番の Worker の経路（server/wrangler.jsonc の本番の routes）と、通知の受け口（server/src/http/app-store-server-notification-routes/）
@@ -245,13 +246,15 @@ run_wizard() {
 
 TOTAL_STAGES=16
 
+[[ -n "$REPO_ROOT" ]] || { warn "nu-tori のリポジトリの中で回す"; exit 1; }
 cd "$REPO_ROOT"
 
-banner "nu-tori: App Store Connect に掲載情報と設定を入れる"
+banner "nu-tori: 最初の提出の掲載情報と設定を App Store Connect に入れる"
 
 # ── 1 ───────────────────────────────────────────────────────────────────
 stage "main の最新と、掲載情報を確かめる"
 say "入れる値は main の掲載情報のモジュールから出す。仮の文が残っていたら、ここで止まる。"
+# main には置かないファイルなので、取り出したこのファイルを main の最新の作業ツリーで回す
 git fetch --quiet origin main || stop "origin の main を取れなかった"
 if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]]; then
   stop "今の HEAD が origin/main と違う。git switch main && git pull してから回す"
@@ -432,21 +435,14 @@ for name in $screenshot_names; do
 done
 say "上げるもの: ${screenshot_dir}/ の ${screenshot_names}（この順）"
 command -v open >/dev/null 2>&1 && open "${REPO_ROOT}/${screenshot_dir}"
-large_result="$(grep -m 1 '^確かめた結果: ' docs/agents/ios-release.md || true)"
-if [[ -n "$large_result" ]]; then
-  step "6.9 インチの欄に、上の画像をこの順で上げ直す。古い画像は消す"
-  note "ほかの大きさは要らないと確かめてある（ios-release.md の「${large_result}」）"
-  pause "上げて保存したら Enter"
+step "docs/agents/ios-release.md の「上げる前に、large の大きさだけで足りるかを確かめる」の 1〜3 のとおり上げて見る"
+step "  6.9 インチの欄に、上の画像をこの順で上げる"
+step "  「メディアマネージャですべてのサイズを表示」で、ほかの大きさが「6.9 インチのものを使用」かを見る"
+step "  保存し、スクリーンショットが足りないという警告が出ないかを見る"
+if confirm "6.9 インチ（large）だけで足りたか"; then
+  SKIPPED+=("エージェントに「large だけで足りた（$(date +%Y-%m-%d)）」と伝え、ios-release.md のその節に1行書いてもらう")
 else
-  step "docs/agents/ios-release.md の「上げる前に、large の大きさだけで足りるかを確かめる」の 1〜3 のとおり上げて見る"
-  step "  6.9 インチの欄に、上の画像をこの順で上げる。古い画像があれば消す"
-  step "  「メディアマネージャですべてのサイズを表示」で、ほかの大きさが「6.9 インチのものを使用」かを見る"
-  step "  保存し、スクリーンショットが足りないという警告が出ないかを見る"
-  if confirm "6.9 インチ（large）だけで足りたか"; then
-    SKIPPED+=("エージェントに「large だけで足りた（$(date +%Y-%m-%d)）」と伝え、ios-release.md のその節に「確かめた結果: 」の1行を書いてもらう")
-  else
-    SKIPPED+=("エージェントに「large だけでは足りず、medium（6.3 インチ）が要る」と伝え、書き出す Issue を立ててもらう（審査に出す前に要る）")
-  fi
+  SKIPPED+=("エージェントに「large だけでは足りず、medium（6.3 インチ）が要る」と伝え、書き出す Issue を立ててもらう（審査に出す前に要る）")
 fi
 
 # ── 14 ──────────────────────────────────────────────────────────────────
