@@ -10,8 +10,8 @@ final class WeightEntrySheetHeightAfterChangingValueUITests: XCTestCase {
         continueAfterFailure = false
         app = .launched(
             account: "signed-in", api: "previous-day", healthLatestKilograms: nil, timeZone: nil)
-        XCTAssertTrue(app.buttons["composer-weight-unrecorded"].waitForExistence(timeout: 5))
-        app.buttons["composer-weight-unrecorded"].tap()
+        XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
+        app.buttons["composer-weight"].tap()
         XCTAssertTrue(app.weightEntryPreviousLine.waitForExistence(timeout: 5))
         XCTAssertTrue(app.waitUntilWeightEntrySheetFitsContent())
         app.otherElements["weight-entry-sheet"].buttons["0.1 kg 増やす"].tap()
@@ -29,6 +29,18 @@ final class WeightEntrySheetHeightAfterChangingValueUITests: XCTestCase {
         dragNavigationBar(toY: 0.98)
         XCTAssertTrue(app.waitUntilWeightEntrySheetFitsContent())
         attachScreenshot(of: app, named: "値を変えたあとに下げても閉じない体重のシート")
+    }
+
+    func test_広げてから打ち始めるとシートがキーボードのすぐ上に載ること() {
+        dragNavigationBar(toY: 0.1)
+        XCTAssertTrue(app.waitUntilWeightEntrySheetIsExpanded())
+
+        app.otherElements["weight-entry-sheet"].buttons["体重"].tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+
+        XCTAssertTrue(
+            app.waitUntilWeightEntrySheetSitsOnKeyboard(below: app.weightEntryPreviousLine))
+        attachScreenshot(of: app, named: "広げてから打ち始めた体重のシート")
     }
 
     /// ナビゲーションバーをつかんで、画面の高さのこの割合の位置まで動かす

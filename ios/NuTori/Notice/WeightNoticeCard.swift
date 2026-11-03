@@ -63,8 +63,7 @@ private struct NoticeWeightEntry: View {
                 draft: $draft,
                 observation: $observation,
                 typing: $typing,
-                startsTyping: false,
-                onBeginTyping: {}
+                startsTyping: false
             )
             .frame(maxWidth: .infinity)
             Button("記録", action: record)

@@ -130,6 +130,15 @@ extension XCUIApplication {
         }
     }
 
+    /// 体重のシートがキーボードのすぐ上に落ち着くのを待つ。シートのいちばん下のものとキーボードのあいだが、負なら隠れていて、多すぎれば空きが残っている
+    @MainActor func waitUntilWeightEntrySheetSitsOnKeyboard(below lastElement: XCUIElement) -> Bool
+    {
+        waitUntil {
+            let space = self.keyboards.firstMatch.frame.minY - lastElement.frame.maxY
+            return (0..<100).contains(space)
+        }
+    }
+
     @MainActor private func waitUntil(_ condition: @escaping () -> Bool) -> Bool {
         let expectation = XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in condition() }, object: nil)

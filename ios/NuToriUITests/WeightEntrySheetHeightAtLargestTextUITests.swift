@@ -11,8 +11,8 @@ final class WeightEntrySheetHeightAtLargestTextUITests: XCTestCase {
         app = .launched(
             account: "signed-in", api: "previous-day", healthLatestKilograms: nil, timeZone: nil,
             textSize: .accessibility5)
-        XCTAssertTrue(app.buttons["composer-weight-unrecorded"].waitForExistence(timeout: 5))
-        app.buttons["composer-weight-unrecorded"].tap()
+        XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
+        app.buttons["composer-weight"].tap()
         XCTAssertTrue(app.weightEntryPreviousLine.waitForExistence(timeout: 5))
     }
 
@@ -23,5 +23,22 @@ final class WeightEntrySheetHeightAtLargestTextUITests: XCTestCase {
         XCTAssertTrue(sheet.buttons["0.1 kg 減らす"].isHittable)
         XCTAssertTrue(sheet.buttons["0.1 kg 増やす"].isHittable)
         attachScreenshot(of: app, named: "いちばん大きな文字の体重のシート")
+    }
+
+    func test_打って添え書きが出てもキーボードに隠れないこと() {
+        let sheet = app.otherElements["weight-entry-sheet"]
+        sheet.buttons["体重"].tap()
+        let field = sheet.textFields["体重の値"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "90.0")
+
+        let typoLine = sheet.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "前回（")
+        ).firstMatch
+        XCTAssertTrue(typoLine.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.waitUntilWeightEntrySheetSitsOnKeyboard(below: typoLine))
+        attachScreenshot(of: app, named: "いちばん大きな文字で添え書きが出た体重のシート")
     }
 }

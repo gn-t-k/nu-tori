@@ -9,8 +9,7 @@ struct WeightEntrySheet: View {
                 draft: $draft,
                 observation: $observation,
                 typing: $typing,
-                startsTyping: draft.startsWithKeyboard,
-                onBeginTyping: { isExpanded = true }
+                startsTyping: draft.startsWithKeyboard
             )
             // タイムラインの体重の知らせにも同じステッパーがあるので、UI テストはシートの中を探す
             .accessibilityElement(children: .contain)
@@ -33,7 +32,8 @@ struct WeightEntrySheet: View {
                 }
             }
         }
-        .presentationDetents([fittedDetent, .large], selection: detent)
+        // large を選べると、キーボードが出たときに iOS が large へ上げて、中身とキーボードのあいだが空く
+        .presentationDetents(typing ? [fittedDetent] : [fittedDetent, .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(draft.tenths != draft.initialTenths)
         .onAppear {
@@ -49,7 +49,6 @@ struct WeightEntrySheet: View {
     @State private var entry: WeightEntry
     @State private var observation: WeightEntryObservation
     @State private var didRecord = false
-    @State private var isExpanded: Bool
     /// 測るまでの仮の値。標準の文字の中身のおおよその高さ
     @State private var contentHeight: CGFloat = 130
     /// 測るまでの仮の値。ナビゲーションバーのおおよその高さ
@@ -80,19 +79,11 @@ struct WeightEntrySheet: View {
         _observation = State(
             initialValue: WeightEntryObservation(
                 startsWithKeyboard: draft.startsWithKeyboard, openedAt: now()))
-        _isExpanded = State(initialValue: draft.startsWithKeyboard)
     }
 
     /// 中身が画面より高ければ、シートが画面の中で止める（縦向きの iPhone では、いちばん大きな文字でも起きない）
     private var fittedDetent: PresentationDetent {
         .height(contentHeight + barHeight)
-    }
-
-    private var detent: Binding<PresentationDetent> {
-        Binding(
-            get: { isExpanded ? .large : fittedDetent },
-            set: { isExpanded = $0 == .large }
-        )
     }
 
     private var canRecord: Bool {
