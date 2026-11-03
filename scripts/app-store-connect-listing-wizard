@@ -200,11 +200,8 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 
 
-# nu-tori の掲載情報と設定を App Store Connect に入れる（#863）。開発者が Mac で、リポジトリのどこからでも
-#   scripts/app-store-connect-listing-wizard
-# と回す。値は掲載情報のモジュール（site/src/app-store-connect-listing.ts）から出し、1欄ずつクリップボードに写す。
-# 段の並びと、ここに書いた答えの出どころは docs/agents/ios-release.md の「App Store に出す」。
-# エージェントの App Store Connect の鍵は読むだけなので、入れるのは開発者。何も .env や GitHub に書かない
+# nu-tori の掲載情報と設定を App Store Connect に入れる。値は掲載情報のモジュール（site/src/app-store-connect-listing.ts）から出し、1欄ずつクリップボードに写す
+# 段に書いた答えの出どころは docs/agents/ios-release.md の「App Store に出す」。何も .env や GitHub に書かない
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_ID="6816842705"
@@ -246,7 +243,7 @@ paste_field() {
 
 run_wizard() {
 
-TOTAL_STAGES=15
+TOTAL_STAGES=16
 
 cd "$REPO_ROOT"
 
@@ -275,9 +272,9 @@ pause "Enter で次へ"
 # ── 2 ───────────────────────────────────────────────────────────────────
 stage "出すビルドと、本番の最低バージョン"
 say "審査に出すビルドが、本番のサーバーに締め出されないことを確かめる。"
-step "出すビルドは、実機で確かめた（#864）、TestFlight の内部テストに配られたビルド"
+step "出すビルドは、TestFlight の内部テストに配られ、実機で確かめたもの（ios-release.md の「実機の確認」）"
 ask SUBMIT_BUILD "出すビルドの番号:"
-[[ "$SUBMIT_BUILD" =~ ^[0-9]+$ ]] || stop "ビルドの番号は数字だけで入れる: ${SUBMIT_BUILD}"
+[[ "$SUBMIT_BUILD" =~ ^[1-9][0-9]*$ ]] || stop "ビルドの番号は数字だけで入れる: ${SUBMIT_BUILD}"
 minimum_build="$(sed -n 's/.*"MINIMUM_APP_BUILD": *\([0-9][0-9]*\).*/\1/p' server/wrangler.jsonc | head -n 1)"
 [[ -n "$minimum_build" ]] || stop "server/wrangler.jsonc に MINIMUM_APP_BUILD が見つからない"
 say "本番の最低バージョン（main の server/wrangler.jsonc の MINIMUM_APP_BUILD）: ${minimum_build}"
@@ -407,14 +404,16 @@ step "保存する"
 gate "配信が日本だけで、Mac で入手可能が外れているか" "配信の国と Mac の設定を直して保存してから回す"
 
 # ── 10 ──────────────────────────────────────────────────────────────────
-stage "版のページ: プロモーション用テキストと説明文"
+stage "版のページ: プロモーション用テキスト"
 open_url "${ASC_APP}/ios/version/inflight"
-step "iOS の 1.0 の版のページを、言語「日本語」で開く"
+step "審査に出す版のページを、言語「日本語」で開く"
 paste_field "プロモーション用テキスト（Promotional Text）" "$(listing_js 'j.promotionalText.text')"
-_clear
-paste_field "概要・説明文（Description）" "$(listing_js 'j.description.text')"
 
 # ── 11 ──────────────────────────────────────────────────────────────────
+stage "版のページ: 説明文"
+paste_field "概要・説明文（Description）" "$(listing_js 'j.description.text')"
+
+# ── 12 ──────────────────────────────────────────────────────────────────
 stage "版のページ: キーワードと URL"
 paste_field "キーワード（Keywords）" "$(listing_js 'j.keywords')"
 note "欄の残りの字数が負になっていないことを見る（上限が 100 バイトか 100 字かは文書が食い違う）"
@@ -423,7 +422,7 @@ paste_field "マーケティング URL（Marketing URL）" "$(listing_js 'j.urls
 step "右上の「保存」を押す"
 pause "保存したら Enter"
 
-# ── 12 ──────────────────────────────────────────────────────────────────
+# ── 13 ──────────────────────────────────────────────────────────────────
 stage "版のページ: スクリーンショット 5 枚"
 screenshot_dir="site/src/app-store-screenshot-images"
 screenshot_names="$(listing_js 'j.screenshots.map((s) => s.name).join(" ")')"
@@ -432,40 +431,47 @@ for name in $screenshot_names; do
 done
 say "上げるもの: ${screenshot_dir}/ の ${screenshot_names}（この順）"
 command -v open >/dev/null 2>&1 && open "${REPO_ROOT}/${screenshot_dir}"
-step "docs/agents/ios-release.md の「上げる前に、large の大きさだけで足りるかを確かめる」の 1〜3 のとおり上げて見る"
-step "  6.9 インチの欄に 01〜05.png をこの順で上げる。古い画像があれば消す"
-step "  「メディアマネージャですべてのサイズを表示」で、ほかの大きさが「6.9 インチのものを使用」かを見る"
-step "  保存し、スクリーンショットが足りないという警告が出ないかを見る"
-if confirm "6.9 インチ（large）だけで足りたか"; then
-  SKIPPED+=("エージェントに「large だけで足りた（$(date +%Y-%m-%d)）」と伝え、ios-release.md のその節に1行書いてもらう")
+large_result="$(grep -m 1 '^確かめた結果: ' docs/agents/ios-release.md || true)"
+if [[ -n "$large_result" ]]; then
+  step "6.9 インチの欄に、上の画像をこの順で上げ直す。古い画像は消す"
+  note "ほかの大きさは要らないと確かめてある（ios-release.md の「${large_result}」）"
+  pause "上げて保存したら Enter"
 else
-  SKIPPED+=("エージェントに「large だけでは足りず、medium（6.3 インチ）が要る」と伝え、書き出す Issue を立ててもらう（審査に出す前に要る）")
+  step "docs/agents/ios-release.md の「上げる前に、large の大きさだけで足りるかを確かめる」の 1〜3 のとおり上げて見る"
+  step "  6.9 インチの欄に、上の画像をこの順で上げる。古い画像があれば消す"
+  step "  「メディアマネージャですべてのサイズを表示」で、ほかの大きさが「6.9 インチのものを使用」かを見る"
+  step "  保存し、スクリーンショットが足りないという警告が出ないかを見る"
+  if confirm "6.9 インチ（large）だけで足りたか"; then
+    SKIPPED+=("エージェントに「large だけで足りた（$(date +%Y-%m-%d)）」と伝え、ios-release.md のその節に「確かめた結果: 」の1行を書いてもらう")
+  else
+    SKIPPED+=("エージェントに「large だけでは足りず、medium（6.3 インチ）が要る」と伝え、書き出す Issue を立ててもらう（審査に出す前に要る）")
+  fi
 fi
 
-# ── 13 ──────────────────────────────────────────────────────────────────
+# ── 14 ──────────────────────────────────────────────────────────────────
 stage "版のページ: 著作権と App Review に関する情報"
 paste_field "著作権（Copyright）の頭" "$(listing_js 'j.copyrightPrefix')"
 step "貼った「2026 」の後ろに、販売元と同じ氏名を打つ。氏名はここにだけ入れ、リポジトリ・Issue には書かない"
 step "「App Review に関する情報」の「サインインが必要です」のチェックを外す。ユーザ名とパスワードは空のまま"
 note "  Sign in with Apple だけで、デモアカウントは渡さない。道は審査へのメモに書く（ios-release.md の「App Store に出す」）"
 step "連絡先（名前・メール・電話）に、審査の人から連絡を受ける人を入れる。電話は +81 から"
-step "メモの中身を消して、次を貼る（前に入れた日本語のメモは、これに置き換える）"
+step "メモの中身を消して、次を貼る"
 paste_field "メモ（Notes）" "$(listing_js 'j.reviewNotes')"
 
-# ── 14 ──────────────────────────────────────────────────────────────────
+# ── 15 ──────────────────────────────────────────────────────────────────
 stage "版のページ: リリースの方法と保存"
 step "「App Store バージョンのリリース」で「このバージョンを手動でリリースする」を選ぶ"
-note "  審査が通ったら、LP を出す PR と時機をそろえて、開発者が手で公開する（#865）"
+note "  審査が通ったら、LP を出す PR と時機をそろえて、開発者が手で公開する（ios-release.md の「審査に出す」）"
 step "右上の「保存」を押す"
-warn "ビルドを付けること、サブスクリプション2つを選ぶこと、審査に出すことは、ここではしない（#865）"
+warn "ビルドを付けること、サブスクリプション2つを選ぶこと、審査に出すことは、ここではしない（ios-release.md の「審査に出す」）"
 gate "手動のリリースにして保存したか" "リリースの方法を直して保存してから回す"
 
-# ── 15 ──────────────────────────────────────────────────────────────────
+# ── 16 ──────────────────────────────────────────────────────────────────
 stage "エージェントに読み返してもらう"
 say "エージェントは読むだけの鍵で App Store Connect を読み、掲載情報のモジュールと突き合わせる。"
-step "エージェントに「#863 の読み返しをして」と頼む（手順は ios-release.md の「App Store に出す」）"
+step "エージェントに「App Store Connect の読み返しをして」と頼む（ios-release.md の「読み返す」）"
 note "App のプライバシーと、価格および配信状況は鍵で読めない。7〜9 の段で見たものを、そのまま伝える"
-SKIPPED+=("エージェントに「#863 の読み返し」を頼む")
+SKIPPED+=("エージェントに「App Store Connect の読み返し」を頼む")
 pause "Enter で終わる"
 
 finish

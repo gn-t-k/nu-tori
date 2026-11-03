@@ -30,7 +30,7 @@
 3. 「メディアマネージャですべてのサイズを表示」を開き、6.3 インチ（medium）などほかの大きさが「6.9 インチのものを使用」になっているか、上げる必要が残っているかを見る。版のページを保存し、スクリーンショットが足りないという警告が出ないかも見る
 4. 足りていれば、ここで終わり。足りなければ、medium の大きさ（6.3 インチ、1206×2622）も書き出す Issue を立てる。合成のコマンドは large しか書き出さず、生の画面も 6.9 インチの機種で撮っているので、撮る機種と合成の両方が要る
 
-確かめた結果（足りた・足りない、見た日）は、このファイルのこの節に1行で書き足す。
+確かめた結果（足りた・足りない、見た日）は、このファイルのこの節に「確かめた結果: 」で始まる1行で書き足す。wizard は、この行があれば確かめる手順を飛ばす。
 
 ## App Store に出す
 
@@ -48,12 +48,12 @@ flowchart LR
 
 エージェントの App Store Connect の鍵は読むだけ（`docs/agents/tooling.md` の「App Store Connect を読む」）なので、入れるのは開発者。
 
-- 開発者が Mac で `scripts/app-store-connect-listing-wizard` を回す。最初の段で、main の最新にいること、掲載情報に仮の文が無いこと、出すビルドが本番の最低バージョンより古くないこと、本番の LLM の費用の上限（`docs/agents/production-incidents.md` の「費用の知らせ」）、App Store のサーバー通知の URL（本番も Sandbox も本番のサーバー）を確かめ、どれかが外れていたら止まる。そのあと、App 情報（名前、サブタイトル、カテゴリ、コンテンツ配信権、年齢制限指定）、App のプライバシー、価格および配信状況、版のページ（文、URL、スクリーンショット、著作権、App Review に関する情報、リリースの方法）を1欄ずつ入れる
+- 開発者が Mac で `scripts/app-store-connect-listing-wizard` を回す。確かめることと入れる欄は、wizard の段に従う。本番の値（最低バージョン、LLM の費用の上限、App Store のサーバー通知の URL）が出す版に合わなければ、wizard は入れる前に止まる
 - 値は掲載情報のモジュール（`site/src/app-store-connect-listing.ts`）から出す。wizard に写してある答えの出どころは、App のプライバシーが「[App Privacy の回答の表を作る](https://github.com/gn-t-k/nu-tori/issues/861#issuecomment-6548836403)」の解決コメントの表、年齢制限指定が「[App Store の掲載情報を決める](https://github.com/gn-t-k/nu-tori/issues/597#issuecomment-6406051504)」の解決コメントの 12（Health or Wellness Topics だけが当たり、9+ になる）。出どころの答えを変えたら、wizard も直す
 - 掲載情報を変えた版でも、同じ wizard を回す（`docs/agents/marketing.md` の「掲載情報の置き場と変える手順」）。入れ終えた段は Enter で進める
-- 「App Review に関する情報」の「サインインが必要です」はチェックを外し、ユーザ名とパスワードは空にする。この欄はデモアカウントを渡すためのもので、nu-tori は Sign in with Apple だけで、デモアカウントを渡さない（#597 の解決コメントの 13）。審査の人は自分の Apple アカウントでサインインし、その道は審査へのメモに書く
-- コンテンツ配信権は「第三者のコンテンツを含み、使う権利がある」と答える。日本食品標準成分表の値を見せ、その利用に許諾は要らない（`docs/research/launch-legal-checks.md` の問い3）
-- 著作権の欄の氏名と、App Review の連絡先は、App Store Connect にだけ入れる。リポジトリにも Issue・PR にも書かない
+- 「App Review に関する情報」の「サインインが必要です」を外すのは、この欄がデモアカウントを渡すためのものだから。nu-tori は Sign in with Apple だけで、デモアカウントを渡さない（#597 の解決コメントの 13）。審査の人は自分の Apple アカウントでサインインし、その道は審査へのメモに書く
+- コンテンツ配信権を「第三者のコンテンツを含み、使う権利がある」と答えるのは、日本食品標準成分表の値を見せるから。その利用に許諾は要らない（`docs/research/launch-legal-checks.md` の問い3）
+- 著作権の欄の氏名と、App Review の連絡先は、リポジトリにも Issue・PR にも書かない
 
 ### 読み返す
 
