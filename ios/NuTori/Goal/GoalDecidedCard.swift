@@ -11,17 +11,8 @@ struct GoalDecidedCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("目標を決めました")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Text(
-                    WeightAmountText.clock(ClockTime(containing: goal.decidedAt, in: goal.timeZone))
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-            }
+            Text("目標を決めました")
+                .font(.subheadline.weight(.semibold))
             Text(
                 "\(Text(GoalDirectionText.name(goal.direction)).fontWeight(.semibold))　\(goalLine)"
             )

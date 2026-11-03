@@ -4,7 +4,6 @@ import SwiftUI
 /// タイムラインの目標を立てる知らせのカード。広げる前、広げた目標の設定の流れ、決まったあとの3つの形をとる。
 /// 目標が決まったあとも、タイムラインに残る
 struct GoalSetupNoticeCard: View {
-    let notice: Notice
     /// 今の目標。決まっていれば、決めた目標を示す形にする
     let currentGoal: CurrentGoal?
     /// 目標が決まっていないときの、目標の設定の流れの形
@@ -70,18 +69,8 @@ struct GoalSetupNoticeCard: View {
 
     private var closedCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("目標を立てる")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Text(
-                    WeightAmountText.clock(
-                        ClockTime(containing: notice.issuedAt, in: notice.timeZone))
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-            }
+            Text("目標を立てる")
+                .font(.subheadline.weight(.semibold))
             Text("目標を立てると、1日に食べる量の目安が出ます。")
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
