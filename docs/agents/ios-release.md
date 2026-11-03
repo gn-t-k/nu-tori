@@ -32,6 +32,64 @@
 
 確かめた結果（足りた・足りない、見た日）は、このファイルのこの節に1行で書き足す。
 
+## App Store に出す
+
+審査に出すのは、アプリの版と、最初のサブスクリプション2つ（月額・年額）を一緒に。最初のサブスクリプションは、アプリの版と一緒にしか出せない。決めた経緯は「[仕様: App Store の掲載と提出](https://github.com/gn-t-k/nu-tori/issues/853)」の「審査に出す」。
+
+```mermaid
+flowchart LR
+  W["開発者が Mac で wizard を回す<br/>掲載情報と設定を入れる"] --> R["エージェントが読むだけの鍵で読み返す"]
+  R --> S["ビルドとサブスクリプション2つを付けて審査に出す"]
+  S -->|通った| P["開発者が時機を選んで手で公開する"]
+  S -->|却下・指摘| I["指摘の文と返事を ready-for-human の Issue に残す"]
+```
+
+### 掲載情報と設定を入れる
+
+エージェントの App Store Connect の鍵は読むだけ（`docs/agents/tooling.md` の「App Store Connect を読む」）なので、入れるのは開発者。
+
+- 開発者が Mac で `scripts/app-store-connect-listing-wizard` を回す。最初の段で、main の最新にいること、掲載情報に仮の文が無いこと、出すビルドが本番の最低バージョンより古くないこと、本番の LLM の費用の上限（`docs/agents/production-incidents.md` の「費用の知らせ」）、App Store のサーバー通知の URL（本番も Sandbox も本番のサーバー）を確かめ、どれかが外れていたら止まる。そのあと、App 情報（名前、サブタイトル、カテゴリ、コンテンツ配信権、年齢制限指定）、App のプライバシー、価格および配信状況、版のページ（文、URL、スクリーンショット、著作権、App Review に関する情報、リリースの方法）を1欄ずつ入れる
+- 値は掲載情報のモジュール（`site/src/app-store-connect-listing.ts`）から出す。wizard に写してある答えの出どころは、App のプライバシーが「[App Privacy の回答の表を作る](https://github.com/gn-t-k/nu-tori/issues/861#issuecomment-6548836403)」の解決コメントの表、年齢制限指定が「[App Store の掲載情報を決める](https://github.com/gn-t-k/nu-tori/issues/597#issuecomment-6406051504)」の解決コメントの 12（Health or Wellness Topics だけが当たり、9+ になる）。出どころの答えを変えたら、wizard も直す
+- 掲載情報を変えた版でも、同じ wizard を回す（`docs/agents/marketing.md` の「掲載情報の置き場と変える手順」）。入れ終えた段は Enter で進める
+- 「App Review に関する情報」の「サインインが必要です」はチェックを外し、ユーザ名とパスワードは空にする。この欄はデモアカウントを渡すためのもので、nu-tori は Sign in with Apple だけで、デモアカウントを渡さない（#597 の解決コメントの 13）。審査の人は自分の Apple アカウントでサインインし、その道は審査へのメモに書く
+- コンテンツ配信権は「第三者のコンテンツを含み、使う権利がある」と答える。日本食品標準成分表の値を見せ、その利用に許諾は要らない（`docs/research/launch-legal-checks.md` の問い3）
+- 著作権の欄の氏名と、App Review の連絡先は、App Store Connect にだけ入れる。リポジトリにも Issue・PR にも書かない
+
+### 読み返す
+
+開発者が入れたら、エージェントが `scripts/app-store-connect get '<パス>'` で読み、`site/` で `node src/app-store-connect-listing-command.ts json` が出す値と突き合わせる（`<app>` は `6816842705`）。
+
+- App 情報: `/v1/apps/<app>/appInfos` のうち状態が `PREPARE_FOR_SUBMISSION` のものの ID で、`/v1/appInfos/<id>/appInfoLocalizations`（`ja` の名前・サブタイトル・プライバシーポリシーの URL）、`/v1/appInfos/<id>/primaryCategory`（`HEALTH_AND_FITNESS`）、`/v1/appInfos/<id>/ageRatingDeclaration`（`healthOrWellnessTopics` だけが当たり、ほかは無し）と、`appInfos` の `appStoreAgeRating`
+- 版: `/v1/apps/<app>/appStoreVersions` のうち状態が `PREPARE_FOR_SUBMISSION` のものの ID で、その版の `copyright`（「2026 」で始まるかだけを見る）と `releaseType`（`MANUAL`）、`/v1/appStoreVersions/<id>/appStoreVersionLocalizations`（`ja` のプロモーション用テキスト・説明文・キーワード・サポートとマーケティングの URL）、`/v1/appStoreVersions/<id>/appStoreReviewDetail`（`demoAccountRequired` が `false`、メモ）。スクリーンショットは、その版の `ja` の地域化の `appScreenshotSets` から、枚数と並びを見る
+- 鍵で読めないもの: 価格と配信状況（`appAvailabilityV2` と `appPriceSchedule` は、役割 Developer の鍵では 403。2026-11-03 に確かめた）と、App のプライバシー（読む API が無い）。開発者が wizard の段で見たものを聞く
+- 公開の Issue に書くのは、欄ごとの一致・不一致まで。著作権の氏名と連絡先は書かない。App のプライバシーの回答の表は、入れたチケットの解決コメントに残す（`docs/agents/privacy.md`）
+
+### 審査に出す
+
+- 版のページに、実機で確かめたビルド（このファイルの「実機の確認」）を付け、「App 内課金とサブスクリプション」で月額（`app.nu_tori.subscription.monthly`）と年額（`app.nu_tori.subscription.yearly`）を選んでから、審査に出す。2つの商品には、先に審査用のスクリーンショットを上げ、「審査用に追加」を押しておく
+- リリースは「手動でリリース」。審査が通ったら、開発者が LP を出す PR と時機をそろえて、手で公開する
+- 審査で却下・指摘されたら、指摘の文と返事を `ready-for-human` の Issue に残す。掲載情報かアプリを直すなら、その Issue からチケットを切る
+
+### 審査の人への返事の下書き
+
+審査で「サブスクリプション切れの状態を見せて」と指摘されたら、アカウントを削除して同じ Apple ID でサインインし直すよう返事で案内する。作り直したアカウントは無料体験が無く、最初からサブスクリプション切れになる（「[仕様: 課金](https://github.com/gn-t-k/nu-tori/issues/647)」の作り直したアカウント）。コードと管理の口は足さず、テストユーザー（`test_users`）は使わない（いつもサブスクリプション中と同じに扱う旗で、切れの状態を作れない）。この道は、出すビルドの実機の確認で確かめる。
+
+審査の人とのやりとりは英語なので、英語で書く。アプリの文言は日本語のまま引き、英語の訳を添える。審査へのメモ（掲載情報のモジュールの `reviewNotes`）と道の書き方をそろえ、どちらかを直したらもう一方も直す。
+
+```text
+Thank you for reviewing nu-tori.
+
+nu-tori uses Sign in with Apple only, and a new account starts a 30-day free trial. You can see the app with an expired subscription by deleting your account and signing in again with the same Apple Account:
+
+1. Tap the person icon at the top right of the timeline to open the Account screen (アカウント).
+2. Tap "アカウントを削除" (Delete Account) at the bottom of the screen, and confirm.
+3. Sign in again with the same Apple Account.
+
+The free trial is available only once per Apple Account, so the new account starts without a free trial, with an expired subscription. The timeline shows the notice "無料体験はありません" (No free trial), and the message field cannot be used.
+
+4. To reach the purchase screen, tap "撮って記録するには、サブスクリプションが必要です" (A subscription is required to record with photos) above the message field, or tap "サブスクリプション" at the top of the Account screen. Our production server accepts Sandbox purchases.
+```
+
 ## 実機の確認
 
 エージェントには実機を操作する道が無いので、人が確かめる。

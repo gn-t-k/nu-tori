@@ -39,7 +39,7 @@ App Store Connect に入れる掲載情報（名前、サブタイトル、プ�
 - 説明文の URL は、ページの一覧から作る（`publicPageUrl`）。URL を手で書かない
 - 欄を足したら、`AppStoreConnectListing` の型に足し、上限や決まりがあれば `src/listing-rule-violations.ts` に1つ足して、外れたときに挙がるテストを `src/listing-rule-violations.test.ts` に足す。文言の欄なら `draftListingFields` にも足す
 - スクリーンショットの見出しは `src/app-store-screenshots.ts` に書く。色を変える要の語は、見出しの文に印を入れず `emphasis` の欄に、見出しの文にそのまま含まれる一続きの文字で書く（含まれなければ `listingRuleViolations` が挙げる）。合成のコマンドが Node のまま読むので、このファイルはほかのモジュールを import しない（`import type` はよい）。生の画面を足したら、`RawScreenName` にも足す
-- wizard は `node src/app-store-connect-listing-command.ts drafts`（仮の文の欄を挙げ、残っていれば 1 で終わる）と `json`（掲載情報の JSON）で読む。ページの `.tsx` を読むので、Vite の `runnerImport` で読み込む
+- wizard（`scripts/app-store-connect-listing-wizard`）は `node src/app-store-connect-listing-command.ts drafts`（仮の文の欄を挙げ、残っていれば 1 で終わる）と `json`（掲載情報の JSON）で読む。ページの `.tsx` を読むので、Vite の `runnerImport` で読み込む
 
 ## 合成する
 

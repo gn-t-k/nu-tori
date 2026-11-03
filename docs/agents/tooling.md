@@ -149,4 +149,5 @@ flowchart LR
 ## ウィザード
 
 - `/wizard` で作るウィザードは macOS の bash 3.2 で動く。日本語の文字のすぐ前の変数は `${name}` で囲む（bash 3.2 は、続く多バイト文字を変数の名前に含めて unbound variable で止まる）。書いたら `grep -nP '\$[A-Za-z_]\w*[^\x00-\x7F]' <ウィザード>` が0件になることを確かめる
+- コミットするウィザードは `scripts/check` の ShellCheck にかかる。ひな形のライブラリ（`STAGES` の印より上）は直さず、シバンの次の行に `# shellcheck disable=SC1087,SC2329` を置く。どちらもライブラリの分で、SC1087 は `$e[` を配列と見る誤り、SC2329 は段で使わない helper。段に出た指摘は直す
 - ひな形の `set_secret` はリポジトリの秘密の値だけを置く。GitHub Actions の Environment の秘密の値（ADR-0010）は、段の中で `gh secret set <名前> --env <Environment> --repo gn-t-k/nu-tori` で置く

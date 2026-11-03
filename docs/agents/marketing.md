@@ -14,7 +14,7 @@ App Store の掲載情報は、名前・サブタイトル・キーワード・�
 - 変えるときは次の順にする
   1. モジュールを直す PR を出す。字数・キーワードの重なり・金額・説明文に要るもの（利用規約とプライバシーポリシーの URL、医療の一文）は `scripts/check site` のテストが確かめる
   2. 見出しか画面が変わったら、撮り直して合成し直し、画像を同じ PR か続く PR でコミットする（`site/AGENTS.md` の「合成する」）
-  3. main に入ったら、開発者が wizard で App Store Connect に入れる。仮の文（`status: "draft"`）が残っているあいだは、wizard が入れる段を始めない
+  3. main に入ったら、開発者が Mac で `scripts/app-store-connect-listing-wizard` を回して App Store Connect に入れる（`docs/agents/ios-release.md` の「App Store に出す」）。仮の文（`status: "draft"`）が残っているあいだは、wizard が入れる段を始めない
 - プロモーション用テキストだけは、新しい版を出さずに App Store Connect で変えられる。そのときも 1 の PR を先に出し、3 で入れる。ほかの欄は、次の版を審査に出すときに入る。名前は最初の提出のあとは新しい版でしか直せない
 
 ## アプリを入れていない人の語で書く

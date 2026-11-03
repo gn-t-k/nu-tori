@@ -77,7 +77,7 @@ export const appStoreConnectListing: AppStoreConnectListing = (() => {
     reviewNotes: [
       "Sign-in: nu-tori uses Sign in with Apple only, so we do not provide a demo account. Please sign in with your own Apple Account. A new account starts a 30-day free trial with all features.",
       "",
-      'Subscription: Open the Account tab (アカウント) and tap "サブスクリプション" at the top to reach the purchase screen. Our production server also accepts Sandbox purchases, so you can complete a purchase there.',
+      'Subscription: Tap the person icon at the top right of the timeline to open the Account screen (アカウント), then tap "サブスクリプション" at the top to reach the purchase screen. Our production server also accepts Sandbox purchases, so you can complete a purchase there.',
       "",
       "Health: nu-tori reads body weight from Health and writes the nutrition of recorded meals to Health.",
       "",
