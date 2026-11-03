@@ -30,7 +30,7 @@
 3. 「メディアマネージャですべてのサイズを表示」を開き、6.3 インチ（medium）などほかの大きさが「6.9 インチのものを使用」になっているか、上げる必要が残っているかを見る。版のページを保存し、スクリーンショットが足りないという警告が出ないかも見る
 4. 足りていれば、ここで終わり。足りなければ、medium の大きさ（6.3 インチ、1206×2622）も書き出す Issue を立てる。合成のコマンドは large しか書き出さず、生の画面も 6.9 インチの機種で撮っているので、撮る機種と合成の両方が要る
 
-確かめた結果（足りた・足りない、見た日）は、このファイルのこの節に「確かめた結果: 」で始まる1行で書き足す。wizard は、この行があれば確かめる手順を飛ばす。
+確かめた結果（足りた・足りない、見た日）は、このファイルのこの節に1行で書き足す。
 
 ## App Store に出す
 
@@ -38,7 +38,7 @@
 
 ```mermaid
 flowchart LR
-  W["開発者が Mac で wizard を回す<br/>掲載情報と設定を入れる"] --> R["エージェントが読むだけの鍵で読み返す"]
+  W["開発者が Mac で wizard を回す<br/>最初の提出は設定も、次の版からは掲載情報だけ"] --> R["エージェントが読むだけの鍵で読み返す"]
   R --> S["ビルドとサブスクリプション2つを付けて審査に出す"]
   S -->|通った| P["開発者が時機を選んで手で公開する"]
   S -->|却下・指摘| I["指摘の文と返事を ready-for-human の Issue に残す"]
@@ -48,9 +48,9 @@ flowchart LR
 
 エージェントの App Store Connect の鍵は読むだけ（`docs/agents/tooling.md` の「App Store Connect を読む」）なので、入れるのは開発者。
 
-- 開発者が Mac で `scripts/app-store-connect-listing-wizard` を回す。確かめることと入れる欄は、wizard の段に従う。本番の値（最低バージョン、LLM の費用の上限、App Store のサーバー通知の URL）が決めたとおりでなければ、wizard は入れる前に止まる
-- 値は掲載情報のモジュール（`site/src/app-store-connect-listing.ts`）から出す。wizard に写してある答えの出どころは、App のプライバシーが「[App Privacy の回答の表を作る](https://github.com/gn-t-k/nu-tori/issues/861#issuecomment-6548836403)」の解決コメントの表、年齢制限指定が「[App Store の掲載情報を決める](https://github.com/gn-t-k/nu-tori/issues/597#issuecomment-6406051504)」の解決コメントの 12（Health or Wellness Topics だけが当たり、9+ になる）。出どころの答えを変えたら、wizard も直す
-- 掲載情報を変えた版でも、同じ wizard を回す（`docs/agents/marketing.md` の「掲載情報の置き場と変える手順」）。入れ終えた段は Enter で進める
+- 最初の提出（#863）は、掲載情報と、一度入れれば変わらない設定（App 情報のカテゴリ・コンテンツ配信権・年齢制限指定、App のプライバシー、価格および配信状況、著作権、App Review に関する情報、手動のリリース）を、1回だけ回す wizard で入れる。main には置かず、PR #893 のコミット `d5c0222` に残してある。main の最新の作業ツリーで `git show d5c0222:scripts/app-store-connect-first-submission-wizard > /tmp/first-submission-wizard && bash /tmp/first-submission-wizard` と回す。入れる前に、本番の値（最低バージョン、LLM の費用の上限、App Store のサーバー通知の URL）が決めたとおりかを確かめ、外れていれば止まる
+- 1回だけの wizard に写した答えの出どころは、App のプライバシーが「[App Privacy の回答の表を作る](https://github.com/gn-t-k/nu-tori/issues/861#issuecomment-6548836403)」の解決コメントの表、年齢制限指定が「[App Store の掲載情報を決める](https://github.com/gn-t-k/nu-tori/issues/597#issuecomment-6406051504)」の解決コメントの 12（Health or Wellness Topics だけが当たり、9+ になる）。あとで答えを変えるときは、wizard でなく出どころを読んで App Store Connect を直す
+- 掲載情報を変えた版では、Mac で `scripts/app-store-connect-listing-wizard` を回す（`docs/agents/marketing.md` の「掲載情報の置き場と変える手順」）。掲載情報のモジュール（`site/src/app-store-connect-listing.ts`）の値を、名前・サブタイトル・版のページの文と URL・スクリーンショット・審査へのメモの順に1欄ずつ見せる。設定には触らない
 - 「App Review に関する情報」の「サインインが必要です」を外すのは、この欄がデモアカウントを渡すためのものだから。nu-tori は Sign in with Apple だけで、デモアカウントを渡さない（#597 の解決コメントの 13）。審査の人は自分の Apple アカウントでサインインし、その道は審査へのメモに書く
 - コンテンツ配信権を「第三者のコンテンツを含み、使う権利がある」と答えるのは、日本食品標準成分表の値を見せるから。その利用に許諾は要らない（`docs/research/launch-legal-checks.md` の問い3）
 - 著作権の欄の氏名と、App Review の連絡先は、リポジトリにも Issue・PR にも書かない
