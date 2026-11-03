@@ -4,16 +4,12 @@ import SwiftUI
 import UIKit
 
 /// タイムラインの下に固定する入力欄。上の行に左から「撮る」「写真」「体重」と、残りの幅の書く欄（大きな文字では、書く欄を一番下の行に全幅で置く）。
-/// 今日の体重が未記録のあいだは、「体重」をカプセルにして丸の行の下に全幅で置く（書く欄の幅が記録の前後で変わらないように）。
-/// 目標を立てる知らせのカードを広げているあいだは、未記録でも「体重」を丸い灰色のボタンにする（カードの塗ったボタンと並ばないように）。
+/// 「体重」は、記録の前後によらず灰色の丸にする。記録を促すのは今日の体重の知らせのカードと通知に任せ、カードの塗った「記録」と並ばないようにする（#872）。
 /// カメラを許可していない人が「撮る」を押したら、そのすぐ上に知らせを出す。
 /// サブスクリプション切れのあいだは、撮る・写真・書く欄と、残った下書きの「送る」を押せなくし、プリセットの代わりに課金画面を開くチップを置く（体重はいつもどおり）
 struct TimelineComposer: View {
-    let weightRecordedToday: Bool
     /// サブスクリプション切れ
     let requiresSubscription: Bool
-    /// 目標を立てる知らせのカードを広げている
-    let expandsGoalSetup: Bool
     /// 体重のシートを開く前の、ヘルスケアの許可を求めているあいだ
     let preparingWeightEntry: Bool
     let showsCameraNotice: Bool
@@ -27,9 +23,7 @@ struct TimelineComposer: View {
     let onOpenPaywall: () -> Void
 
     init(
-        weightRecordedToday: Bool,
         requiresSubscription: Bool,
-        expandsGoalSetup: Bool,
         preparingWeightEntry: Bool,
         showsCameraNotice: Bool,
         initialDraft: TextDraft,
@@ -40,9 +34,7 @@ struct TimelineComposer: View {
         onSendText: @escaping (TextDraft) -> Void,
         onOpenPaywall: @escaping () -> Void
     ) {
-        self.weightRecordedToday = weightRecordedToday
         self.requiresSubscription = requiresSubscription
-        self.expandsGoalSetup = expandsGoalSetup
         self.preparingWeightEntry = preparingWeightEntry
         self.showsCameraNotice = showsCameraNotice
         self.onCapture = onCapture
@@ -79,10 +71,7 @@ struct TimelineComposer: View {
                             .padding(.bottom, max(0, (buttonSize - Self.fieldMinHeight) / 2))
                     }
                 }
-                if !showsWeightCircle && !writing {
-                    unrecordedWeightCapsule
-                }
-                // DESIGN.md の入力欄（書く欄は丸の右の残りの幅）に従わない。大きな文字では丸が大きく、丸の右には1文字ぶんの幅しか残らないため（#447）。一番下に置き、書き始めてカプセルが消えても欄を動かさない
+                // DESIGN.md の入力欄（書く欄は丸の右の残りの幅）に従わない。大きな文字では丸が大きく、丸の右には1文字ぶんの幅しか残らないため（#447）
                 if dynamicTypeSize.isAccessibilitySize {
                     field
                 }
@@ -105,9 +94,6 @@ struct TimelineComposer: View {
     @State private var draft: TextDraft
     @FocusState private var fieldFocused: Bool
 
-    /// 「体重」を丸の行の灰色の丸にするか。記録済みか、目標を立てる知らせのカードを広げているとき
-    private var showsWeightCircle: Bool { weightRecordedToday || expandsGoalSetup }
-
     /// 書いているあいだ（欄を選んでいるか、文字がある）は、「体重」を隠して書く欄を広げる。「撮る」「写真」は残す
     private var writing: Bool { fieldFocused || !draft.text.isEmpty }
 
@@ -119,7 +105,7 @@ struct TimelineComposer: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.openURL) private var openURL
 
-    /// 左から「撮る」「写真」「体重」。「体重」は記録済みで書いていないときだけ
+    /// 左から「撮る」「写真」「体重」。「体重」は書いていないときだけ
     @ViewBuilder private var circleButtons: some View {
         Button(action: onCapture) {
             circle(systemName: "camera.fill", filled: true)
@@ -135,7 +121,7 @@ struct TimelineComposer: View {
         .disabled(requiresSubscription)
         .accessibilityLabel("写真")
         .accessibilityIdentifier("composer-photos")
-        if showsWeightCircle && !writing {
+        if !writing {
             Button(action: onWeight) {
                 circle(filled: false) { weightScaleIcon }
             }
@@ -245,24 +231,6 @@ struct TimelineComposer: View {
 
     private var fieldShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 18)
-    }
-
-    /// 文字の大きさによらず文字のカプセルにし、記録を促す。記録すると丸の行の体重計に戻る
-    private var unrecordedWeightCapsule: some View {
-        Button(action: onWeight) {
-            Text("体重を記録")
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-                .padding(.horizontal)
-                .frame(maxWidth: .infinity)
-                .frame(height: buttonSize)
-                .background(Color.accentColor, in: Capsule())
-                .foregroundStyle(Color.white)
-        }
-        .buttonStyle(.plain)
-        .disabled(preparingWeightEntry)
-        .accessibilityLabel("体重を記録")
-        .accessibilityIdentifier("composer-weight-unrecorded")
     }
 
     /// Anthropic の Usage Policy（消費者向けのチャットボットは、少なくとも各チャットセッションの始めに AI であることを伝える）のための1行で、消したり … で切ったりしない（ADR-0018、#29、#412 の6）。

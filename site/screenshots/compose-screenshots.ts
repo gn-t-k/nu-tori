@@ -42,7 +42,7 @@ export const composeScreenshots = async ({
     );
   }
 
-  // LP の場所取り（public/site.css の .lp-shot）の幅
+  // LP の手順の絵（public/site.css の .lp-shot）の幅
   const landingStepWidth = 200;
   const browser = await chromium.launch();
   try {
@@ -98,7 +98,7 @@ const renderFramedScreen = async ({
   width: number;
   height: number;
 }): Promise<Buffer> => {
-  // LP の絵は、場所取りの幅の2倍の密度で書き出す
+  // LP の絵は、手順の絵の幅の2倍の密度で書き出す
   const landingStepScale = 2;
   return withIsolatedPage(
     { browser, width, height, deviceScaleFactor: landingStepScale },

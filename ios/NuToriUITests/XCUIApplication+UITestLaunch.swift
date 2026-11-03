@@ -93,9 +93,7 @@ extension XCUIApplication {
 
     /// 昨日の値から 0.2 kg 下げて記録する。初期値が 72.6 kg のとき、72.4 kg になる
     @MainActor func recordWeightTwoTenthsLower() {
-        // 今日の体重が未記録なら「体重を記録」のカプセル、記録済みなら丸い「体重」
-        let unrecorded = buttons["composer-weight-unrecorded"]
-        (unrecorded.exists ? unrecorded : buttons["composer-weight"]).tap()
+        buttons["composer-weight"].tap()
         // タイムラインの体重の知らせにも同じステッパーと「記録」があるので、シートの中を探す
         let decrease = otherElements["weight-entry-sheet"].buttons["0.1 kg 減らす"]
         XCTAssertTrue(decrease.waitForExistence(timeout: 5))

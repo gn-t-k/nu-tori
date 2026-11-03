@@ -6,9 +6,7 @@
         VStack {
             Spacer()
             TimelineComposer(
-                weightRecordedToday: sample.weightRecordedToday,
                 requiresSubscription: sample.requiresSubscription,
-                expandsGoalSetup: sample.expandsGoalSetup,
                 preparingWeightEntry: sample.preparingWeightEntry,
                 showsCameraNotice: sample.showsCameraNotice,
                 initialDraft: sample.draft,
@@ -25,10 +23,8 @@
 
     extension TimelineComposer {
         fileprivate enum Sample: CaseIterable {
-            /// 今日の体重がまだ。丸の行の下に「体重を記録」のカプセル
-            case weightUnrecorded
-            /// 今日の体重を記録した。体重計の丸
-            case weightRecorded
+            /// 書いていない。丸の行に「撮る」「写真」「体重」と書く欄
+            case idle
             /// 体重を押し、ヘルスケアの許可を求めている
             case preparingWeightEntry
             /// カメラを許可していない人が「撮る」を押した
@@ -43,8 +39,6 @@
             case nearLimit
             /// 500 字を超えた。「N 字多い」を出し、「送る」を押せない
             case overLimit
-            /// 今日の体重がまだで、目標を立てる知らせのカードを広げている。体重は灰色の丸
-            case goalSetupExpanded
             /// サブスクリプション切れ。撮る・写真・書く欄を押せず、上にチップ。体重はいつもどおり
             case subscriptionExpired
             /// 書いている途中で日が変わり、サブスクリプションが切れた。下書きは残るが「送る」も押せない
@@ -53,40 +47,17 @@
             var requiresSubscription: Bool {
                 switch self {
                 case .subscriptionExpired, .subscriptionExpiredWhileWriting: true
-                case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
-                    .cameraNotPermitted, .writing, .presetInserted, .onlyWhitespace, .nearLimit,
-                    .overLimit, .goalSetupExpanded:
+                case .idle, .preparingWeightEntry, .cameraNotPermitted, .writing, .presetInserted,
+                    .onlyWhitespace, .nearLimit, .overLimit:
                     false
-                }
-            }
-
-            var weightRecordedToday: Bool {
-                switch self {
-                case .weightUnrecorded, .preparingWeightEntry, .writing, .overLimit,
-                    .goalSetupExpanded, .subscriptionExpired, .subscriptionExpiredWhileWriting:
-                    false
-                case .weightRecorded, .cameraNotPermitted, .presetInserted, .onlyWhitespace,
-                    .nearLimit:
-                    true
                 }
             }
 
             var preparingWeightEntry: Bool {
                 switch self {
                 case .preparingWeightEntry: true
-                case .weightUnrecorded, .weightRecorded, .cameraNotPermitted, .writing,
-                    .presetInserted, .onlyWhitespace, .nearLimit, .overLimit, .goalSetupExpanded,
-                    .subscriptionExpired, .subscriptionExpiredWhileWriting:
-                    false
-                }
-            }
-
-            var expandsGoalSetup: Bool {
-                switch self {
-                case .goalSetupExpanded: true
-                case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
-                    .cameraNotPermitted, .writing, .presetInserted, .onlyWhitespace, .nearLimit,
-                    .overLimit, .subscriptionExpired, .subscriptionExpiredWhileWriting:
+                case .idle, .cameraNotPermitted, .writing, .presetInserted, .onlyWhitespace,
+                    .nearLimit, .overLimit, .subscriptionExpired, .subscriptionExpiredWhileWriting:
                     false
                 }
             }
@@ -94,17 +65,15 @@
             var showsCameraNotice: Bool {
                 switch self {
                 case .cameraNotPermitted: true
-                case .weightUnrecorded, .weightRecorded, .preparingWeightEntry, .writing,
-                    .presetInserted, .onlyWhitespace, .nearLimit, .overLimit, .goalSetupExpanded,
-                    .subscriptionExpired, .subscriptionExpiredWhileWriting:
+                case .idle, .preparingWeightEntry, .writing, .presetInserted, .onlyWhitespace,
+                    .nearLimit, .overLimit, .subscriptionExpired, .subscriptionExpiredWhileWriting:
                     false
                 }
             }
 
             var draft: TextDraft {
                 switch self {
-                case .weightUnrecorded, .weightRecorded, .preparingWeightEntry,
-                    .cameraNotPermitted, .goalSetupExpanded, .subscriptionExpired:
+                case .idle, .preparingWeightEntry, .cameraNotPermitted, .subscriptionExpired:
                     TextDraft.empty
                 case .writing, .subscriptionExpiredWhileWriting:
                     TextDraft(text: "夜は定食屋で生姜焼き定食。ご飯は半分残して、味噌汁は全部飲んだ")

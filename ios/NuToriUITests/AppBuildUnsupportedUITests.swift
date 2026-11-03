@@ -22,7 +22,6 @@ final class AppBuildUnsupportedUITests: XCTestCase {
         XCTAssertFalse(app.otherElements["timeline"].exists)
         XCTAssertFalse(app.buttons["account"].exists)
         XCTAssertFalse(app.buttons["composer-weight"].exists)
-        XCTAssertFalse(app.buttons["composer-weight-unrecorded"].exists)
         attachScreenshot(of: app, named: "426 を受け取ったときの締め出しの画面")
     }
 }

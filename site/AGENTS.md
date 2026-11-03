@@ -46,7 +46,7 @@ App Store Connect に入れる掲載情報（名前、サブタイトル、プ�
 合成のコマンド（`screenshots/compose-screenshots-command.ts`）は、生の画面のフォルダ（`<名前>.png`）を受け、Apple の端末の枠に入れた画像を書き出す。枠と画面を HTML で組み、`public/site.css` を読んだ Playwright の Chromium で画像にする。外のものは読み込まないので、同じ入力からは同じ画像になる。
 
 - 書き出すもの:
-  - LP の手順の絵3枚（生の画面の `step-weigh`・`step-photo`・`step-guide`）を `public/landing-a/steps/<名前>.webp` に、地を透過で、LP の場所取り（`.lp-shot`）の幅 200 の2倍の密度で。置き場と幅・高さは `src/pages/landing-a/step-shots.json` に書く。`step-shots.json` は LP の版 a の中身のチケット #660 が読む（まだ読んでいない）
+  - LP の手順の絵3枚（生の画面の `step-weigh`・`step-photo`・`step-guide`）を `public/landing-a/steps/<名前>.webp` に、地を透過で、LP の手順の絵（`.lp-shot`）の幅 200 の2倍の密度で。置き場と幅・高さは `src/pages/landing-a/step-shots.json` に書く。LP の版 a（`src/pages/landing-a-page.tsx`）が `step-shots.json` を読み、`<img>` の幅と高さに書く
   - 掲載用のスクリーンショット5枚を `src/app-store-screenshot-images/<01〜05>.png` に、1320×2868 の透過なし（アルファのチャンネルなし）で。地は `primary` で、白の見出し（2行まで。要の語だけ色を変える）の下に、枠に入れた生の画面を1台、キャンバスの高さの約75%で置く（#867 の解決コメントの1）。見出しと載せる生の画面は `src/app-store-screenshots.ts` から読む
 - 回し方: `site/` で `node screenshots/compose-screenshots-command.ts <生の画面のフォルダ>`。生の画面が足りなければ、足りない名前を挙げて止まる。掲載用の生の画面がまだ無いうちは `--landing-only` で LP の絵だけを書き出す。書き出した画像と JSON をコミットし、生の画面はコミットしない
 - 端末の枠: Apple Design Resources（https://developer.apple.com/design/resources/）の iPhone の枠の PNG を、開発者が自分で使用許諾に同意して落とし、`screenshots/bezel/iphone.png` に置く（`.gitignore` している）。別の置き場の枠は `--bezel <PNG>` で渡す。使用許諾が配り直しを禁じるので、枠の画像はリポジトリにも Issue・PR にも置かない。枠は手を加えずに使い、画面の所が透けた穴の位置と角の丸みは、コマンドが画像から読む。生の画面と同じ機種（6.9 インチ）の枠を選ぶ

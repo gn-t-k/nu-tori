@@ -15,18 +15,13 @@ struct WeightNoticeCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(title)
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Text(WeightAmountText.clock(card.clockTime))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-                Text("いつもはこの時間までに記録しています。")
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(card.body)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
             }
             switch card.form {
             case .awaitingAnswer:

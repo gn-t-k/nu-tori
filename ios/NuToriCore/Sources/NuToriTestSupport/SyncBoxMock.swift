@@ -46,6 +46,9 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
     public var state: SyncState? { storage.withLock { $0.state } }
     /// 送り待ちを足した順。`pendingEntries()` は古い順
     public var entries: [PendingEntry] { storage.withLock { $0.entries } }
+    /// 送り待ちに足したものを、足した順にすべて。送り終えて送り待ちから消しても残る。
+    /// 書いてすぐ裏で同期する編集は、同期が先に終わると送り待ちが空になるので、書いたかはこちらで確かめる
+    public var enqueuedEntries: [PendingEntry] { storage.withLock { $0.enqueuedEntries } }
     /// 種類に当てるよう渡された変更
     public var appliedKindChanges: [KindChanges] { storage.withLock { $0.appliedKindChanges } }
     /// 同期の状態を書くよう渡された結果ごとの状態
@@ -84,6 +87,7 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
                 result, kinds: kinds, cache: cache,
                 savePending: { enqueuing, healthSyncState in
                     storage.entries.append(contentsOf: enqueuing)
+                    storage.enqueuedEntries.append(contentsOf: enqueuing)
                     if let healthSyncState {
                         storage.healthState = healthSyncState
                     }
@@ -134,6 +138,7 @@ public final class SyncBoxMock<Cache: Sendable>: SyncBox {
 
     struct Storage: Sendable {
         var entries: [PendingEntry]
+        var enqueuedEntries: [PendingEntry] = []
         var state: SyncState?
         var healthState: HealthSyncState
         var saves: [Save] = []

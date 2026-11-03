@@ -19,9 +19,9 @@ public struct NoticeCard: Hashable, Sendable {
             form: targetDay == today ? .awaitingAnswer : .unansweredPastDay(targetDay: targetDay))
     }
 
-    /// 1行目に出す時刻。出したときのタイムゾーンの時計の時刻
-    public var clockTime: ClockTime {
-        ClockTime(containing: notice.issuedAt, in: notice.timeZone)
+    /// 見出しの下の文。知らせには時刻を付けないので（DESIGN.md の own-record-time）、いつもの時刻は文の中に書く
+    public var body: String {
+        "いつもは \(WeightAmountText.clock(clockTime)) までに記録しています。"
     }
 
     public enum Form: Hashable, Sendable {
@@ -29,5 +29,10 @@ public struct NoticeCard: Hashable, Sendable {
         case awaitingAnswer
         /// 前の日の答えていない知らせ。文だけを残す。見出しに対象の日付を書く
         case unansweredPastDay(targetDay: CalendarDay)
+    }
+
+    /// 文に書く時刻。出したときのタイムゾーンの時計の時刻
+    private var clockTime: ClockTime {
+        ClockTime(containing: notice.issuedAt, in: notice.timeZone)
     }
 }

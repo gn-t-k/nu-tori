@@ -486,14 +486,12 @@ body:has(.lp) .site-footer {
   color: var(--lp-secondary);
 }
 
-/* iPhone のスクリーンショット（1290×2796）の縦横比 */
+/* 手順の絵は端末の枠ごと地を透過で書き出してある（site/AGENTS.md の「合成する」）ので、地も枠線も付けない。高さは img の width と height の比から決まる */
 .lp-shot {
-  aspect-ratio: 1290 / 2796;
+  display: block;
   width: min(100%, 200px);
+  height: auto;
   margin: 0 auto 12px;
-  border-radius: 16px;
-  background: var(--surface);
-  border: 1px solid var(--separator);
 }
 
 .lp-feature {
@@ -959,7 +957,6 @@ body:has(.lp) .site-footer {
     grid-row: 1 / span 2;
     width: 100%;
     margin: 0;
-    border-radius: 12px;
   }
 
   .lp-plate {
