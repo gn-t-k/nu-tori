@@ -18,6 +18,12 @@ public struct TimelineViewport: Equatable, Sendable {
         return days.drop { day in oldest.map { day.day < $0 } ?? false }
     }
 
+    /// 描く日。並べる日のうち、見出しを描く日（`Timeline.Day.showsHeading`）だけ。描かない日は区切りを置かず、前後の日を詰める。
+    /// 区切りが無いので日の位置も届かず、題と1日の丸の帯にも出ない
+    public func drawnDays(of days: [Timeline.Day]) -> [Timeline.Day] {
+        listedDays(of: days).filter(\.showsHeading)
+    }
+
     /// 次に描いたあとで実行する指示。並べる日を変えた・項目が足されたばかりで、行き先がまだ描かれていないので、すぐには動かせない。
     /// 画面は、変わったら `takeWaitingInstructions()` で受け取って実行する
     public private(set) var waitingInstructions: [Instruction] = []
@@ -116,10 +122,14 @@ public struct TimelineViewport: Equatable, Sendable {
         followAgainIfAtEnd()
     }
 
-    /// 日のまとめで日を選んだ
+    /// 日のまとめで日を選んだ。見出しを描かない日は区切りを置かないので、その次の見出しを描く日の区切りに着き、後ろに無ければ一番下に着く
     public mutating func dayChosen(_ day: CalendarDay, in days: [Timeline.Day]) {
-        list(day, in: days)
-        waitingInstructions.append(.scroll(to: .day(day), animated: false))
+        guard let landing = days.first(where: { $0.day >= day && $0.showsHeading })?.day else {
+            landingRequested(.end, in: days)
+            return
+        }
+        list(landing, in: days)
+        waitingInstructions.append(.scroll(to: .day(landing), animated: false))
     }
 
     /// 答えていない知らせの1行を押した、または記録忘れの通知を押して開いた（`reminderOpened`）
@@ -183,32 +193,35 @@ public struct TimelineViewport: Equatable, Sendable {
 
     // MARK: 内部
 
-    /// `day` の前の日から古いほうへ、1回に並べる分を数えた、いちばん古い日。`day` が nil なら、いちばん新しい日から数える。数える日が無ければ nil
+    /// `day` の前の日から古いほうへ、1回に並べる分を数えた、いちばん古い日。`day` が nil なら、いちばん新しい日から数える。数える日が無ければ nil。
+    /// 項目の数だけで数える。見出しを描かない日は区切りを置かないので、続いても画面は伸びず、数えずに越える。
+    /// 越えた先の、見出しを描く日を必ず1日は含むので、遡って足した分が全部空の日で上端から動かず、次が足されない、ということは起きない
     private static func oldestDay(
         ofBatchBefore day: CalendarDay?, in days: [Timeline.Day]
     ) -> CalendarDay? {
         // 1回に並べる日の、項目の数の目安。画面の数倍になり、開くのが遅くならない数
         let batchItemCount = 30
-        // 1回に並べる日の数の上限。記録の無い日が続いても、区切りだけで画面を超える
-        let batchDayCount = 30
         let olderDays = days.prefix { candidate in day.map { candidate.day < $0 } ?? true }
         var itemCount = 0
         var oldest: CalendarDay?
-        for (countedDays, olderDay) in olderDays.reversed().enumerated() {
-            guard itemCount < batchItemCount, countedDays < batchDayCount else { break }
+        for olderDay in olderDays.reversed() {
+            guard itemCount < batchItemCount else { break }
             itemCount += olderDay.items.count
             oldest = olderDay.day
         }
         return oldest
     }
 
-    /// 並べたいちばん古い日の前の日を足す。足した分だけ中身が下へずれるので、足した日が並んでから、見ていた日を上端に置き直す。足す日が無ければ何もしない
+    /// 並べたいちばん古い日の前の日を足す。足した分だけ中身が下へずれるので、足した日が並んでから、見ていた日（並べていた日のうち、見出しを描くいちばん古い日。描かない日は区切りが無く、そこへは動けない）を上端に置き直す。足す日が無ければ何もしない
     private mutating func listOlderDays(of days: [Timeline.Day]) {
-        guard let listedOldest = listedDays(of: days).first?.day,
+        let listed = listedDays(of: days)
+        guard let listedOldest = listed.first?.day,
             let oldest = Self.oldestDay(ofBatchBefore: listedOldest, in: days)
         else { return }
         oldestListedDay = oldest
-        waitingInstructions.append(.scroll(to: .day(listedOldest), animated: false))
+        if let kept = listed.first(where: \.showsHeading)?.day {
+            waitingInstructions.append(.scroll(to: .day(kept), animated: false))
+        }
     }
 
     /// その日が並んでいなければ、その日まで並べる。一番下を追っているなら、着く先の日（`landingDay`）として持つ

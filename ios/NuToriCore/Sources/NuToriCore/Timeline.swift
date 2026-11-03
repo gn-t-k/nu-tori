@@ -75,6 +75,7 @@ public struct Timeline: Sendable {
         days = range.map { day in
             Day(
                 day: day,
+                isToday: day == today,
                 items: (subscriptionNoticesByDay[day] ?? []).map { .subscriptionNotice($0) }
                     + Self.items(
                         records: weightRecordsByDay[day] ?? [],
@@ -227,11 +228,20 @@ public struct Timeline: Sendable {
         /// この日の食べた量を比べる1日の目安（`DailyGuideForDay`）。目標を立てる前の日と、目安がまだ届いていない日は nil で、比べない
         public let dailyGuide: DailyGuide?
 
-        public init(day: CalendarDay, items: [Item], food: DayFood, dailyGuide: DailyGuide?) {
+        public init(
+            day: CalendarDay, isToday: Bool, items: [Item], food: DayFood, dailyGuide: DailyGuide?
+        ) {
             self.day = day
+            self.isToday = isToday
             self.items = items
             self.food = food
             self.dailyGuide = dailyGuide
+        }
+
+        /// 日の見出しを描くか。今日は記録を足す先なので、項目が無くても描く（初日のユーザーもここから始まる）。
+        /// 描かない日も `days` からは外さない。題・日のまとめ・並べる日の分け方は、日の並びを1日ずつ使う（#870）
+        public var showsHeading: Bool {
+            isToday || !items.isEmpty
         }
 
         public var representativeWeight: RepresentativeWeight? {
@@ -256,6 +266,8 @@ public struct Timeline: Sendable {
                 },
                 food: food, dailyGuide: dailyGuide)
         }
+
+        private let isToday: Bool
     }
 
     public enum Item: Hashable, Sendable, Identifiable {
