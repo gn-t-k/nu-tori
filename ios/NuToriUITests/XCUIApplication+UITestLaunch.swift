@@ -107,6 +107,53 @@ extension XCUIApplication {
         navigationBars["体重"].buttons["記録"]
     }
 
+    /// 体重のシートの「前回 … kg」の行
+    @MainActor var weightEntryPreviousLine: XCUIElement {
+        otherElements["weight-entry-sheet"].staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "前回")
+        ).firstMatch
+    }
+
+    /// 体重のシートが large まで広がるのを待つ
+    @MainActor func waitUntilWeightEntrySheetIsExpanded() -> Bool {
+        waitUntil {
+            self.navigationBars["体重"].frame.minY < self.windows.firstMatch.frame.height * 0.2
+        }
+    }
+
+    /// 体重のシートが中身の高さに落ち着くのを待つ。前回の行の下の空きが少なすぎれば中身がシートの下で切れていて、多すぎれば空きが残っている
+    @MainActor func waitUntilWeightEntrySheetFitsContent() -> Bool {
+        waitUntil {
+            let spaceBelow =
+                self.windows.firstMatch.frame.maxY - self.weightEntryPreviousLine.frame.maxY
+            return (20..<100).contains(spaceBelow)
+        }
+    }
+
+    /// 体重のシートがキーボードのすぐ上に落ち着くのを待つ。シートのいちばん下のものとキーボードのあいだが、負なら隠れていて、多すぎれば空きが残っている
+    @MainActor func waitUntilWeightEntrySheetSitsOnKeyboard(below lastElement: XCUIElement) -> Bool
+    {
+        waitUntil {
+            let space = self.keyboards.firstMatch.frame.minY - lastElement.frame.maxY
+            return (0..<100).contains(space)
+        }
+    }
+
+    /// 体重のシートのナビゲーションバーをつかんで、画面の高さのこの割合の位置まで動かす
+    @MainActor func dragWeightEntryNavigationBar(toY: CGFloat) {
+        navigationBars["体重"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+            .press(
+                forDuration: 0.1,
+                thenDragTo: windows.firstMatch.coordinate(
+                    withNormalizedOffset: CGVector(dx: 0.5, dy: toY)))
+    }
+
+    @MainActor private func waitUntil(_ condition: @escaping () -> Bool) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in condition() }, object: nil)
+        return XCTWaiter().wait(for: [expectation], timeout: 5) == .completed
+    }
+
     /// 小数点のキーは、地域の設定で「.」か「,」になる
     @MainActor func typeSeventyKilograms() {
         keys["7"].tap()

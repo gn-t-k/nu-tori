@@ -9,8 +9,6 @@ struct WeightEntryControls: View {
     let typing: FocusState<Bool>.Binding
     /// 開いたときから、値の欄をキーボードで入れる形にする（前回の値が無い体重のシート）
     let startsTyping: Bool
-    /// 値を押してキーボードで入れ始めたとき
-    let onBeginTyping: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
@@ -65,10 +63,7 @@ struct WeightEntryControls: View {
             // まだ入れていないときは、見た目の「–」に合わせて値を読まない
             shownLabel: "体重",
             shownValue: draft.kilograms.map(WeightAmountText.kilograms),
-            beginTyping: {
-                draft.beginTyping()
-                onBeginTyping()
-            },
+            beginTyping: { draft.beginTyping() },
             textChanged: { previous, next in
                 if next == textFromStep {
                     textFromStep = nil

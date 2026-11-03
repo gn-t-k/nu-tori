@@ -9,14 +9,17 @@ struct WeightEntrySheet: View {
                 draft: $draft,
                 observation: $observation,
                 typing: $typing,
-                startsTyping: draft.startsWithKeyboard,
-                onBeginTyping: { detent = .large }
+                startsTyping: draft.startsWithKeyboard
             )
             // タイムラインの体重の知らせにも同じステッパーがあるので、UI テストはシートの中を探す
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("weight-entry-sheet")
             .padding()
+            // シートが低いときに縮めて測ると、低いままになる
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { contentHeight = $0 }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .onGeometryChange(for: CGFloat.self, of: \.safeAreaInsets.top) { barHeight = $0 }
             .navigationTitle("体重")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -29,7 +32,8 @@ struct WeightEntrySheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large], selection: $detent)
+        // large を選べると、キーボードが出たときに iOS が large へ上げて、中身とキーボードのあいだが空く
+        .presentationDetents(typing ? [fittedDetent] : [fittedDetent, .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(draft.tenths != draft.initialTenths)
         .onAppear {
@@ -45,7 +49,10 @@ struct WeightEntrySheet: View {
     @State private var entry: WeightEntry
     @State private var observation: WeightEntryObservation
     @State private var didRecord = false
-    @State private var detent: PresentationDetent
+    /// 測るまでの仮の値。標準の文字の中身のおおよその高さ
+    @State private var contentHeight: CGFloat = 130
+    /// 測るまでの仮の値。ナビゲーションバーのおおよその高さ
+    @State private var barHeight: CGFloat = 60
     @FocusState private var typing: Bool
     @Environment(\.dismiss) private var dismiss
     private let now: () -> Date
@@ -72,7 +79,11 @@ struct WeightEntrySheet: View {
         _observation = State(
             initialValue: WeightEntryObservation(
                 startsWithKeyboard: draft.startsWithKeyboard, openedAt: now()))
-        _detent = State(initialValue: draft.startsWithKeyboard ? .large : .medium)
+    }
+
+    /// 中身が画面より高ければ、シートが画面の中で止める（縦向きの iPhone では、いちばん大きな文字でも起きない）
+    private var fittedDetent: PresentationDetent {
+        .height(contentHeight + barHeight)
     }
 
     private var canRecord: Bool {

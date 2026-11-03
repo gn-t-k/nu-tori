@@ -14,9 +14,10 @@ final class RecordFirstWeightUITests: XCTestCase {
     func test_前回の体重が無くてもシートを開くとキーボードで入れて記録できること() {
         XCTAssertTrue(app.buttons["composer-weight"].waitForExistence(timeout: 5))
         app.buttons["composer-weight"].tap()
-        XCTAssertTrue(
-            app.otherElements["weight-entry-sheet"].textFields["体重の値"].waitForExistence(
-                timeout: 5))
+        let field = app.otherElements["weight-entry-sheet"].textFields["体重の値"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.waitUntilWeightEntrySheetSitsOnKeyboard(below: field))
         app.typeSeventyKilograms()
         app.weightEntryRecordButton.tap()
         XCTAssertTrue(app.staticText(containing: "70.0 kg").waitForExistence(timeout: 5))
