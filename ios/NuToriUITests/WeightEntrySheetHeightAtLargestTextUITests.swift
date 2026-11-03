@@ -32,7 +32,7 @@ final class WeightEntrySheetHeightAtLargestTextUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
 
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "90.0")
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "90")
 
         let typoLine = sheet.staticTexts.matching(
             NSPredicate(format: "label BEGINSWITH %@", "前回（")

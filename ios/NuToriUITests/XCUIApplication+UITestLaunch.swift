@@ -139,6 +139,15 @@ extension XCUIApplication {
         }
     }
 
+    /// 体重のシートのナビゲーションバーをつかんで、画面の高さのこの割合の位置まで動かす
+    @MainActor func dragWeightEntryNavigationBar(toY: CGFloat) {
+        navigationBars["体重"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+            .press(
+                forDuration: 0.1,
+                thenDragTo: windows.firstMatch.coordinate(
+                    withNormalizedOffset: CGVector(dx: 0.5, dy: toY)))
+    }
+
     @MainActor private func waitUntil(_ condition: @escaping () -> Bool) -> Bool {
         let expectation = XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in condition() }, object: nil)

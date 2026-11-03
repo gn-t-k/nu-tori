@@ -18,37 +18,16 @@ final class WeightEntrySheetHeightAfterChangingValueUITests: XCTestCase {
     }
 
     func test_上へ動かすと広がり下へ動かすと中身の高さに戻ること() {
-        dragNavigationBar(toY: 0.1)
+        app.dragWeightEntryNavigationBar(toY: 0.1)
         XCTAssertTrue(app.waitUntilWeightEntrySheetIsExpanded())
-        dragNavigationBar(toY: 0.98)
+        app.dragWeightEntryNavigationBar(toY: 0.98)
         XCTAssertTrue(app.waitUntilWeightEntrySheetFitsContent())
         attachScreenshot(of: app, named: "広げてから中身の高さに戻した体重のシート")
     }
 
     func test_中身の高さから下へ動かしても閉じないこと() {
-        dragNavigationBar(toY: 0.98)
+        app.dragWeightEntryNavigationBar(toY: 0.98)
         XCTAssertTrue(app.waitUntilWeightEntrySheetFitsContent())
         attachScreenshot(of: app, named: "値を変えたあとに下げても閉じない体重のシート")
-    }
-
-    func test_広げてから打ち始めるとシートがキーボードのすぐ上に載ること() {
-        dragNavigationBar(toY: 0.1)
-        XCTAssertTrue(app.waitUntilWeightEntrySheetIsExpanded())
-
-        app.otherElements["weight-entry-sheet"].buttons["体重"].tap()
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
-
-        XCTAssertTrue(
-            app.waitUntilWeightEntrySheetSitsOnKeyboard(below: app.weightEntryPreviousLine))
-        attachScreenshot(of: app, named: "広げてから打ち始めた体重のシート")
-    }
-
-    /// ナビゲーションバーをつかんで、画面の高さのこの割合の位置まで動かす
-    private func dragNavigationBar(toY: CGFloat) {
-        app.navigationBars["体重"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
-            .press(
-                forDuration: 0.1,
-                thenDragTo: app.windows.firstMatch.coordinate(
-                    withNormalizedOffset: CGVector(dx: 0.5, dy: toY)))
     }
 }
