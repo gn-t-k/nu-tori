@@ -50,7 +50,7 @@ flowchart LR
 
 - 最初の提出（#863）は、掲載情報と、一度入れれば変わらない設定（App 情報のカテゴリ・コンテンツ配信権・年齢制限指定、App のプライバシー、価格および配信状況、著作権、App Review に関する情報、手動のリリース）を、1回だけ回す wizard で入れる。main には置かず、PR #893 のコミット `d5c0222` に残してある。main の最新の作業ツリーで `git show d5c0222:scripts/app-store-connect-first-submission-wizard > /tmp/first-submission-wizard && bash /tmp/first-submission-wizard` と回す。入れる前に、本番の値（最低バージョン、LLM の費用の上限、App Store のサーバー通知の URL）が決めたとおりかを確かめ、外れていれば止まる
 - 1回だけの wizard に写した答えの出どころは、App のプライバシーが「[App Privacy の回答の表を作る](https://github.com/gn-t-k/nu-tori/issues/861#issuecomment-6548836403)」の解決コメントの表、年齢制限指定が「[App Store の掲載情報を決める](https://github.com/gn-t-k/nu-tori/issues/597#issuecomment-6406051504)」の解決コメントの 12（Health or Wellness Topics だけが当たり、9+ になる）。あとで答えを変えるときは、wizard でなく出どころを読んで App Store Connect を直す
-- 掲載情報を変えた版では、Mac で `scripts/app-store-connect-listing-wizard` を回す（`docs/agents/marketing.md` の「掲載情報の置き場と変える手順」）。掲載情報のモジュール（`site/src/app-store-connect-listing.ts`）の値を、名前・サブタイトル・版のページの文と URL・スクリーンショット・審査へのメモの順に1欄ずつ見せる。設定には触らない
+- 掲載情報を変えた版では、Mac で `scripts/app-store-connect-listing-wizard` を回す（`docs/agents/marketing.md` の「掲載情報の置き場と変える手順」）。掲載情報のモジュール（`site/src/app-store-connect-listing.ts`）の値を1欄ずつ入れる。入れる欄と順は wizard の段に従う。設定には触らない
 - 「App Review に関する情報」の「サインインが必要です」を外すのは、この欄がデモアカウントを渡すためのものだから。nu-tori は Sign in with Apple だけで、デモアカウントを渡さない（#597 の解決コメントの 13）。審査の人は自分の Apple アカウントでサインインし、その道は審査へのメモに書く
 - コンテンツ配信権を「第三者のコンテンツを含み、使う権利がある」と答えるのは、日本食品標準成分表の値を見せるから。その利用に許諾は要らない（`docs/research/launch-legal-checks.md` の問い3）
 - 著作権の欄の氏名と、App Review の連絡先は、リポジトリにも Issue・PR にも書かない
