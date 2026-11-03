@@ -121,7 +121,7 @@ struct RootModelTests {
         func skipsSameName() async {
             await device.model.perform(.renameDish(dish, to: " 親子丼 "))
 
-            #expect(device.store.entries.isEmpty)
+            #expect(device.store.enqueuedEntries.isEmpty)
             #expect(device.analytics.captured.isEmpty)
         }
 
@@ -129,7 +129,7 @@ struct RootModelTests {
         func capturesRenamed() async {
             await device.model.perform(.renameDish(dish, to: "カツ丼"))
 
-            #expect(device.store.entries.map(\.kind) == [.dish])
+            #expect(device.store.enqueuedEntries.map(\.kind) == [.dish])
             #expect(device.analytics.captured == [.dishCorrected])
         }
     }
