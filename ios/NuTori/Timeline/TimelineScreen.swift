@@ -632,9 +632,7 @@ struct TimelineScreen: View {
 
     private func composer() -> some View {
         TimelineComposer(
-            weightRecordedToday: snapshot.weightRecordedToday,
             requiresSubscription: snapshot.requiresSubscription,
-            expandsGoalSetup: goalSetupFlow.expandedPage != nil,
             preparingWeightEntry: navigation.presentation == .weightEntry(.preparing),
             showsCameraNotice: navigation.presentation == .cameraPermissionNotice,
             initialDraft: TextDraft.empty,
