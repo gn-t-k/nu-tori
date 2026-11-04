@@ -294,15 +294,15 @@ pause "保存したら Enter"
 
 # ── 6 ───────────────────────────────────────────────────────────────────
 stage "版のページ: スクリーンショット"
-screenshot_dir="site/src/app-store-screenshot-images"
+# App Store Connect の iPhone の欄は medium（6.3 インチ、1206×2622）の大きさを受け付ける（#863 で確かめた）
+screenshot_dir="site/src/app-store-screenshot-images/medium"
 screenshot_names="$(listing_js 'j.screenshots.map((s) => s.name).join(" ")')"
 for name in $screenshot_names; do
-  [[ -f "${screenshot_dir}/${name}.png" ]] || stop "${screenshot_dir}/${name}.png が無い。合成し直してから回す（site/AGENTS.md の「合成する」）"
+  [[ -f "${screenshot_dir}/${name}.png" ]] || stop "${screenshot_dir}/${name}.png が無い。合成し直すか、縮め直してから回す（site/AGENTS.md の「合成する」）"
 done
 say "上げるもの: ${screenshot_dir}/ の ${screenshot_names}（この順）"
 command -v open >/dev/null 2>&1 && open "${REPO_ROOT}/${screenshot_dir}"
 step "スクリーンショットの欄の古い画像を消し、上の画像をこの順で上げる"
-note "上げる大きさは ios-release.md の「上げる前に、large の大きさだけで足りるかを確かめる」に書いた結果に従う"
 step "右上の「保存」を押す"
 pause "保存したら Enter"
 
