@@ -11,7 +11,7 @@ describe("掲載用のスクリーンショットを medium に縮めるコマ�
   let listingDirectory: string;
   let mediumDirectory: string;
 
-  // 6.9 インチの掲載用の1枚と同じ大きさの、透過なしの単色の画像
+  // 6.9 インチの掲載用の1枚と同じ大きさの、不透明な単色の画像
   const writeListingScreenshots = async (names: readonly string[]) => {
     await mkdir(listingDirectory);
     for (const name of names) {

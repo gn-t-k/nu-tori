@@ -4,6 +4,10 @@ import { access } from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { composeScreenshots } from "./compose-screenshots.ts";
+import {
+  listingScreenshotDirectory,
+  mediumListingScreenshotDirectory,
+} from "./listing-screenshot-directory.ts";
 import { scaleListingScreenshots } from "./scale-listing-screenshots.ts";
 
 const siteDirectory = path.join(import.meta.dirname, "..");
@@ -30,19 +34,16 @@ await access(bezelPath).catch(() => {
   );
 });
 
-// 掲載用の5枚は、見出しを持つ掲載情報のモジュール（src/app-store-screenshots.ts）のそばに置き、wizard がここから上げる
-const listingDirectory = path.join(siteDirectory, "src", "app-store-screenshot-images");
-
 await composeScreenshots({
   rawDirectory: path.resolve(rawDirectory),
   bezelPath: path.resolve(bezelPath),
   publicDirectory: path.join(siteDirectory, "public"),
   stepShotsPath: path.join(siteDirectory, "src", "pages", "landing-a", "step-shots.json"),
-  listingDirectory: landingOnly ? undefined : listingDirectory,
+  listingDirectory: landingOnly ? undefined : listingScreenshotDirectory,
 });
 if (!landingOnly) {
   await scaleListingScreenshots({
-    listingDirectory,
-    mediumDirectory: path.join(listingDirectory, "medium"),
+    listingDirectory: listingScreenshotDirectory,
+    mediumDirectory: mediumListingScreenshotDirectory,
   });
 }

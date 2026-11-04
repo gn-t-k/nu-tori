@@ -1,11 +1,13 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser } from "playwright";
 import { appStoreScreenshots, type AppStoreScreenshot } from "../src/app-store-screenshots.ts";
 import { encodeWebp } from "./encode-webp.ts";
+import { exists } from "./exists.ts";
 import { framedScreenHtml } from "./framed-screen-html.ts";
 import { loadBezel, type Bezel } from "./load-bezel.ts";
 import { pngDataUrl } from "./png-data-url.ts";
+import { withIsolatedPage } from "./with-isolated-page.ts";
 
 // LP の手順の絵にする生の画面。名前は撮る UI テストとの約束（仕様 #853 の「撮る画面」）
 const landingStepScreens = ["step-weigh", "step-photo", "step-guide"] as const;
@@ -194,30 +196,6 @@ const renderListingScreenshot = async ({
   });
 };
 
-// 外を読まないページを用意して渡し、終わったら閉じる
-const withIsolatedPage = async <T>(
-  {
-    browser,
-    width,
-    height,
-    deviceScaleFactor,
-  }: { browser: Browser; width: number; height: number; deviceScaleFactor: number },
-  use: (page: Page) => Promise<T>,
-): Promise<T> => {
-  const context = await browser.newContext({
-    viewport: { width, height },
-    deviceScaleFactor,
-    colorScheme: "light",
-  });
-  try {
-    // 決まった入力から同じ画像になるよう、外のものを読み込まない（画像は data: の URL で渡す）
-    await context.route("**/*", (route) => route.abort());
-    return await use(await context.newPage());
-  } finally {
-    await context.close();
-  }
-};
-
 // 見出しの文の、要の語の最初の1か所だけを色を変えた span で包む
 const headlineHtml = ({ headline, emphasis }: AppStoreScreenshot) => {
   const at = headline.text.indexOf(emphasis);
@@ -236,12 +214,6 @@ const escapeHtml = (text: string) =>
   text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
 const siteCssPath = path.join(import.meta.dirname, "..", "public", "site.css");
-
-const exists = async (filePath: string) =>
-  access(filePath).then(
-    () => true,
-    () => false,
-  );
 
 // step-shots.json の形。手順の絵の置き場と幅・高さ（CSS のピクセル）
 type LandingStepShots = Record<
