@@ -58,7 +58,7 @@ check_target() {
         ios-screenshots) check_ios_screenshots ;;
         server) if $lint_only; then lint_server; else check_server; fi ;;
         site) if $lint_only; then lint_site; else check_site; fi ;;
-        # Lint だけなので、--lint でも同じものを回す
+        # Lint と1秒かからないテストだけなので、--lint でも同じものを回す
         scripts) check_scripts ;;
     esac
 }
@@ -808,6 +808,10 @@ check_scripts() {
         fi
     done
     (cd "$root" && "$shellcheck" "${files[@]}")
+
+    # node のスクリプトは依存を持たないので、Node に入っているテストの道具で回す
+    step "node のスクリプトのテスト"
+    (cd "$root" && node --test scripts/*.test.js)
 }
 
 print_usage() {
@@ -825,9 +829,9 @@ print_usage() {
                引数なしでは回さない。回し方は docs/agents/ios-release.md の「スクリーンショット」
   server       整形、Lint、サーバーを正本にする定数の値、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   site         公開のページ（nu-tori.app）の整形、Lint、型検査、書き出しと、書き出したページを載せた Worker のテストと、合成のコマンドのテスト
-  scripts      scripts/ と .claude/hooks/ のシェルの Lint（ShellCheck）。--fix でも直さない
+  scripts      scripts/ と .claude/hooks/ のシェルの Lint（ShellCheck）と、node のスクリプトのテスト（scripts/*.test.js）。--fix でも直さない
   --fix        直せるものを直してから確かめる
-  --lint       ios と server と site の整形と Lint だけを回す（scripts はもともと Lint だけ）。対象を省くと、引数なしと同じ選び方をする
+  --lint       ios と server と site の整形と Lint だけを回す（scripts は Lint とテストを回す）。対象を省くと、引数なしと同じ選び方をする
   --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる
   --repeat     UI テストを、落ちるまで最大その回数くり返す。揺れを再現するときに使う
   --pick-targets  標準入力の変わったファイルの一覧から、確かめる対象を ios=<true|false>、server=<true|false>、site=<true|false>、scripts=<true|false> の4行で出す（CI 向け）
