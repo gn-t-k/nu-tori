@@ -32,7 +32,8 @@ App Store Connect の版のページの iPhone の欄は「iPhone with Dynamic I
 ```mermaid
 flowchart LR
   W["開発者が Mac で wizard を回す<br/>最初の提出は設定も、次の版からは掲載情報だけ"] --> R["エージェントが読むだけの鍵で読み返す"]
-  R --> S["ビルドとサブスクリプション2つを付けて審査に出す"]
+  R --> B["エージェントが出すビルドを確かめる"]
+  B --> S["ビルドとサブスクリプション2つを付けて審査に出す"]
   S -->|通った| P["開発者が時機を選んで手で公開する"]
   S -->|却下・指摘| I["指摘の文と返事を ready-for-human の Issue に残す"]
 ```
@@ -57,15 +58,28 @@ flowchart LR
 - 鍵で読めないもの: 価格と配信状況（`appAvailabilityV2` と `appPriceSchedule` は、役割 Developer の鍵では 403。2026-11-03 に確かめた）と、App のプライバシー（読む API が無い）。開発者が wizard の段で見たものを聞く
 - 公開の Issue に書くのは、欄ごとの一致・不一致まで。著作権の氏名と連絡先は書かない。App のプライバシーの回答の表は、入れたチケットの解決コメントに残す（`docs/agents/privacy.md`）
 
+### 出すビルドを確かめる
+
+審査に出すたびに、主な流れを実機で通し直さない（アカウントを作り直すことを含む）。主な流れは機能ごとに UI テストとサーバーのテストで確かめ、Apple の部品（ヘルスケア、カメラ、通知、StoreKit、Sign in with Apple）とのつなぎ目は、下の「実機の確認」の時機の実機のチケットで確かめてある。審査に出す前に、エージェントが次を確かめ、出すビルドの番号と結果を出す作業の Issue に書く。
+
+- 出すビルドが TestFlight の内部テストに配られている（`docs/agents/tooling.md` の「App Store Connect を読む」の、TestFlight に配られたか）
+- main の `deploy.yml` の最後の回が success で、出すビルドの番号が main の `server/wrangler.jsonc` の本番の `MINIMUM_APP_BUILD` 以上
+- `/v1/apps/<app>` の `subscriptionStatusUrl` と `subscriptionStatusUrlForSandbox` が、本番の routes（`server/wrangler.jsonc`）と通知の経路（`server/src/http/app-store-server-notification-routes/`）から組んだ URL を指し、`subscriptionStatusUrlVersion` と `subscriptionStatusUrlVersionForSandbox` が `V2`
+- ページの一覧（`site/src/site-pages.ts`）の `kind` が `public` のページと `/` が、本番で 200 を返す
+- 出すビルドで、Sentry の新しい課題と、TestFlight のクラッシュのフィードバックが無い
+- LLM の費用の上限はエージェントから読めないので、Anthropic のワークスペース `nu-tori-production` の月の上限、知らせの額、前払いの自動の補充と支払い方法が、`docs/agents/production-incidents.md` の「費用の知らせ」のとおりかを開発者に聞く
+
+**Why:** 審査に出すビルドで主な流れを全部、実機で通し直すチケット（#864）を切ったが、項目はどれも自動テストか機能ごとの実機のチケットで確かめてあり、出すたびにアカウントを作り直す手間に見合わなかった（#864 の解決コメントに、項目と確かめた場所の対応がある）
+
 ### 審査に出す
 
-- 版のページに、実機で確かめたビルド（このファイルの「実機の確認」）を付け、「App 内課金とサブスクリプション」で月額（`app.nu_tori.subscription.monthly`）と年額（`app.nu_tori.subscription.yearly`）を選んでから、審査に出す。2つの商品には、先に審査用のスクリーンショットを上げ、「審査用に追加」を押しておく
+- 版のページに、上の「出すビルドを確かめる」で確かめたビルドを付け、「App 内課金とサブスクリプション」で月額（`app.nu_tori.subscription.monthly`）と年額（`app.nu_tori.subscription.yearly`）を選んでから、審査に出す。2つの商品には、先に審査用のスクリーンショットを上げ、「審査用に追加」を押しておく
 - リリースは「手動でリリース」。審査が通ったら、開発者が LP を出す PR と時機をそろえて、手で公開する
 - 審査で却下・指摘されたら、指摘の文と返事を `ready-for-human` の Issue に残す。掲載情報かアプリを直すなら、その Issue からチケットを切る
 
 ### 審査の人への返事の下書き
 
-審査で「サブスクリプション切れの状態を見せて」と指摘されたら、アカウントを削除して同じ Apple ID でサインインし直すよう返事で案内する。作り直したアカウントは無料体験が無く、最初からサブスクリプション切れになる（「[仕様: 課金](https://github.com/gn-t-k/nu-tori/issues/647)」の作り直したアカウント）。コードと管理の口は足さず、テストユーザー（`test_users`）は使わない（いつもサブスクリプション中と同じに扱う旗で、切れの状態を作れない）。この道は、出すビルドの実機の確認で確かめる。
+審査で「サブスクリプション切れの状態を見せて」と指摘されたら、アカウントを削除して同じ Apple ID でサインインし直すよう返事で案内する。作り直したアカウントは無料体験が無く、最初からサブスクリプション切れになる（「[仕様: 課金](https://github.com/gn-t-k/nu-tori/issues/647)」の作り直したアカウント）。コードと管理の口は足さず、テストユーザー（`test_users`）は使わない（いつもサブスクリプション中と同じに扱う旗で、切れの状態を作れない）。この道は、サーバーのテスト（作り直したアカウントに無料体験の無い状態が届くこと）と UI テスト（`SubscribeFromComposerChipAfterFreeTrialUITests`）と、課金の実機のチケット（#686）で確かめてある。
 
 審査の人とのやりとりは英語なので、英語で書く。アプリの文言は日本語のまま引き、英語の訳を添える。審査へのメモ（掲載情報のモジュールの `reviewNotes`）と道の書き方をそろえ、どちらかを直したらもう一方も直す。
 
