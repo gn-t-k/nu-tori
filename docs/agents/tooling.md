@@ -58,6 +58,8 @@ Sentry の課題・イベント・スタック・端末・版・件数は、`scr
 
 Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-cloud`）で見る: `gh api repos/gn-t-k/nu-tori/commits/<sha>/check-runs`。失敗の中身、TestFlight のビルドの状態、TestFlight のフィードバックとクラッシュのログは、`scripts/app-store-connect get '<パス>'` で読む。GET だけを送り、鍵の読み方と JWT の作り方は、このスクリプトの1か所に書く。MCP の設定には置かない。調べた経緯は `docs/research/app-store-connect-agent-access.md`。
 
+App Store Connect の画面は英語で出るので、文書・Issue・開発者への案内では、画面の名前（メニュー、欄、ボタン、選択肢）を英語のまま書く。説明が要るときは、英語の名前に日本語を添える。日本語に訳すと、開発者が英語に戻してページ内を検索する手間がかかる（#718）。
+
 - 読む（`<app>` はアプリの ID `6816842705`。`--all` で次のページをたどる。出力はファイルかパイプで渡し、`echo "$変数"` で受け渡さない。zsh の `echo` は `\n` を改行に変えて JSON を壊す）
   - Xcode Cloud: `/v1/ciProducts?filter[app]=<app>`、`/v1/ciProducts/<id>/buildRuns?sort=-number&limit=5`、`/v1/ciBuildRuns/<id>/actions`、`/v1/ciBuildActions/<id>/issues`
   - TestFlight に配られたか: `/v1/builds?filter[app]=<app>&sort=-uploadedDate&limit=5&include=buildBetaDetail,betaGroups`（`processingState` が `VALID`、`buildBetaDetail` の `internalBuildState` が `IN_BETA_TESTING`）
