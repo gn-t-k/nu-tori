@@ -1,6 +1,6 @@
 import path from "node:path";
 
-// 掲載用のスクリーンショットの置き場。見出しを持つ掲載情報のモジュール（src/app-store-screenshots.ts）のそばに置き、wizard がここから上げる
+// 掲載用のスクリーンショットの置き場。見出しを持つ掲載情報のモジュール（src/app-store-screenshots.ts）のそばに置く
 export const listingScreenshotDirectory = path.join(
   import.meta.dirname,
   "..",
