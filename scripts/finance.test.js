@@ -98,7 +98,8 @@ const subscriptionRow = (overrides) => ({
   ...overrides,
 });
 
-const monthly = { "Subscription Name": "月額", "Standard Subscription Duration": "1 Month", "Customer Price": 1000 };
+// Apple の見本は期間を小文字で書くので、月額は小文字、年額は文書どおりの書き方にする
+const monthly = { "Subscription Name": "月額", "Standard Subscription Duration": "1 month", "Customer Price": 1000 };
 const yearly = { "Subscription Name": "年額", "Standard Subscription Duration": "1 Year", "Customer Price": 12000 };
 
 const eventRow = (overrides) => ({ "App Name": "nu-tori", Country: "JP", ...overrides });
@@ -155,10 +156,6 @@ describe("App Store Connect の販売レポートから月のサブスクリプ�
       numbers = await computeAppStoreMonthlyNumbers({ month: "2026-02", readReport });
     });
 
-    it("月末の日の有料で有効な数を、サブスクリプション中の人数として出すこと", () => {
-      assert.equal(numbers.subscribers, 8);
-    });
-
     it("月末の日の有料で有効な数を、月額と年額に分けて出すこと", () => {
       assert.deepEqual(numbers.subscribersByDuration, { "1 Month": 5, "1 Year": 3 });
     });
@@ -175,10 +172,10 @@ describe("App Store Connect の販売レポートから月のサブスクリプ�
       assert.equal(numbers.newSubscribers, 3);
     });
 
-    it("解約率を、その月の解約の出来事の合計 ÷ 月初めの日の有料で有効な数として出すこと", () => {
+    it("解約率の元の数として、その月の解約の出来事の合計と、月初めの日の有料で有効な数を出すこと", () => {
       assert.deepEqual(
-        { cancellations: numbers.cancellations, activeAtStart: numbers.activeAtStart, churnRate: numbers.churnRate },
-        { cancellations: 2, activeAtStart: 6, churnRate: 0.3333 },
+        { cancellations: numbers.cancellations, activeAtStart: numbers.activeAtStart },
+        { cancellations: 2, activeAtStart: 6 },
       );
     });
 
@@ -196,21 +193,20 @@ describe("App Store Connect の販売レポートから月のサブスクリプ�
     });
   });
 
-  describe("月初めの日に有料で有効な人がいないとき", () => {
-    let numbers;
-    before(async () => {
-      const readReport = readReportFrom({
-        SUBSCRIPTION_EVENT: {
-          "2026-02-10": tsv(SUBSCRIPTION_EVENT_COLUMNS, [
-            eventRow({ ...monthly, "Event Date": "2026-02-10", Event: "Subscribe", Quantity: 1 }),
+  describe("円でない値段の行があるとき", () => {
+    let readReport;
+    before(() => {
+      readReport = readReportFrom({
+        SUBSCRIPTION: {
+          "2026-02-28": tsv(SUBSCRIPTION_COLUMNS, [
+            subscriptionRow({ ...monthly, "Customer Currency": "USD", "Active Standard Price Subscriptions": 1 }),
           ]),
         },
       });
-      numbers = await computeAppStoreMonthlyNumbers({ month: "2026-02", readReport });
     });
 
-    it("解約率を出さないこと", () => {
-      assert.equal(numbers.churnRate, null);
+    it("MRR を出さずに止まること", async () => {
+      await assert.rejects(computeAppStoreMonthlyNumbers({ month: "2026-02", readReport }), /円でない値段/);
     });
   });
 
@@ -247,6 +243,23 @@ describe("App Store Connect の販売レポートから月のサブスクリプ�
 
     it("MRR を出さずに止まること", async () => {
       await assert.rejects(computeAppStoreMonthlyNumbers({ month: "2026-02", readReport }), /知らない期間/);
+    });
+  });
+
+  describe("数でない値があるとき", () => {
+    let readReport;
+    before(() => {
+      readReport = readReportFrom({
+        SUBSCRIPTION_EVENT: {
+          "2026-02-10": tsv(SUBSCRIPTION_EVENT_COLUMNS, [
+            eventRow({ ...monthly, "Event Date": "2026-02-10", Event: "Subscribe", Quantity: "" }),
+          ]),
+        },
+      });
+    });
+
+    it("0 として足さずに止まること", async () => {
+      await assert.rejects(computeAppStoreMonthlyNumbers({ month: "2026-02", readReport }), /数でない/);
     });
   });
 

@@ -113,7 +113,7 @@ flowchart LR
 
 - **数字はダッシュボードにだけ書く**。リポジトリのファイル・Issue・PR・コミット・コメント・ログに、金額を書かない。`scripts/finance` の出力は呼んだセッションの中だけで使い、ファイルに残さない（アップロードに使った JSON は、上げたらすぐ消す）
 - Cloudflare: `scripts/finance cloudflare <YYYY-MM>`。額の数え方と呼ぶ口は、スクリプトに書いてある
-- App Store: `scripts/finance app-store <YYYY-MM>`。その月の毎日の販売レポート（Subscription・Subscription Event・Summary Sales）を読み、月末の人数・MRR・手取り・解約率・新しく入った人数を出す。式は #591 の解決コメントで、MRR の値段はレポートの Customer Price から取る。1人あたりの粗利と CAC は、ダッシュボードのページが月の行から出す。レポートの無い日（Apple は 404 を返す）は `daysWithoutReport` に挙げる
+- App Store: `scripts/finance app-store <YYYY-MM>`。式の正本は #591 の解決コメントで、読むレポートと数え方はスクリプトに書いてある。月末の人数・解約率・1人あたりの粗利・CAC は、ダッシュボードのページが月の行から出す
 - 鍵は、クラウドの環境 `nu-tori-finance` にだけある `NU_TORI_CLOUDFLARE_BILLING_READ_TOKEN`（アカウントのトークンで `Billing Read` だけ）。アカウントの ID はトークンから引く。ほかの環境では `Not authenticated` で止まる。ほかに `NU_TORI_ASC_FINANCE_KEY_ID`・`NU_TORI_ASC_FINANCE_ISSUER_ID`・`NU_TORI_ASC_FINANCE_PRIVATE_KEY`（App Store Connect の役割 Finance のキー）と `NU_TORI_ASC_FINANCE_VENDOR_NUMBER`（販売レポートの `filter[vendorNumber]`。App Store Connect の「Payments and Financial Reports」の左上の番号）があり、`scripts/finance app-store` で使う
 - 定期のタスクは「nu-tori のお金: 前の月の固定費とサブスクリプションの数字を書く」（`trig_01Mudhdy293FZCTT2AQ8Rff1`、環境 `nu-tori-finance`、毎回新しいセッション）。手順はタスクの指示に書いてあり、その月の行に Cloudflare の額とサブスクリプションの数字（`subscriptions_from`）があれば何もしない
 - Anthropic の利用額は API で読めない（個人の組織で Admin API が使えない、#759）。開発者が Console の `nu-tori-production` の額を伝えたら、その月の行の `anthropic_usd` と `anthropic_from` を書く。CAC の時間（その月に人を得るのに使った時間）を伝えたら、`acquisition_hours` と `acquisition_hours_from` を書く。予算・年額のもの（Apple Developer の年会費、ドメイン）・始めた月・為替は `settings` の行の `value` と `from` を書き換える。ページに入力欄は作らない

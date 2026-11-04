@@ -9,6 +9,7 @@ const { readFileSync } = require("node:fs");
 const { gunzipSync } = require("node:zlib");
 const { homedir } = require("node:os");
 const { join } = require("node:path");
+const { ExpectedFailure } = require("./expected-failure.js");
 
 const main = async () => {
   const [command, target, ...flags] = process.argv.slice(2);
@@ -49,6 +50,7 @@ const main = async () => {
 };
 
 // 役割 Finance の鍵で、販売レポート（/v1/salesReports）か財務レポート（/v1/financeReports）を読み、gzip を解いた TSV を返す
+// 財務レポートは、手取りに Small Business Program の 15% が効いているかを最初の月に一度見比べるとき（#761）に、--finance で読む
 // Apple はその日に行が無いレポートを 404 で返すので、行が無いことを null で返す。ほかの失敗は止まる
 const readFinanceReport = async (target) => {
   const url = toApiUrl(target);
@@ -125,13 +127,11 @@ const toApiUrl = (value) => {
   return url;
 };
 
-// 自分で出す文（使い方、未認証、HTTP の状態、ホストを断る文）は文だけを、想定外の失敗はスタックと cause まで出す
-class ExpectedFailure extends Error {}
-
-module.exports = { readFinanceReport, ExpectedFailure };
+module.exports = { readFinanceReport };
 
 // scripts/finance が require したときは、読む道だけを貸し、コマンドとしては動かない
 if (require.main === module) {
+  // 自分で出す文（使い方、未認証、HTTP の状態、ホストを断る文）は文だけを、想定外の失敗はスタックと cause まで出す
   // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
   main().catch((error) => {
     console.error(error instanceof ExpectedFailure ? error.message : error);
