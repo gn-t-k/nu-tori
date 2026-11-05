@@ -310,7 +310,7 @@ const DailyGuideContent = () => (
       <li>その週に、食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li>
     </ul>
 
-    {/* アプリの「1日の目安の出典」（ios/NuTori/DailyGuide/DailyGuideCitationScreen.swift）と同じ出典を、同じ並びで挙げる（#900） */}
+    {/* アプリの「1日の目安の出典」（ios/NuTori/DailyGuide/DailyGuideCitationScreen.swift）と同じ出典を同じ並びで挙げ、「nu-tori が決めたもの」も同じ項目にする（#900） */}
     <h2 id="sources">出典</h2>
     <p>
       nu-tori は、ここまでの計算の決まりを、次の資料をもとに決めました。資料の値をどう当てはめるかは

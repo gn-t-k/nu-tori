@@ -189,8 +189,9 @@ struct GoalScreen: View {
             if let energyChart {
                 GoalEnergyChartView(chart: energyChart)
                 DailyGuideExplanationLink()
-                DailyGuideCitationLink()
             }
+            // 1日の目安と P・F・C を出すあいだは、グラフが無いとき（期限より前に達成した・期限が来た）も出典の入口を出す（審査の 1.4.1。#900）
+            DailyGuideCitationLink()
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)

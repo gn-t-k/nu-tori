@@ -126,6 +126,10 @@ describe("nu-tori.app の配信", () => {
     test("/daily-guide が 200 で返ること（目標の設定と目標の画面が開く URL）", () => {
       expect(response.status).toBe(200);
     });
+
+    test("出典の節の目印があること（審査への返事が #sources を指す。#900）", async () => {
+      expect(await response.text()).toContain('id="sources"');
+    });
   });
 
   describe("ページの一覧の検索に載せるページ", () => {
