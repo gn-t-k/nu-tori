@@ -815,6 +815,8 @@ struct TimelineScreen: View {
                     viewport.dayChosen(day, in: timeline.days)
                 }
             }
+        case .dailyGuideCitation:
+            DailyGuideCitationScreen()
         }
     }
 

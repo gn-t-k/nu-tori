@@ -190,6 +190,8 @@ struct GoalScreen: View {
                 GoalEnergyChartView(chart: energyChart)
                 DailyGuideExplanationLink()
             }
+            // 1日の目安と P・F・C を出すあいだは、グラフが無いときも出典の入口を出す（審査の 1.4.1。#900）
+            DailyGuideCitationLink()
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)

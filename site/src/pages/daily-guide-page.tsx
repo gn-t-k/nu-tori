@@ -265,6 +265,18 @@ const DailyGuideContent = () => (
       </li>
     </ul>
 
+    {/* server/src/daily-guide/domain/compute-macronutrient-guides/compute-macronutrient-guides.ts */}
+    <h3>nu-tori は、1日の目安から P・F・C の目安を出します</h3>
+    <ul>
+      <li>
+        P（たんぱく質）: 目標体重 1 kg あたり 1.6 g です。ただし、1日の目安の 35%
+        を超えないようにします
+      </li>
+      <li>F（脂質）: 1日の目安の 25% です</li>
+      <li>C（炭水化物）: 1日の目安から P と F の分を引いた残りです</li>
+    </ul>
+    <p>nu-tori は、1 g を、P と C は 4 kcal、F は 9 kcal として数え、どれも 5 g 単位に丸めます。</p>
+
     {/* server/src/weekly-review/domain/judge-review-week/judge-review-week.ts、server/src/weekly-review/domain/compute-reviewed-expenditure/compute-reviewed-expenditure.ts、server/src/daily-guide/domain/compute-reviewed-daily-guide/compute-reviewed-daily-guide.ts */}
     <h3>nu-tori は、毎週月曜に、推定消費カロリーと1日の目安を見直します</h3>
     <ol>
@@ -296,6 +308,106 @@ const DailyGuideContent = () => (
       </li>
       <li>その週に、体重の記録が無い</li>
       <li>その週に、食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li>
+    </ul>
+
+    {/* アプリの「1日の目安の出典」（ios/NuTori/DailyGuide/DailyGuideCitationScreen.swift）と同じ出典を同じ並びで挙げ、「nu-tori が決めたもの」も同じ項目にする（#900） */}
+    <h2 id="sources">出典</h2>
+    <p>
+      nu-tori は、ここまでの計算の決まりを、次の資料をもとに決めました。資料の値をどう当てはめるかは
+      nu-tori が決めています。
+    </p>
+    <h3>推定消費カロリー</h3>
+    <ul>
+      <li>
+        安静にしているときに使うカロリーの式: Mifflin MD, St Jeor ST, et al. A new predictive
+        equation for resting energy expenditure in healthy individuals. Am J Clin Nutr.
+        1990;51(2):241-247.{" "}
+        <a href="https://doi.org/10.1093/ajcn/51.2.241">doi:10.1093/ajcn/51.2.241</a>
+      </li>
+      <li>
+        ふだんの動きの多さの係数（1.4・1.55・1.7）: FAO/WHO/UNU. Human energy requirements. FAO Food
+        and Nutrition Technical Report Series 1. 2004（表 5.3。座りがちか軽い活動は
+        1.40〜1.69、活動的は 1.70〜1.99）。nu-tori は、この幅の中から値を選びました。{" "}
+        <a href="https://www.fao.org/4/y5686e/y5686e07.htm">FAO の第5章</a>
+      </li>
+      <li>
+        歩数で動きの多さを分ける境（5,000 歩・10,000 歩）: Tudor-Locke C, Bassett DR Jr. How many
+        steps/day are enough? Preliminary pedometer indices for public health. Sports Med.
+        2004;34(1):1-8。歩数から係数への当てはめは nu-tori が決めました。{" "}
+        <a href="https://doi.org/10.2165/00007256-200434010-00001">
+          doi:10.2165/00007256-200434010-00001
+        </a>
+      </li>
+      <li>
+        体重 1 kg の増減を 7,700 kcal とみなすこと: Wishnofsky M. Caloric equivalents of gained or
+        lost weight. Am J Clin Nutr. 1958;6(5):542-546（1 ポンドを 3,500 kcal とする）。{" "}
+        <a href="https://doi.org/10.1093/ajcn/6.5.542">doi:10.1093/ajcn/6.5.542</a>
+      </li>
+      <li>
+        この値は、長く続けると体の使うカロリーが変わってずれることがあります。nu-tori
+        は、毎週の見直しでこのずれを直します: Hall KD. What is the required energy deficit per unit
+        weight loss? Int J Obes. 2008;32(3):573-576.{" "}
+        <a href="https://doi.org/10.1038/sj.ijo.0803720">doi:10.1038/sj.ijo.0803720</a>
+      </li>
+    </ul>
+    <h3>1日の目安</h3>
+    <ul>
+      <li>
+        体重を減らす速さの上限（1週間に体重の 0.75%）: Helms ER, Aragon AA, Fitschen PJ.
+        Evidence-based recommendations for natural bodybuilding contest preparation: nutrition and
+        supplementation. J Int Soc Sports Nutr. 2014;11:20（1週間に 0.5〜1%）。{" "}
+        <a href="https://doi.org/10.1186/1550-2783-11-20">doi:10.1186/1550-2783-11-20</a>
+      </li>
+      <li>
+        体重を増やす速さの上限（1週間に体重の 0.5%）: Iraki J, Fitschen P, Espinar S, Helms E.
+        Nutrition recommendations for bodybuilders in the off-season: a narrative review. Sports.
+        2019;7(7):154（初めての人と中くらいの人に、1週間に 0.25〜0.5%）。{" "}
+        <a href="https://doi.org/10.3390/sports7070154">doi:10.3390/sports7070154</a>
+      </li>
+      <li>
+        1日の目安の下限（1,200 kcal）: Jensen MD, et al. 2013 AHA/ACC/TOS guideline for the
+        management of overweight and obesity in adults. Circulation. 2014;129(25 Suppl
+        2):S102-S138（女性に 1,200〜1,500 kcal、男性に 1,500〜1,800 kcal）。nu-tori
+        は、女性の幅の下端を、誰にでも当てる下限にしました。男性には低めの下限です。{" "}
+        <a href="https://doi.org/10.1161/01.cir.0000437739.71477.ee">
+          doi:10.1161/01.cir.0000437739.71477.ee
+        </a>
+      </li>
+    </ul>
+    <h3>P・F・C の目安</h3>
+    <ul>
+      <li>
+        たんぱく質（目標体重 1 kg あたり 1.6 g）: Morton RW, et al. A systematic review,
+        meta-analysis and meta-regression of the effect of protein supplementation on resistance
+        training-induced gains in muscle mass and strength in healthy adults. Br J Sports Med.
+        2018;52(6):376-384（筋力トレーニングをする人で、1日に体重 1 kg あたり 1.62 g
+        より多くとっても、除脂肪量の増え方は変わらなかった）。{" "}
+        <a href="https://doi.org/10.1136/bjsports-2017-097608">doi:10.1136/bjsports-2017-097608</a>
+      </li>
+      <li>
+        脂質と炭水化物の割合: 厚生労働省「日本人の食事摂取基準（2025年版）」の目標量（成人で、脂質は
+        20〜30%、炭水化物は 50〜65%、たんぱく質は 13〜20%（50〜64 歳は 14〜20%、65 歳以上は
+        15〜20%））。F の 25% はこの幅の中です。P を目標体重から出すので、P はこの幅より多く、C
+        はこの幅より少なくなることがあります。{" "}
+        <a href="https://www.mhlw.go.jp/stf/newpage_44138.html">厚生労働省のページ</a>
+      </li>
+      <li>
+        グラムからカロリーへの換算（4・9・4 kcal/g）: FAO. Food energy – methods of analysis and
+        conversion factors. FAO Food and Nutrition Paper 77. 2003.{" "}
+        <a href="https://www.fao.org/4/y5022e/y5022e04.htm">FAO の第3章</a>
+      </li>
+    </ul>
+    <h3>nu-tori が決めたもの</h3>
+    <p>
+      次の決まりは、資料に拠らず nu-tori
+      が決めました。使っていただいた記録を見て、これから直すことがあります。
+    </p>
+    <ul>
+      <li>毎週の見直しで、1日の目安を前の週から変える幅（150 kcal）</li>
+      <li>毎週の見直しで、推定消費カロリーを直す割合（上限 0.75）</li>
+      <li>毎朝の体重のならし方</li>
+      <li>逆算と見直しに要る記録の日数（14 日・4 日など）</li>
+      <li>体重を保つ目標で保つ幅（±0.7 kg）と、戻す速さ（1週間に 0.15%）</li>
     </ul>
 
     <h2>医療の助言ではありません</h2>

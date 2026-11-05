@@ -108,6 +108,8 @@ public struct TimelineNavigation: Equatable, Sendable {
         case goalScreen(ClientUsageEvent.GoalScreenEntry)
         /// ‹ › で送った週は画面の中で持つ
         case weeklyReview(monday: CalendarDay, entry: ClientUsageEvent.WeeklyReviewEntry)
+        /// 目標の画面と目標を決めるページの「1日の目安の出典」
+        case dailyGuideCitation
     }
 
     public enum Presentation: Equatable, Sendable {
