@@ -56,7 +56,7 @@ Sentry の課題・イベント・スタック・端末・版・件数は、`scr
 
 ## App Store Connect を読む
 
-Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-cloud`）で見る: `gh api repos/gn-t-k/nu-tori/commits/<sha>/check-runs`。失敗の中身、TestFlight のビルドの状態、TestFlight のフィードバックとクラッシュのログは、`scripts/app-store-connect get '<パス>'` で読む。GET だけを送り、鍵の読み方と JWT の作り方は、このスクリプトの1か所に書く。MCP の設定には置かない。調べた経緯は `docs/research/app-store-connect-agent-access.md`。
+Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-cloud`）で見る: `gh api repos/gn-t-k/nu-tori/commits/<sha>/check-runs`。失敗の中身、TestFlight のビルドの状態、TestFlight のフィードバックとクラッシュのログは、`scripts/app-store-connect get '<パス>'` で読む。GET だけを送り、鍵の読み方と JWT の作り方は、このスクリプトの1か所に書く。`--finance` を付けると役割 Finance の鍵（下の「お金の数字を読む」）で、販売レポートと財務レポートの口だけを呼ぶ。MCP の設定には置かない。調べた経緯は `docs/research/app-store-connect-agent-access.md`。
 
 App Store Connect の画面は英語で出るので、文書・Issue・開発者への案内では、画面の名前（メニュー、欄、ボタン、選択肢）を英語のまま書く。説明が要るときは、英語の名前に日本語を添える。日本語に訳すと、開発者が英語に戻してページ内を検索する手間がかかる（#718）。
 
@@ -106,16 +106,17 @@ App Store Connect の画面は英語で出るので、文書・Issue・開発者
 
 ```mermaid
 flowchart LR
-  T["定期のタスク<br/>毎月3日 10:17（日本時間）"] -->|"scripts/finance cloudflare 前の月"| D["ダッシュボードの months"]
-  P["開発者がセッションで伝える<br/>Anthropic の額・予算・年額のもの"] -->|"Claude が書き換える"| D
+  T["定期のタスク<br/>毎月3日 10:17（日本時間）"] -->|"scripts/finance cloudflare 前の月<br/>scripts/finance app-store 前の月"| D["ダッシュボードの months"]
+  P["開発者がセッションで伝える<br/>Anthropic の額・CAC の時間・予算・年額のもの"] -->|"Claude が書き換える"| D
   P --> S["ダッシュボードの settings"]
 ```
 
 - **数字はダッシュボードにだけ書く**。リポジトリのファイル・Issue・PR・コミット・コメント・ログに、金額を書かない。`scripts/finance` の出力は呼んだセッションの中だけで使い、ファイルに残さない（アップロードに使った JSON は、上げたらすぐ消す）
 - Cloudflare: `scripts/finance cloudflare <YYYY-MM>`。額の数え方と呼ぶ口は、スクリプトに書いてある
-- 鍵は、クラウドの環境 `nu-tori-finance` にだけある `NU_TORI_CLOUDFLARE_BILLING_READ_TOKEN`（アカウントのトークンで `Billing Read` だけ）。アカウントの ID はトークンから引く。ほかの環境では `Not authenticated` で止まる。ほかに `NU_TORI_ASC_FINANCE_KEY_ID`・`NU_TORI_ASC_FINANCE_ISSUER_ID`・`NU_TORI_ASC_FINANCE_PRIVATE_KEY`（App Store Connect の役割 Finance のキー）があり、サブスクリプションの数字（#761）で使う
-- 定期のタスクは「nu-tori のお金: 前の月の固定費を書く」（`trig_01Mudhdy293FZCTT2AQ8Rff1`、環境 `nu-tori-finance`、毎回新しいセッション）。手順はタスクの指示に書いてあり、その月の行に Cloudflare の額があれば何もしない
-- Anthropic の利用額は API で読めない（個人の組織で Admin API が使えない、#759）。開発者が Console の `nu-tori-production` の額を伝えたら、その月の行の `anthropic_usd` と `anthropic_from` を書く。予算・年額のもの（Apple Developer の年会費、ドメイン）・始めた月・為替は `settings` の行の `value` と `from` を書き換える。ページに入力欄は作らない
+- App Store: `scripts/finance app-store <YYYY-MM>`。式の正本は #591 の解決コメントで、読むレポートと数え方はスクリプトに書いてある。月末の人数・解約率・1人あたりの粗利・CAC は、ダッシュボードのページが月の行から出す
+- 鍵は、クラウドの環境 `nu-tori-finance` にだけある `NU_TORI_CLOUDFLARE_BILLING_READ_TOKEN`（アカウントのトークンで `Billing Read` だけ）。アカウントの ID はトークンから引く。ほかの環境では `Not authenticated` で止まる。ほかに `NU_TORI_ASC_FINANCE_KEY_ID`・`NU_TORI_ASC_FINANCE_ISSUER_ID`・`NU_TORI_ASC_FINANCE_PRIVATE_KEY`（App Store Connect の役割 Finance のキー）と `NU_TORI_ASC_FINANCE_VENDOR_NUMBER`（販売レポートの `filter[vendorNumber]`。App Store Connect の「Payments and Financial Reports」の左上の番号）があり、`scripts/finance app-store` で使う
+- 定期のタスクは「nu-tori のお金: 前の月の固定費とサブスクリプションの数字を書く」（`trig_01Mudhdy293FZCTT2AQ8Rff1`、環境 `nu-tori-finance`、毎回新しいセッション）。手順はタスクの指示に書いてあり、その月の行に Cloudflare の額とサブスクリプションの数字（`subscriptions_from`）があれば何もしない
+- Anthropic の利用額は API で読めない（個人の組織で Admin API が使えない、#759）。開発者が Console の `nu-tori-production` の額を伝えたら、その月の行の `anthropic_usd` と `anthropic_from` を書く。CAC の時間（その月に人を得るのに使った時間）を伝えたら、`acquisition_hours` と `acquisition_hours_from` を書く。予算・年額のもの（Apple Developer の年会費、ドメイン）・始めた月・為替は `settings` の行の `value` と `from` を書き換える。ページに入力欄は作らない
 - ダッシュボードの数字を書き換えるとき（どのセッションからでもよい）: ArtifactData で `datasets/months` か `datasets/settings` を読み、`source.url` の JSON を Artifact の read で取り、直した JSON をアップロードして（Artifact の publish に `url`・`file_path`・`asset: true`）、データセットの `source.url` と `updated` を書き換え、古い JSON を消す。ページ（`files/index.html`）を変えたら、`data/users/me` の `check` を読んで確かめる
 
 ## 本番の知らせを Issue にする

@@ -1,18 +1,42 @@
 #!/usr/bin/env node
-// 月1回の定期のタスクが、前の月の利用額を読む。GET だけを送り、呼ぶ口と月の区切り方をここ1か所に置く
+// 月1回の定期のタスクが、前の月の利用額と App Store の数字を読む。GET だけを送り、呼ぶ口と月の区切り方をここ1か所に置く
 // 出力は金額を含むので、ファイルにもログにも残さず、呼んだセッションの中だけで使う（docs/agents/tooling.md の「お金の数字を読む」）
 // 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
 "use strict";
 
+const { ExpectedFailure } = require("./expected-failure.js");
+const { readFinanceReport } = require("./app-store-connect");
+
 const main = async () => {
   const [command, month] = process.argv.slice(2);
-  if (command !== "cloudflare" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month ?? "")) {
-    throw new ExpectedFailure("使い方: scripts/finance cloudflare <YYYY-MM>（終わった月だけ。月は UTC で区切る）");
+  const commands = { cloudflare: runCloudflare, "app-store": runAppStore };
+  // toString のような、オブジェクトが元から持つ名前を引かないよう、自分の鍵だけを見る
+  const run = Object.hasOwn(commands, command ?? "") ? commands[command] : undefined;
+  if (!run || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month ?? "")) {
+    throw new ExpectedFailure(
+      "使い方: scripts/finance cloudflare <YYYY-MM>（終わった月だけ。月は UTC で区切る）\n" +
+        "       scripts/finance app-store <YYYY-MM>（終わって2日たった月だけ。日は Apple のレポートの日）",
+    );
   }
+  console.log(JSON.stringify(await run(month), null, 2));
+};
+
+const runCloudflare = async (month) => {
   if (monthRange(month).end > new Date()) throw new ExpectedFailure(`${month} はまだ終わっていない。終わった月を渡す`);
   const token = process.env.NU_TORI_CLOUDFLARE_BILLING_READ_TOKEN;
   if (!token) throw new ExpectedFailure("Not authenticated: NU_TORI_CLOUDFLARE_BILLING_READ_TOKEN が無い");
-  console.log(JSON.stringify(await computeCloudflareMonthlyCost({ token, month }), null, 2));
+  return computeCloudflareMonthlyCost({ token, month });
+};
+
+const runAppStore = async (month) => {
+  // 日ごとのレポートは翌日に出る。月の最後の日の分が出たあとに読むよう、2日待つ
+  if (monthRange(month).end.getTime() + 2 * DAY > Date.now()) {
+    throw new ExpectedFailure(`${month} の最後の日のレポートがまだ出ていないかもしれない。月が終わって2日たってから渡す`);
+  }
+  const vendorNumber = process.env.NU_TORI_ASC_FINANCE_VENDOR_NUMBER;
+  if (!vendorNumber) throw new ExpectedFailure("Not authenticated: NU_TORI_ASC_FINANCE_VENDOR_NUMBER が無い");
+  const readReport = (reportType, date) => readFinanceReport(salesReportPath({ reportType, date, vendorNumber }));
+  return computeAppStoreMonthlyNumbers({ month, readReport });
 };
 
 // その月に使った額 = 従量の分（日ごとの行のうち、その月の日の分）+ 定額の契約の月あたりの額
@@ -27,7 +51,6 @@ const computeCloudflareMonthlyCost = async ({ token, month }) => {
   // 請求期間の起点（最初に買った日）が範囲に入らないと何も返らず、返る行は範囲の中の最初の起点の日から始まる
   // 請求期間は 31 日より短いので、月の頭の 31 日前から読めば、月の頭を含む請求期間の起点が必ず入る
   // 範囲が2つの請求期間にまたがっても、終わりまでの行が返ることを 2026-11-02 に確かめた
-  const DAY = 86_400_000;
   const from = isoDate(new Date(start.getTime() - 31 * DAY));
   const usage = await fetchCloudflareResult(token, `${account}/billable-usage?from=${from}&to=${isoDate(end)}`);
   const inMonth = usage
@@ -77,6 +100,152 @@ const computeCloudflareMonthlyCost = async ({ token, month }) => {
   };
 };
 
+// サブスクリプションの数字の式と取る先の正本は #591 の解決コメント。人数・解約・新しく入った人は、PostHog でなくここから数える
+// 返すのはレポートから数えた元の数だけで、そこから導ける月末の人数（期間ごとの人数の合計）と解約率は、ダッシュボードのページが出す
+// readReport(reportType, date) は、その日のレポートの TSV を返し、行が無い日は null を返す
+const computeAppStoreMonthlyNumbers = async ({ month, readReport }) => {
+  const days = daysOf(month);
+  const daysWithoutReport = Object.fromEntries(Object.values(REPORTS).map(({ key }) => [key, []]));
+  const readRows = async (reportType, date) => {
+    const text = await readReport(reportType, date);
+    if (text === null) {
+      daysWithoutReport[REPORTS[reportType].key].push(date);
+      return [];
+    }
+    return parseTsv(text, REPORTS[reportType].requiredColumns);
+  };
+
+  // 月の途中の日の Subscription Report は数字に使わないので読まない。無い日として挙げるのは、読んだ日のうちの無い日だけ
+  const firstDay = await readRows("SUBSCRIPTION", days[0]);
+  const lastDay = await readRows("SUBSCRIPTION", days[days.length - 1]);
+  const events = [];
+  const sales = [];
+  for (const date of days) {
+    events.push(...(await readRows("SUBSCRIPTION_EVENT", date)));
+    sales.push(...(await readRows("SALES", date)));
+  }
+
+  const paidCountOf = (row) => toNumber(row["Active Standard Price Subscriptions"]);
+  const paidRowsAtEnd = lastDay.filter((row) => paidCountOf(row) > 0);
+  const subscribersByDuration = {};
+  for (const row of paidRowsAtEnd) {
+    const { label } = durationOf(row["Standard Subscription Duration"]);
+    subscribersByDuration[label] = (subscribersByDuration[label] ?? 0) + paidCountOf(row);
+  }
+  // 配信は日本だけ（docs/agents/ios-release.md の最初の提出）なので、値段も手取りも円で来る。円でない行は、配信の国を足したとみて止まる。足すときに円への直し方を決める
+  // MRR は月末の日の有料で有効な数に値段を掛けて、月あたりに均す。値段はレポートの Customer Price から取り、スクリプトに書かない
+  const mrrJpy = sum(
+    paidRowsAtEnd.map((row) => {
+      if (row["Customer Currency"] !== "JPY") throw new ExpectedFailure(`円でない値段の行がある: ${row["Customer Currency"]}`);
+      return (paidCountOf(row) * toNumber(row["Customer Price"])) / durationOf(row["Standard Subscription Duration"]).months;
+    }),
+  );
+
+  // 返金は Units が負の行で来るので、そのまま足すと引かれる
+  const proceedsJpy = sum(
+    sales.map((row) => {
+      if (row["Currency of Proceeds"] !== "JPY") throw new ExpectedFailure(`円でない手取りの行がある: ${row["Currency of Proceeds"]}`);
+      return toNumber(row.Units) * toNumber(row["Developer Proceeds"]);
+    }),
+  );
+
+  const quantityOf = (names) => sum(events.filter((row) => names.includes(row.Event)).map((row) => toNumber(row.Quantity)));
+
+  return {
+    month,
+    subscribersByDuration,
+    mrrJpy: round(mrrJpy),
+    proceedsJpy: round(proceedsJpy),
+    newSubscribers: quantityOf(["Subscribe"]),
+    cancellations: quantityOf(CANCEL_EVENTS),
+    activeAtStart: sum(firstDay.map(paidCountOf)),
+    daysWithoutReport,
+    source:
+      `App Store Connect の販売レポート（${days[0]}〜${days[days.length - 1]} の日ごと）。` +
+      "期間ごとの人数と MRR は月末の日の Subscription Report の Active Standard Price Subscriptions（MRR は × Customer Price ÷ 期間の月数）、" +
+      "月初めの数は月初めの日の同じ数、新しく入った人数と解約は Subscription Event Report の Quantity、手取りは Summary Sales Report の Units × Developer Proceeds の合計",
+  };
+};
+
+// 決定の4つの解約の出来事（Apple の Subscription events の名前）
+const CANCEL_EVENTS = [
+  "Cancel",
+  "Canceled from Billing Retry",
+  "Canceled from Billing Grace Period",
+  "Canceled After Renewal Extension",
+];
+
+// 読むレポートの種類ごとの、出力の daysWithoutReport の鍵、版、数字に使う列
+// 版は https://developer.apple.com/documentation/appstoreconnectapi/get-v1-salesreports の今の版（2026-11-04 に確かめた）。古い版は落とせなくなる
+// 列の名前で読むので、Apple が列を足しても並べ替えても読める。使う列が消えたら黙って 0 にせず止まる
+const REPORTS = {
+  SUBSCRIPTION: {
+    key: "subscription",
+    version: "1_3",
+    requiredColumns: ["Standard Subscription Duration", "Customer Price", "Customer Currency", "Active Standard Price Subscriptions"],
+  },
+  SUBSCRIPTION_EVENT: { key: "subscriptionEvent", version: "1_3", requiredColumns: ["Event", "Quantity"] },
+  SALES: { key: "sales", version: "1_0", requiredColumns: ["Units", "Developer Proceeds", "Currency of Proceeds"] },
+};
+
+const salesReportPath = ({ reportType, date, vendorNumber }) => {
+  const query = new URLSearchParams({
+    "filter[frequency]": "DAILY",
+    "filter[reportDate]": date,
+    "filter[reportSubType]": "SUMMARY",
+    "filter[reportType]": reportType,
+    "filter[vendorNumber]": vendorNumber,
+    "filter[version]": REPORTS[reportType].version,
+  });
+  return `/v1/salesReports?${query}`;
+};
+
+const parseTsv = (text, requiredColumns) => {
+  const lines = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== "");
+  if (lines.length === 0) return [];
+  const header = lines[0].split("\t").map((cell) => cell.trim());
+  const missing = requiredColumns.filter((column) => !header.includes(column));
+  if (missing.length > 0) throw new ExpectedFailure(`レポートに数字に使う列が無い: ${missing.join(", ")}`);
+  return lines.slice(1).map((line) => {
+    const cells = line.split("\t");
+    return Object.fromEntries(header.map((column, index) => [column, (cells[index] ?? "").trim()]));
+  });
+};
+
+// Apple の文書は「1 Month」、見本は「1 month」と書くので、大文字と小文字を区別せずに読み、文書の書き方にそろえる
+const durationOf = (value) => {
+  const durations = {
+    "1 month": { label: "1 Month", months: 1 },
+    "2 months": { label: "2 Months", months: 2 },
+    "3 months": { label: "3 Months", months: 3 },
+    "6 months": { label: "6 Months", months: 6 },
+    "1 year": { label: "1 Year", months: 12 },
+  };
+  const key = String(value).toLowerCase();
+  const duration = Object.hasOwn(durations, key) ? durations[key] : undefined;
+  if (!duration) throw new ExpectedFailure(`知らない期間のサブスクリプションがある: ${value}`);
+  return duration;
+};
+
+// 読めない数を 0 にすると額が少なく出るので止まる
+const toNumber = (value) => {
+  const number = Number(String(value).replaceAll(",", ""));
+  if (String(value).trim() === "" || !Number.isFinite(number)) throw new ExpectedFailure(`数でない値がある: ${value}`);
+  return number;
+};
+
+const daysOf = (month) => {
+  const { start, end } = monthRange(month);
+  const days = [];
+  for (let time = start.getTime(); time < end.getTime(); time += DAY) days.push(isoDate(new Date(time)));
+  return days;
+};
+
+const DAY = 86_400_000;
+
 const monthRange = (month) => {
   const [year, monthIndex] = month.split("-").map(Number);
   return { start: new Date(Date.UTC(year, monthIndex - 1, 1)), end: new Date(Date.UTC(year, monthIndex, 1)) };
@@ -116,11 +285,14 @@ const fetchCloudflareResult = async (token, pathAndQuery) => {
   return parsed.result;
 };
 
-// 自分で出す文（使い方、未認証、HTTP の状態、断る文）は文だけを、想定外の失敗はスタックと cause まで出す
-class ExpectedFailure extends Error {}
+module.exports = { computeAppStoreMonthlyNumbers };
 
-// process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
-main().catch((error) => {
-  console.error(error instanceof ExpectedFailure ? error.message : error);
-  process.exitCode = 1;
-});
+// テストが require したときは動かない
+if (require.main === module) {
+  // ExpectedFailure は scripts/app-store-connect と同じ型なので、そちらの道で止まった文も文だけを出す
+  // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
+  main().catch((error) => {
+    console.error(error instanceof ExpectedFailure ? error.message : error);
+    process.exitCode = 1;
+  });
+}
