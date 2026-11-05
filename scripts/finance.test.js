@@ -98,8 +98,7 @@ const subscriptionRow = (overrides) => ({
   ...overrides,
 });
 
-// Apple の見本は期間を小文字で書くので、月額は小文字、年額は文書どおりの書き方にする
-const monthly = { "Subscription Name": "月額", "Standard Subscription Duration": "1 month", "Customer Price": 1000 };
+const monthly = { "Subscription Name": "月額", "Standard Subscription Duration": "1 Month", "Customer Price": 1000 };
 const yearly = { "Subscription Name": "年額", "Standard Subscription Duration": "1 Year", "Customer Price": 12000 };
 
 const eventRow = (overrides) => ({ "App Name": "nu-tori", Country: "JP", ...overrides });
@@ -190,6 +189,26 @@ describe("App Store Connect の販売レポートから月のサブスクリプ�
         },
         { subscription: 0, subscriptionEvent: 26, sales: 26, firstDay: true },
       );
+    });
+  });
+
+  describe("期間が小文字で書かれているとき", () => {
+    let numbers;
+    before(async () => {
+      // Apple の文書は「1 Month」、見本は「1 month」と書く
+      const readReport = readReportFrom({
+        SUBSCRIPTION: {
+          "2026-02-28": tsv(SUBSCRIPTION_COLUMNS, [
+            subscriptionRow({ ...monthly, "Standard Subscription Duration": "1 month", "Active Standard Price Subscriptions": 2 }),
+            subscriptionRow({ ...yearly, "Standard Subscription Duration": "1 year", "Active Standard Price Subscriptions": 1 }),
+          ]),
+        },
+      });
+      numbers = await computeAppStoreMonthlyNumbers({ month: "2026-02", readReport });
+    });
+
+    it("期間を文書の書き方にそろえて人数を出すこと", () => {
+      assert.deepEqual(numbers.subscribersByDuration, { "1 Month": 2, "1 Year": 1 });
     });
   });
 

@@ -131,7 +131,6 @@ module.exports = { readFinanceReport };
 
 // scripts/finance が require したときは、読む道だけを貸し、コマンドとしては動かない
 if (require.main === module) {
-  // 自分で出す文（使い方、未認証、HTTP の状態、ホストを断る文）は文だけを、想定外の失敗はスタックと cause まで出す
   // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
   main().catch((error) => {
     console.error(error instanceof ExpectedFailure ? error.message : error);

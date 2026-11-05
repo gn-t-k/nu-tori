@@ -9,7 +9,9 @@ const { readFinanceReport } = require("./app-store-connect");
 
 const main = async () => {
   const [command, month] = process.argv.slice(2);
-  const run = { cloudflare: runCloudflare, "app-store": runAppStore }[command];
+  const commands = { cloudflare: runCloudflare, "app-store": runAppStore };
+  // toString のような、オブジェクトが元から持つ名前を引かないよう、自分の鍵だけを見る
+  const run = Object.hasOwn(commands, command ?? "") ? commands[command] : undefined;
   if (!run || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month ?? "")) {
     throw new ExpectedFailure(
       "使い方: scripts/finance cloudflare <YYYY-MM>（終わった月だけ。月は UTC で区切る）\n" +
@@ -215,13 +217,15 @@ const parseTsv = (text, requiredColumns) => {
 
 // Apple の文書は「1 Month」、見本は「1 month」と書くので、大文字と小文字を区別せずに読み、文書の書き方にそろえる
 const durationOf = (value) => {
-  const duration = {
+  const durations = {
     "1 month": { label: "1 Month", months: 1 },
     "2 months": { label: "2 Months", months: 2 },
     "3 months": { label: "3 Months", months: 3 },
     "6 months": { label: "6 Months", months: 6 },
     "1 year": { label: "1 Year", months: 12 },
-  }[String(value).toLowerCase()];
+  };
+  const key = String(value).toLowerCase();
+  const duration = Object.hasOwn(durations, key) ? durations[key] : undefined;
   if (!duration) throw new ExpectedFailure(`知らない期間のサブスクリプションがある: ${value}`);
   return duration;
 };
@@ -285,8 +289,7 @@ module.exports = { computeAppStoreMonthlyNumbers };
 
 // テストが require したときは動かない
 if (require.main === module) {
-  // 自分で出す文（使い方、未認証、HTTP の状態、断る文）は文だけを、想定外の失敗はスタックと cause まで出す
-  // ExpectedFailure は scripts/expected-failure.js の1つの型なので、scripts/app-store-connect の道で止まった文も文だけを出す
+  // ExpectedFailure は scripts/app-store-connect と同じ型なので、そちらの道で止まった文も文だけを出す
   // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
   main().catch((error) => {
     console.error(error instanceof ExpectedFailure ? error.message : error);
