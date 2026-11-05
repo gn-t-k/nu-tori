@@ -6,13 +6,17 @@ struct GoalSetupMedicalNote: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("医療の助言ではありません。持病のある方は、医師に相談してください。")
+            Text(Self.medicalNote)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("goal-setup-medical-note")
             DailyGuideExplanationLink()
+            DailyGuideCitationLink()
         }
         .dimmedWhileDeciding(isDeciding)
     }
+
+    /// 1日の目安の出典の画面でも同じ文を出す
+    static let medicalNote = "医療の助言ではありません。持病のある方は、医師に相談してください。"
 }

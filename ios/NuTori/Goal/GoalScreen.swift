@@ -189,6 +189,7 @@ struct GoalScreen: View {
             if let energyChart {
                 GoalEnergyChartView(chart: energyChart)
                 DailyGuideExplanationLink()
+                DailyGuideCitationLink()
             }
         }
         .padding()

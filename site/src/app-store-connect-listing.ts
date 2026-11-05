@@ -83,6 +83,8 @@ export const appStoreConnectListing: AppStoreConnectListing = (() => {
       "",
       "External services: Anthropic (Claude) estimates meals from photos and text and writes replies. Cloudflare hosts the server, the database and the photos. Sentry receives crash and error reports. PostHog receives usage statistics. None of them is used for tracking.",
       "",
+      'Citations (Guideline 1.4.1): The sources of the estimated energy expenditure, the daily calorie target and the protein, fat and carbohydrate targets are listed on the "1日の目安の出典" (Sources of the daily target) screen, with links to each source. Open it from "1日の目安の出典 ›" below the medical note on the goal setup pages, or below the daily target card on the goal screen (tap the goal button at the top left of the timeline). The source of the nutrition values of meals is on "栄養の出典 ›" (Nutrition sources) on the meal screen, for meals that use the Standard Tables of Food Composition in Japan.',
+      "",
       "nu-tori is not a medical device and does not give medical advice.",
     ].join("\n"),
     urls,
