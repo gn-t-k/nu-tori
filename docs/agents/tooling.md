@@ -80,7 +80,7 @@ App Store Connect の画面は英語で出るので、文書・Issue・開発者
   - ログ: `scripts/cloudflare logs <development|production> [何分前から] [parameters に足す JSON]`。例 `scripts/cloudflare logs production 60 '{"needle":{"value":"alarm"}}'`。JSON の `view`（既定 `events`、ほかに `calculations`・`invocations`）、`limit`、`filters`、`calculations`、`groupBys` は Workers Observability の問い合わせの形のまま渡す。保持は 7 日
   - 指標: `scripts/cloudflare metrics <development|production> [何時間前から]`。時刻と呼び出しの状態ごとの、要求・誤り・CPU 時間と壁時計の時間（単位はマイクロ秒）
   - DMARC: `scripts/cloudflare dmarc [何日前から]`（既定 7）。`nu-tori.app` に届いた DMARC の報告の、日（報告を受け取った日で、メールを送った日の翌日ごろ）・送り元の組織（`sourceOrgName`）・報告した組織（`orgName`）・処置（`disposition`）ごとの、通数と SPF・DKIM・DMARC に通った数。GraphQL の zone の `dmarcReportsSourcesAdaptiveGroups` を読む
-- 指標（CPU 時間、所要時間、誤りの数）を読んで、速くなった・悪くなったと判断する前に、pstack の `principle-explain-the-number` を読む
+- 指標を読んで、速くなった・悪くなったと判断する前に、pstack の `principle-explain-the-number` を読む
 - `logs` と `metrics` は、環境を毎回引数で名指す。本番を読んだら、返事にそう書く。`dmarc` はドメインの報告で、環境の区別が無い
 - 読んだ中身のうち、`accountId`、zone の ID、Durable Object の ID、要求 ID、要求の URL の値・ヘッダー・IP・User-Agent は、公開の Issue・PR・コメントに貼らない。貼るのは数・率・所要時間、経路の型、状態コード、例外の名前と `failedStage` まで。DMARC は、送り元のサーバーの IP と受け取った側のアドレスを貼らず、送り元と報告した組織の名前と、SPF・DKIM・DMARC の結果の件数まで
 - トークンは読むだけにする。アカウントのトークンで、Workers の役割 `Metadata Read-Only` を `nu-tori-development` と `nu-tori-production` に絞ったものと、`Account Analytics Read` と、範囲を `nu-tori.app` に絞った zone の `Analytics Read` だけを付ける（このトークンでログの問い合わせが通ることを 2026-10-09 に、`dmarc` が通ることを 2026-10-28 に確かめた）。zone の `Analytics Read` が無いと、`dmarc` は `zone.analytics.read` の権限が無いという `authz` の誤りで止まる（#775）。デプロイ用の `CLOUDFLARE_API_TOKEN` は使わない
@@ -149,7 +149,7 @@ flowchart LR
 
 - CI は変わったパスでジョブを分け、main のルールセットでは `check.yml` の `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行い、文書（`*.md`）だけの変更ではジョブを飛ばす。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る。どのパスがどの対象に当たるかの決まりは `scripts/check` に1か所だけ置き、`changes` のジョブは PR の差分を `scripts/check --pick-targets` に渡す。比べる範囲と、差分が取れないときにすべてを確かめることは、呼ぶ側が決める。必須にしないワークフロー（デプロイ、`ios-ui-test.yml`）は `paths` で飛ばしてよい
 - GitHub Actions の秘密の値は、main からだけ使える Environment に置く（ADR-0010）
-- ジョブと、そこから呼ぶスクリプトを足す・直すときは、pstack の `principle-make-operations-idempotent` を読む。途中で落ちた回をやり直しても、同じ終わりの状態に収まるようにする
+- ジョブと、そこから呼ぶスクリプトを足す・直すときは、pstack の `principle-make-operations-idempotent` を読む
 - 依存の PR をマージし、落ちた PR の Issue を扱う `dependency-pr.yml` と、Swift Package を上げる `update-swift-packages.yml` は、`GITHUB_TOKEN` でなく、このリポジトリ用の GitHub App のトークン（`actions/create-github-app-token`）で GitHub を操作する。`GITHUB_TOKEN` で出した PR やマージは、ほかのワークフロー（check、deploy、`ios-ui-test.yml`）を起動しないため。App の Client ID は変数 `DEPENDENCY_APP_CLIENT_ID`、秘密鍵は秘密の値 `DEPENDENCY_APP_PRIVATE_KEY` として、main からだけ使える Environment `dependency-updates` に置く。依存の PR の扱い方は `docs/agents/dependencies.md`
 - 開発用の環境で主な流れを確かめるジョブ（`deploy.yml` の `verify-development`）は、開発用の Worker のデプロイのあとに、`server/e2e/verify-development.ts` が本物の API を通す。必須のチェックにせず、本番のデプロイは待たない。main で落ちたら、ワークフローが `needs-triage` の Issue を立て、緑に戻ったら閉じる。使う秘密の値 `E2E_SIGN_IN_SECRET` は、開発用の Environment の GitHub Actions の秘密の値と、開発用の Worker の秘密の値（`wrangler secret put E2E_SIGN_IN_SECRET`）に、同じ値を置く。本番の Environment にも本番の Worker にも置かない（守り方は `docs/agents/server-e2e.md`）
 - iOS のアプリは、PR ではビルド（UI テストのビルドを含む）までを確かめ、UI テストは main への push と、手で始めたときだけ回す。PR は Mac の結果で merge する（手順は `ios/AGENTS.md` の「確かめる」）。main で落ちたら、ワークフローが落ちたテストごとに Issue を立て（題と本文に、テストの名前と失敗の要約を書く。テストの前に止まった回は、ワークフローの名前の Issue を1つ）、緑に戻ったら閉じる。その Issue は次の PR より先に直す。見本の場面の生の画面を撮る回（`scripts/check ios-screenshots`）は、同じ `ios-ui-test.yml` を `target` の入力で手で始めたときだけ回り、Issue を立てない（回し方は `docs/agents/ios-release.md` の「スクリーンショット」）
@@ -158,7 +158,7 @@ flowchart LR
 
 ## ウィザード
 
-- 段を書くときは、pstack の `principle-make-operations-idempotent` を読む。途中で止めたウィザードを頭から回し直しても、済んだ段で壊れないようにする
+- 段を書くときは、pstack の `principle-make-operations-idempotent` を読む
 - `/wizard` で作るウィザードは macOS の bash 3.2 で動く。日本語の文字のすぐ前の変数は `${name}` で囲む（bash 3.2 は、続く多バイト文字を変数の名前に含めて unbound variable で止まる）。書いたら `grep -nP '\$[A-Za-z_]\w*[^\x00-\x7F]' <ウィザード>` が0件になることを確かめる
 - コミットするウィザードは `scripts/check` の ShellCheck にかかる。ひな形のライブラリ（`STAGES` の印より上）は直さず、シバンの次の行に `# shellcheck disable=SC1087,SC2329` を置く。どちらもライブラリの分で、SC1087 は `$e[` を配列と見る誤り、SC2329 は段で使わない helper。段に出た指摘は直す
 - ひな形の `set_secret` はリポジトリの秘密の値だけを置く。GitHub Actions の Environment の秘密の値（ADR-0010）は、段の中で `gh secret set <名前> --env <Environment> --repo gn-t-k/nu-tori` で置く
