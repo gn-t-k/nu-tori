@@ -182,14 +182,16 @@ case "$command" in
             });')"
         # site tag はビーコンの token と別物で、一覧を引くには Account Settings Read が要る。ホストで絞れば site tag を知らなくても取りこぼさない
         # クエリ文字列（UTM など）は RUM に無いので、どこから来たかは参照元のホストとパスで見る
+        # 上限の行数で返ったときは組み合わせが切れて数が欠けているかもしれないので、問い合わせと確かめで同じ上限を使う
+        limit=5000
         # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
-        ACCOUNT="$account_id" DAYS="${since:-7}" node -e '
+        ACCOUNT="$account_id" DAYS="${since:-7}" LIMIT="$limit" node -e '
             const end = new Date();
             const start = new Date(end - Number(process.env.DAYS) * 86_400_000);
             console.log(JSON.stringify({
                 query: `query ($accountTag: string!, $start: Time!, $end: Time!) {
                     viewer { accounts(filter: { accountTag: $accountTag }) {
-                        rumPageloadEventsAdaptiveGroups(limit: 5000, orderBy: [date_ASC, sum_visits_DESC], filter: { requestHost: "nu-tori.app", bot: 0, datetime_geq: $start, datetime_leq: $end }) {
+                        rumPageloadEventsAdaptiveGroups(limit: ${Number(process.env.LIMIT)}, orderBy: [date_ASC, sum_visits_DESC], filter: { requestHost: "nu-tori.app", bot: 0, datetime_geq: $start, datetime_leq: $end }) {
                             count
                             sum { visits }
                             dimensions { date requestPath refererHost refererPath }
@@ -197,13 +199,19 @@ case "$command" in
                     } }
                 }`,
                 variables: { accountTag: process.env.ACCOUNT, start: start.toISOString(), end: end.toISOString() },
-            }));' | post_json "$api/graphql" | fail_on_graphql_errors | node -e '
+            }));' | post_json "$api/graphql" | fail_on_graphql_errors | LIMIT="$limit" node -e '
             let body = "";
             process.stdin.on("data", (chunk) => (body += chunk)).on("end", () => {
                 console.log(body);
-                // 上限の行数で返ったときは、組み合わせが切れて数が欠けているかもしれないので、黙って通さない
-                if (JSON.parse(body).data.viewer.accounts[0].rumPageloadEventsAdaptiveGroups.length >= 5000) {
-                    console.error("5000 行で切れたかもしれない。日数を短くして読み直す");
+                // errors で data が無いときは、前の fail_on_graphql_errors が失敗にしているので、ここでは確かめない
+                let rows;
+                try {
+                    rows = JSON.parse(body).data?.viewer?.accounts?.[0]?.rumPageloadEventsAdaptiveGroups;
+                } catch {
+                    return;
+                }
+                if (rows && rows.length >= Number(process.env.LIMIT)) {
+                    console.error(`${process.env.LIMIT} 行で切れたかもしれない。日数を短くして読み直す`);
                     process.exitCode = 1;
                 }
             });'

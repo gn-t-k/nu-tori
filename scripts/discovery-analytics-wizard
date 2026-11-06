@@ -214,11 +214,11 @@ ASC_ADMIN_KEY_ID=""
 ASC_ADMIN_KEY_FILE=""
 CF_ANALYTICS_TOKEN=""
 
-# ask_value VAR "問い" は、空でない値を受け取るまで聞き直す。値の要る段で、空のまま次へ進まないため
+# ask_value [ask|ask_secret] VAR "問い" は、空でない値を受け取るまで聞き直す。値の要る段で、空のまま次へ進まないため
 ask_value() {
-  local key="$1" prompt="$2"
+  local reader="$1" key="$2" prompt="$3"
   while true; do
-    ask "$key" "$prompt" || exit 1
+    "$reader" "$key" "$prompt" || exit 1
     [[ -n "${!key}" ]] && return
     warn "空のままでは進めない"
   done
@@ -265,8 +265,8 @@ request_ongoing_analytics_reports() {
   open_url "$ASC_CONSOLE"
   step "Team Keys → + → Name: nu-tori-analytics-request-temporary、Access: Admin → Generate"
   step "作ったキーの行の Download で .p8 を落とす。Key ID と、表の上の Issuer ID を見る"
-  ask_value ASC_ADMIN_KEY_ID "Admin のキーの Key ID:"
-  ask_value ASC_ISSUER_ID "Issuer ID:"
+  ask_value ask ASC_ADMIN_KEY_ID "Admin のキーの Key ID:"
+  ask_value ask ASC_ISSUER_ID "Issuer ID:"
   ask_file ASC_ADMIN_KEY_FILE "Admin のキーの .p8"
   say "申し込みを確かめ、無ければ送る（鍵はこの端末の中だけで使い、ファイルにも残さない）"
   # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
@@ -405,9 +405,9 @@ open_url "$ASC_CONSOLE"
 step "Team Keys → + → Name: nu-tori-discovery、Access: Sales → Generate"
 note "API の文書では Sales and Reports と呼ぶ役割。Access の一覧の名前が違えば、Sales を含むものを選ぶ"
 step "作ったキーの行の Download で .p8 を落とす（二度と落とせない）"
-ask_value ASC_SALES_KEY_ID "Sales のキーの Key ID:"
+ask_value ask ASC_SALES_KEY_ID "Sales のキーの Key ID:"
 # Issuer ID はチームに1つで、5の段で聞いていれば同じ値を使う
-[[ -n "$ASC_ISSUER_ID" ]] || ask_value ASC_ISSUER_ID "Issuer ID（表の上）:"
+[[ -n "$ASC_ISSUER_ID" ]] || ask_value ask ASC_ISSUER_ID "Issuer ID（表の上）:"
 ask_file ASC_SALES_KEY_FILE "Sales のキーの .p8"
 
 # ── 7 ───────────────────────────────────────────────────────────────────
@@ -417,11 +417,7 @@ step "Create Token → Create Custom Token"
 step "Token name: nu-tori-discovery-web-analytics"
 step "Permissions: Account / Account Analytics / Read の1行だけ（ほかの行は足さない）"
 step "Continue to summary → Create Token → 出たトークンを写す（二度と出ない）"
-while true; do
-  ask_secret CF_ANALYTICS_TOKEN "トークン:" || exit 1
-  [[ -n "$CF_ANALYTICS_TOKEN" ]] && break
-  warn "空のままでは進めない"
-done
+ask_value ask_secret CF_ANALYTICS_TOKEN "トークン:"
 
 # ── 8 ───────────────────────────────────────────────────────────────────
 stage "クラウドの環境 nu-tori-discovery に5つの値を貼る"
