@@ -12,7 +12,7 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
     1. Claude Code: `~/.claude/plugins/cache/cursor-plugins/pstack/<版>/skills/<名前>/SKILL.md` を読む。版のフォルダは版を上げると変わり、複数あれば一番新しい版のものにする。pstack のスキルのほとんどは、エージェントが Skill ツールで呼べず（人が `/pstack:<名前>` と打てば動く）、ファイルを読むしかない
     2. Cursor: `~/.cursor/plugins/` の下で、`.cursor-plugin/plugin.json` の `name` が `pstack` のプラグインのフォルダにある `skills/<名前>/SKILL.md`。複数あれば、その `version` が一番新しいもの
     3. どれも無いとき（Codex など）: `https://github.com/cursor/plugins/blob/main/pstack/skills/<名前>/SKILL.md`。手元に入っている版とずれることがあり、それは許す
-    4. 3 の GitHub にも無いとき（消えたか、名前が変わったとき）: 黙って飛ばさず、無いことをユーザーに伝える。指している先が消えていないかを確かめる検査は置かない。2026-05 から 2026-11 までに `principle-*` が消えたり名前が変わったりしたことはなく、消えても読む側がここで気づくため（#905）
+    4. 3 の GitHub にも無いとき（消えたか、名前が変わったとき）: 無いことをユーザーに伝え、返事を待つ
 - `erd-design` は、開発者がほかのリポジトリでも使う自作の skill。どのリポジトリでも使える形に保ち、このリポジトリに固有の前提は `docs/agents/table-design.md` に書く
 
 ## サブエージェント
