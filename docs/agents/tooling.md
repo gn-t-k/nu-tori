@@ -8,6 +8,8 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 - `byethrow` は、`@praha/byethrow-docs` の `init claude` が書き出す skill を、`server/` の依存から docs を引く形に直したもの
 - `erd-design` は、開発者がほかのリポジトリでも使う自作の skill。どのリポジトリでも使える形に保ち、このリポジトリに固有の前提は `docs/agents/table-design.md` に書く
 
+pstack は Claude Code のプラグイン `pstack@cursor-plugins` で入れ、リポジトリで確かめた版を `pstack-lock.json` に書く。クラウドでは環境 `nu-tori` のセットアップスクリプトが新しいコンテナのたびに最新の版を入れ、手元（Mac）では手で上げるまで版が変わらない（#903）。版は、入っている版が lock より新しいと `check-pstack.sh` が知らせたときに、作業の PR とは別の PR（ブランチ `claude/update-pstack-<日付>`）で lock を上げる。手元の版が lock より古いと知らされたら、手元のプラグインを上げる
+
 ## サブエージェント
 
 決まった頼みで繰り返し立てるサブエージェントは、定義にしてリポジトリに置く。中身の正本は Claude Code の `.claude/agents/<名前>.md` に書き、Codex の `.codex/agents/<名前>.toml` には、その本文を読むよう指す1行だけを置く。Cursor は両方を読む。
@@ -25,6 +27,7 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。
 
 - `session-start.sh`（クラウドで始めたとき）: Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる。依存は、サブエージェントがライブラリのソースを読めるよう入れる（無いと CDN から取り直していた）
+- `check-pstack.sh`（クラウドと手元で始めたとき）: 入っている pstack の版が `pstack-lock.json` と違えば、上の「スキル」の上げ方を知らせる
 - `warn-behind-main.sh`（クラウドで続けたとき〈resume・compact・clear〉と、手元で始めたときと続けたとき）: 作業ツリーが origin/main より遅れていたら知らせ、手元では main を取り込ませる。長いセッションのあいだに main が進み、古い版の働き方の文書を読んでチケットを切り違えたため。手元の worktree は古い main から作られ、まだ無い道具を探して止まったため
 - `block-pkill-f.sh`（Bash を呼ぶ前）: `pkill -f`・`pgrep -f`（`-af` のような束ね方と `--full` を含む）を含むコマンドを止め、終わりの知らせを待つか PID を指して止めるよう返す。`-f` はコマンドライン全体に当たり、そのパターンを含む自分のシェルまで止める（exit 144）。`AGENTS.md` の注意書きだけでは、1週間に4つのセッションで起きたため（#787）。文字列に書いただけでも止まるので、コミットメッセージや本文に書くときは Write で書いたファイルで渡す（heredoc も止まる）
 
