@@ -9,6 +9,8 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 - `verify-server` は、pstack の `/pstack:create-verification-skill` で作ったサーバーの検証スキル。pstack の生成先（`.claude/skills/`）でなく、この決まりどおり `.agents/skills/` に置いた。nu-tori のファイルなので、直接直す。中の道具（`scripts/*.sh`）は `scripts/check scripts` が ShellCheck にかける
 - `erd-design` は、開発者がほかのリポジトリでも使う自作の skill。どのリポジトリでも使える形に保ち、このリポジトリに固有の前提は `docs/agents/table-design.md` に書く
 
+pstack は Claude Code のプラグイン `pstack@cursor-plugins` で入れ、リポジトリで確かめた版を `pstack-lock.json` に書く。クラウドでは環境 `nu-tori` のセットアップスクリプトが新しいコンテナのたびに最新の版を入れ、手元（Mac）では手で上げるまで版が変わらない（#903）。版は、入っている版が lock より新しいと `check-pstack.sh` が知らせたときに、作業の PR とは別の PR（ブランチ `claude/update-pstack-<日付>`）で lock を上げる。手元の版が lock より古いと知らされたら、手元のプラグインを上げる
+
 ## サブエージェント
 
 決まった頼みで繰り返し立てるサブエージェントは、定義にしてリポジトリに置く。中身の正本は Claude Code の `.claude/agents/<名前>.md` に書き、Codex の `.codex/agents/<名前>.toml` には、その本文を読むよう指す1行だけを置く。Cursor は両方を読む。
@@ -21,11 +23,14 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 - Bash は1回に1つのコマンドにする。`&&`・`;` でつなぐと拒まれる
 - パスと値は、変数にせず二重引用で直に書く。cd せず、worktree の中の絶対パスで指す
 
+worktree やセッションを並べるときは、pstack の `principle-separate-before-serializing-shared-state` を読む。#613 では、並べた実装役が同じ DerivedData を取り合い、`database is locked` で落ちた
+
 ## hook
 
 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。
 
 - `session-start.sh`（クラウドで始めたとき）: Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる。依存は、サブエージェントがライブラリのソースを読めるよう入れる（無いと CDN から取り直していた）
+- `check-pstack.sh`（クラウドと手元で始めたとき）: 入っている pstack の版が `pstack-lock.json` と違えば、上の「スキル」の上げ方を知らせる
 - `warn-behind-main.sh`（クラウドで続けたとき〈resume・compact・clear〉と、手元で始めたときと続けたとき）: 作業ツリーが origin/main より遅れていたら知らせ、手元では main を取り込ませる。長いセッションのあいだに main が進み、古い版の働き方の文書を読んでチケットを切り違えたため。手元の worktree は古い main から作られ、まだ無い道具を探して止まったため
 - `block-pkill-f.sh`（Bash を呼ぶ前）: `pkill -f`・`pgrep -f`（`-af` のような束ね方と `--full` を含む）を含むコマンドを止め、終わりの知らせを待つか PID を指して止めるよう返す。`-f` はコマンドライン全体に当たり、そのパターンを含む自分のシェルまで止める（exit 144）。`AGENTS.md` の注意書きだけでは、1週間に4つのセッションで起きたため（#787）。文字列に書いただけでも止まるので、コミットメッセージや本文に書くときは Write で書いたファイルで渡す（heredoc も止まる）
 
@@ -79,6 +84,7 @@ App Store Connect の画面は英語で出るので、文書・Issue・開発者
   - ログ: `scripts/cloudflare logs <development|production> [何分前から] [parameters に足す JSON]`。例 `scripts/cloudflare logs production 60 '{"needle":{"value":"alarm"}}'`。JSON の `view`（既定 `events`、ほかに `calculations`・`invocations`）、`limit`、`filters`、`calculations`、`groupBys` は Workers Observability の問い合わせの形のまま渡す。保持は 7 日
   - 指標: `scripts/cloudflare metrics <development|production> [何時間前から]`。時刻と呼び出しの状態ごとの、要求・誤り・CPU 時間と壁時計の時間（単位はマイクロ秒）
   - DMARC: `scripts/cloudflare dmarc [何日前から]`（既定 7）。`nu-tori.app` に届いた DMARC の報告の、日（報告を受け取った日で、メールを送った日の翌日ごろ）・送り元の組織（`sourceOrgName`）・報告した組織（`orgName`）・処置（`disposition`）ごとの、通数と SPF・DKIM・DMARC に通った数。GraphQL の zone の `dmarcReportsSourcesAdaptiveGroups` を読む
+- 指標を読んで、速くなった・悪くなったと判断する前に、pstack の `principle-explain-the-number` を読む
 - `logs` と `metrics` は、環境を毎回引数で名指す。本番を読んだら、返事にそう書く。`dmarc` はドメインの報告で、環境の区別が無い
 - 読んだ中身のうち、`accountId`、zone の ID、Durable Object の ID、要求 ID、要求の URL の値・ヘッダー・IP・User-Agent は、公開の Issue・PR・コメントに貼らない。貼るのは数・率・所要時間、経路の型、状態コード、例外の名前と `failedStage` まで。DMARC は、送り元のサーバーの IP と受け取った側のアドレスを貼らず、送り元と報告した組織の名前と、SPF・DKIM・DMARC の結果の件数まで
 - トークンは読むだけにする。アカウントのトークンで、Workers の役割 `Metadata Read-Only` を `nu-tori-development` と `nu-tori-production` に絞ったものと、`Account Analytics Read` と、範囲を `nu-tori.app` に絞った zone の `Analytics Read` だけを付ける（このトークンでログの問い合わせが通ることを 2026-10-09 に、`dmarc` が通ることを 2026-10-28 に確かめた）。zone の `Analytics Read` が無いと、`dmarc` は `zone.analytics.read` の権限が無いという `authz` の誤りで止まる（#775）。デプロイ用の `CLOUDFLARE_API_TOKEN` は使わない
@@ -93,6 +99,7 @@ App Store Connect の画面は英語で出るので、文書・Issue・開発者
 
 - 読む: 標準入力に Query API の query を JSON で渡す。例 `echo '{"kind":"HogQLQuery","query":"SELECT count() FROM events WHERE timestamp >= now() - INTERVAL 7 DAY"}' | scripts/posthog-query`。続き具合は `RetentionQuery`、ファネルは `FunnelsQuery`、ほかは `HogQLQuery`（SQL）。率は応答に無いので、件数から自分で割る
 - PostHog に送るのは本番だけ（サーバーも、iOS のリリースビルドだけ）なので、環境は名指さない。読んだのは本番の数になる
+- 変えた前後の差や率を読んで判断する前に、pstack の `principle-explain-the-number` を読む
 - 期間は8週ほどに絞り、人の一覧と出来事の行（`EventsQuery`、`SELECT *`）は取らない
 - 読んだ中身のうち、`distinct_id`（アカウント ID）、`person_id`、`$session_id`・`$device_id`・`$anon_distinct_id` などの ID、人の属性、1人ごとの行は、公開の Issue・PR・コメントに貼らない。貼るのは集計（件数・率・差・中央値の秒、版・週ごとの内訳）までで、1〜2人の内訳は「数人」とまとめる
 - 鍵は読むだけにする。個人の API キーで、スコープは `query:read` だけ（preset「Performing analytics queries」）、届く範囲は nu-tori のプロジェクトだけにする（この鍵で `HogQLQuery` と `RetentionQuery` が通ることを 2026-10-09 に確かめた）。`query:read` でも `persons` の表は読めるので、ID を外に出さないことは上の決まりで守る。Worker が人を消す `POSTHOG_PERSONAL_API_KEY` は使わない
@@ -113,6 +120,7 @@ flowchart LR
 ```
 
 - **数字はダッシュボードにだけ書く**。リポジトリのファイル・Issue・PR・コミット・コメント・ログに、金額を書かない。`scripts/finance` の出力は呼んだセッションの中だけで使い、ファイルに残さない（アップロードに使った JSON は、上げたらすぐ消す）
+- 費用の増減を読んで判断する前に、pstack の `principle-explain-the-number` を読む
 - Cloudflare: `scripts/finance cloudflare <YYYY-MM>`。額の数え方と呼ぶ口は、スクリプトに書いてある
 - App Store: `scripts/finance app-store <YYYY-MM>`。式の正本は #591 の解決コメントで、読むレポートと数え方はスクリプトに書いてある。月末の人数・解約率・1人あたりの粗利・CAC は、ダッシュボードのページが月の行から出す
 - 鍵は、クラウドの環境 `nu-tori-finance` にだけある `NU_TORI_CLOUDFLARE_BILLING_READ_TOKEN`（アカウントのトークンで `Billing Read` だけ）。アカウントの ID はトークンから引く。ほかの環境では `Not authenticated` で止まる。ほかに `NU_TORI_ASC_FINANCE_KEY_ID`・`NU_TORI_ASC_FINANCE_ISSUER_ID`・`NU_TORI_ASC_FINANCE_PRIVATE_KEY`（App Store Connect の役割 Finance のキー）と `NU_TORI_ASC_FINANCE_VENDOR_NUMBER`（販売レポートの `filter[vendorNumber]`。App Store Connect の「Payments and Financial Reports」の左上の番号）があり、`scripts/finance app-store` で使う
@@ -127,6 +135,7 @@ flowchart LR
 - Issue の題は `Sentry <短い ID>: <例外の型> in <関数>`。本文に載せるのは、短い ID・状態・型・関数・版・OS・件数と利用者の数・最初と最後の発生・Sentry の URL だけで、スクリプトはこれらの欄だけを Sentry から取る。例外のメッセージ（Sentry の課題の題）は取らない
 - 本文の印 `<!-- sentry-issue: <短い ID> -->` で同じ課題の Issue を探し、`<!-- sentry-state: <状態> -->` で最後に知らせた状態を覚える。状態が変わったら、開いた Issue にはコメントを足し、閉じた Issue しか無ければ前の Issue を指して新しく作る。状態が同じなら何もしないので、Sentry で解決せずに Issue だけを閉じても立て直さない。そのかわり、Sentry で解決したあとの2度目の再発のように同じ状態に戻ったときは Issue にならず、Sentry のメールの知らせで気づく。ワークフローが作った開いた Issue のロックが抜けていたら、次の回でロックする。印は、ワークフローと、リポジトリの持ち主・メンバー・コラボレーターが書いたものだけを信じる
 - 1回に書くのは5件まで（作る・コメントする）。残りは次の回で拾う
+- スクリプトとワークフローを直すときは、pstack の `principle-make-operations-idempotent` を読む。上の印と状態は、途中で止まった回や回し直しがあっても、同じ課題を同じ Issue に収めるための仕組み
 - 秘密の値は Sentry の読むだけのトークン `NU_TORI_SENTRY_READ_TOKEN` だけで、main からだけ使える Environment `production-alerts` に置く。Issue は `GITHUB_TOKEN` で書く
 - Mac で確かめるときは `scripts/production-alerts sentry --dry-run`。GitHub に書かず、作る Issue の題とコメントする先だけを出す
 - 公開のリポジトリでは、60 日動きが無いと定期実行が止まる。止まったら Actions の画面で入れ直す
@@ -144,6 +153,7 @@ flowchart LR
 
 - CI は変わったパスでジョブを分け、main のルールセットでは `check.yml` の `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行い、文書（`*.md`）だけの変更ではジョブを飛ばす。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る。どのパスがどの対象に当たるかの決まりは `scripts/check` に1か所だけ置き、`changes` のジョブは PR の差分を `scripts/check --pick-targets` に渡す。比べる範囲と、差分が取れないときにすべてを確かめることは、呼ぶ側が決める。必須にしないワークフロー（デプロイ、`ios-ui-test.yml`）は `paths` で飛ばしてよい
 - GitHub Actions の秘密の値は、main からだけ使える Environment に置く（ADR-0010）
+- ジョブと、そこから呼ぶスクリプトを足す・直すときは、pstack の `principle-make-operations-idempotent` を読む
 - 依存の PR をマージし、落ちた PR の Issue を扱う `dependency-pr.yml` と、Swift Package を上げる `update-swift-packages.yml` は、`GITHUB_TOKEN` でなく、このリポジトリ用の GitHub App のトークン（`actions/create-github-app-token`）で GitHub を操作する。`GITHUB_TOKEN` で出した PR やマージは、ほかのワークフロー（check、deploy、`ios-ui-test.yml`）を起動しないため。App の Client ID は変数 `DEPENDENCY_APP_CLIENT_ID`、秘密鍵は秘密の値 `DEPENDENCY_APP_PRIVATE_KEY` として、main からだけ使える Environment `dependency-updates` に置く。依存の PR の扱い方は `docs/agents/dependencies.md`
 - 開発用の環境で主な流れを確かめるジョブ（`deploy.yml` の `verify-development`）は、開発用の Worker のデプロイのあとに、`server/e2e/verify-development.ts` が本物の API を通す。必須のチェックにせず、本番のデプロイは待たない。main で落ちたら、ワークフローが `needs-triage` の Issue を立て、緑に戻ったら閉じる。使う秘密の値 `E2E_SIGN_IN_SECRET` は、開発用の Environment の GitHub Actions の秘密の値と、開発用の Worker の秘密の値（`wrangler secret put E2E_SIGN_IN_SECRET`）に、同じ値を置く。本番の Environment にも本番の Worker にも置かない（守り方は `docs/agents/server-e2e.md`）
 - iOS のアプリは、PR ではビルド（UI テストのビルドを含む）までを確かめ、UI テストは main への push と、手で始めたときだけ回す。PR は Mac の結果で merge する（手順は `ios/AGENTS.md` の「確かめる」）。main で落ちたら、ワークフローが落ちたテストごとに Issue を立て（題と本文に、テストの名前と失敗の要約を書く。テストの前に止まった回は、ワークフローの名前の Issue を1つ）、緑に戻ったら閉じる。その Issue は次の PR より先に直す。見本の場面の生の画面を撮る回（`scripts/check ios-screenshots`）は、同じ `ios-ui-test.yml` を `target` の入力で手で始めたときだけ回り、Issue を立てない（回し方は `docs/agents/ios-release.md` の「スクリーンショット」）
@@ -152,6 +162,7 @@ flowchart LR
 
 ## ウィザード
 
+- 段を書くときは、pstack の `principle-make-operations-idempotent` を読む
 - `/wizard` で作るウィザードは macOS の bash 3.2 で動く。日本語の文字のすぐ前の変数は `${name}` で囲む（bash 3.2 は、続く多バイト文字を変数の名前に含めて unbound variable で止まる）。書いたら `grep -nP '\$[A-Za-z_]\w*[^\x00-\x7F]' <ウィザード>` が0件になることを確かめる
 - コミットするウィザードは `scripts/check` の ShellCheck にかかる。ひな形のライブラリ（`STAGES` の印より上）は直さず、シバンの次の行に `# shellcheck disable=SC1087,SC2329` を置く。どちらもライブラリの分で、SC1087 は `$e[` を配列と見る誤り、SC2329 は段で使わない helper。段に出た指摘は直す
 - ひな形の `set_secret` はリポジトリの秘密の値だけを置く。GitHub Actions の Environment の秘密の値（ADR-0010）は、段の中で `gh secret set <名前> --env <Environment> --repo gn-t-k/nu-tori` で置く
