@@ -4,7 +4,7 @@
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(git -C "$script_dir" rev-parse --show-toplevel)"
 
-# 回のフォルダの run.env を読む。BASE_URL・E2E_SIGN_IN_SECRET・PGID・REVISION が入る
+# 回のフォルダの run.env を読む。BASE_URL・E2E_SIGN_IN_SECRET・PGID・COMMIT（立てたときのコミット）・SERVER_TREE（そのときの server/）・DEVICE_ID が入る
 load_run() {
     run_dir="${1:?回のフォルダ（start.sh が最後に出した行）を渡す}"
     [ -f "$run_dir/run.env" ] || { echo "$run_dir に run.env が無い（start.sh で立てた回のフォルダを渡す）" >&2; exit 2; }

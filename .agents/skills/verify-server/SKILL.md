@@ -29,7 +29,7 @@ run=$($S/start.sh)        # ポートを変えるときは $S/start.sh 8800
 $S/doctor.sh "$run"
 ```
 
-この回の `wrangler dev` が動いているか、`/health` が答えるか、立てたときのコミットと今のコミット（`server/` の作業中の変更を含む）が同じかを見る。`NG` があれば `stop.sh` で止め、`start.sh` で立て直す。コードを変えたら立て直す（`wrangler dev` は変更を読み直すが、どの版を確かめたかを証拠に残すため）。
+この回の `wrangler dev` が動いているか、`/health` が答えるか、立てたときと今で `server/` の中身（作業中の変更を含む）が同じかを見る。`NG` があれば `stop.sh` で止め、`start.sh` で立て直す。`server/` を変えたら立て直す（`wrangler dev` は変更を読み直すが、どの版を確かめたかを証拠に残すため）。確かめたコミットは `"$run/run.env"` の `COMMIT`。
 
 ## 動かし方
 

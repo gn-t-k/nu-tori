@@ -25,9 +25,16 @@ path="${2:?パスを渡す}"
 shift 2
 
 body="$(mktemp)"
-status="$(curl -s -o "$body" -w '%{http_code}' -X "$method" -H "authorization: Bearer $token" "${extra[@]}" "$@" "$BASE_URL$path")"
-log_evidence "$method $path -> $status" "$body"
+# 見守る要求を --max-time で切ったときも、それまでに届いた分を残す
+curl_exit=0
+status="$(curl -s -o "$body" -w '%{http_code}' -X "$method" -H "authorization: Bearer $token" "${extra[@]}" "$@" "$BASE_URL$path")" || curl_exit=$?
+if [ "$curl_exit" = 0 ]; then
+    log_evidence "$method $path -> $status" "$body"
+    echo "状態コード $status" >&2
+else
+    log_evidence "$method $path -> 状態コード $status、curl が $curl_exit で終わった" "$body"
+    echo "状態コード $status、curl が $curl_exit で終わった（28 は --max-time の時間切れ）" >&2
+fi
 cat "$body"
-echo "状態コード $status" >&2
 rm -f "$body"
-[[ "$status" == 2* ]]
+[ "$curl_exit" = 0 ] && [[ "$status" == 2* ]]
