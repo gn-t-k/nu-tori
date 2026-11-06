@@ -12,6 +12,16 @@ load_run() {
     . "$run_dir/run.env"
 }
 
+# server/ の今の中身（作業中の変更と、追跡していない新しいファイルを含む）のハッシュ。gitignore したもの（node_modules など）は入らない
+server_content_hash() {
+    local index
+    index="$(mktemp)"
+    GIT_INDEX_FILE="$index" git -C "$root" read-tree HEAD
+    GIT_INDEX_FILE="$index" git -C "$root" add -A server
+    git -C "$root" rev-parse "$(GIT_INDEX_FILE="$index" git -C "$root" write-tree):server"
+    rm -f "$index"
+}
+
 session_token() {
     local file="$run_dir/sessions/$1.json"
     [ -f "$file" ] || { echo "セッション $1 が無い（sign-in.sh $run_dir $1 で作る）" >&2; exit 2; }

@@ -48,8 +48,8 @@ cat > "$run_dir/run.env" << ENV
 BASE_URL=$base_url
 E2E_SIGN_IN_SECRET=$e2e_secret
 PGID=$pgid
-COMMIT=$(git rev-parse HEAD)$(git diff --quiet HEAD -- . || echo -dirty)
-SERVER_TREE=$(git rev-parse HEAD:server)$(git diff --quiet HEAD -- . || echo -dirty)
+COMMIT=$(git rev-parse HEAD)$([ -z "$(git status --porcelain -- .)" ] || echo -dirty)
+SERVER_TREE=$(server_content_hash)
 DEVICE_ID=$("$script_dir/uuid.sh")
 ENV
 

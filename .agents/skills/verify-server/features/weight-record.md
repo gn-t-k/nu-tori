@@ -34,7 +34,6 @@ Preconditions:
 ## Gotchas
 
 - `update_weight_record` の `version` は、直したあとの版（届いた `version` に 1 を足した値）。届いた版のままで送ると `rejected`（`version_too_low`）になる
-- `push.sh` は、書き込みが `rejected` でも状態コード 200 で 0 を返す。`results[].result` を読む
 - 取りに行く応答は、記録ごとに今の形が1つ出る。消した記録は `<種類>_deletion` の種類で出る
 - 体重の傾向は、日ごとにいちばん早い記録を代表にして出す。直す手順は、取り込む前（その日の記録が `$w` だけのとき）に回さないと、`trendKg` が直した値にならない
 - `weight_trend` の `recordId` はいつも同じ（全部 0 の UUID）で、毎回全体が出直す

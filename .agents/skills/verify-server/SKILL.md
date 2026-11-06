@@ -1,13 +1,13 @@
 ---
 name: verify-server
-description: "nu-tori のサーバー（server/）を手元で wrangler dev で立て、端末と同じ API を叩いて、触れた機能が動くことを証拠つきで確かめる。PR を出す前と PR に push する前の確かめ（docs/agents/git.md）と、サーバーの機能がどこにあり、ユーザーがどうたどり着くかを知りたいとき（features/README.md）に使う。"
+description: "nu-tori のサーバー（server/）を手元で wrangler dev で立て、端末と同じ API を叩いて、触れた機能が動くことを証拠つきで確かめる。PR を出す前と PR に push する前の確かめ（docs/agents/git.md の「動かして確かめる」）で使う。"
 ---
 
 # サーバーを動かして確かめる
 
 サーバーを空の状態から手元に立て、端末と同じ形の要求を送り、応答と、取りに行く要求に届いた記録で、機能が動いたことを示す。テストが通ることとは別に、本物の経路（受け口 → Durable Object → D1・R2）を通ったかを見る。
 
-道具はこのフォルダの `scripts/` にある。どれも引数なしで呼ぶと使い方を言って止まる。下では `S=.agents/skills/verify-server/scripts` とする（リポジトリの直下から呼ぶ）。
+道具はこのフォルダの `scripts/` にある。回のフォルダを取る道具は、引数なしで呼ぶと使い方を言って止まる。下では `S=.agents/skills/verify-server/scripts` とする（リポジトリの直下から呼ぶ）。
 
 ## 起動
 
@@ -29,7 +29,7 @@ run=$($S/start.sh)        # ポートを変えるときは $S/start.sh 8800
 $S/doctor.sh "$run"
 ```
 
-この回の `wrangler dev` が動いているか、`/health` が答えるか、立てたときと今で `server/` の中身（作業中の変更を含む）が同じかを見る。`NG` があれば `stop.sh` で止め、`start.sh` で立て直す。`server/` を変えたら立て直す（`wrangler dev` は変更を読み直すが、どの版を確かめたかを証拠に残すため）。確かめたコミットは `"$run/run.env"` の `COMMIT`。
+この回の `wrangler dev` が動いているか、`/health` が答えるか、立てたときと今で `server/` の中身（作業中の変更と、追跡していない新しいファイルを含む）が同じかを見る。`NG` があれば `stop.sh` で止め、`start.sh` で立て直す。`server/` を変えたら立て直す（`wrangler dev` は変更を読み直すが、どの版を確かめたかを証拠に残すため）。確かめたコミットは `"$run/run.env"` の `COMMIT`。
 
 ## 動かし方
 
@@ -63,12 +63,14 @@ $S/doctor.sh "$run"
 - 証拠は `"$run/evidence/"` に残る。`requests.log` に、送った要求と、返った状態コードと本文が並ぶ
 - 動いたと言えるのは、ユーザーの経路（端末が呼ぶ API）で操作し、その結果を別の見方（取りに行く要求に届いた記録、続く要求の状態コード）で読めたとき。書き込みが `applied` を返しただけでは足りない
 - 確かめの口（`/v1/e2e/*`）は、本物の経路で見えないもの（推定の失敗の理由）を読むときと、Apple を通せないサインインの代わりにだけ使う
-- PR の本文の「確かめ」には、機能と入口ごとに、した操作と、見えた結果（状態コード、届いた記録の種類と値）と、確かめたコミットを書く。記録の中身は作り話の値にする（公開リポジトリ）
+- PR の本文の「確かめ」（`docs/agents/git.md` の「動かして確かめる」）に書く見えた結果は、状態コードと、届いた記録の種類と値。値は作り話にする（公開リポジトリ）
 
 ## 確かめられないとき
 
-- Anthropic の鍵が無い回では、推定・読み分け・返事の結果まで進まない。推定が始まる（`estimating`）ことと、Anthropic まで届いた（確かめの口で `authentication_error`）ことまでを書き、結果は「確かめていない」と書く。結果は、merge のあとに `deploy.yml` の `verify-development`（開発用の環境で本物の提供元を通す）が確かめる
-- Sign in with Apple、Apple のサーバー間通知、App Store の取引は、Apple を通すので手元で動かせない。「確かめていない」と書き、TestFlight の版で確かめる
+次の入口は手元で通せない。`docs/agents/git.md` の「動かして確かめる」の 5 のとおり書くときの、確かめる場所はここにある。
+
+- Anthropic の鍵が無い回では、推定・読み分け・返事の結果まで進まない。推定が始まる（`estimating`）ことと、Anthropic まで届いた（確かめの口で `authentication_error`）ことまでが確かめられる。結果は、merge のあとに `deploy.yml` の `verify-development`（開発用の環境で本物の提供元を通す）が確かめる
+- Sign in with Apple、Apple のサーバー間通知、App Store の取引は、Apple を通すので手元で動かせない。TestFlight の版で確かめる
 - アプリの画面は、このスキルの外。Mac のセッションの UI テストで確かめる
 
 ## 片付け

@@ -23,7 +23,7 @@ Preconditions:
 
 - **サインイン。** `$S/sign-in.sh "$run" main` を送る。アカウント ID が1行出て、`requests.log` に `sign-in main -> 201` が残る
 - **無料体験中。** `$S/pull.sh "$run" main | jq -c '.[] | select(.kind=="subscription_status") | .record'` を読む。`freeTrial.type` が `available` で、`lastDay` が今日より後
-- **無料体験の終わったアカウント。** `$S/sign-in.sh "$run" expired "$(date -u -d '-60 days' +%FT%TZ)"`（macOS は `date -u -v-60d +%FT%TZ`）で作り、同じく `subscription_status` を読む。`freeTrial.lastDay` が今日より前
+- **無料体験の終わったアカウント。** `$S/sign-in.sh "$run" expired "$(date -u -d '-60 days' +%FT%TZ)"` で作り、同じく `subscription_status` を読む。`freeTrial.lastDay` が今日より前
 - **削除。** `$S/api.sh "$run" main DELETE /v1/account` を送る。状態コード `204`
 - **削除のあと。** `$S/api.sh "$run" main GET /v1/terms-agreement` を送る。状態コード `401`（セッションが消えた）
 

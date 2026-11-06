@@ -24,7 +24,7 @@ Preconditions:
 
 - `doctor.sh "$run"` が全部 `ok`
 - `$S/sign-in.sh "$run" goal` で作ったアカウントに、7日と1分前の体重記録を送ってある（体重記録の「手で記録する」の `measuredAt` を `$(date -d '-7 days -1 minute' +%s)000` にする）
-- `asof=$(date -u -d '-7 days' +%FT%TZ)`、`body='{"sex":"female","heightCentimeters":160,"ageYears":35,"activity":{"type":"level","level":"standing"}}'`、`P() { $S/api.sh "$run" goal --as-of "$asof" POST /v1/goal-setup/$1 -H 'content-type: application/json' --data "$2"; }`（macOS の `date` は `-v-7d`）
+- `asof=$(date -u -d '-7 days' +%FT%TZ)`、`body='{"sex":"female","heightCentimeters":160,"ageYears":35,"activity":{"type":"level","level":"standing"}}'`、`P() { $S/api.sh "$run" goal --as-of "$asof" POST /v1/goal-setup/$1 -H 'content-type: application/json' --data "$2"; }`
 
 - **下見。** `P preview '{"timeZone":"Asia/Tokyo","direction":"lose"}'` を送る。`{"canBackCalculate":false}`（食べた量の記録が無い）
 - **身体データを添えた下見。** `P preview "{\"timeZone\":\"Asia/Tokyo\",\"direction\":\"lose\",\"bodyData\":$body}"` を送る。`canOfferLoseProposals` が `true`
