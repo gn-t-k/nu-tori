@@ -90,7 +90,7 @@ target_files() {
             # site のページの文字の大きさは、DESIGN.md の typography の最小と比べる
             if [ "$target" = site ]; then paths="$paths|DESIGN\.md\$"; fi
             ;;
-        scripts) paths="scripts/|\.claude/hooks/|\.github/workflows/check\.yml\$" ;;
+        scripts) paths="scripts/|\.claude/hooks/|\.agents/skills/verify-server/scripts/|\.github/workflows/check\.yml\$" ;;
     esac
     # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は確かめに使うので残す
     { grep -vE '\.md$' <<< "$files" || true; grep -Fx DESIGN.md <<< "$files" || true; } | grep -E "^($paths)" || true
@@ -801,8 +801,8 @@ check_scripts() {
     step "Lint（ShellCheck ${shellcheck_version}）"
     install_shellcheck
     local files=() file
-    # node のスクリプトも同じフォルダにあるので、シバンで選ぶ。.agents/skills/ は mattpocock/skills のファイルなので当てない
-    for file in "$root"/scripts/* "$root"/.claude/hooks/*; do
+    # node のスクリプトも同じフォルダにあるので、シバンで選ぶ。.agents/skills/ は mattpocock/skills のファイルなので、nu-tori の verify-server の道具だけに当てる
+    for file in "$root"/scripts/* "$root"/.claude/hooks/* "$root"/.agents/skills/verify-server/scripts/*; do
         if [ -f "$file" ] && head -n 1 "$file" | grep -qE '^#!.*[/ ](ba)?sh$'; then
             files+=("${file#"$root"/}")
         fi
@@ -829,7 +829,7 @@ print_usage() {
                引数なしでは回さない。回し方は docs/agents/ios-release.md の「スクリーンショット」
   server       整形、Lint、サーバーを正本にする定数の値、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   site         公開のページ（nu-tori.app）の整形、Lint、型検査、書き出しと、書き出したページを載せた Worker のテストと、合成のコマンドのテスト
-  scripts      scripts/ と .claude/hooks/ のシェルの Lint（ShellCheck）と、node のスクリプトのテスト（scripts/*.test.js）。--fix でも直さない
+  scripts      scripts/ と .claude/hooks/ と verify-server の道具のシェルの Lint（ShellCheck）と、node のスクリプトのテスト（scripts/*.test.js）。--fix でも直さない
   --fix        直せるものを直してから確かめる
   --lint       ios と server と site の整形と Lint だけを回す（scripts は Lint とテストを回す）。対象を省くと、引数なしと同じ選び方をする
   --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる

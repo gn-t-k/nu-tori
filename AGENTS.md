@@ -30,6 +30,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 - UI や振る舞いの選択肢を尋ねるときは、`/prototype` で見比べられるものを先に作る
 - 試作を作る・探すときは、`docs/agents/decisions.md` の「試作の置き場」を読む
 - 工程のゲートや引き継ぎなどの大きな確認をするときは、`docs/agents/gate-review.md` を読む
+- 機能がどこにあり、ユーザーがどうたどり着くかを知りたいときは、`verify-<アプリ>` の地図の索引（`.agents/skills/verify-<アプリ>/features/README.md`。今はサーバーの `verify-server` だけ）を読む
 
 ### 情報の置き場
 

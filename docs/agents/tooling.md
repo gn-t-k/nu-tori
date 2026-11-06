@@ -6,6 +6,7 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 
 - lock の外の skill は、`.agents/skills/<名前>/` に置いて `.claude/skills/` からリンクする。自動更新は lock にある名前だけを入れ直し、ほかは触らない。この決まりより前に置いた `model-based-ui-design` は `.claude/skills/` にだけあり、移すかは決めていない
 - `byethrow` は、`@praha/byethrow-docs` の `init claude` が書き出す skill を、`server/` の依存から docs を引く形に直したもの
+- `verify-server` は、pstack の `/pstack:create-verification-skill` で作ったサーバーの検証スキル。pstack の生成先（`.claude/skills/`）でなく、この決まりどおり `.agents/skills/` に置いた。nu-tori のファイルなので、直接直す。中の道具（`scripts/*.sh`）は `scripts/check scripts` が ShellCheck にかける
 - `erd-design` は、開発者がほかのリポジトリでも使う自作の skill。どのリポジトリでも使える形に保ち、このリポジトリに固有の前提は `docs/agents/table-design.md` に書く
 
 ## サブエージェント
