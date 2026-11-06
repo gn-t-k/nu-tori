@@ -30,16 +30,12 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 - UI や振る舞いの選択肢を尋ねるときは、`/prototype` で見比べられるものを先に作る
 - 試作を作る・探すときは、`docs/agents/decisions.md` の「試作の置き場」を読む
 - 工程のゲートや引き継ぎなどの大きな確認をするときは、`docs/agents/gate-review.md` を読む
-- 次の場面では、pstack の原則のファイルを読む（Skill ツールでは呼べない）
+- 次の場面では、pstack の原則を読む。Skill ツールでは呼べないので、`~/.claude/plugins/cache/cursor-plugins/pstack/<一番新しい版>/` か、無ければ `~/.cursor/plugins/` の下（複数あれば `.cursor-plugin/plugin.json` の `version` が一番新しいもの）の `skills/<名前>/SKILL.md` を読む。どちらにも無いとき（Codex など）は `https://raw.githubusercontent.com/cursor/plugins/main/pstack/skills/<名前>/SKILL.md` を読む
   - 「確かめた」と書く前に、`principle-prove-it-works` を読む
-  - 同じ編集や確かめを3回以上するときは、`principle-build-the-lever` を読む。#562 では、画面を並べるスクリプトを毎回作り直していた
-  - 大きな出力（スクリーンショットの束、長いログ）を読むときは、`principle-guard-the-context-window` を読む。#562 では、スクリーンショット数十枚で文脈が 400K 前後まで膨らんだ
+  - 同じ編集や確かめを3回以上するときは、`principle-build-the-lever` を読む
+  - 大きな出力（スクリーンショットの束、長いログ）を読むときは、`principle-guard-the-context-window` を読む
   - 移行・一括置換・複数コミットの作業では、`principle-sequence-verifiable-units` を読む
   - 同じ確かめで2回直しても落ちるときは、`principle-attack-the-premise` を読む
-  - pstack の原則は、次の順に探した最初の `skills/<名前>/SKILL.md` を読む。版の番号がパスに入るので、文書には原則の名前だけを書く
-    1. `~/.claude/plugins/cache/cursor-plugins/pstack/` の下。版のフォルダが複数あれば一番新しい版
-    2. `~/.cursor/plugins/` の下。複数あれば `.cursor-plugin/plugin.json` の `version` が一番新しいもの
-    3. どちらにも無いとき（Codex など）は `https://raw.githubusercontent.com/cursor/plugins/main/pstack/skills/<名前>/SKILL.md`
 
 ### 情報の置き場
 
