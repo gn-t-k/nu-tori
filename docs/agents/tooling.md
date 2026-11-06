@@ -61,7 +61,7 @@ Sentry の課題・イベント・スタック・端末・版・件数は、`scr
 
 ## App Store Connect を読む
 
-Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-cloud`）で見る: `gh api repos/gn-t-k/nu-tori/commits/<sha>/check-runs`。失敗の中身、TestFlight のビルドの状態、TestFlight のフィードバックとクラッシュのログは、`scripts/app-store-connect get '<パス>'` で読む。GET だけを送り、鍵の読み方と JWT の作り方は、このスクリプトの1か所に書く。`--finance` を付けると役割 Finance の鍵（下の「お金の数字を読む」）で、販売レポートと財務レポートの口だけを呼ぶ。MCP の設定には置かない。調べた経緯は `docs/research/app-store-connect-agent-access.md`。
+Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-cloud`）で見る: `gh api repos/gn-t-k/nu-tori/commits/<sha>/check-runs`。失敗の中身、TestFlight のビルドの状態、TestFlight のフィードバックとクラッシュのログは、`scripts/app-store-connect get '<パス>'` で読む。GET だけを送り、鍵の読み方と JWT の作り方は、このスクリプトの1か所に書く。`--finance` を付けると役割 Finance の鍵（下の「お金の数字を読む」）で、販売レポートと財務レポートの口だけを呼ぶ。`--analytics` と `segment` は役割 Sales and Reports の鍵（下の「流入の数を読む」）で、Analytics Reports の口だけを呼ぶ。MCP の設定には置かない。調べた経緯は `docs/research/app-store-connect-agent-access.md`。
 
 App Store Connect の画面は英語で出るので、文書・Issue・開発者への案内では、画面の名前（メニュー、欄、ボタン、選択肢）を英語のまま書く。説明が要るときは、英語の名前に日本語を添える。日本語に訳すと、開発者が英語に戻してページ内を検索する手間がかかる（#718）。
 
@@ -82,6 +82,7 @@ App Store Connect の画面は英語で出るので、文書・Issue・開発者
 - 読む
   - ログ: `scripts/cloudflare logs <development|production> [何分前から] [parameters に足す JSON]`。例 `scripts/cloudflare logs production 60 '{"needle":{"value":"alarm"}}'`。JSON の `view`（既定 `events`、ほかに `calculations`・`invocations`）、`limit`、`filters`、`calculations`、`groupBys` は Workers Observability の問い合わせの形のまま渡す。保持は 7 日
   - 指標: `scripts/cloudflare metrics <development|production> [何時間前から]`。時刻と呼び出しの状態ごとの、要求・誤り・CPU 時間と壁時計の時間（単位はマイクロ秒）
+  - LP の訪問: `scripts/cloudflare web-analytics [何日前から]`。読み方と鍵は下の「流入の数を読む」
   - DMARC: `scripts/cloudflare dmarc [何日前から]`（既定 7）。`nu-tori.app` に届いた DMARC の報告の、日（報告を受け取った日で、メールを送った日の翌日ごろ）・送り元の組織（`sourceOrgName`）・報告した組織（`orgName`）・処置（`disposition`）ごとの、通数と SPF・DKIM・DMARC に通った数。GraphQL の zone の `dmarcReportsSourcesAdaptiveGroups` を読む
 - 指標を読んで、速くなった・悪くなったと判断する前に、pstack の `principle-explain-the-number` を読む
 - `logs` と `metrics` は、環境を毎回引数で名指す。本番を読んだら、返事にそう書く。`dmarc` はドメインの報告で、環境の区別が無い
@@ -126,6 +127,27 @@ flowchart LR
 - 定期のタスクは「nu-tori のお金: 前の月の固定費とサブスクリプションの数字を書く」（`trig_01Mudhdy293FZCTT2AQ8Rff1`、環境 `nu-tori-finance`、毎回新しいセッション）。手順はタスクの指示に書いてあり、その月の行に Cloudflare の額とサブスクリプションの数字（`subscriptions_from`）があれば何もしない
 - Anthropic の利用額は API で読めない（個人の組織で Admin API が使えない、#759）。開発者が Console の `nu-tori-production` の額を伝えたら、その月の行の `anthropic_usd` と `anthropic_from` を書く。CAC の時間（その月に人を得るのに使った時間）を伝えたら、`acquisition_hours` と `acquisition_hours_from` を書く。予算・年額のもの（Apple Developer の年会費、ドメイン）・始めた月・為替は `settings` の行の `value` と `from` を書き換える。ページに入力欄は作らない
 - ダッシュボードの数字を書き換えるとき（どのセッションからでもよい）: ArtifactData で `datasets/months` か `datasets/settings` を読み、`source.url` の JSON を Artifact の read で取り、直した JSON をアップロードして（Artifact の publish に `url`・`file_path`・`asset: true`）、データセットの `source.url` と `updated` を書き換え、古い JSON を消す。ページ（`files/index.html`）を変えたら、`data/users/me` の `check` を読んで確かめる
+
+## 流入の数を読む
+
+見つけてもらう役（#738）が読む、検索・App Store・LP の流入の数。3つの鍵は、クラウドの環境 `nu-tori-discovery` にだけ置く。`nu-tori`・`nu-tori-finance`・Mac には置かないので、ほかの場所で呼ぶと `Not authenticated` で止まる。鍵を作り直すとき、申し込みが止まったときは、開発者に `scripts/discovery-analytics-wizard` を Mac で回すよう頼む。調べた経緯は `docs/research/search-console-agent-access.md`・`docs/research/app-store-connect-analytics.md`・`docs/research/cloudflare-web-analytics.md`。
+
+- **数字は公開のリポジトリに書かない**。読んだ件数・率・順位・検索語は、ファイル・Issue・PR・コミット・コメントに書かず、週の報告は `nu-tori-ops` に置く。リポジトリに書くのは、読めたか、何行返ったか、断られた理由まで
+- 数の増減を読んで判断する前に、pstack の `principle-explain-the-number` を読む
+- Search Console: `scripts/search-console sites`（サービスアカウントが見られるプロパティ。権限の確かめに使う）、`scripts/search-console query '<JSON>'`（`sc-domain:nu-tori.app` の Search Analytics。JSON は `startDate`・`endDate`・`dimensions`・`rowLimit` などの本文のまま）。数は2〜3日遅れ、`"dataState":"all"` で固まる前の日も入る。検索語は、少ない件数の語が人を指しうるので、報告にも件数の多い語と集計までを書く
+  - 鍵: `NU_TORI_GSC_SERVICE_ACCOUNT_KEY`（サービスアカウントの JSON 鍵を base64 の1行にしたもの）。サービスアカウントは Search Console の `nu-tori.app` に Permission `Restricted` で足してあり、スクリプトは `webmasters.readonly` だけを求める
+- App Store Connect: 表示回数・プロダクトページの閲覧・流入元は、Analytics Reports の App Store Discovery and Engagement のレポートの TSV で読む。たどり方:
+  1. `scripts/app-store-connect get '/v1/apps/6816842705/analyticsReportRequests' --analytics`（`accessType` が `ONGOING` の申し込みの ID）
+  2. `get '/v1/analyticsReportRequests/<申し込み>/reports?filter[name]=App Store Discovery and Engagement Detailed' --analytics`（どのサイト・アプリから来たかの `Source Info` は Detailed にだけある。Detailed は5人に満たない行を省く）
+  3. `get '/v1/analyticsReports/<レポート>/instances?filter[granularity]=DAILY' --analytics`（`WEEKLY`・`MONTHLY` もある）
+  4. `get '/v1/analyticsReportInstances/<instance>/segments' --analytics` で segment の ID を知り、`scripts/app-store-connect segment <segment>` で TSV を出す
+  - 数え方: 表示回数は `Event` が `Impression` の `Counts`、プロダクトページの閲覧は `Event` が `Page view` で `Page Type` が `Product page` の `Counts`、流入元は `Source Type`
+  - segment の一覧が返す `url` は署名つきなので、公開の場所に貼らない。`segment` が落とす先のホストが違うと言って止まったら、返ったホストを確かめてスクリプトを直す
+  - 申し込みは、長く読まないと `stoppedDueToInactivity` になり、Admin のキーで出し直すまでレポートが増えない。見つけたら開発者にウィザードの5の段を頼む
+  - 鍵: `NU_TORI_ASC_SALES_KEY_ID`・`NU_TORI_ASC_SALES_ISSUER_ID`・`NU_TORI_ASC_SALES_PRIVATE_KEY`（チームのキーで役割 Sales and Reports。`.p8` を base64 の1行に）。この役割は販売レポート（お金の数字）も読めるので、スクリプトは Analytics Reports の口のほかへは送らない
+- Cloudflare: `scripts/cloudflare web-analytics [何日前から]`（既定 7、93 まで）。`nu-tori.app` のボットでない読み込みを、日・ページのパス・参照元のホストとパスごとに、ページビュー（`count`）と、ほかのサイトか直接来た訪問（`sum.visits`）で返す。クエリ文字列（UTM）は取れない。データセットは Beta なので、名前や次元が変わったら問い合わせを直す
+  - 鍵: `NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN`（アカウントのトークンで `Account Analytics Read` だけ）。アカウントの ID はトークンから引く。Workers Logs を読めるサーバーの `NU_TORI_CLOUDFLARE_READ_TOKEN` は、この環境に置かない
+- 環境のネットを Limited にするなら、`oauth2.googleapis.com`・`searchconsole.googleapis.com`・`api.appstoreconnect.apple.com`・`api.cloudflare.com` と、segment を落とす S3 のホスト（最初に読んだときに分かる）を許す
 
 ## 本番の知らせを Issue にする
 
