@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // エージェントと人が App Store Connect API を読むだけで呼ぶ。GET だけを送り、鍵の読み方と JWT の作り方をここ1か所に置く
 // --finance では、役割 Finance の鍵で販売レポートと財務レポートだけを読む。scripts/finance もこの道を使う
+// --analytics と segment では、役割 Sales and Reports の鍵で Analytics Reports（表示回数・プロダクトページの閲覧・流入元）だけを読む
 // 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
 "use strict";
 
@@ -13,10 +14,16 @@ const { ExpectedFailure } = require("./expected-failure.js");
 
 const main = async () => {
   const [command, target, ...flags] = process.argv.slice(2);
+  if (command === "segment" && target && flags.length === 0) {
+    process.stdout.write(await readAnalyticsSegment(target));
+    return;
+  }
   if (command !== "get" || !target?.startsWith("/v")) {
     throw new ExpectedFailure(
       "使い方: scripts/app-store-connect get '/v1/...' [--all]（GET だけ。--all で links.next をたどる）\n" +
-        "       scripts/app-store-connect get '/v1/salesReports?...' --finance（役割 Finance の鍵で、販売レポートか財務レポートを TSV で出す）",
+        "       scripts/app-store-connect get '/v1/salesReports?...' --finance（役割 Finance の鍵で、販売レポートか財務レポートを TSV で出す）\n" +
+        "       scripts/app-store-connect get '/v1/analyticsReport...' --analytics [--all]（役割 Sales and Reports の鍵で、Analytics Reports の口だけ）\n" +
+        "       scripts/app-store-connect segment <segment の ID>（役割 Sales and Reports の鍵で、Analytics Reports の1つの segment を TSV で出す）",
     );
   }
   if (flags.includes("--finance")) {
@@ -25,12 +32,17 @@ const main = async () => {
     process.stdout.write(report);
     return;
   }
-  const { keyId, issuerId, privateKey } = loadKey("NU_TORI_ASC");
+  const analytics = flags.includes("--analytics");
+  // 鍵が無いときも、断る口は Not authenticated より先に断る
+  if (analytics) assertAnalyticsPath(toApiUrl(target));
+  const { keyId, issuerId, privateKey } = loadKey(analytics ? "NU_TORI_ASC_SALES" : "NU_TORI_ASC");
 
   const followAll = flags.includes("--all");
   let url = toApiUrl(target);
   const merged = { data: [], included: [] };
   while (url) {
+    // links.next も同じ口のはずだが、鍵を送る前に毎回確かめる
+    if (analytics) assertAnalyticsPath(url);
     const response = await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${signShortLivedJwt({ keyId, issuerId, privateKey })}` },
@@ -71,7 +83,56 @@ const readFinanceReport = async (target) => {
 
 const FINANCE_PATHS = ["/v1/salesReports", "/v1/financeReports"];
 
-// 環境変数の頭（NU_TORI_ASC か NU_TORI_ASC_FINANCE）ごとに、_KEY_ID・_ISSUER_ID・_PRIVATE_KEY を読む
+// Sales and Reports の鍵は販売レポートも読めるが、流入の数を読むためだけに作ったので、Analytics Reports の読む口のほかへは送らない
+// 申し込み（POST /v1/analyticsReportRequests）は Admin の鍵でしか通らず、ここでは送らない
+const ANALYTICS_PATHS = [
+  /^\/v1\/apps\/\d+\/analyticsReportRequests$/,
+  /^\/v1\/analyticsReportRequests\/[\w-]+\/reports$/,
+  /^\/v1\/analyticsReports\/[\w-]+\/instances$/,
+  /^\/v1\/analyticsReportInstances\/[\w-]+\/segments$/,
+  /^\/v1\/analyticsReportSegments\/[\w-]+$/,
+];
+
+const assertAnalyticsPath = (url) => {
+  if (!ANALYTICS_PATHS.some((path) => path.test(url.pathname))) {
+    throw new ExpectedFailure(`Sales and Reports の鍵ではこの口を呼ばない: ${url.pathname}`);
+  }
+};
+
+// segment の中身は、Apple が S3 に置いた gzip の TSV で、署名つきの URL は5分で切れる。一覧で受け取った URL を使い回さず、落とす直前に segment を読み直して URL を受け取る
+const readAnalyticsSegment = async (segmentId) => {
+  const url = toApiUrl(`/v1/analyticsReportSegments/${encodeURIComponent(segmentId)}`);
+  assertAnalyticsPath(url);
+  const key = loadKey("NU_TORI_ASC_SALES");
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${signShortLivedJwt(key)}` } });
+  const body = await response.text();
+  if (!response.ok) throw new ExpectedFailure(`${response.status} ${body}`);
+  const { url: downloadUrl, sizeInBytes } = JSON.parse(body).data.attributes;
+  const download = toSegmentDownloadUrl(downloadUrl);
+  // 署名は URL の中にある。鍵の JWT はほかのホストへ出さないので、Authorization を付けない
+  const file = await fetch(download);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  // 失敗の本文に署名つきの URL を出さないよう、状態とホストだけを出す
+  if (!file.ok) throw new ExpectedFailure(`segment を落とせなかった: ${file.status}（${download.host}）`);
+  // checksum の算法を Apple が書いていないので、大きさだけで欠けを見る
+  if (sizeInBytes !== undefined && bytes.length !== sizeInBytes) {
+    throw new ExpectedFailure(`segment の大きさが合わない: ${bytes.length} バイト（Apple は ${sizeInBytes} と言う）`);
+  }
+  const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b;
+  return (isGzip ? gunzipSync(bytes) : bytes).toString("utf8");
+};
+
+// Apple の文書の例は https://<バケット>.s3.us-west-2.amazonaws.com/reports/... で、本番のバケットの名前は書かれていない
+// 鍵の要らない URL でも、思わぬホストから読んだものを数に混ぜないよう、S3 の us-west-2 のほかは断る
+const toSegmentDownloadUrl = (value) => {
+  const url = new URL(value);
+  if (url.protocol !== "https:" || !/^[a-z0-9.-]+\.s3\.us-west-2\.amazonaws\.com$/.test(url.hostname)) {
+    throw new ExpectedFailure(`segment を落とす先が、Apple の文書の例と違う: ${url.host}。確かめてから toSegmentDownloadUrl を直す`);
+  }
+  return url;
+};
+
+// 環境変数の頭（NU_TORI_ASC・NU_TORI_ASC_FINANCE・NU_TORI_ASC_SALES）ごとに、_KEY_ID・_ISSUER_ID・_PRIVATE_KEY を読む
 const loadKey = (prefix) => {
   const keyId = process.env[`${prefix}_KEY_ID`];
   const issuerId = process.env[`${prefix}_ISSUER_ID`];
@@ -127,9 +188,9 @@ const toApiUrl = (value) => {
   return url;
 };
 
-module.exports = { readFinanceReport };
+module.exports = { readFinanceReport, assertAnalyticsPath, toSegmentDownloadUrl };
 
-// scripts/finance が require したときは、読む道だけを貸し、コマンドとしては動かない
+// scripts/finance とテストが require したときは、読む道だけを貸し、コマンドとしては動かない
 if (require.main === module) {
   // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
   main().catch((error) => {
