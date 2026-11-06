@@ -27,8 +27,8 @@ Preconditions:
 
 - **手で記録する。** `w=$($S/uuid.sh)` として、`$S/push.sh "$run" weight "[{\"type\":\"create_weight_record\",\"weightRecord\":{\"id\":\"$w\",\"weightKg\":60.5,\"measuredAt\":$(date +%s)000,\"timeZone\":\"Asia/Tokyo\"}}]"` を送る。`results[0].result` が `applied`
 - **届いたかを読む。** `$S/pull.sh "$run" weight | jq -c '.[] | select(.kind=="weight_record" or .kind=="weight_trend") | {kind, record}'` を読む。`weight_record` の `id` が `$w`、`weightKg` が `60.5`、`version` が `1`。`weight_trend` の `days` に今日の日付と `trendKg` がある
-- **取り込む。** `i=$($S/uuid.sh)` として、`weightRecord` に `"imported":{"sourceAppName":"ヘルスケア","sourceBundleId":"com.apple.Health","healthkitSampleUuid":"<uuid.sh の値>"}` を足した `create_weight_record` を、`id` を `$i` にして送る。`applied` で、取りに行くと `$i` の `weight_record` がある
 - **直す。** `$S/push.sh "$run" weight "[{\"type\":\"update_weight_record\",\"weightRecord\":{\"id\":\"$w\",\"weightKg\":60.0,\"measuredAt\":$(date +%s)000,\"timeZone\":\"Asia/Tokyo\",\"version\":2}}]"` を送る。`applied` で、取りに行くと `$w` の最後の `weight_record` が `weightKg` `60`、`version` `2`。体重の傾向の `trendKg` も `60` に出し直される
+- **取り込む。** `i=$($S/uuid.sh)` として、`$S/push.sh "$run" weight "[{\"type\":\"create_weight_record\",\"weightRecord\":{\"id\":\"$i\",\"weightKg\":61.0,\"measuredAt\":$(date +%s)000,\"timeZone\":\"Asia/Tokyo\",\"imported\":{\"sourceAppName\":\"ヘルスケア\",\"sourceBundleId\":\"com.apple.Health\",\"healthkitSampleUuid\":\"$($S/uuid.sh)\",\"bodyFat\":{\"percentage\":25.0,\"healthkitSampleUuid\":\"$($S/uuid.sh)\"}}}}]"` を送る。`applied` で、取りに行くと `$i` の `weight_record` があり、`imported.bodyFat.percentage` が `25`
 - **取り込み元で消す。** `$S/push.sh "$run" weight "[{\"type\":\"source_deleted_weight_record\",\"weightRecordId\":\"$i\"}]"` を送る。`applied` で、取りに行くと `$i` の変更が `weight_record_deletion`（`record` は空）になり、`weight_record` としては出ない
 
 ## Gotchas
@@ -36,4 +36,5 @@ Preconditions:
 - `update_weight_record` の `version` は、直したあとの版（届いた `version` に 1 を足した値）。届いた版のままで送ると `rejected`（`version_too_low`）になる
 - `push.sh` は、書き込みが `rejected` でも状態コード 200 で 0 を返す。`results[].result` を読む
 - 取りに行く応答は、記録ごとに今の形が1つ出る。消した記録は `<種類>_deletion` の種類で出る
+- 体重の傾向は、日ごとにいちばん早い記録を代表にして出す。直す手順は、取り込む前（その日の記録が `$w` だけのとき）に回さないと、`trendKg` が直した値にならない
 - `weight_trend` の `recordId` はいつも同じ（全部 0 の UUID）で、毎回全体が出直す

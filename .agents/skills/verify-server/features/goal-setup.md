@@ -28,7 +28,7 @@ Preconditions:
 
 - **下見。** `P preview '{"timeZone":"Asia/Tokyo","direction":"lose"}'` を送る。`{"canBackCalculate":false}`（食べた量の記録が無い）
 - **身体データを添えた下見。** `P preview "{\"timeZone\":\"Asia/Tokyo\",\"direction\":\"lose\",\"bodyData\":$body}"` を送る。`canOfferLoseProposals` が `true`
-- **目標案。** `props=$(P proposals "{\"timeZone\":\"Asia/Tokyo\",\"plan\":{\"direction\":\"lose\",\"deadlineOn\":\"$(date -d '-7 days +90 days' +%F)\"},\"bodyData\":$body}")` を送る。`direction` が `lose`、`proposals` に `gentle`・`standard`・`hard` が `offered` で並ぶ
+- **目標案。** `props=$(P proposals "{\"timeZone\":\"Asia/Tokyo\",\"plan\":{\"direction\":\"lose\",\"deadlineOn\":\"$(date -d '-7 days +90 days' +%F)\"},\"bodyData\":$body}")` を送る。`direction` が `lose` で、`proposals` の `standard` が `offered`（ほかのペースは身体データしだいで出せないことがある。上の身体データでは3つとも `offered`）
 - **自分で決める目標体重。** `P custom-target-weight "{\"timeZone\":\"Asia/Tokyo\",\"direction\":\"lose\",\"deadlineOn\":\"$(date -d '-7 days +90 days' +%F)\",\"targetWeightKg\":58,\"bodyData\":$body}"` を送る。`status` が `accepted` で、`dailyGuide` と `difficulty` が返る
 - **決める。** 標準の案から要求を作る: `req=$(jq -c --argjson body "$body" --arg rid "$($S/uuid.sh)" '(.proposals[]|select(.pace=="standard")) as $s | {timeZone:"Asia/Tokyo",requestId:$rid,startedOn,choice:{type:"proposal",direction:"lose",deadlineOn,pace:"standard"},shown:{targetWeightKg:$s.targetWeightKg,dailyGuide:$s.dailyGuide},rejectedCustomTargetWeightCount:0,bodyData:$body}' <<< "$props")`。`P decisions "$req"` を送る。`status` が `decided`、`changes` の種類が `goal`・`daily_guide`・`expenditure_estimate` の順
 - **再送。** `P decisions "$req"` をもう一度送る。初めと同じ応答
