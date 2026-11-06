@@ -1,6 +1,7 @@
 #!/bin/bash
 # クラウドセッション開始時に、Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる（更新があれば別の PR にするよう伝える）。
 # settings.json で async 実行しているので、結果は次のターンでClaudeに届く。
+# pstack はここではなく、クラウドの環境のセットアップスクリプトで入れる（理由は docs/agents/tooling.md の「スキル」）。
 set -euo pipefail
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
