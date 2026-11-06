@@ -7,10 +7,10 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 - lock の外の skill は、`.agents/skills/<名前>/` に置いて `.claude/skills/` からリンクする。自動更新は lock にある名前だけを入れ直し、ほかは触らない。この決まりより前に置いた `model-based-ui-design` は `.claude/skills/` にだけあり、移すかは決めていない
 - `byethrow` は、`@praha/byethrow-docs` の `init claude` が書き出す skill を、`server/` の依存から docs を引く形に直したもの
 - pstack（`cursor/plugins` の公式プラグイン `pstack@cursor-plugins`。入れ方を決めた経緯は #902）は、Claude Code のプラグインとして入れ、`/pstack:<名前>` で呼ぶ。Mac では開発者が `/plugin marketplace add cursor/plugins` と `/plugin install pstack@cursor-plugins` を一度走らせる。クラウドでは、環境 `nu-tori` のセットアップスクリプト（Claude の起動の前に走る）で同じ2つを走らせる。`session-start.sh` では入れない。Claude の起動のあとに走るので、そこで入れたプラグインは、入ってから2分待っても、そのセッションのスキルの一覧に載らず `Unknown skill` になった（#903）
-  - 置き場は `~/.claude/plugins/cache/cursor-plugins/pstack/<版>/` で、版を上げると版の番号のフォルダが変わる。`cursor/plugins` には Codex 用の写しが無いので、Codex は pstack をプラグインとして読めない
+  - `cursor/plugins` には Codex 用の写しが無いので、Codex は pstack をプラグインとして読めない
   - pstack のファイル（原則の `principle-*` など）を文書から指すときは、`pstack の <名前>` とスキルの名前だけを書き、パスを書かない。読む側は、次の順に探す
-    1. Claude Code: `~/.claude/plugins/cache/cursor-plugins/pstack/` の下で `skills/<名前>/SKILL.md` で終わるファイルを読む。版のフォルダが複数あれば、一番新しい版のものにする。pstack のスキルのほとんどは、エージェントが Skill ツールで呼べず（人が `/pstack:<名前>` と打てば動く）、ファイルを読むしかない
-    2. Cursor: `~/.cursor/plugins/` の下で `skills/<名前>/SKILL.md` で終わるファイル。複数あれば、`.cursor-plugin/plugin.json` の `version` が一番新しいもの
+    1. Claude Code: `~/.claude/plugins/cache/cursor-plugins/pstack/<版>/skills/<名前>/SKILL.md` を読む。版のフォルダは版を上げると変わり、複数あれば一番新しい版のものにする。pstack のスキルのほとんどは、エージェントが Skill ツールで呼べず（人が `/pstack:<名前>` と打てば動く）、ファイルを読むしかない
+    2. Cursor: `~/.cursor/plugins/` の下で、`.cursor-plugin/plugin.json` の `name` が `pstack` のプラグインのフォルダにある `skills/<名前>/SKILL.md`。複数あれば、その `version` が一番新しいもの
     3. どれも無いとき（Codex など）: `https://github.com/cursor/plugins/blob/main/pstack/skills/<名前>/SKILL.md`。手元に入っている版とずれることがあり、それは許す
 - `erd-design` は、開発者がほかのリポジトリでも使う自作の skill。どのリポジトリでも使える形に保ち、このリポジトリに固有の前提は `docs/agents/table-design.md` に書く
 
