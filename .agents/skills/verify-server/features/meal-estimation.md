@@ -42,6 +42,5 @@ Preconditions:
 
 - 鍵の無い回の推定は、`authentication_error` の失敗を繰り返し、`estimating` のまま止まって見える。壊れたと読まない。結果は「確かめていない」と書き、merge のあとの `verify-development` に任せる
 - 写真の控えは、食事より先に届いてもよく、消した食事の写真にも `204` を返す。`204` だけで写真が食事についたと読まず、推定の状態が `estimating` に進むかを見る
-- `entryMethod` は `captured` か `picked`。ほかの値は `rejected`（`invalid_entry_method`）になる
 - 推定は Durable Object のアラームで進むので、送った直後の取りに行く要求にはまだ出ない。固定の時間でなく、状態が変わるまで読む
 - 料理の名前を直すのは推定できた料理だけ。鍵の無い回では料理ができないので、この入口は確かめられない

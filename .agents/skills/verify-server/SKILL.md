@@ -67,7 +67,7 @@ $S/doctor.sh "$run"
 
 ## 確かめられないとき
 
-次の入口は手元で通せない。`docs/agents/git.md` の「動かして確かめる」の 5 のとおり書くときの、確かめる場所はここにある。
+次の入口は手元で通せない。`docs/agents/git.md` の「動かして確かめる」で「確かめていない」と書き、どこで確かめるかを添えるときの、確かめる場所はここにある。
 
 - Anthropic の鍵が無い回では、推定・読み分け・返事の結果まで進まない。推定が始まる（`estimating`）ことと、Anthropic まで届いた（確かめの口で `authentication_error`）ことまでが確かめられる。結果は、merge のあとに `deploy.yml` の `verify-development`（開発用の環境で本物の提供元を通す）が確かめる
 - Sign in with Apple、Apple のサーバー間通知、App Store の取引は、Apple を通すので手元で動かせない。TestFlight の版で確かめる

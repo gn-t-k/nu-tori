@@ -44,12 +44,13 @@ setsid pnpm exec wrangler dev --local --ip 127.0.0.1 --port "$port" \
     > "$run_dir/wrangler.log" 2>&1 < /dev/null &
 pgid=$!
 
+server_tree="$(server_content_hash)"
 cat > "$run_dir/run.env" << ENV
 BASE_URL=$base_url
 E2E_SIGN_IN_SECRET=$e2e_secret
 PGID=$pgid
-COMMIT=$(git rev-parse HEAD)$([ -z "$(git status --porcelain -- .)" ] || echo -dirty)
-SERVER_TREE=$(server_content_hash)
+SERVER_TREE=$server_tree
+COMMIT=$(git -C "$root" rev-parse HEAD)$([ "$server_tree" = "$(git -C "$root" rev-parse HEAD:server)" ] || echo -dirty)
 DEVICE_ID=$("$script_dir/uuid.sh")
 ENV
 
