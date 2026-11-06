@@ -188,9 +188,9 @@ const toApiUrl = (value) => {
   return url;
 };
 
-module.exports = { readFinanceReport, assertAnalyticsPath, toSegmentDownloadUrl };
+module.exports = { readFinanceReport, assertAnalyticsPath, toSegmentDownloadUrl, signShortLivedJwt };
 
-// scripts/finance とテストが require したときは、読む道だけを貸し、コマンドとしては動かない
+// scripts/finance・テスト・scripts/discovery-analytics-wizard が require したときは、読む道だけを貸し、コマンドとしては動かない
 if (require.main === module) {
   // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
   main().catch((error) => {

@@ -197,7 +197,16 @@ case "$command" in
                     } }
                 }`,
                 variables: { accountTag: process.env.ACCOUNT, start: start.toISOString(), end: end.toISOString() },
-            }));' | post_json "$api/graphql" | fail_on_graphql_errors
+            }));' | post_json "$api/graphql" | fail_on_graphql_errors | node -e '
+            let body = "";
+            process.stdin.on("data", (chunk) => (body += chunk)).on("end", () => {
+                console.log(body);
+                // 上限の行数で返ったときは、組み合わせが切れて数が欠けているかもしれないので、黙って通さない
+                if (JSON.parse(body).data.viewer.accounts[0].rumPageloadEventsAdaptiveGroups.length >= 5000) {
+                    console.error("5000 行で切れたかもしれない。日数を短くして読み直す");
+                    process.exitCode = 1;
+                }
+            });'
         ;;
     # 先頭の確かめと一覧がずれたとき、何もせず 0 で抜けないようにする
     *) usage ;;

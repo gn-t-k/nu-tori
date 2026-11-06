@@ -83,7 +83,8 @@ const exchangeForAccessToken = async (key) => {
   return JSON.parse(text).access_token;
 };
 
-const signServiceAccountJwt = ({ clientEmail, privateKey }, now = Math.floor(Date.now() / 1000)) => {
+const signServiceAccountJwt = ({ clientEmail, privateKey }) => {
+  const now = Math.floor(Date.now() / 1000);
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
   // Google は exp を発行から1時間以内と決めている。換えるのはすぐなので短くする
   const unsigned = `${encode({ alg: "RS256", typ: "JWT" })}.${encode({

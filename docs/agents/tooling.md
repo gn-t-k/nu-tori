@@ -142,10 +142,10 @@ flowchart LR
   3. `get '/v1/analyticsReports/<レポート>/instances?filter[granularity]=DAILY' --analytics`（`WEEKLY`・`MONTHLY` もある）
   4. `get '/v1/analyticsReportInstances/<instance>/segments' --analytics` で segment の ID を知り、`scripts/app-store-connect segment <segment>` で TSV を出す
   - 数え方: 表示回数は `Event` が `Impression` の `Counts`、プロダクトページの閲覧は `Event` が `Page view` で `Page Type` が `Product page` の `Counts`、流入元は `Source Type`
-  - segment の `url` は署名つきで5分で切れるので、`segment` は落とす直前に URL を受け取り直す。`url` は公開の場所に貼らない。落とす先は Apple の文書の例と同じ S3 の us-west-2 だけを通し、ほかのホストなら止まる。本番のバケットの名前は文書に無いので、止まったら返ったホストを確かめて `toSegmentDownloadUrl` を直す
+  - segment の一覧が返す `url` は署名つきなので、公開の場所に貼らない。`segment` が落とす先のホストが違うと言って止まったら、返ったホストを確かめてスクリプトを直す
   - 申し込みは、長く読まないと `stoppedDueToInactivity` になり、Admin のキーで出し直すまでレポートが増えない。見つけたら開発者にウィザードの5の段を頼む
   - 鍵: `NU_TORI_ASC_SALES_KEY_ID`・`NU_TORI_ASC_SALES_ISSUER_ID`・`NU_TORI_ASC_SALES_PRIVATE_KEY`（チームのキーで役割 Sales and Reports。`.p8` を base64 の1行に）。この役割は販売レポート（お金の数字）も読めるので、スクリプトは Analytics Reports の口のほかへは送らない
-- Cloudflare: `scripts/cloudflare web-analytics [何日前から]`（既定 7、93 まで）。`nu-tori.app` のボットでない読み込みを、日・ページのパス・参照元のホストとパスごとに、ページビュー（`count`）と、ほかのサイトか直接来た訪問（`sum.visits`）で返す。クエリ文字列（UTM）は取れない。データセットは Beta なので、名前や次元が変わったら問い合わせを直す。2026-11-06 に、サーバーを読むトークンで同じ問い合わせが通ることを確かめた
+- Cloudflare: `scripts/cloudflare web-analytics [何日前から]`（既定 7、93 まで）。`nu-tori.app` のボットでない読み込みを、日・ページのパス・参照元のホストとパスごとに、ページビュー（`count`）と、ほかのサイトか直接来た訪問（`sum.visits`）で返す。クエリ文字列（UTM）は取れない。データセットは Beta なので、名前や次元が変わったら問い合わせを直す
   - 鍵: `NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN`（アカウントのトークンで `Account Analytics Read` だけ）。アカウントの ID はトークンから引く。Workers Logs を読めるサーバーの `NU_TORI_CLOUDFLARE_READ_TOKEN` は、この環境に置かない
 - 環境のネットを Limited にするなら、`oauth2.googleapis.com`・`searchconsole.googleapis.com`・`api.appstoreconnect.apple.com`・`api.cloudflare.com` と、segment を落とす S3 のホスト（最初に読んだときに分かる）を許す
 

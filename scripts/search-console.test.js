@@ -13,14 +13,15 @@ describe("サービスアカウントの JWT", () => {
     let claims;
     let signedPart;
     let signature;
+    let secondsBefore;
+    let secondsAfter;
 
     before(() => {
       const pair = generateKeyPairSync("rsa", { modulusLength: 2048 });
       publicKey = pair.publicKey;
-      const jwt = signServiceAccountJwt(
-        { clientEmail: "reader@nu-tori-test.iam.gserviceaccount.com", privateKey: pair.privateKey },
-        1_800_000_000,
-      );
+      secondsBefore = Math.floor(Date.now() / 1000);
+      const jwt = signServiceAccountJwt({ clientEmail: "reader@nu-tori-test.iam.gserviceaccount.com", privateKey: pair.privateKey });
+      secondsAfter = Math.floor(Date.now() / 1000);
       const [encodedHeader, encodedClaims, encodedSignature] = jwt.split(".");
       header = JSON.parse(Buffer.from(encodedHeader, "base64url").toString("utf8"));
       claims = JSON.parse(Buffer.from(encodedClaims, "base64url").toString("utf8"));
@@ -37,10 +38,10 @@ describe("サービスアカウントの JWT", () => {
       assert.equal(claims.scope, "https://www.googleapis.com/auth/webmasters.readonly");
     });
 
-    it("トークンの受け口に宛て、発行から1時間以内に切れること", () => {
+    it("トークンの受け口に宛て、今の時刻に発行して1時間以内に切れること", () => {
       assert.equal(claims.iss, "reader@nu-tori-test.iam.gserviceaccount.com");
       assert.equal(claims.aud, "https://oauth2.googleapis.com/token");
-      assert.equal(claims.iat, 1_800_000_000);
+      assert.ok(claims.iat >= secondsBefore && claims.iat <= secondsAfter);
       assert.ok(claims.exp > claims.iat && claims.exp - claims.iat <= 3600);
     });
   });
