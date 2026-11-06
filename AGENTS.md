@@ -30,6 +30,12 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 - UI や振る舞いの選択肢を尋ねるときは、`/prototype` で見比べられるものを先に作る
 - 試作を作る・探すときは、`docs/agents/decisions.md` の「試作の置き場」を読む
 - 工程のゲートや引き継ぎなどの大きな確認をするときは、`docs/agents/gate-review.md` を読む
+- 次の場面では、pstack の原則を読む。Skill ツールでは呼べないので、`~/.claude/plugins/cache/cursor-plugins/pstack/<一番新しい版>/` か、無ければ `~/.cursor/plugins/` の下で `.cursor-plugin/plugin.json` の `version` が一番新しいものの `skills/<名前>/SKILL.md` を読む。どちらにも無いとき（Codex など）は `https://raw.githubusercontent.com/cursor/plugins/main/pstack/skills/<名前>/SKILL.md` を読む
+  - 「確かめた」と書く前に、`principle-prove-it-works` を読む
+  - 同じ編集や確かめを3回以上するときは、`principle-build-the-lever` を読む
+  - 大きな出力（スクリーンショットの束、長いログ）を読むときは、`principle-guard-the-context-window` を読む
+  - 移行・一括置換・複数コミットの作業では、`principle-sequence-verifiable-units` を読む
+  - 同じ確かめで2回直しても落ちるときは、`principle-attack-the-premise` を読む
 
 ### 情報の置き場
 
