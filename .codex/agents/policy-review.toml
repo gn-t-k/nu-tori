@@ -1,0 +1,6 @@
+# 中身の正本は .claude/agents/policy-review.md。ここには読む先だけを置く
+name = "policy-review"
+description = "規約の照合（docs/agents/git.md の「PR の前のレビュー」）を1周回す。PR を出す前と PR に push する前に、マージ先のブランチと、2周目か push の前なら照らしたコミットを渡して使う。"
+developer_instructions = """
+.claude/agents/policy-review.md を読み、先頭の --- で囲んだ部分より後ろの本文に従って、規約の照合を1周回す。
+"""

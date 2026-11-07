@@ -1,6 +1,6 @@
 ---
 name: preferences-review
-description: 好みのレビュー（docs/agents/git.md）を1周回す。PR を出す前と PR に push する前に、マージ先のブランチと、2周目か push の前なら照らしたコミットを渡して使う。
+description: 好みのレビュー（docs/agents/git.md の「PR の前のレビュー」）を1周回す。PR を出す前と PR に push する前に、マージ先のブランチと、2周目か push の前なら照らしたコミットを渡して使う。
 tools: Read, Grep, Glob, Bash
 ---
 
