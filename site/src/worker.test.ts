@@ -6,6 +6,7 @@ import { canonicalPathOf } from "./site-page";
 import { sitePages } from "./site-pages";
 import { subscriptionPrices } from "./subscription-prices";
 import { fetchSite } from "./testing/fetch-site";
+import { fetchSiteWithoutLandingVariants } from "./testing/fetch-site-without-landing-variants";
 import { fetchSiteWithLandingVariants } from "./testing/fetch-site-with-landing-variants";
 
 describe("nu-tori.app の配信", () => {
@@ -216,24 +217,35 @@ describe("nu-tori.app の配信", () => {
   });
 
   describe("本番の設定（LP_VARIANTS が a だけ）の /", () => {
+    test("版 a のページを 200 で返すこと", async () => {
+      const response = await fetchSite("/");
+      expect(response.status).toBe(200);
+      expect(await response.text()).toContain(campaignLinkOfVariantA);
+    });
+  });
+
+  describe("LP の版が無いとき（LP_VARIANTS が空）", () => {
     let response: Response;
     let privacyResponse: Response;
     beforeEach(async () => {
-      response = await fetchSite("/");
+      response = await fetchSiteWithoutLandingVariants("/");
       privacyResponse = await fetchSite("/privacy");
     });
 
-    test("版 a のページを 200 で返すこと", async () => {
+    // 仮のページと LP の版は正規の URL がどちらも / なので、版にだけあるバッジのキャンペーンのリンクが無いことで見分ける
+    test("/ が仮のページを 200 で返すこと", async () => {
       expect(response.status).toBe(200);
       const body = await response.text();
       expect(body).toContain('<link rel="canonical" href="https://nu-tori.app/"/>');
-      expect(body).toContain(campaignLinkOfVariantA);
+      expect(body).not.toContain("ct=lp-");
     });
 
-    test("版 a の Cookie を付けること", () => {
-      expect(response.headers.get("Set-Cookie")).toBe(
-        "nu_tori_lp=a; Max-Age=2592000; Path=/; HttpOnly; Secure; SameSite=Lax",
-      );
+    test("仮のページから公開のページへリンクすること", async () => {
+      expect(await response.text()).toContain('<a href="/privacy">');
+    });
+
+    test("Cookie を付けないこと", () => {
+      expect(response.headers.has("Set-Cookie")).toBe(false);
     });
 
     test("/privacy と同じセキュリティのヘッダーを付けること", () => {

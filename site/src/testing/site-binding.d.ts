@@ -3,5 +3,6 @@ declare namespace Cloudflare {
   interface Env {
     SITE: Fetcher;
     SITE_WITH_LANDING_VARIANTS: Fetcher;
+    SITE_WITHOUT_LANDING_VARIANTS: Fetcher;
   }
 }
