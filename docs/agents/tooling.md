@@ -14,7 +14,8 @@ pstack は Claude Code のプラグイン `pstack@cursor-plugins` で入れ、�
 
 決まった頼みで繰り返し立てるサブエージェントは、定義にしてリポジトリに置く。中身の正本は Claude Code の `.claude/agents/<名前>.md` に書き、Codex の `.codex/agents/<名前>.toml` には、その本文を読むよう指す1行だけを置く。Cursor は両方を読む。
 
-- `preferences-review`: 好みのレビューを1周回す（`docs/agents/git.md` の「好みのレビュー」）。レビュー役はコードを直さないので、書く道具を外す。入れ子のサブエージェントに頼むと結果を待たずに返したことがある（#544）ので、`Agent` も外す。Bash は git の差分を読むために残す
+- `preferences-review`: 好みのレビューを1周回す（`docs/agents/git.md` の「PR の前のレビュー」）。レビュー役はコードを直さないので、書く道具を外す。入れ子のサブエージェントに頼むと結果を待たずに返したことがある（#544）ので、`Agent` も外す。Bash は git の差分を読むために残す
+- `policy-review`: ポリシーの照合を1周回す（`docs/agents/git.md` の「PR の前のレビュー」）。道具を外す理由は `preferences-review` と同じ
 
 `isolation: "worktree"` で立てるサブエージェント（`/implement-spec` の実装役など）には、次の書き方を指示に入れる。worktree の見張りは、git が worktree の外で動かないと確かめられない Bash を拒む。#613 では実装役のコマンドが84回拒まれ、そのたびに打ち直した
 
