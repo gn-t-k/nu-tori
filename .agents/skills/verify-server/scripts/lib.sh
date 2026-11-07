@@ -21,29 +21,3 @@ server_content_hash() {
     git -C "$root" rev-parse "$(GIT_INDEX_FILE="$index" git -C "$root" write-tree):server"
     rm -f "$index"
 }
-
-session_token() {
-    local file="$run_dir/sessions/$1.json"
-    [ -f "$file" ] || { echo "セッション $1 が無い（sign-in.sh $run_dir $1 で作る）" >&2; exit 2; }
-    jq -r .sessionToken "$file"
-}
-
-# 送る・取りに行く要求に付ける端末の状態。1つの回を1台の端末として送る
-client_state() {
-    jq -n --arg deviceId "$DEVICE_ID" '{deviceId: $deviceId, timeZone: "Asia/Tokyo", appVersion: "1.0.0", osVersion: "26.0", pendingWriteCount: 1, oldestPendingWriteAgeSeconds: 0, pendingPhotoCount: 0}'
-}
-
-# 要求と応答を証拠の記録に足す
-log_evidence() {
-    local line="$1" body_file="$2"
-    {
-        printf '### %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$line"
-        # 写真のような本文は、中身でなく大きさだけを残す
-        if [ -s "$body_file" ] && ! grep -qI . "$body_file"; then
-            printf '（バイナリ %s バイト）' "$(wc -c < "$body_file" | tr -d ' ')"
-        else
-            head -c 4000 "$body_file"
-        fi
-        printf '\n\n'
-    } >> "$run_dir/evidence/requests.log"
-}

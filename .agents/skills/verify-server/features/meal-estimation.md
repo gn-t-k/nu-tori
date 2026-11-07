@@ -25,22 +25,22 @@
 Preconditions:
 
 - `doctor.sh "$run"` が全部 `ok`
-- `$S/sign-in.sh "$run" meal` で作ったアカウント
+- `$D sign-in "$run" meal` で作ったアカウント
 - 推定できた、まで見るなら、`VERIFY_SERVER_ANTHROPIC_API_KEY` に開発用のワークスペースの鍵を渡して立てた回
 
-- **撮った食事を送る。** `m=$($S/uuid.sh); p=$($S/uuid.sh); now=$(date +%s)000` として、`$S/push.sh "$run" meal "[{\"type\":\"create_meal\",\"meal\":{\"id\":\"$m\",\"eatenAt\":$((now-60000)),\"eatenAtUtcOffsetSeconds\":32400,\"sentAt\":$now,\"sentTimeZone\":\"Asia/Tokyo\",\"entryMethod\":\"captured\",\"photos\":[{\"id\":\"$p\"}]}}]"` を送る。`applied` で、取りに行くと `$m` の `meal_estimation_status` が `awaiting_photos`
-- **写真の控えを送る。** `$S/api.sh "$run" meal PUT /v1/meal-photos/$p -H 'content-type: image/jpeg' --data-binary @server/e2e/photos/oyakodon.jpg` を送る。状態コード `204`
-- **写真の控えを取りに行く。** `$S/api.sh "$run" meal GET /v1/meal-photos/$p > "$run/evidence/photo.jpg"` を送る。状態コード `200` で、`file "$run/evidence/photo.jpg"` が JPEG（端末が送った縮小版のまま）
-- **推定が進む。** 写真の控えが届くと `estimating` になる。5 秒おきに `$S/pull.sh "$run" meal | jq -c --arg m "$m" '[.[] | select(.kind=="meal_estimation_status" and .record.mealId==$m) | .record.status] | last'` を読む。`estimating` を経て `estimated` になり、`dish` と `ingredient` の記録が `$m` に届く。鍵の無い回では `estimating` のまま
-- **推定の失敗の理由を読む。** `$S/api.sh "$run" meal --e2e GET /v1/e2e/meals/$m/last-estimation-attempt` を送る。鍵の無い回では `{"lastEndedAttempt":{"result":"provider_error","errorType":"authentication_error"}}`（Anthropic まで届いた）
+- **撮った食事を送る。** `m=$($D uuid); p=$($D uuid); now=$(date +%s)000` として、`$D push "$run" meal "[{\"type\":\"create_meal\",\"meal\":{\"id\":\"$m\",\"eatenAt\":$((now-60000)),\"eatenAtUtcOffsetSeconds\":32400,\"sentAt\":$now,\"sentTimeZone\":\"Asia/Tokyo\",\"entryMethod\":\"captured\",\"photos\":[{\"id\":\"$p\"}]}}]"` を送る。`applied` で、取りに行くと `$m` の `meal_estimation_status` が `awaiting_photos`
+- **写真の控えを送る。** `$D call "$run" meal PUT /v1/meal-photos/$p --body-file server/e2e/photos/oyakodon.jpg --content-type image/jpeg` を送る。状態コード `204`
+- **写真の控えを取りに行く。** `$D call "$run" meal GET /v1/meal-photos/$p --out "$run/evidence/photo.jpg"` を送る。状態コード `200` で、`file "$run/evidence/photo.jpg"` が JPEG（端末が送った縮小版のまま）
+- **推定が進む。** 写真の控えが届くと `estimating` になる。5 秒おきに `$D pull "$run" meal | jq -c --arg m "$m" '[.[] | select(.kind=="meal_estimation_status" and .record.mealId==$m) | .record.status] | last'` を読む。`estimating` を経て `estimated` になり、`dish` と `ingredient` の記録が `$m` に届く。鍵の無い回では `estimating` のまま
+- **推定の失敗の理由を読む。** `$D call "$run" meal GET /v1/e2e/meals/$m/last-estimation-attempt --e2e` を送る。鍵の無い回では `{"lastEndedAttempt":{"result":"provider_error","errorType":"authentication_error"}}`（Anthropic まで届いた）
 - **撮っておいた写真。** `entryMethod` を `picked` にして、食事と写真の控えを送る。同じく `estimating` に進む
-- **料理の名前を直す。** 推定できた料理の ID を `d` として、`$S/push.sh "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"親子丼（大盛り）\"}]"` を送る。`applied` で、取りに行くと `$d` の最後の `dish` の名前が変わっている
-- **サブスクリプションを待っている。** `$S/sign-in.sh "$run" expired "$(date -u -d '-60 days' +%FT%TZ)"` のアカウントで撮った食事を送る。写真の控えを送ったあと、`meal_estimation_status` が `awaiting_subscription`（鍵が無くても確かめられる）
-- **消す。** `$S/push.sh "$run" meal "[{\"type\":\"delete_meal\",\"mealId\":\"$m\"}]"` を送る。`applied` で、取りに行くと `$m` の変更が `meal_deletion` と `meal_estimation_status_deletion`（どちらも `record` は空）になる
+- **料理の名前を直す。** 推定できた料理の ID を `d` として、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"親子丼（大盛り）\"}]"` を送る。`applied` で、取りに行くと `$d` の最後の `dish` の名前が変わっている
+- **サブスクリプションを待っている。** `$D sign-in "$run" expired --as-of "$(date -u -d '-60 days' +%FT%TZ)"` のアカウントで撮った食事を送る。写真の控えを送ったあと、`meal_estimation_status` が `awaiting_subscription`（鍵が無くても確かめられる）
+- **消す。** `$D push "$run" meal "[{\"type\":\"delete_meal\",\"mealId\":\"$m\"}]"` を送る。`applied` で、取りに行くと `$m` の変更が `meal_deletion` と `meal_estimation_status_deletion`（どちらも `record` は空）になる
 
 ## Gotchas
 
-- 鍵の無い回の推定は、`authentication_error` の失敗を繰り返し、`estimating` のまま止まって見える。壊れたと読まない。結果は「確かめていない」と書き、merge のあとの `verify-development` に任せる
+- 鍵の無い回の推定は、`authentication_error` の失敗を繰り返し、`estimating` のまま止まって見える。壊れたと読まない。結果は「確かめていない」と書き、merge のあとの `main-flow-on-development` に任せる
 - 写真の控えは、食事より先に届いてもよく、消した食事の写真にも `204` を返す。`204` だけで写真が食事についたと読まず、推定の状態が `estimating` に進むかを見る
 - 推定は Durable Object のアラームで進むので、送った直後の取りに行く要求にはまだ出ない。固定の時間でなく、状態が変わるまで読む
 - 料理の名前を直すのは推定できた料理だけ。鍵の無い回では料理ができないので、この入口は確かめられない

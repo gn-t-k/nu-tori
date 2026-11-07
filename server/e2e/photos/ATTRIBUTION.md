@@ -1,6 +1,6 @@
 # 写真の出典
 
-開発用の環境で主な流れを確かめるジョブ（`e2e/verify-development.ts`）が、写真の食事として送る写真。
+開発用の環境で主な流れを確かめるジョブ（`e2e/cli/run-main-flow.ts`）が、写真の食事として送る写真。
 
 - `oyakodon.jpg`: 親子丼の写真
   - 作者: Kykk wiki（Wikimedia Commons。自分で撮ったもの）

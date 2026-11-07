@@ -23,16 +23,16 @@
 Preconditions:
 
 - `doctor.sh "$run"` が全部 `ok`
-- `$S/sign-in.sh "$run" goal` で作ったアカウントに、7日と1分前の体重記録を送ってある（体重記録の「手で記録する」の `measuredAt` を `$(date -d '-7 days -1 minute' +%s)000` にする）
-- `asof=$(date -u -d '-7 days' +%FT%TZ)`、`body='{"sex":"female","heightCentimeters":160,"ageYears":35,"activity":{"type":"level","level":"standing"}}'`、`P() { $S/api.sh "$run" goal --as-of "$asof" POST /v1/goal-setup/$1 -H 'content-type: application/json' --data "$2"; }`
+- `$D sign-in "$run" goal` で作ったアカウントに、7日と1分前の体重記録を送ってある（体重記録の「手で記録する」の `measuredAt` を `$(date -d '-7 days -1 minute' +%s)000` にする）
+- `asof=$(date -u -d '-7 days' +%FT%TZ)`、`body='{"sex":"female","heightCentimeters":160,"ageYears":35,"activity":{"type":"level","level":"standing"}}'`、`P() { $D call "$run" goal POST /v1/goal-setup/$1 --as-of "$asof" --json "$2"; }`
 
 - **下見。** `P preview '{"timeZone":"Asia/Tokyo","direction":"lose"}'` を送る。`{"canBackCalculate":false}`（食べた量の記録が無い）
 - **身体データを添えた下見。** `P preview "{\"timeZone\":\"Asia/Tokyo\",\"direction\":\"lose\",\"bodyData\":$body}"` を送る。`canOfferLoseProposals` が `true`
 - **目標案。** `props=$(P proposals "{\"timeZone\":\"Asia/Tokyo\",\"plan\":{\"direction\":\"lose\",\"deadlineOn\":\"$(date -d '-7 days +90 days' +%F)\"},\"bodyData\":$body}")` を送る。`direction` が `lose` で、`proposals` の `standard` が `offered`（ほかのペースは身体データしだいで出せないことがある。上の身体データでは3つとも `offered`）
 - **自分で決める目標体重。** `P custom-target-weight "{\"timeZone\":\"Asia/Tokyo\",\"direction\":\"lose\",\"deadlineOn\":\"$(date -d '-7 days +90 days' +%F)\",\"targetWeightKg\":58,\"bodyData\":$body}"` を送る。`status` が `accepted` で、`dailyGuide` と `difficulty` が返る
-- **決める。** 標準の案から要求を作る: `req=$(jq -c --argjson body "$body" --arg rid "$($S/uuid.sh)" '(.proposals[]|select(.pace=="standard")) as $s | {timeZone:"Asia/Tokyo",requestId:$rid,startedOn,choice:{type:"proposal",direction:"lose",deadlineOn,pace:"standard"},shown:{targetWeightKg:$s.targetWeightKg,dailyGuide:$s.dailyGuide},rejectedCustomTargetWeightCount:0,bodyData:$body}' <<< "$props")`。`P decisions "$req"` を送る。`status` が `decided`、`changes` の種類が `goal`・`daily_guide`・`expenditure_estimate` の順
+- **決める。** 標準の案から要求を作る: `req=$(jq -c --argjson body "$body" --arg rid "$($D uuid)" '(.proposals[]|select(.pace=="standard")) as $s | {timeZone:"Asia/Tokyo",requestId:$rid,startedOn,choice:{type:"proposal",direction:"lose",deadlineOn,pace:"standard"},shown:{targetWeightKg:$s.targetWeightKg,dailyGuide:$s.dailyGuide},rejectedCustomTargetWeightCount:0,bodyData:$body}' <<< "$props")`。`P decisions "$req"` を送る。`status` が `decided`、`changes` の種類が `goal`・`daily_guide`・`expenditure_estimate` の順
 - **再送。** `P decisions "$req"` をもう一度送る。初めと同じ応答
-- **届いたかを読む。** `$S/pull.sh "$run" goal | jq -c '.[] | {kind} + (if .kind=="weekly_review" then {effectiveOn:.record.effectiveOn, deferral:.record.deferral} else {} end)'` を読む。`goal`・`daily_guide`・`expenditure_estimate` があり、`weekly_review` の `effectiveOn` が今週の月曜で、使い始めて1週に満たないので `deferral.reason` が `within_first_week`、`deferral.goalId` が決めた目標
+- **届いたかを読む。** `$D pull "$run" goal | jq -c '.[] | {kind} + (if .kind=="weekly_review" then {effectiveOn:.record.effectiveOn, deferral:.record.deferral} else {} end)'` を読む。`goal`・`daily_guide`・`expenditure_estimate` があり、`weekly_review` の `effectiveOn` が今週の月曜で、使い始めて1週に満たないので `deferral.reason` が `within_first_week`、`deferral.goalId` が決めた目標
 
 ## Gotchas
 

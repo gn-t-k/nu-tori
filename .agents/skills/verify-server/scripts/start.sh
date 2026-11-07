@@ -51,7 +51,7 @@ E2E_SIGN_IN_SECRET=$e2e_secret
 PGID=$pgid
 SERVER_TREE=$server_tree
 COMMIT=$(git -C "$root" rev-parse HEAD)$([ "$server_tree" = "$(git -C "$root" rev-parse HEAD:server)" ] || echo -dirty)
-DEVICE_ID=$("$script_dir/uuid.sh")
+DEVICE_ID=$("$script_dir/device.sh" uuid)
 ENV
 
 for _ in $(seq 1 120); do

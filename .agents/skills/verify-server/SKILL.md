@@ -33,26 +33,31 @@ $S/doctor.sh "$run"
 
 ## 動かし方
 
-アプリの代わりに、端末と同じ形の要求を送る。どの道具も、要求と応答（先頭の 4000 バイト）を `"$run/evidence/requests.log"` に足す。
+アプリの代わりに、端末と同じ形の要求を `device.sh` で送る（下では `D=$S/device.sh`）。中身は `server/e2e/cli/drive-device.ts` で、主な流れ（`server/e2e/run-main-flow.ts`）と同じ `server/e2e/device-client.ts` を使う。引数なしで使い方を出す。
 
-| 道具 | すること |
-| --- | --- |
-| `sign-in.sh "$run" [名前] [ISO 8601]` | 新しいアカウントを作り、セッションに名前を付けて残す（既定は `main`）。時刻を渡すと、その時刻に使い始めたことにする |
-| `push.sh "$run" <名前> '<書き込みの配列>'` | `POST /v1/sync/writes`。端末の状態を付け、書き込みの `id` を省けば足す。書き込みが `rejected` でも 0 で終わるので、`results[].result` を読む |
-| `pull.sh "$run" <名前> [afterSequence]` | `GET /v1/sync/changes` を `hasMore` が false になるまで続け、変更の配列を出す |
-| `api.sh "$run" <名前> [--e2e \| --as-of <ISO 8601>] <メソッド> <パス> [curl の引数]` | ほかの API を1回呼ぶ。本文を標準出力に、状態コードを標準エラーに出し、2xx でなければ 1 で終わる。`--as-of` は目標の設定の要求の時刻を差し替える |
-| `uuid.sh` | 記録の ID（小文字の UUID）を1つ出す |
+```bash
+$D sign-in "$run" <名前> [--as-of <ISO 8601>]   # 新しいアカウント。--as-of でその時刻に使い始めたことにする
+$D push "$run" <名前> '<書き込みの JSON の配列>'   # POST /v1/sync/writes
+$D pull "$run" <名前> [--after <sequence>]       # GET /v1/sync/changes を最後まで。変更の配列を出す
+$D call "$run" <名前> <メソッド> <パス> [--e2e] [--as-of <ISO 8601>] [--json <本文>] \
+    [--body-file <パス> --content-type <型>] [--out <パス>] [--timeout <秒>]
+$D uuid                                         # 記録の ID（小文字の UUID）
+```
 
-書き込みと応答の形の正本は `server/openapi.json`（`components.schemas` の `*Write`）。確かめる手順は地図の機能ごとのファイルにある。
+- セッションは名前を付けて回のフォルダに残り、要求と応答（先頭の 4000 文字、写真は大きさだけ）は `"$run/evidence/requests.log"` に足される
+- `push` は、書き込みの `id` を省けば足し、送る前に受け口と同じスキーマで確かめる。形が合わなければ送らずに理由を出して 2、受け付けられない書き込みがあれば 1 で終わる
+- `call` は、本文を標準出力（`--out` ならそのファイル）に、状態コードを標準エラーに出し、2xx でなければ 1 で終わる。`--e2e` は確かめの口の秘密の値を、`--as-of` はそれに加えて時刻の差し替えを付ける（目標の設定の要求が読む）。`--timeout` で切ったときも、それまでに届いた分を出して残す
 
-主な流れ（サインイン → 体重 → 目標と週の見直し → 写真と文章の食事の推定 → 返事 → 削除 → 無料体験の終わったアカウント）を1回で通すときは、CI が開発用の環境に向ける道具を、この回に向ける。
+確かめる手順は、地図の機能ごとのファイルにある。
+
+主な流れ（サインイン → 体重 → 目標と週の見直し → 写真と文章の食事の推定 → 返事 → 削除 → 無料体験の終わったアカウント）を1回で通すときは、merge のあとに CI が開発用の環境に向けるのと同じ入口を、この回に向ける。
 
 ```bash
 . "$run/run.env"
-(cd server && E2E_BASE_URL="$BASE_URL" E2E_SIGN_IN_SECRET="$E2E_SIGN_IN_SECRET" pnpm exec tsx e2e/verify-development.ts)
+(cd server && E2E_BASE_URL="$BASE_URL" E2E_SIGN_IN_SECRET="$E2E_SIGN_IN_SECRET" E2E_ESTIMATION_TIMEOUT_SECONDS=30 pnpm exec tsx e2e/cli/run-main-flow.ts)
 ```
 
-通った段を1行ずつ出し、落ちたら段と理由を出して 1 で終わる。Anthropic の鍵が無い回では、週の見直しのあと、写真の食事の推定を 3 分待って落ちる。そこまでの段が通ったことは証拠になるが、地図の入口を1つずつ通す代わりにはならない（`verify-development.ts` は入口ごとの別の道を通さない）
+通った段を1行ずつ出し、落ちたら段と理由を出して 1 で終わる。Anthropic の鍵が無い回では、週の見直しのあと、写真の食事の推定を待つ上限（上では 30 秒）で落ちる。そこまでの段が通ったことは証拠になるが、地図の入口を1つずつ通す代わりにはならない（主な流れは、入口ごとの別の道を通さない）
 
 ## 地図
 
@@ -69,7 +74,7 @@ $S/doctor.sh "$run"
 
 次の入口は手元で通せない。`docs/agents/git.md` の「動かして確かめる」で「確かめていない」と書き、どこで確かめるかを添えるときの、確かめる場所はここにある。
 
-- Anthropic の鍵が無い回では、推定・読み分け・返事の結果まで進まない。推定が始まる（`estimating`）ことと、Anthropic まで届いた（確かめの口で `authentication_error`）ことまでが確かめられる。結果は、merge のあとに `deploy.yml` の `verify-development`（開発用の環境で本物の提供元を通す）が確かめる
+- Anthropic の鍵が無い回では、推定・読み分け・返事の結果まで進まない。推定が始まる（`estimating`）ことと、Anthropic まで届いた（確かめの口で `authentication_error`）ことまでが確かめられる。結果は、merge のあとに `deploy.yml` の `main-flow-on-development`（開発用の環境で本物の提供元を通す）が確かめる
 - Sign in with Apple、Apple のサーバー間通知、App Store の取引は、Apple を通すので手元で動かせない。TestFlight の版で確かめる
 - アプリの画面は、このスキルの外。Mac のセッションの UI テストで確かめる
 
