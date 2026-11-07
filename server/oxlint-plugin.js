@@ -16,6 +16,20 @@ export default {
         },
       }),
     },
+    "no-extends-error": {
+      create: (context) => {
+        const check = (node) => {
+          if (node.superClass?.type === "Identifier" && node.superClass.name === "Error") {
+            context.report({
+              node: node.superClass,
+              message:
+                "エラーのクラスは Error を直に継がず、@praha/error-factory の ErrorFactory で作る（docs/agents/languages/typescript.md「失敗の扱い」）",
+            });
+          }
+        };
+        return { ClassDeclaration: check, ClassExpression: check };
+      },
+    },
     "no-setup-in-describe": {
       create: (context) => ({
         CallExpression: (node) => {
