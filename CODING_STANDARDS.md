@@ -8,12 +8,14 @@
 
 照らす範囲で変わったファイルの種類で、読む文書を選ぶ。読むのは、条件に当たる文書だけにする。
 
-- コードのファイル（`.ts`・`.swift`・シェルのスクリプト・CI のワークフローなど、テストを含む）が変わったとき
+- コードか依存のファイル（`.ts`・`.swift`・シェルのスクリプト・CI のワークフロー・`package.json`・lockfile・`Package.swift` など、テストを含む）が変わったとき
   - `docs/agents/coding-style.md`: 言語に寄らない好み
   - `.agents/skills/code-review/SKILL.md` の「3. Identify the standards sources」: 臭いの一覧（smell baseline）と、それを当てる決まり。その節だけを読む
   - `docs/agents/languages/<言語>.md`: 言語ごとの当てはめ。変わったファイルの言語のものだけを読む
 - テストのファイル（`*.test.ts`、`testing/` の下、Swift の `*Tests/` の下など）が変わったとき: `docs/agents/testing.md`（テストの好み）
-- エージェントが読む文書（`AGENTS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/`）が変わったとき: `.agents/skills/writing-for-agents/SKILL.md`（その書き方）
+- エージェントが読む文書（`AGENTS.md`、`CODING_STANDARDS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/`）が変わったとき: `.agents/skills/writing-for-agents/SKILL.md`（その書き方）
+
+どの条件にも当たらないファイルだけのときは、上の文書を読まずに、下の「指摘するもの」の一般論を当てる。
 
 **Why:** 条件を書かずに並べていたので、レビュー役が周ごとに全部を読み直し、1行の差分や Markdown だけの差分にも1周で約4.7万〜11万トークンかかっていた（#929）。
 
