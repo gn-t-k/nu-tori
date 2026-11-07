@@ -10,7 +10,7 @@ const {
   workerOptions: { modulesRules: _modulesRules, ...siteWorkerOptions },
 } = unstable_getMiniflareWorkerOptions("./wrangler.jsonc");
 
-// 本番の LP_VARIANTS は LP を出すまで空なので、版の振り分けは、版を2つにした Worker で確かめる。
+// 本番の LP_VARIANTS は版 a だけなので、版の振り分けは、版を2つにした Worker で確かめる。
 // 2つめの版 b はテストだけの版で、vite build --mode test が本番のページに足して .wrangler/test-dist に書き出す（src/testing/test-site-app.tsx）。
 // Worker は、版を選ぶ乱数を b を引く値に決めたテストだけの入口（src/testing/landing-variants-test-worker.ts）を束ねたもの
 const {
@@ -27,6 +27,7 @@ export default defineConfig({
         serviceBindings: {
           SITE: "nu-tori-site-test",
           SITE_WITH_LANDING_VARIANTS: "nu-tori-site-with-landing-variants-test",
+          SITE_WITHOUT_LANDING_VARIANTS: "nu-tori-site-without-landing-variants-test",
         },
         workers: [
           {
@@ -42,6 +43,15 @@ export default defineConfig({
             scriptPath: "./.wrangler/test-landing-variants-worker/landing-variants-test-worker.js",
             // wrangler.jsonc の vars は LP_VARIANTS だけなので、置き換える。vars を足したら、ここにも足す
             bindings: { LP_VARIANTS: ["a", "b"] },
+          },
+          // 版を全部外したときの仮のページは、本番の LP_VARIANTS では通らないので、版を空にした Worker で確かめる
+          {
+            ...siteWorkerOptions,
+            name: "nu-tori-site-without-landing-variants-test",
+            modules: true,
+            scriptPath: "./.wrangler/test-worker/worker.js",
+            // wrangler.jsonc の vars は LP_VARIANTS だけなので、置き換える。vars を足したら、ここにも足す
+            bindings: { LP_VARIANTS: [] },
           },
         ],
       },
