@@ -86,7 +86,7 @@
 | `ANTHROPIC_API_KEY` | Worker（環境ごとのワークスペースのキー） | Anthropic の Console | 費用を使われる | 新しいキーを置いてから古いキーを無効にする |
 | `POSTHOG_PERSONAL_API_KEY` | Worker（本番だけ） | PostHog の個人の API キー（`person:write`） | 利用の数の人を消せる・読める | 新しいキーを置いてから古いキーを消す。無効なキーのあいだは、アカウントの削除が 500 になる |
 | `BETTER_AUTH_SECRET` | Worker（両方の環境） | 自分で作る乱数 | 小さい。今の設定では、セッションも保存したデータも、この値では守っていない | 替えるだけ。セッションは切れない |
-| `E2E_SIGN_IN_SECRET` | 開発用の Worker と、GitHub の Environment `development` | 自分で作る 32 文字以上の乱数 | 開発用の環境に誰でもアカウントを作れる（本番には置かない） | 2か所を同じ値に替える。食い違うと `verify-development` が 401 で落ちる |
+| `E2E_SIGN_IN_SECRET` | 開発用の Worker と、GitHub の Environment `development` | 自分で作る 32 文字以上の乱数 | 開発用の環境に誰でもアカウントを作れる（本番には置かない） | 2か所を同じ値に替える。食い違うと `main-flow-on-development` が 401 で落ちる |
 | `DEPENDENCY_APP_PRIVATE_KEY` | GitHub の Environment `dependency-updates` | このリポジトリ用の GitHub App の設定 | リポジトリに書ける | 新しい秘密鍵を作って置いてから、古い秘密鍵を消す |
 | `NU_TORI_SENTRY_READ_TOKEN` | GitHub の Environment `production-alerts` と、エージェントの環境 | Sentry の個人のトークン | 本番の例外を読める | 作り直して両方に置く |
 | `SENTRY_AUTH_TOKEN` | Xcode Cloud のワークフローの Environment | Sentry の組織のトークン | dSYM を上げられる | 作り直して置く |

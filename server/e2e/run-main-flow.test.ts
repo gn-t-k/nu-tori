@@ -249,7 +249,7 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
 
     test("口が閉じていることを知らせて失敗すること", async () => {
       await expect(runMainFlow(flowOptions)).rejects.toThrow(
-        "サインインの口が閉じている（開発用の Worker に E2E_SIGN_IN_SECRET を置く）",
+        "サインインの口が閉じている（Worker に E2E_SIGN_IN_SECRET を置く）",
       );
     });
   });
@@ -261,7 +261,7 @@ describe("開発用の環境で主な流れを確かめる流れ", () => {
 
     test("秘密の値が合わないことを知らせて失敗すること", async () => {
       await expect(runMainFlow(flowOptions)).rejects.toThrow(
-        "サインインの秘密の値が合わない（GitHub の Environment と Worker の E2E_SIGN_IN_SECRET を同じにする）",
+        "サインインの秘密の値が合わない（呼ぶ側と Worker の E2E_SIGN_IN_SECRET を同じにする）",
       );
     });
   });

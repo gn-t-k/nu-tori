@@ -1,12 +1,17 @@
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
+import {
+  type Change,
+  type DeviceClient,
+  type DeviceSession,
+  createDeviceClient,
+} from "./device-client";
 import { mealTextBody } from "./meal-text-body";
 import { addDays } from "../src/domain/add-days";
 import { computeCalendarDayInTimeZone } from "../src/domain/compute-calendar-day-in-time-zone";
 import { computeStartOfWeek } from "../src/domain/compute-start-of-week";
 import { millisecondsPerDay } from "../src/domain/milliseconds-per-day";
 import { generateRecordId } from "../src/domain/record-id";
-import { e2eRequestHeaders } from "../src/http/e2e-access";
 import { goalDecisionSchema } from "../src/http/goal-setup-routes/goal-decision-schema";
 import { goalProposalsSchema } from "../src/http/goal-setup-routes/goal-proposals-schema";
 import { goalSetupPreviewSchema } from "../src/http/goal-setup-routes/goal-setup-preview-schema";
@@ -18,16 +23,20 @@ const conversationTextBody = "今日はよく歩いたので、少し脚が疲�
 // 開発用の環境へデプロイした Worker の本物の API を叩き、サインインから目標を決めて1日の目安が届くこと、週の見直し、写真と文章の食事の推定、会話の文章への返事、アカウントの削除までを通す。
 // そのあと、無料体験の終わったアカウントで、写真の食事の推定がサブスクリプションを待っているになることを確かめる。
 // 失敗したら、どの段で何が起きたかを書いて投げる。サインインしたあとは、失敗してもアカウントを消してから投げる
-export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
-  const session = await signIn(options);
+export const runMainFlow = async (mainFlowOptions: MainFlowOptions): Promise<void> => {
+  // 1回の流れは1台の端末として送る
+  const options: Flow = {
+    ...mainFlowOptions,
+    client: createDeviceClient({ ...mainFlowOptions, deviceId: generateRecordId() }),
+  };
+  const session = await options.client.signIn();
   options.log("サインインした");
   await withAccountDeletion(options, session, () => runFreeTrialFlow(options, session));
   options.log("アカウントを削除した");
-  await requireSessionRevoked(options, session);
+  await requireSessionRevoked(session);
 
   // 課金を入れた日（開発用の BILLING_STARTED_ON）が30日より前なら、使い始めた日を30日より前にすると無料体験が終わる
-  const expiredSession = await signIn(
-    options,
+  const expiredSession = await options.client.signIn(
     new Date(Date.now() - expiredAccountAgeDays * millisecondsPerDay),
   );
   options.log(`${expiredAccountAgeDays}日前に使い始めたことにしてサインインした`);
@@ -39,8 +48,8 @@ export const runMainFlow = async (options: MainFlowOptions): Promise<void> => {
 
 const expiredAccountAgeDays = 60;
 
-const runFreeTrialFlow = async (options: MainFlowOptions, session: Session): Promise<void> => {
-  const freeTrialLastDay = await readFreeTrialLastDay(options, session);
+const runFreeTrialFlow = async (options: Flow, session: DeviceSession): Promise<void> => {
+  const freeTrialLastDay = await readFreeTrialLastDay(session);
   if (freeTrialLastDay === undefined || freeTrialLastDay < computeTodayOfStartedOn()) {
     throw new Error(
       `作ったばかりのアカウントが無料体験中でない（最後の日: ${freeTrialLastDay ?? "なし"}）`,
@@ -50,7 +59,7 @@ const runFreeTrialFlow = async (options: MainFlowOptions, session: Session): Pro
   // 新しいアカウントは前の週を持たないので、体重を量って目標を決めたのを 7 日前にする。
   // 開始の日が前の週に入り、今週の月曜の週がまだ見直していない週になる
   const goalDecidedAt = new Date(Date.now() - 7 * millisecondsPerDay);
-  await recordWeight(options, session, new Date(goalDecidedAt.getTime() - 60_000));
+  await recordWeight(session, new Date(goalDecidedAt.getTime() - 60_000));
   options.log("7日前の体重を記録した");
   const goalId = await decideGoal(options, session, goalDecidedAt);
   await requirePulledWeeklyReview(options, session, goalId);
@@ -58,28 +67,25 @@ const runFreeTrialFlow = async (options: MainFlowOptions, session: Session): Pro
   options.log("写真の食事を送った");
   const { dishIds, ingredientCount } = await waitForEstimation(options, session, mealId);
   options.log(`推定できた（料理 ${dishIds.length}、材料 ${ingredientCount}）`);
-  await renameEstimatedDish(options, session, dishIds[0]);
+  await renameEstimatedDish(session, dishIds[0]);
   options.log("推定でできた料理の名前を直した");
-  const mealTextId = await sendText(options, session, mealTextBody);
+  const mealTextId = await sendText(session, mealTextBody);
   options.log("食事の文章を送った");
   const writtenMeal = await waitForWrittenMealEstimation(options, session, mealTextId);
   options.log(
     `文章の食事が推定できた（料理 ${writtenMeal.dishIds.length}、材料 ${writtenMeal.ingredientCount}）`,
   );
-  const conversationTextId = await sendText(options, session, conversationTextBody);
+  const conversationTextId = await sendText(session, conversationTextBody);
   options.log("会話の文章を送った");
   const streamedReply = await watchReply(options, session, conversationTextId);
   options.log(`見守る要求で返事が届いた（流れた分 ${streamedReply.textDeltaCount}）`);
-  await requirePulledReply(options, session, conversationTextId, streamedReply);
+  await requirePulledReply(session, conversationTextId, streamedReply);
   options.log("取りに行くで返事が届いた");
 };
 
 // 無料体験の終わったアカウントで撮った食事は、推定を始めず、推定の状態がサブスクリプションを待っているになる
-const runExpiredFreeTrialFlow = async (
-  options: MainFlowOptions,
-  session: Session,
-): Promise<void> => {
-  const freeTrialLastDay = await readFreeTrialLastDay(options, session);
+const runExpiredFreeTrialFlow = async (options: Flow, session: DeviceSession): Promise<void> => {
+  const freeTrialLastDay = await readFreeTrialLastDay(session);
   if (freeTrialLastDay === undefined || freeTrialLastDay >= computeTodayOfStartedOn()) {
     throw new Error(
       `${expiredAccountAgeDays}日前に使い始めたことにしても、無料体験が終わっていない（開発用の BILLING_STARTED_ON を30日より前の日にする。最後の日: ${freeTrialLastDay ?? "なし"}）`,
@@ -107,37 +113,32 @@ const runExpiredFreeTrialFlow = async (
 
 // サインインしたあとの流れが失敗しても、アカウントを消してから投げる
 const withAccountDeletion = async (
-  options: MainFlowOptions,
-  session: Session,
+  options: Flow,
+  session: DeviceSession,
   flow: () => Promise<void>,
 ): Promise<void> => {
   try {
     await flow();
   } catch (error) {
-    await deleteAccount(options, session).catch((deletionError: unknown) => {
+    await session.deleteAccount().catch((deletionError: unknown) => {
       options.log(`アカウントの削除にも失敗した: ${describeError(deletionError)}`);
     });
     throw error;
   }
-  await deleteAccount(options, session);
+  await session.deleteAccount();
 };
 
-const requireSessionRevoked = async (options: MainFlowOptions, session: Session) => {
-  const afterDeletion = await callApi(options, session, "GET", syncChangesPath(0));
-  if (afterDeletion.status !== 401) {
-    throw new Error(
-      `アカウントを削除したあとも、セッションが使えた（状態コード ${afterDeletion.status}）`,
-    );
+const requireSessionRevoked = async (session: DeviceSession) => {
+  const status = await session.probeSessionStatusCode();
+  if (status !== 401) {
+    throw new Error(`アカウントを削除したあとも、セッションが使えた（状態コード ${status}）`);
   }
 };
 
 // サブスクリプションの状態の記録から、無料体験の最後の日を読む。無料体験が無ければ undefined。
 // テストユーザーは無料体験によらず使えるので、確かめに使えない
-const readFreeTrialLastDay = async (
-  options: MainFlowOptions,
-  session: Session,
-): Promise<string | undefined> => {
-  const record = (await pullAllChanges(options, session))
+const readFreeTrialLastDay = async (session: DeviceSession): Promise<string | undefined> => {
+  const record = (await session.pullAllChanges())
     .filter(({ kind }) => kind === "subscription_status")
     .at(-1)?.record;
   if (record === undefined) {
@@ -161,37 +162,8 @@ const readFreeTrialLastDay = async (
 // 確かめのサインインはタイムゾーンを送らないので、使い始めた日と無料体験の最後の日は UTC の日付で数えられる
 const computeTodayOfStartedOn = (): string => computeCalendarDayInTimeZone(new Date(), "UTC");
 
-// signedInAt を渡すと、その時刻にサインインしたことにする（使い始めた日がその日になる）
-const signIn = async (options: MainFlowOptions, signedInAt?: Date): Promise<Session> => {
-  const response = await options.send(`${options.baseUrl}/v1/e2e/sessions`, {
-    method: "POST",
-    headers: {
-      [e2eRequestHeaders.signInSecret]: options.signInSecret,
-      ...(signedInAt === undefined
-        ? {}
-        : { [e2eRequestHeaders.requestedAt]: signedInAt.toISOString() }),
-    },
-  });
-  if (response.status === 404) {
-    throw new Error("サインインの口が閉じている（開発用の Worker に E2E_SIGN_IN_SECRET を置く）");
-  }
-  if (response.status === 401) {
-    throw new Error(
-      "サインインの秘密の値が合わない（GitHub の Environment と Worker の E2E_SIGN_IN_SECRET を同じにする）",
-    );
-  }
-  if (response.status !== 201) {
-    throw new Error(`サインインできなかった（状態コード ${response.status}）`);
-  }
-  return z.object({ sessionToken: z.string(), accountId: z.string() }).parse(await response.json());
-};
-
-const recordWeight = async (
-  options: MainFlowOptions,
-  session: Session,
-  measuredAt: Date,
-): Promise<void> => {
-  await pushWrites(options, session, [
+const recordWeight = async (session: DeviceSession, measuredAt: Date): Promise<void> => {
+  await session.pushAppliedWrites([
     {
       id: generateRecordId(),
       type: "create_weight_record",
@@ -209,12 +181,12 @@ const recordWeight = async (
 // 減量の標準の案を、見せていた値のとおりに決め、同じ要求の ID の再送と、取りに行く応答に届くことまでを確かめる。
 // 目標の設定の要求は、開発用の環境だけで受け付ける時刻の差し替えで、決めた時刻（decidedAt）に送ったことにする。決めた目標の ID を返す
 const decideGoal = async (
-  options: MainFlowOptions,
-  session: Session,
+  options: Flow,
+  session: DeviceSession,
   decidedAt: Date,
 ): Promise<string> => {
   const post = (path: GoalSetupPath, body: Record<string, unknown>) =>
-    postGoalSetup(options, session, decidedAt, path, body);
+    postGoalSetup(session, decidedAt, path, body);
   // 身体データは作り話にする（公開リポジトリ）。サーバーは計算に使ったら捨てる
   const bodyData = {
     sex: "female",
@@ -286,7 +258,7 @@ const decideGoal = async (
   }
   options.log("同じ要求の ID の再送が、同じ応答で返った");
 
-  const pulled = await pullAllChanges(options, session);
+  const pulled = await session.pullAllChanges();
   for (const change of decided.changes) {
     const pulledRecord = pulled
       .filter(({ kind, recordId }) => kind === change.kind && recordId === change.recordId)
@@ -309,14 +281,14 @@ const decideGoal = async (
 // 目標を決めたあとの取りに行く要求が、今週の月曜の週を見直し、その週の見直しの記録を、決めた目標に当てて届けることを確かめる。
 // 使い始めて1週に満たないので、見送りになる見込み。見送りでも見直せても記録は1つ届くので、どちらになったかは知らせるだけにする
 const requirePulledWeeklyReview = async (
-  options: MainFlowOptions,
-  session: Session,
+  options: Flow,
+  session: DeviceSession,
   goalId: string,
 ): Promise<void> => {
   const thisMonday = computeStartOfWeek(
-    computeCalendarDayInTimeZone(new Date(), createClientState().timeZone),
+    computeCalendarDayInTimeZone(new Date(), options.client.timeZone),
   );
-  const weeklyReviews = (await pullAllChanges(options, session))
+  const weeklyReviews = (await session.pullAllChanges())
     .filter(({ kind }) => kind === "weekly_review")
     .map(({ record }) =>
       z
@@ -349,18 +321,14 @@ type GoalSetupPath = "preview" | "proposals" | "decisions";
 
 // 目標の設定の要求は同期の外でその場で答えるので、200 でなければ、断った理由（code）を添えて投げる
 const postGoalSetup = async (
-  options: MainFlowOptions,
-  session: Session,
+  session: DeviceSession,
   requestedAt: Date,
   path: GoalSetupPath,
   body: Record<string, unknown>,
 ): Promise<unknown> => {
-  const response = await callApi(options, session, "POST", `/v1/goal-setup/${path}`, {
-    headers: {
-      "content-type": "application/json",
-      [e2eRequestHeaders.signInSecret]: options.signInSecret,
-      [e2eRequestHeaders.requestedAt]: requestedAt.toISOString(),
-    },
+  const response = await session.call("POST", `/v1/goal-setup/${path}`, {
+    headers: { "content-type": "application/json" },
+    e2e: { requestedAt },
     body: JSON.stringify({ timeZone: goalSetupTimeZone, ...body }),
   });
   if (response.status !== 200) {
@@ -375,14 +343,11 @@ const postGoalSetup = async (
   return response.json();
 };
 
-const sendPhotographedMeal = async (
-  options: MainFlowOptions,
-  session: Session,
-): Promise<string> => {
+const sendPhotographedMeal = async (options: Flow, session: DeviceSession): Promise<string> => {
   const mealId = generateRecordId();
   const photoId = generateRecordId();
   const now = Date.now();
-  await pushWrites(options, session, [
+  await session.pushAppliedWrites([
     {
       id: generateRecordId(),
       type: "create_meal",
@@ -397,7 +362,7 @@ const sendPhotographedMeal = async (
       },
     },
   ]);
-  const response = await callApi(options, session, "PUT", `/v1/meal-photos/${photoId}`, {
+  const response = await session.call("PUT", `/v1/meal-photos/${photoId}`, {
     headers: { "content-type": "image/jpeg" },
     body: options.photo,
   });
@@ -408,20 +373,20 @@ const sendPhotographedMeal = async (
 };
 
 const waitForEstimation = (
-  options: MainFlowOptions,
-  session: Session,
+  options: Flow,
+  session: DeviceSession,
   mealId: string,
 ): Promise<{ dishIds: [string, ...string[]]; ingredientCount: number }> =>
   waitForChanges(options, session, {
     goal: "推定できた",
     timeoutMs: options.estimationTimeoutMs,
-    inspect: (changes) => inspectEstimation(options, session, changes, mealId),
+    inspect: (changes) => inspectEstimation(session, changes, mealId),
   });
 
 // 文章を読み分けて文章の食事ができ、その推定が終わるまで待つ。食事と読み分けられなければ失敗にする
 const waitForWrittenMealEstimation = (
-  options: MainFlowOptions,
-  session: Session,
+  options: Flow,
+  session: DeviceSession,
   sentTextId: string,
 ): Promise<{ dishIds: [string, ...string[]]; ingredientCount: number }> =>
   waitForChanges(options, session, {
@@ -445,13 +410,12 @@ const waitForWrittenMealEstimation = (
       if (mealId === undefined) {
         throw new Error("食事と読み分けられたのに、文章の食事が無い");
       }
-      return inspectEstimation(options, session, changes, mealId);
+      return inspectEstimation(session, changes, mealId);
     },
   });
 
 const inspectEstimation = async (
-  options: MainFlowOptions,
-  session: Session,
+  session: DeviceSession,
   changes: Change[],
   mealId: string,
 ): Promise<Inspection<{ dishIds: [string, ...string[]]; ingredientCount: number }>> => {
@@ -461,7 +425,7 @@ const inspectEstimation = async (
   }
   if (status === "failed") {
     throw new Error(
-      `推定できたにならず、failed で終わった（${await describeLastEstimationAttempt(options, session, mealId)}）`,
+      `推定できたにならず、failed で終わった（${await describeLastEstimationAttempt(session, mealId)}）`,
     );
   }
   if (status !== "awaiting_photos" && status !== "estimating") {
@@ -472,17 +436,12 @@ const inspectEstimation = async (
 
 // 推定できなかった理由。同期の推定の状態は理由を持たないので、確かめのジョブのための口で最後に終わった試みを読む
 const describeLastEstimationAttempt = async (
-  options: MainFlowOptions,
-  session: Session,
+  session: DeviceSession,
   mealId: string,
 ): Promise<string> => {
-  const response = await callApi(
-    options,
-    session,
-    "GET",
-    `/v1/e2e/meals/${mealId}/last-estimation-attempt`,
-    { headers: { [e2eRequestHeaders.signInSecret]: options.signInSecret } },
-  );
+  const response = await session.call("GET", `/v1/e2e/meals/${mealId}/last-estimation-attempt`, {
+    e2e: {},
+  });
   if (response.status !== 200) {
     return `最後の試みを読めなかった（状態コード ${response.status}）`;
   }
@@ -508,8 +467,8 @@ const describeLastEstimationAttempt = async (
 
 // 変更を取りに行き続け、inspect が終わったと言うまで待つ。inspect は、望まない結果で終わったら投げる
 const waitForChanges = async <T>(
-  options: MainFlowOptions,
-  session: Session,
+  options: Flow,
+  session: DeviceSession,
   wait: {
     goal: string;
     timeoutMs: number;
@@ -521,7 +480,7 @@ const waitForChanges = async <T>(
   let afterSequence = 0;
   let lastState = "未取得";
   while (Date.now() - startedAt < wait.timeoutMs) {
-    const pulled = await pullChanges(options, session, afterSequence);
+    const pulled = await session.pullChanges(afterSequence);
     changes.push(...pulled.changes);
     afterSequence = pulled.nextAfterSequence;
     if (pulled.hasMore) {
@@ -571,19 +530,15 @@ const requireEstimatedDishIdsAndIngredientCount = (
 };
 
 // サーバーが振った料理の ID を、そのまま送り返して名前を直す。送り返した ID で料理が見つからないと、受け付けられずに失敗する（#362）
-const renameEstimatedDish = async (
-  options: MainFlowOptions,
-  session: Session,
-  dishId: string,
-): Promise<void> => {
-  await pushWrites(options, session, [
+const renameEstimatedDish = async (session: DeviceSession, dishId: string): Promise<void> => {
+  await session.pushAppliedWrites([
     { id: generateRecordId(), type: "update_dish", dishId, name: "直した料理" },
   ]);
 };
 
-const sendText = async (options: MainFlowOptions, session: Session, body: string) => {
+const sendText = async (session: DeviceSession, body: string) => {
   const sentTextId = generateRecordId();
-  await pushWrites(options, session, [
+  await session.pushAppliedWrites([
     {
       id: generateRecordId(),
       type: "create_sent_text",
@@ -596,19 +551,15 @@ const sendText = async (options: MainFlowOptions, session: Session, body: string
 // 送った文章の見守る要求をつなぎ、閉じるまで読む。返事の ID のあとに本文が流れ、返事ありで閉じなければ失敗にする。
 // つなぐ前に返事ができ終わっていると本文が流れないが、読み分けと返事でモデルを2回呼ぶあいだにつなげる見込み
 const watchReply = async (
-  options: MainFlowOptions,
-  session: Session,
+  options: Flow,
+  session: DeviceSession,
   sentTextId: string,
 ): Promise<StreamedReply> => {
   const signal = AbortSignal.timeout(options.replyTimeoutMs);
   const events = await (async () => {
-    const response = await callApi(
-      options,
-      session,
-      "GET",
-      `/v1/sent-texts/${sentTextId}/reply-stream`,
-      { signal },
-    );
+    const response = await session.call("GET", `/v1/sent-texts/${sentTextId}/reply-stream`, {
+      signal,
+    });
     if (response.status !== 200) {
       throw new Error(`見守る要求をつなげなかった（状態コード ${response.status}）`);
     }
@@ -656,12 +607,11 @@ const readServerSentEvents = (text: string) =>
 
 // 見守る要求で届いた返事が、取りに行く応答にも、送った文章の状態と返事の記録で届いていることを確かめる
 const requirePulledReply = async (
-  options: MainFlowOptions,
-  session: Session,
+  session: DeviceSession,
   sentTextId: string,
   streamedReply: StreamedReply,
 ): Promise<void> => {
-  const changes = await pullAllChanges(options, session);
+  const changes = await session.pullAllChanges();
   const replyStatus = findSentTextStatus(changes, sentTextId)?.replyStatus ?? "未取得";
   if (replyStatus !== "replied") {
     throw new Error(`見守る要求は返事ありで閉じたのに、取りに行くと応答の状態が ${replyStatus}`);
@@ -688,116 +638,10 @@ const findSentTextStatus = (changes: Change[], sentTextId: string) =>
     )
     .at(-1);
 
-const pullAllChanges = async (options: MainFlowOptions, session: Session): Promise<Change[]> => {
-  const changes: Change[] = [];
-  let afterSequence = 0;
-  for (;;) {
-    const pulled = await pullChanges(options, session, afterSequence);
-    changes.push(...pulled.changes);
-    afterSequence = pulled.nextAfterSequence;
-    if (!pulled.hasMore) {
-      return changes;
-    }
-  }
-};
-
-const pullChanges = async (
-  options: MainFlowOptions,
-  session: Session,
-  afterSequence: number,
-): Promise<{ changes: Change[]; hasMore: boolean; nextAfterSequence: number }> => {
-  const response = await callApi(options, session, "GET", syncChangesPath(afterSequence));
-  if (response.status !== 200) {
-    throw new Error(`変更を取りに行けなかった（状態コード ${response.status}）`);
-  }
-  return z
-    .object({
-      changes: z.array(
-        z.object({
-          sequence: z.number(),
-          kind: z.string(),
-          recordId: z.string(),
-          record: z.record(z.string(), z.unknown()),
-        }),
-      ),
-      hasMore: z.boolean(),
-      nextAfterSequence: z.number(),
-    })
-    .parse(await response.json());
-};
-
-const pushWrites = async (
-  options: MainFlowOptions,
-  session: Session,
-  writes: { id: string; type: string; [field: string]: unknown }[],
-): Promise<void> => {
-  const response = await callApi(options, session, "POST", "/v1/sync/writes", {
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ clientState: createClientState(), writes, isFinalBatch: false }),
-  });
-  if (response.status !== 200) {
-    throw new Error(`書き込みを送れなかった（状態コード ${response.status}）`);
-  }
-  const { results } = z
-    .object({
-      results: z.array(z.object({ result: z.string(), rejectionReason: z.string().optional() })),
-    })
-    .parse(await response.json());
-  for (const [index, { result, rejectionReason }] of results.entries()) {
-    if (result !== "applied") {
-      throw new Error(
-        `書き込み ${writes[index]?.type} が ${result} になった（理由: ${rejectionReason ?? "なし"}）`,
-      );
-    }
-  }
-};
-
-const deleteAccount = async (options: MainFlowOptions, session: Session): Promise<void> => {
-  const response = await callApi(options, session, "DELETE", "/v1/account");
-  if (response.status !== 204) {
-    throw new Error(`アカウントを削除できなかった（状態コード ${response.status}）`);
-  }
-};
-
-const callApi = (
-  options: MainFlowOptions,
-  session: Session,
-  method: string,
-  path: string,
-  init: { headers?: Record<string, string>; body?: BodyInit; signal?: AbortSignal } = {},
-): Promise<Response> =>
-  options.send(`${options.baseUrl}${path}`, {
-    method,
-    headers: { ...init.headers, authorization: `Bearer ${session.sessionToken}` },
-    ...(init.body === undefined ? {} : { body: init.body }),
-    ...(init.signal === undefined ? {} : { signal: init.signal }),
-  });
-
-// 1回の流れは1台の端末として送る
-const deviceId = generateRecordId();
-
-const createClientState = () => ({
-  deviceId,
-  timeZone: "Asia/Tokyo",
-  appVersion: "1.0.0",
-  osVersion: "26.0",
-  pendingWriteCount: 1,
-  oldestPendingWriteAgeSeconds: 0,
-  pendingPhotoCount: 0,
-});
-
-const syncChangesPath = (afterSequence: number): string => {
-  const query = new URLSearchParams(
-    Object.entries({ ...createClientState(), afterSequence }).map(([key, value]) => [
-      key,
-      String(value),
-    ]),
-  );
-  return `/v1/sync/changes?${query.toString()}`;
-};
-
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+type Flow = MainFlowOptions & { client: DeviceClient };
 
 type MainFlowOptions = {
   baseUrl: string;
@@ -813,7 +657,3 @@ type MainFlowOptions = {
 };
 
 type StreamedReply = { replyId: string; body: string; textDeltaCount: number };
-
-type Session = { sessionToken: string; accountId: string };
-
-type Change = { sequence: number; kind: string; recordId: string; record: Record<string, unknown> };
