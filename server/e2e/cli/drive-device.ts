@@ -1,6 +1,7 @@
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
+import { ErrorFactory } from "@praha/error-factory";
 import { match } from "ts-pattern";
 import { z } from "zod";
 import {
@@ -32,7 +33,7 @@ const main = async ([command, ...args]: string[]): Promise<number> =>
     .with("push", () => runPush(args))
     .with("pull", () => runPull(args))
     .with("call", () => runCall(args))
-    .otherwise(() => Promise.reject(new UsageError("コマンドが無いか、読めない")));
+    .otherwise(() => Promise.reject(new UsageError({ reason: "コマンドが無いか、読めない" })));
 
 const runSignIn = async (args: string[]): Promise<number> => {
   const { values, positionals } = parseArgs({
@@ -57,11 +58,11 @@ const runPush = async (args: string[]): Promise<number> => {
     z.tuple([z.string(), z.string(), z.string()]),
   );
   const run = await openRun(runDir);
-  const parsed = z
-    .array(z.looseObject({ id: z.string().optional(), type: z.string() }))
+  const parseResults = z
+    .array(z.looseObject({ id: z.string().optional() }))
     .parse(JSON.parse(json))
     .map((write) => syncWriteSchema.safeParse({ ...write, id: write.id ?? generateRecordId() }));
-  const invalid = parsed.flatMap((result, index) =>
+  const invalid = parseResults.flatMap((result, index) =>
     result.success
       ? []
       : [
@@ -72,7 +73,7 @@ const runPush = async (args: string[]): Promise<number> => {
     console.error(`受け口の形に合わないので送らなかった\n${invalid.join("\n")}`);
     return 2;
   }
-  const writes = parsed.flatMap((result) => (result.success ? [result.data] : []));
+  const writes = parseResults.flatMap((result) => (result.success ? [result.data] : []));
   const results = await (await run.resume(name)).pushAppliedWrites(writes);
   console.log(JSON.stringify(results));
   return 0;
@@ -114,6 +115,7 @@ const runCall = async (args: string[]): Promise<number> => {
   const content = await readContent(values);
   const timeout = parseOption("--timeout", z.coerce.number().positive(), values.timeout);
   const asOf = parseOption("--as-of", isoDateTimeSchema, values["as-of"]);
+  // 送る口では残さず、ここで残す。見守る要求は --timeout で切るまで本文が終わらず、送る口で読み切って残すと、切ったときに何も残らないため
   const run = await openRun(runDir, { logResponses: false });
   const signal = timeout === undefined ? undefined : AbortSignal.timeout(timeout * 1000);
   const response = await (
@@ -158,7 +160,9 @@ const readContent = async (values: {
   if (json === undefined && bodyFile === undefined && contentType === undefined) {
     return undefined;
   }
-  throw new UsageError("本文は --json か、--body-file と --content-type の対のどちらか1つで渡す");
+  throw new UsageError({
+    reason: "本文は --json か、--body-file と --content-type の対のどちらか1つで渡す",
+  });
 };
 
 // 本文を読み切る。中断されたら、それまでに届いた分を返す
@@ -184,8 +188,7 @@ const readBody = async (response: Response): Promise<{ bytes: Uint8Array; timedO
   }
 };
 
-// run.env を読み、端末のクライアントを組む。logResponses なら、送った要求と応答をすべて証拠に足す。
-// call は logResponses を切って自分で残す。見守る要求は --timeout で切るまで本文が終わらず、送る口で本文を読み切って残すと、切ったときに何も残らないため
+// run.env を読み、端末のクライアントを組む。logResponses なら、送った要求と応答をすべて証拠に足す
 const openRun = async (runDir: string, { logResponses } = { logResponses: true }) => {
   const env = runEnvSchema.parse(
     Object.fromEntries(
@@ -263,7 +266,7 @@ const parseOption = <T extends z.ZodType>(
   }
   const parsed = schema.safeParse(value);
   if (!parsed.success) {
-    throw new UsageError(`${name} の値が読めない（${value}）`);
+    throw new UsageError({ reason: `${name} の値が読めない（${value}）` });
   }
   return parsed.data;
 };
@@ -274,18 +277,22 @@ const requirePositionals = <T extends z.ZodTuple>(positionals: string[], shape: 
     positionals.map((value, index) => (index === 0 ? resolve(value) : value)),
   );
   if (!parsed.success) {
-    throw new UsageError("位置の引数の数が合わない");
+    throw new UsageError({ reason: "位置の引数の数が合わない" });
   }
   return parsed.data;
 };
 
 // 引数が読めないとき。使い方を添えて 2 で終わる
-class UsageError extends Error {}
+class UsageError extends ErrorFactory({
+  name: "UsageError",
+  message: ({ reason }) => reason,
+  fields: ErrorFactory.fields<{ reason: string }>(),
+}) {}
 
 try {
   process.exitCode = await main(process.argv.slice(2));
 } catch (error) {
-  if (error instanceof UsageError) {
+  if (error instanceof Error && error.name === "UsageError") {
     console.error(`${error.message}\n${usage}`);
     process.exitCode = 2;
   } else {
