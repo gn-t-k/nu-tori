@@ -53,16 +53,18 @@ jobs:
 
   # 開発用の環境へ出した Worker に、本物の API を通して主な流れ（サインイン、体重、写真の食事、推定、アカウントの削除、無料体験の終わったアカウントの推定の保留）を確かめる。
   # 必須のチェックにせず、本番のデプロイも待たせない。main で落ちたら track-main-failure が Issue を立てる（docs/agents/tooling.md の「CI」）
-  verify-development:
+  main-flow-on-development:
     needs: development
     runs-on: ubuntu-latest
-    # 流れが待つ上限の合計（11 分。e2e/verify-development.ts）と準備より長くし、時間切れで止まる前に流れが止まった段を書き、作ったアカウントを消せるようにする
+    # 流れが待つ上限の合計（推定を3回 3 分ずつと、返事を 2 分で 11 分。下の env）と準備より長くし、時間切れで止まる前に流れが止まった段を書き、作ったアカウントを消せるようにする
     timeout-minutes: 15
     # E2E_SIGN_IN_SECRET を、開発用の Environment の秘密の値から読む。本番の Environment には置かない
     environment: development
     env:
       E2E_BASE_URL: https://api-dev.nu-tori.app
       E2E_SIGN_IN_SECRET: ${{ secrets.E2E_SIGN_IN_SECRET }}
+      E2E_ESTIMATION_TIMEOUT_SECONDS: 180
+      E2E_REPLY_TIMEOUT_SECONDS: 120
     defaults:
       run:
         shell: bash
@@ -79,15 +81,15 @@ jobs:
           cache-dependency-path: server/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - name: 主な流れを確かめる
-        run: pnpm exec tsx e2e/verify-development.ts
+        run: pnpm exec tsx e2e/cli/run-main-flow.ts
 
   # main で落ちたら立て、緑に戻ったら閉じる流れは、ios-ui-test.yml の track-main-failure に合わせた
   # 開発用のデプロイが落ちて確かめが飛んだ回は、流れを確かめていないので、立ても閉じもしない
   track-main-failure:
-    needs: verify-development
+    needs: main-flow-on-development
     if: >-
       always() && github.ref == 'refs/heads/main' &&
-      (needs.verify-development.result == 'success' || needs.verify-development.result == 'failure')
+      (needs.main-flow-on-development.result == 'success' || needs.main-flow-on-development.result == 'failure')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -95,7 +97,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      TITLE: main の verify-development が落ちている
+      TITLE: main の main-flow-on-development が落ちている
     steps:
       # 題で探す。concurrency の deploy で回は1本ずつなので、2つの回が同時に立てることは無い
       - id: open-issue
@@ -106,14 +108,14 @@ jobs:
             --jq '.[] | select(.pull_request == null and .title == env.TITLE) | .number')"
           echo "number=${numbers%%$'\n'*}" >> "$GITHUB_OUTPUT"
       - name: 緑に戻ったので Issue を閉じる
-        if: needs.verify-development.result == 'success' && steps.open-issue.outputs.number != ''
+        if: needs.main-flow-on-development.result == 'success' && steps.open-issue.outputs.number != ''
         env:
           NUMBER: ${{ steps.open-issue.outputs.number }}
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" -f body="main の verify-development が緑に戻った: $RUN_URL" > /dev/null
+          gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" -f body="main の main-flow-on-development が緑に戻った: $RUN_URL" > /dev/null
           gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/$NUMBER" -f state=closed -f state_reason=completed > /dev/null
       - name: Issue を立てるか、また落ちたことを書き足す
-        if: needs.verify-development.result == 'failure'
+        if: needs.main-flow-on-development.result == 'failure'
         env:
           NUMBER: ${{ steps.open-issue.outputs.number }}
         run: |
@@ -122,9 +124,9 @@ jobs:
             exit 0
           fi
           body="$(printf '%s\n\n- 落ちた回: %s\n\n%s' \
-            'main の verify-development（開発用の環境で、本物の API を通して主な流れを確かめるジョブ）が落ちた。落ちた段は回のログに出る。' \
+            'main の main-flow-on-development（開発用の環境で、本物の API を通して主な流れを確かめるジョブ）が落ちた。落ちた段は回のログに出る。' \
             "$RUN_URL" \
-            'main で verify-development が緑に戻ると、ワークフローがこの Issue を閉じる。')"
+            'main で main-flow-on-development が緑に戻ると、ワークフローがこの Issue を閉じる。')"
           number="$(gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$TITLE" -f body="$body" -f "labels[]=needs-triage" --jq .number)"
           # GITHUB_TOKEN で立てた Issue は lock-conversations.yml を起こさないので、ここでロックする
           gh api --method PUT "repos/$GITHUB_REPOSITORY/issues/$number/lock" > /dev/null
