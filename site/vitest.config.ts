@@ -50,6 +50,7 @@ export default defineConfig({
             name: "nu-tori-site-without-landing-variants-test",
             modules: true,
             scriptPath: "./.wrangler/test-worker/worker.js",
+            // wrangler.jsonc の vars は LP_VARIANTS だけなので、置き換える。vars を足したら、ここにも足す
             bindings: { LP_VARIANTS: [] },
           },
         ],
