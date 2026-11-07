@@ -10,7 +10,7 @@ const {
   workerOptions: { modulesRules: _modulesRules, ...siteWorkerOptions },
 } = unstable_getMiniflareWorkerOptions("./wrangler.jsonc");
 
-// 本番の LP_VARIANTS は LP を出すまで空なので、版の振り分けは、版を2つにした Worker で確かめる。
+// 本番の LP_VARIANTS は版 a だけなので、版の振り分けは、版を2つにした Worker で確かめる。
 // 2つめの版 b はテストだけの版で、vite build --mode test が本番のページに足して .wrangler/test-dist に書き出す（src/testing/test-site-app.tsx）。
 // Worker は、版を選ぶ乱数を b を引く値に決めたテストだけの入口（src/testing/landing-variants-test-worker.ts）を束ねたもの
 const {

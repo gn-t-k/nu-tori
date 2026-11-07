@@ -169,7 +169,7 @@ describe("nu-tori.app の配信", () => {
       ];
     });
 
-    test("仮のページと 404 のページを含む、どのページにもサイトのトークンを持つビーコンがあること", async () => {
+    test("LP と 404 のページを含む、どのページにもサイトのトークンを持つビーコンがあること", async () => {
       const results = await Promise.all(
         pagePaths.map(async (path) => {
           const body = await (await fetchSite(path)).text();
@@ -215,7 +215,7 @@ describe("nu-tori.app の配信", () => {
     });
   });
 
-  describe("LP の版が無いとき（LP_VARIANTS が空）", () => {
+  describe("本番の設定（LP_VARIANTS が a だけ）の /", () => {
     let response: Response;
     let privacyResponse: Response;
     beforeEach(async () => {
@@ -223,20 +223,17 @@ describe("nu-tori.app の配信", () => {
       privacyResponse = await fetchSite("/privacy");
     });
 
-    // 仮のページと LP の版は正規の URL がどちらも / なので、版にだけあるバッジのキャンペーンのリンクが無いことで見分ける
-    test("/ が仮のページを 200 で返すこと", async () => {
+    test("版 a のページを 200 で返すこと", async () => {
       expect(response.status).toBe(200);
       const body = await response.text();
       expect(body).toContain('<link rel="canonical" href="https://nu-tori.app/"/>');
-      expect(body).not.toContain("ct=lp-");
+      expect(body).toContain(campaignLinkOfVariantA);
     });
 
-    test("仮のページから公開のページへリンクすること", async () => {
-      expect(await response.text()).toContain('<a href="/privacy">');
-    });
-
-    test("Cookie を付けないこと", () => {
-      expect(response.headers.has("Set-Cookie")).toBe(false);
+    test("版 a の Cookie を付けること", () => {
+      expect(response.headers.get("Set-Cookie")).toBe(
+        "nu_tori_lp=a; Max-Age=2592000; Path=/; HttpOnly; Secure; SameSite=Lax",
+      );
     });
 
     test("/privacy と同じセキュリティのヘッダーを付けること", () => {
@@ -250,7 +247,7 @@ describe("nu-tori.app の配信", () => {
     });
   });
 
-  // テストの LP_VARIANTS は a と b で、乱数は b を引く（vitest.config.ts）。b はテストだけの版で、提供者のトークンを持つ
+  // テストの LP_VARIANTS は a と b で、乱数は b を引く（vitest.config.ts）。b はテストだけの版
   describe("LP の版があるとき", () => {
     describe("版の Cookie を持たない人の /", () => {
       let response: Response;
@@ -330,12 +327,8 @@ describe("nu-tori.app の配信", () => {
         ).text();
       });
 
-      test("提供者のトークンが空なら、バッジのリンクが自分の版の ct を持ち、pt を持たないこと（版 a）", () => {
+      test("バッジのリンクが、提供者のトークンと自分の版の ct を持つこと", () => {
         expect(variantABody).toContain(campaignLinkOfVariantA);
-        expect(variantABody).not.toContain("?pt=");
-      });
-
-      test("提供者のトークンがあれば、バッジのリンクが自分の版の ct と pt を持つこと（テストだけの版 b）", () => {
         expect(variantBBody).toContain(campaignLinkOfVariantB);
       });
 
@@ -461,11 +454,11 @@ describe("nu-tori.app の配信", () => {
   });
 });
 
-// アプリの ID は 6816842705。HTML の属性なので & は &amp; で書き出される
+// アプリの ID は 6816842705、提供者のトークンは 128288724。HTML の属性なので & は &amp; で書き出される
 const campaignLinkOfVariantA =
-  'href="https://apps.apple.com/jp/app/apple-store/id6816842705?ct=lp-a&amp;mt=8"';
+  'href="https://apps.apple.com/jp/app/apple-store/id6816842705?pt=128288724&amp;ct=lp-a&amp;mt=8"';
 const campaignLinkOfVariantB =
-  'href="https://apps.apple.com/jp/app/apple-store/id6816842705?pt=test-provider-token&amp;ct=lp-b&amp;mt=8"';
+  'href="https://apps.apple.com/jp/app/apple-store/id6816842705?pt=128288724&amp;ct=lp-b&amp;mt=8"';
 
 const pickSecurityHeaders = (from: Response) =>
   Object.fromEntries(Object.keys(securityHeaders).map((name) => [name, from.headers.get(name)]));
