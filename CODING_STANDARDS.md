@@ -6,11 +6,16 @@
 
 ## 文書
 
-- `docs/agents/coding-style.md`: 言語に寄らない好み
-- `docs/agents/testing.md`: テストの好み
-- `docs/agents/languages/<言語>.md`: 言語ごとの当てはめ。変えたファイルの言語のものを読む
-- `.agents/skills/writing-for-agents/SKILL.md`: エージェントが読む文書（`AGENTS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/`）の書き方。それらを変えたときに読む
-- `.agents/skills/code-review/SKILL.md` の「3. Identify the standards sources」: 臭いの一覧（smell baseline）と、それを当てる決まり。その節だけを読む
+照らす範囲で変わったファイルの種類で、読む文書を選ぶ。読むのは、条件に当たる文書だけにする。
+
+- コードのファイル（`.ts`・`.swift`・シェルのスクリプト・CI のワークフローなど、テストを含む）が変わったとき
+  - `docs/agents/coding-style.md`: 言語に寄らない好み
+  - `.agents/skills/code-review/SKILL.md` の「3. Identify the standards sources」: 臭いの一覧（smell baseline）と、それを当てる決まり。その節だけを読む
+  - `docs/agents/languages/<言語>.md`: 言語ごとの当てはめ。変わったファイルの言語のものだけを読む
+- テストのファイル（`*.test.ts`、`testing/` の下、Swift の `*Tests/` の下など）が変わったとき: `docs/agents/testing.md`（テストの好み）
+- エージェントが読む文書（`AGENTS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/`）が変わったとき: `.agents/skills/writing-for-agents/SKILL.md`（その書き方）
+
+**Why:** 条件を書かずに並べていたので、レビュー役が周ごとに全部を読み直し、1行の差分や Markdown だけの差分にも1周で約4.7万〜11万トークンかかっていた（#929）。
 
 ## 指摘するもの
 
