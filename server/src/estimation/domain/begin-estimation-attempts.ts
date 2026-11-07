@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 import { generateRecordId, type RecordId } from "../../domain/record-id";
+import { findEarliest } from "../../domain/find-earliest";
 import { findLatestValidTimeZone } from "../../domain/find-latest-valid-time-zone";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
@@ -153,3 +154,15 @@ const findSentText = (
   }
   return sentText;
 };
+
+// 推定の仕事が次に動く時刻。待っている予定の時刻と、続いている推定の次に試みる時刻のうち、いちばん早いもの。
+// アラームの並びが張る時刻に使う。beginEstimationAttempts が始めるものと同じ予定と推定から出すので、条件を変えるときは両方をそろえる
+export const computeNextEstimationAttemptsAt = (
+  stores: Pick<RecordKindStores, "estimationSchedule" | "estimation">,
+): Date | undefined =>
+  findEarliest([
+    stores.estimationSchedule.findWaitingSchedules(undefined)[0]?.dueAt,
+    ...stores.estimation
+      .findContinuingEstimations()
+      .map(({ attempts }) => computeNextEstimationAttemptAt(attempts)),
+  ]);
