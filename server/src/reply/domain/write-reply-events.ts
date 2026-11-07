@@ -1,9 +1,8 @@
 import type { RecordId } from "../../domain/record-id";
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { watchCurrentRecords } from "../../domain/watch-current-records";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
 import type { SentTextStore } from "../../sent-text/domain/sent-text-store";
 import { createSentTextStatusKind } from "../../sent-text-status/domain/create-sent-text-status-kind";
-import type { SentTextStatus } from "../../sent-text-status/domain/sent-text-status";
 import type { SentTextStatusStore } from "../../sent-text-status/domain/sent-text-status-store";
 import type { ReplyEventWriteStore } from "./reply-event-write-store";
 import type { ReplyWrites } from "./reply-writes";
@@ -24,14 +23,12 @@ export const writeReplyEvents = <T>(
 ): T => {
   const statusKind = createSentTextStatusKind(stores.sentText, stores.sentTextStatus);
   const store = stores.replyEventWrite;
-  const statusesBeforeWrites = new Map<RecordId, CurrentRecord<SentTextStatus>>();
+  const statuses = watchCurrentRecords(addChange);
   const remember = (sentTextId: RecordId | undefined): void => {
     if (sentTextId === undefined) {
       throw new Error("返事の流れの出来事が、送った文章につながっていない");
     }
-    if (!statusesBeforeWrites.has(sentTextId)) {
-      statusesBeforeWrites.set(sentTextId, statusKind.readCurrent(sentTextId));
-    }
+    statuses.watch(statusKind, sentTextId);
   };
 
   const result = run({
@@ -83,18 +80,6 @@ export const writeReplyEvents = <T>(
     },
   });
 
-  for (const [sentTextId, before] of statusesBeforeWrites) {
-    if (!isSameStatus(before, statusKind.readCurrent(sentTextId))) {
-      addChange({ recordType: "sent_text_status", recordId: sentTextId });
-    }
-  }
+  statuses.addChanges();
   return result;
 };
-
-const isSameStatus = (
-  a: CurrentRecord<SentTextStatus>,
-  b: CurrentRecord<SentTextStatus>,
-): boolean =>
-  a.status === "value" && b.status === "value"
-    ? JSON.stringify(a.value) === JSON.stringify(b.value)
-    : a.status === b.status;
