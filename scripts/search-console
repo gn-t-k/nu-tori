@@ -1,0 +1,109 @@
+#!/usr/bin/env node
+// エージェントと人が Google Search Console の検索の数を読む。鍵の読み方と、JWT をアクセストークンに換える道を、ここ1か所に置く
+// 送るのは、プロパティの一覧（GET）と Search Analytics の問い合わせ（POST だが読むだけ）の2つだけで、ほかの口（サイトマップ、サイトの追加と削除、URL の検査）は呼ばない
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const { createPrivateKey, sign } = require("node:crypto");
+const { ExpectedFailure } = require("./expected-failure.js");
+
+const main = async () => {
+  const [command, body, ...rest] = process.argv.slice(2);
+  const usage =
+    "使い方: scripts/search-console sites（サービスアカウントが見られるプロパティの一覧）\n" +
+    `       scripts/search-console query '<JSON>'（${SITE} の Search Analytics。JSON は startDate・endDate・dimensions などの問い合わせの本文）\n` +
+    `         例: scripts/search-console query '{"startDate":"2026-10-01","endDate":"2026-10-28","dimensions":["query"],"rowLimit":100}'`;
+  const valid = (command === "sites" && body === undefined) || (command === "query" && body !== undefined);
+  if (rest.length > 0 || !valid) {
+    throw new ExpectedFailure(usage);
+  }
+  const accessToken = await exchangeForAccessToken(loadServiceAccountKey());
+  const response =
+    command === "sites"
+      ? await fetch(`${API}/webmasters/v3/sites`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      : await fetch(`${API}/webmasters/v3/sites/${encodeURIComponent(SITE)}/searchAnalytics/query`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify(parseQuery(body)),
+        });
+  const text = await response.text();
+  if (!response.ok) throw new ExpectedFailure(`${response.status} ${text}`);
+  console.log(JSON.stringify(JSON.parse(text), null, 2));
+};
+
+// Domain プロパティなので、http・https・www の別名とサブドメインをまとめて数える
+const SITE = "sc-domain:nu-tori.app";
+const API = "https://searchconsole.googleapis.com";
+const TOKEN_URL = "https://oauth2.googleapis.com/token";
+// 読むだけのスコープ。書けるスコープ（.../webmasters）を求めないので、鍵が漏れてもプロパティを変えられない
+const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
+
+const parseQuery = (body) => {
+  let query;
+  try {
+    query = JSON.parse(body);
+  } catch {
+    throw new ExpectedFailure("問い合わせが JSON でない");
+  }
+  if (typeof query !== "object" || query === null || Array.isArray(query)) {
+    throw new ExpectedFailure("問い合わせは JSON のオブジェクトにする");
+  }
+  return query;
+};
+
+// 鍵は、サービスアカウントの JSON 鍵を base64 の1行にしたもの。クラウドの環境変数は改行を持てないことがあるため。JSON をそのまま置いても読む
+const loadServiceAccountKey = () => {
+  const value = process.env.NU_TORI_GSC_SERVICE_ACCOUNT_KEY;
+  if (!value) throw new ExpectedFailure("Not authenticated: NU_TORI_GSC_SERVICE_ACCOUNT_KEY が無い");
+  const json = value.trimStart().startsWith("{") ? value : Buffer.from(value, "base64").toString("utf8");
+  let key;
+  try {
+    key = JSON.parse(json);
+  } catch {
+    throw new ExpectedFailure("NU_TORI_GSC_SERVICE_ACCOUNT_KEY が JSON 鍵（か、それを base64 にしたもの）でない");
+  }
+  if (key.type !== "service_account" || !key.client_email || !key.private_key) {
+    throw new ExpectedFailure("NU_TORI_GSC_SERVICE_ACCOUNT_KEY がサービスアカウントの JSON 鍵でない（type・client_email・private_key が要る）");
+  }
+  return { clientEmail: key.client_email, privateKey: createPrivateKey(key.private_key) };
+};
+
+// アクセストークンはファイルに残さず、呼ぶたびに換える。1回の呼び出しに1往復増えるだけで済む
+const exchangeForAccessToken = async (key) => {
+  const response = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: signServiceAccountJwt(key),
+    }),
+  });
+  const text = await response.text();
+  if (!response.ok) throw new ExpectedFailure(`アクセストークンに換えられなかった: ${response.status} ${text}`);
+  return JSON.parse(text).access_token;
+};
+
+const signServiceAccountJwt = ({ clientEmail, privateKey }) => {
+  const now = Math.floor(Date.now() / 1000);
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  // Google は exp を発行から1時間以内と決めている。換えるのはすぐなので短くする
+  const unsigned = `${encode({ alg: "RS256", typ: "JWT" })}.${encode({
+    iss: clientEmail,
+    scope: SCOPE,
+    aud: TOKEN_URL,
+    iat: now,
+    exp: now + 300,
+  })}`;
+  return `${unsigned}.${sign("sha256", Buffer.from(unsigned), privateKey).toString("base64url")}`;
+};
+
+module.exports = { signServiceAccountJwt };
+
+// テストが require したときは、署名の道だけを貸し、コマンドとしては動かない
+if (require.main === module) {
+  // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
+  main().catch((error) => {
+    console.error(error instanceof ExpectedFailure ? error.message : error);
+    process.exitCode = 1;
+  });
+}

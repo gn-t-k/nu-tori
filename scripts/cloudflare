@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# エージェントと人が Cloudflare の、例外にならない振る舞い（Workers Logs、呼び出しの数・誤り・CPU 時間）と、`nu-tori.app` の DMARC の集計を読む。環境の対応と呼ぶ先を、ここ1か所に置く
+# エージェントと人が Cloudflare の、例外にならない振る舞い（Workers Logs、呼び出しの数・誤り・CPU 時間）と、`nu-tori.app` の DMARC の集計と、LP の訪問の集計（Web Analytics）を読む。環境の対応と呼ぶ先を、ここ1か所に置く
 set -euo pipefail
 
 usage() {
@@ -9,6 +9,7 @@ usage() {
     例: scripts/cloudflare logs production 60 '{"needle":{"value":"alarm"}}'
   scripts/cloudflare metrics <development|production> [何時間前から（既定 24）]
   scripts/cloudflare dmarc [何日前から（既定 7）]
+  scripts/cloudflare web-analytics [何日前から（既定 7、93 まで）]
 EOF
     exit 2
 }
@@ -27,8 +28,8 @@ case "$command" in
         esac
         shift
         ;;
-    # DMARC の報告はドメインに届くもので、環境の区別が無い
-    dmarc) ;;
+    # DMARC の報告と LP の訪問はドメインのもので、環境の区別が無い
+    dmarc | web-analytics) ;;
     *) usage ;;
 esac
 
@@ -38,21 +39,33 @@ case "$since" in
     '') ;;
     0 | *[!0-9]*) usage ;;
 esac
+# RUM の問い合わせは、1回で 93 日より前を読めない
+if [ "$command" = web-analytics ] && [ "${since:-7}" -gt 93 ]; then usage; fi
 
+# LP の訪問の集計は Account Analytics Read だけのトークンで読む。Workers Logs を読めるトークンを、見つけてもらう役の環境（nu-tori-discovery）に置かないため
+# アカウントの ID は、そのトークンが見る1つのアカウントから引く（scripts/finance と同じ）。置く値を1つにするため
 # デプロイ用の CLOUDFLARE_API_TOKEN（書き込みの権限）は使わない
-if [ -z "${NU_TORI_CLOUDFLARE_ACCOUNT_ID:-}" ] || [ -z "${NU_TORI_CLOUDFLARE_READ_TOKEN:-}" ]; then
-    echo "Not authenticated: NU_TORI_CLOUDFLARE_ACCOUNT_ID と NU_TORI_CLOUDFLARE_READ_TOKEN が要る" >&2
-    exit 1
+if [ "$command" = web-analytics ]; then
+    if [ -z "${NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN:-}" ]; then
+        echo "Not authenticated: NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN が要る" >&2
+        exit 1
+    fi
+    token="$NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN"
+else
+    if [ -z "${NU_TORI_CLOUDFLARE_ACCOUNT_ID:-}" ] || [ -z "${NU_TORI_CLOUDFLARE_READ_TOKEN:-}" ]; then
+        echo "Not authenticated: NU_TORI_CLOUDFLARE_ACCOUNT_ID と NU_TORI_CLOUDFLARE_READ_TOKEN が要る" >&2
+        exit 1
+    fi
+    token="$NU_TORI_CLOUDFLARE_READ_TOKEN"
 fi
 api="https://api.cloudflare.com/client/v4"
-account="$api/accounts/$NU_TORI_CLOUDFLARE_ACCOUNT_ID"
 
 get_json() {
-    curl --silent --show-error --fail-with-body -H "Authorization: Bearer $NU_TORI_CLOUDFLARE_READ_TOKEN" "$1"
+    curl --silent --show-error --fail-with-body -H "Authorization: Bearer $token" "$1"
 }
 
 post_json() {
-    curl --silent --show-error --fail-with-body -H "Authorization: Bearer $NU_TORI_CLOUDFLARE_READ_TOKEN" \
+    curl --silent --show-error --fail-with-body -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" --data @- "$1"
 }
 
@@ -89,7 +102,7 @@ case "$command" in
                     // 環境の Worker に必ず絞る。絞らないと、アカウントのすべての Worker のログが混ざる
                     filters: [{ key: "$metadata.service", operation: "eq", type: "string", value: process.env.WORKER }, ...filters],
                 },
-            }));' | post_json "$account/workers/observability/telemetry/query"
+            }));' | post_json "$api/accounts/$NU_TORI_CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query"
         ;;
     metrics)
         # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
@@ -146,6 +159,62 @@ case "$command" in
                 }`,
                 variables: { zoneTag: process.env.ZONE, start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) },
             }));' | post_json "$api/graphql" | fail_on_graphql_errors
+        ;;
+    web-analytics)
+        # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
+        account_id="$(get_json "$api/accounts" | node -e '
+            let body = "";
+            process.stdin.on("data", (chunk) => (body += chunk)).on("end", () => {
+                let accounts;
+                try {
+                    accounts = JSON.parse(body).result;
+                } catch {
+                    console.error(body);
+                    process.exitCode = 1;
+                    return;
+                }
+                // ほかのアカウントの訪問を混ぜないよう、1つでなければ止まる
+                if (accounts?.length === 1) console.log(accounts[0].id);
+                else {
+                    console.error(`トークンが見るアカウントが1つでない（${accounts?.length}）`);
+                    process.exitCode = 1;
+                }
+            });')"
+        # site tag はビーコンの token と別物で、一覧を引くには Account Settings Read が要る。ホストで絞れば site tag を知らなくても取りこぼさない
+        # クエリ文字列（UTM など）は RUM に無いので、どこから来たかは参照元のホストとパスで見る
+        # 上限の行数で返ったときは組み合わせが切れて数が欠けているかもしれないので、問い合わせと確かめで同じ上限を使う
+        limit=5000
+        # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
+        ACCOUNT="$account_id" DAYS="${since:-7}" LIMIT="$limit" node -e '
+            const end = new Date();
+            const start = new Date(end - Number(process.env.DAYS) * 86_400_000);
+            console.log(JSON.stringify({
+                query: `query ($accountTag: string!, $start: Time!, $end: Time!) {
+                    viewer { accounts(filter: { accountTag: $accountTag }) {
+                        rumPageloadEventsAdaptiveGroups(limit: ${Number(process.env.LIMIT)}, orderBy: [date_ASC, sum_visits_DESC], filter: { requestHost: "nu-tori.app", bot: 0, datetime_geq: $start, datetime_leq: $end }) {
+                            count
+                            sum { visits }
+                            dimensions { date requestPath refererHost refererPath }
+                        }
+                    } }
+                }`,
+                variables: { accountTag: process.env.ACCOUNT, start: start.toISOString(), end: end.toISOString() },
+            }));' | post_json "$api/graphql" | fail_on_graphql_errors | LIMIT="$limit" node -e '
+            let body = "";
+            process.stdin.on("data", (chunk) => (body += chunk)).on("end", () => {
+                console.log(body);
+                // errors で data が無いときは、前の fail_on_graphql_errors が失敗にしているので、ここでは確かめない
+                let rows;
+                try {
+                    rows = JSON.parse(body).data?.viewer?.accounts?.[0]?.rumPageloadEventsAdaptiveGroups;
+                } catch {
+                    return;
+                }
+                if (rows && rows.length >= Number(process.env.LIMIT)) {
+                    console.error(`${process.env.LIMIT} 行で切れたかもしれない。日数を短くして読み直す`);
+                    process.exitCode = 1;
+                }
+            });'
         ;;
     # 先頭の確かめと一覧がずれたとき、何もせず 0 で抜けないようにする
     *) usage ;;
