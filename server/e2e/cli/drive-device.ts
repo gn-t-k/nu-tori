@@ -3,7 +3,12 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { match } from "ts-pattern";
 import { z } from "zod";
-import { type DeviceConnection, type DeviceSession, createDeviceClient } from "../device-client";
+import {
+  type DeviceConnection,
+  type DeviceSession,
+  createDeviceClient,
+  savedSessionSchema,
+} from "../device-client";
 import { generateRecordId } from "../../src/domain/record-id";
 import { syncWriteSchema } from "../../src/http/sync-routes/sync-write-schema";
 
@@ -40,14 +45,10 @@ const runSignIn = async (args: string[]): Promise<number> => {
   });
   const [runDir, name] = requirePositionals(positionals, z.tuple([z.string(), z.string()]));
   const run = await openRun(runDir);
-  const session = await run.client.signIn(
-    values["as-of"] === undefined ? undefined : new Date(values["as-of"]),
-  );
+  const asOf = parseOption("--as-of", isoDateTimeSchema, values["as-of"]);
+  const session = await run.client.signIn(asOf === undefined ? undefined : new Date(asOf));
   await mkdir(join(runDir, "sessions"), { recursive: true });
-  await writeFile(
-    sessionPath(runDir, name),
-    JSON.stringify({ sessionToken: session.sessionToken, accountId: session.accountId }),
-  );
+  await writeFile(sessionPath(runDir, name), JSON.stringify(savedSessionSchema.parse(session)));
   console.log(session.accountId);
   return 0;
 };
@@ -95,7 +96,8 @@ const runPull = async (args: string[]): Promise<number> => {
   });
   const [runDir, name] = requirePositionals(positionals, z.tuple([z.string(), z.string()]));
   const run = await openRun(runDir);
-  const changes = await (await run.resume(name)).pullAllChanges(Number(values.after ?? "0"));
+  const after = parseOption("--after", z.coerce.number().int().nonnegative(), values.after);
+  const changes = await (await run.resume(name)).pullAllChanges(after ?? 0);
   console.log(JSON.stringify(changes));
   return 0;
 };
@@ -119,19 +121,17 @@ const runCall = async (args: string[]): Promise<number> => {
     positionals,
     z.tuple([z.string(), z.string(), z.string(), z.string()]),
   );
+  const content = await readContent(values);
+  const timeout = parseOption("--timeout", z.coerce.number().positive(), values.timeout);
+  const asOf = parseOption("--as-of", isoDateTimeSchema, values["as-of"]);
   const run = await openRun(runDir, { logResponses: false });
-  const body =
-    values.json ??
-    (values["body-file"] === undefined ? undefined : await readFile(values["body-file"]));
-  const contentType = values.json === undefined ? values["content-type"] : "application/json";
-  const signal =
-    values.timeout === undefined ? undefined : AbortSignal.timeout(Number(values.timeout) * 1000);
-  const asOf = values["as-of"];
+  const signal = timeout === undefined ? undefined : AbortSignal.timeout(timeout * 1000);
   const response = await (
     await run.resume(name)
   ).call(method, path, {
-    ...(contentType === undefined ? {} : { headers: { "content-type": contentType } }),
-    ...(body === undefined ? {} : { body }),
+    ...(content === undefined
+      ? {}
+      : { headers: { "content-type": content.contentType }, body: content.body }),
     ...(signal === undefined ? {} : { signal }),
     ...(values.e2e === true || asOf !== undefined
       ? { e2e: asOf === undefined ? {} : { requestedAt: new Date(asOf) } }
@@ -150,6 +150,28 @@ const runCall = async (args: string[]): Promise<number> => {
   }
   console.error(`状態コード ${response.status}${timedOut ? `。${values.timeout} 秒で切った` : ""}`);
   return !timedOut && response.ok ? 0 : 1;
+};
+
+// 本文の指定は、なし・--json・--body-file と --content-type の対のどれか1つにする。外れたら使い方を出して止まる
+const readContent = async (values: {
+  json?: string | undefined;
+  "body-file"?: string | undefined;
+  "content-type"?: string | undefined;
+}): Promise<{ body: BodyInit; contentType: string } | undefined> => {
+  const { json, "body-file": bodyFile, "content-type": contentType } = values;
+  if (json !== undefined && bodyFile === undefined && contentType === undefined) {
+    return { body: json, contentType: "application/json" };
+  }
+  if (json === undefined && bodyFile !== undefined && contentType !== undefined) {
+    return { body: await readFile(bodyFile), contentType };
+  }
+  if (json === undefined && bodyFile === undefined && contentType === undefined) {
+    return undefined;
+  }
+  console.error(
+    `本文は --json か、--body-file と --content-type の対のどちらか1つで渡す\n${usage}`,
+  );
+  process.exit(2);
 };
 
 // 本文を読み切る。中断されたら、それまでに届いた分を返す
@@ -238,9 +260,26 @@ const runEnvSchema = z.object({
   DEVICE_ID: z.string().min(1),
 });
 
-const savedSessionSchema = z.object({ sessionToken: z.string(), accountId: z.string() });
-
 const sessionPath = (runDir: string, name: string) => join(runDir, "sessions", `${name}.json`);
+
+const isoDateTimeSchema = z.iso.datetime({ offset: true });
+
+// オプションの値を確かめて読む。渡されていなければ undefined、合わなければどの引数が悪いかと使い方を出して止まる
+const parseOption = <T extends z.ZodType>(
+  name: string,
+  schema: T,
+  value: string | undefined,
+): z.infer<T> | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) {
+    console.error(`${name} の値が読めない（${value}）\n${usage}`);
+    process.exit(2);
+  }
+  return parsed.data;
+};
 
 // 位置の引数の数が合わなければ使い方を出して止まる。1つ目（回のフォルダ）は絶対パスにする
 const requirePositionals = <T extends z.ZodTuple>(positionals: string[], shape: T): z.infer<T> => {

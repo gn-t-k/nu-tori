@@ -37,8 +37,8 @@ export type DeviceSession = SavedSession & {
   // hasMore が false になるまで取りに行き、変更を受け取った順に並べて返す
   pullAllChanges: (afterSequence?: number) => Promise<Change[]>;
   deleteAccount: () => Promise<void>;
-  // セッションがまだ使えるかを、取りに行く要求の状態コードで返す。アカウントを削除したあとは 401
-  readStatus: () => Promise<number>;
+  // 取りに行く要求を1回送り、状態コードを返す。アカウントを削除したあとは 401
+  probeSessionStatusCode: () => Promise<number>;
 };
 
 export type SavedSession = z.infer<typeof savedSessionSchema>;
@@ -124,7 +124,7 @@ export const createDeviceClient = (connection: DeviceConnection): DeviceClient =
           throw new Error(`アカウントを削除できなかった（状態コード ${response.status}）`);
         }
       },
-      readStatus: async () => (await call("GET", syncChangesPath(0))).status,
+      probeSessionStatusCode: async () => (await call("GET", syncChangesPath(0))).status,
     };
   };
 
@@ -157,7 +157,8 @@ export const createDeviceClient = (connection: DeviceConnection): DeviceClient =
   };
 };
 
-const savedSessionSchema = z.object({ sessionToken: z.string(), accountId: z.string() });
+// サインインの応答と、手元に残したセッションの形
+export const savedSessionSchema = z.object({ sessionToken: z.string(), accountId: z.string() });
 
 const changesPageSchema = z.object({
   changes: z.array(

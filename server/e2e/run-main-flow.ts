@@ -130,7 +130,7 @@ const withAccountDeletion = async (
 };
 
 const requireSessionRevoked = async (session: DeviceSession) => {
-  const status = await session.readStatus();
+  const status = await session.probeSessionStatusCode();
   if (status !== 401) {
     throw new Error(`アカウントを削除したあとも、セッションが使えた（状態コード ${status}）`);
   }
