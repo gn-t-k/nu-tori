@@ -43,6 +43,9 @@ export type DeviceSession = SavedSession & {
 
 export type SavedSession = z.infer<typeof savedSessionSchema>;
 
+// サインインの応答と、手元に残したセッションの形
+export const savedSessionSchema = z.object({ sessionToken: z.string(), accountId: z.string() });
+
 export type Change = z.infer<typeof changesPageSchema>["changes"][number];
 
 export type Write = { id: string; type: string; [field: string]: unknown };
@@ -156,9 +159,6 @@ export const createDeviceClient = (connection: DeviceConnection): DeviceClient =
     },
   };
 };
-
-// サインインの応答と、手元に残したセッションの形
-export const savedSessionSchema = z.object({ sessionToken: z.string(), accountId: z.string() });
 
 const changesPageSchema = z.object({
   changes: z.array(
