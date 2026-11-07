@@ -24,7 +24,6 @@
 
 Preconditions:
 
-- `doctor.sh "$run"` が全部 `ok`
 - `$D sign-in "$run" meal` で作ったアカウント
 - 推定できた、まで見るなら、`VERIFY_SERVER_ANTHROPIC_API_KEY` に開発用のワークスペースの鍵を渡して立てた回
 

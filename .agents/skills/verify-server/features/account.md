@@ -19,7 +19,7 @@
 
 Preconditions:
 
-- `doctor.sh "$run"` が全部 `ok`
+- 立てたばかりの回（アカウントはこの手順で作る）
 
 - **サインイン。** `$D sign-in "$run" main` を送る。アカウント ID が1行出て、`requests.log` に `POST /v1/e2e/sessions -> 201` が残る
 - **無料体験中。** `$D pull "$run" main | jq -c '.[] | select(.kind=="subscription_status") | .record'` を読む。`freeTrial.type` が `available` で、`lastDay` が今日より後

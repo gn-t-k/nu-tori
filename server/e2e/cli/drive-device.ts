@@ -32,10 +32,7 @@ const main = async ([command, ...args]: string[]): Promise<number> =>
     .with("push", () => runPush(args))
     .with("pull", () => runPull(args))
     .with("call", () => runCall(args))
-    .otherwise(() => {
-      console.error(usage);
-      return Promise.resolve(2);
-    });
+    .otherwise(() => Promise.reject(new UsageError("コマンドが無いか、読めない")));
 
 const runSignIn = async (args: string[]): Promise<number> => {
   const { values, positionals } = parseArgs({
@@ -53,38 +50,31 @@ const runSignIn = async (args: string[]): Promise<number> => {
   return 0;
 };
 
-// 送る前に、書き込みを受け口と同じスキーマで確かめる。書き込みの id は省けば足す
+// 送る前に、書き込みを受け口と同じスキーマで確かめる。書き込みの id は省けば足す。受け付けられない書き込みがあれば、device-client が投げて 1 で終わる
 const runPush = async (args: string[]): Promise<number> => {
   const [runDir, name, json] = requirePositionals(
     parseArgs({ args, allowPositionals: true }).positionals,
     z.tuple([z.string(), z.string(), z.string()]),
   );
   const run = await openRun(runDir);
-  const writes = z
+  const parsed = z
     .array(z.looseObject({ id: z.string().optional(), type: z.string() }))
     .parse(JSON.parse(json))
-    .map((write) => ({ ...write, id: write.id ?? generateRecordId() }));
-  const invalid = writes.flatMap((write, index) => {
-    const parsed = syncWriteSchema.safeParse(write);
-    return parsed.success
+    .map((write) => syncWriteSchema.safeParse({ ...write, id: write.id ?? generateRecordId() }));
+  const invalid = parsed.flatMap((result, index) =>
+    result.success
       ? []
       : [
-          `書き込み ${index}（${write.type}）: ${parsed.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("、")}`,
-        ];
-  });
+          `書き込み ${index}: ${result.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("、")}`,
+        ],
+  );
   if (invalid.length > 0) {
     console.error(`受け口の形に合わないので送らなかった\n${invalid.join("\n")}`);
     return 2;
   }
-  const results = await (await run.resume(name)).pushWrites(writes);
+  const writes = parsed.flatMap((result) => (result.success ? [result.data] : []));
+  const results = await (await run.resume(name)).pushAppliedWrites(writes);
   console.log(JSON.stringify(results));
-  const rejected = results.filter(({ result }) => result !== "applied");
-  if (rejected.length > 0) {
-    console.error(
-      `受け付けられなかった書き込みがある（${rejected.map(({ result, rejectionReason }) => `${result}: ${rejectionReason ?? "理由なし"}`).join("、")}）`,
-    );
-    return 1;
-  }
   return 0;
 };
 
@@ -152,7 +142,7 @@ const runCall = async (args: string[]): Promise<number> => {
   return !timedOut && response.ok ? 0 : 1;
 };
 
-// 本文の指定は、なし・--json・--body-file と --content-type の対のどれか1つにする。外れたら使い方を出して止まる
+// 本文の指定は、なし・--json・--body-file と --content-type の対のどれか1つにする
 const readContent = async (values: {
   json?: string | undefined;
   "body-file"?: string | undefined;
@@ -168,10 +158,7 @@ const readContent = async (values: {
   if (json === undefined && bodyFile === undefined && contentType === undefined) {
     return undefined;
   }
-  console.error(
-    `本文は --json か、--body-file と --content-type の対のどちらか1つで渡す\n${usage}`,
-  );
-  process.exit(2);
+  throw new UsageError("本文は --json か、--body-file と --content-type の対のどちらか1つで渡す");
 };
 
 // 本文を読み切る。中断されたら、それまでに届いた分を返す
@@ -197,7 +184,8 @@ const readBody = async (response: Response): Promise<{ bytes: Uint8Array; timedO
   }
 };
 
-// run.env を読み、端末のクライアントを組む。logResponses なら、送った要求と応答をすべて証拠に足す
+// run.env を読み、端末のクライアントを組む。logResponses なら、送った要求と応答をすべて証拠に足す。
+// call は logResponses を切って自分で残す。見守る要求は --timeout で切るまで本文が終わらず、送る口で本文を読み切って残すと、切ったときに何も残らないため
 const openRun = async (runDir: string, { logResponses } = { logResponses: true }) => {
   const env = runEnvSchema.parse(
     Object.fromEntries(
@@ -264,7 +252,7 @@ const sessionPath = (runDir: string, name: string) => join(runDir, "sessions", `
 
 const isoDateTimeSchema = z.iso.datetime({ offset: true });
 
-// オプションの値を確かめて読む。渡されていなければ undefined、合わなければどの引数が悪いかと使い方を出して止まる
+// オプションの値を確かめて読む。渡されていなければ undefined
 const parseOption = <T extends z.ZodType>(
   name: string,
   schema: T,
@@ -275,27 +263,33 @@ const parseOption = <T extends z.ZodType>(
   }
   const parsed = schema.safeParse(value);
   if (!parsed.success) {
-    console.error(`${name} の値が読めない（${value}）\n${usage}`);
-    process.exit(2);
+    throw new UsageError(`${name} の値が読めない（${value}）`);
   }
   return parsed.data;
 };
 
-// 位置の引数の数が合わなければ使い方を出して止まる。1つ目（回のフォルダ）は絶対パスにする
+// 位置の引数を読む。1つ目（回のフォルダ）は絶対パスにする
 const requirePositionals = <T extends z.ZodTuple>(positionals: string[], shape: T): z.infer<T> => {
   const parsed = shape.safeParse(
     positionals.map((value, index) => (index === 0 ? resolve(value) : value)),
   );
   if (!parsed.success) {
-    console.error(usage);
-    process.exit(2);
+    throw new UsageError("位置の引数の数が合わない");
   }
   return parsed.data;
 };
 
+// 引数が読めないとき。使い方を添えて 2 で終わる
+class UsageError extends Error {}
+
 try {
   process.exitCode = await main(process.argv.slice(2));
 } catch (error) {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
+  if (error instanceof UsageError) {
+    console.error(`${error.message}\n${usage}`);
+    process.exitCode = 2;
+  } else {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  }
 }

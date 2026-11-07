@@ -22,7 +22,6 @@
 
 Preconditions:
 
-- `doctor.sh "$run"` が全部 `ok`
 - `$D sign-in "$run" reply` で作ったアカウント
 - 返事まで見るなら、`VERIFY_SERVER_ANTHROPIC_API_KEY` に開発用のワークスペースの鍵を渡して立てた回
 

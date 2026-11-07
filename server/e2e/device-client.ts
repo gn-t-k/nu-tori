@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { e2eRequestHeaders } from "../src/http/e2e-access";
+import { syncWriteSchema } from "../src/http/sync-routes/sync-write-schema";
 
 // 端末と同じ形で Worker の API を呼ぶ。主な流れ（run-main-flow.ts）と、手元で確かめる道具（cli/drive-device.ts）が使う。
 // 1つのクライアントを1台の端末として送り（deviceId が同じ）、セッションはサインインで作るか、残したトークンから戻す
@@ -31,8 +32,8 @@ export type DeviceSession = SavedSession & {
       e2e?: { requestedAt?: Date };
     },
   ) => Promise<Response>;
-  // 書き込みを送り、書き込みごとの結果を返す。受け付けられなかった書き込みでは投げない（呼ぶ側が結果を読む）
-  pushWrites: (writes: Write[]) => Promise<z.infer<typeof writeResultsSchema>["results"]>;
+  // 書き込みを送り、書き込みごとの結果を返す。受け付けられなかった書き込みがあれば、どれがなぜかを書いて投げる
+  pushAppliedWrites: (writes: Write[]) => Promise<z.infer<typeof writeResultsSchema>["results"]>;
   pullChanges: (afterSequence: number) => Promise<z.infer<typeof changesPageSchema>>;
   // hasMore が false になるまで取りに行き、変更を受け取った順に並べて返す
   pullAllChanges: (afterSequence?: number) => Promise<Change[]>;
@@ -48,7 +49,8 @@ export const savedSessionSchema = z.object({ sessionToken: z.string(), accountId
 
 export type Change = z.infer<typeof changesPageSchema>["changes"][number];
 
-export type Write = { id: string; type: string; [field: string]: unknown };
+// 受け口（/v1/sync/writes）と同じ形。書き込みの種類や項目が変わると、型検査が送る側を教える
+export type Write = z.input<typeof syncWriteSchema>;
 
 export const createDeviceClient = (connection: DeviceConnection): DeviceClient => {
   const timeZone = "Asia/Tokyo";
@@ -98,7 +100,7 @@ export const createDeviceClient = (connection: DeviceConnection): DeviceClient =
       sessionToken,
       accountId,
       call,
-      pushWrites: async (writes) => {
+      pushAppliedWrites: async (writes) => {
         const response = await call("POST", "/v1/sync/writes", {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ clientState, writes, isFinalBatch: false }),
@@ -106,7 +108,18 @@ export const createDeviceClient = (connection: DeviceConnection): DeviceClient =
         if (response.status !== 200) {
           throw new Error(`書き込みを送れなかった（状態コード ${response.status}）`);
         }
-        return writeResultsSchema.parse(await response.json()).results;
+        const { results } = writeResultsSchema.parse(await response.json());
+        const rejected = results.flatMap(({ result, rejectionReason }, index) =>
+          result === "applied"
+            ? []
+            : [
+                `書き込み ${writes[index]?.type} が ${result}（理由: ${rejectionReason ?? "なし"}）`,
+              ],
+        );
+        if (rejected.length > 0) {
+          throw new Error(`受け付けられなかった書き込みがある: ${rejected.join("、")}`);
+        }
+        return results;
       },
       pullChanges,
       pullAllChanges: async (afterSequence = 0) => {

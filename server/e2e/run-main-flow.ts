@@ -4,7 +4,6 @@ import {
   type Change,
   type DeviceClient,
   type DeviceSession,
-  type Write,
   createDeviceClient,
 } from "./device-client";
 import { mealTextBody } from "./meal-text-body";
@@ -164,7 +163,7 @@ const readFreeTrialLastDay = async (session: DeviceSession): Promise<string | un
 const computeTodayOfStartedOn = (): string => computeCalendarDayInTimeZone(new Date(), "UTC");
 
 const recordWeight = async (session: DeviceSession, measuredAt: Date): Promise<void> => {
-  await pushAppliedWrites(session, [
+  await session.pushAppliedWrites([
     {
       id: generateRecordId(),
       type: "create_weight_record",
@@ -348,7 +347,7 @@ const sendPhotographedMeal = async (options: Flow, session: DeviceSession): Prom
   const mealId = generateRecordId();
   const photoId = generateRecordId();
   const now = Date.now();
-  await pushAppliedWrites(session, [
+  await session.pushAppliedWrites([
     {
       id: generateRecordId(),
       type: "create_meal",
@@ -532,14 +531,14 @@ const requireEstimatedDishIdsAndIngredientCount = (
 
 // サーバーが振った料理の ID を、そのまま送り返して名前を直す。送り返した ID で料理が見つからないと、受け付けられずに失敗する（#362）
 const renameEstimatedDish = async (session: DeviceSession, dishId: string): Promise<void> => {
-  await pushAppliedWrites(session, [
+  await session.pushAppliedWrites([
     { id: generateRecordId(), type: "update_dish", dishId, name: "直した料理" },
   ]);
 };
 
 const sendText = async (session: DeviceSession, body: string) => {
   const sentTextId = generateRecordId();
-  await pushAppliedWrites(session, [
+  await session.pushAppliedWrites([
     {
       id: generateRecordId(),
       type: "create_sent_text",
@@ -638,18 +637,6 @@ const findSentTextStatus = (changes: Change[], sentTextId: string) =>
       z.object({ classification: z.string(), replyStatus: z.string() }).parse(record),
     )
     .at(-1);
-
-// 書き込みを送り、どれも受け付けられたことを確かめる
-const pushAppliedWrites = async (session: DeviceSession, writes: Write[]): Promise<void> => {
-  const results = await session.pushWrites(writes);
-  for (const [index, { result, rejectionReason }] of results.entries()) {
-    if (result !== "applied") {
-      throw new Error(
-        `書き込み ${writes[index]?.type} が ${result} になった（理由: ${rejectionReason ?? "なし"}）`,
-      );
-    }
-  }
-};
 
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);

@@ -22,7 +22,6 @@
 
 Preconditions:
 
-- `doctor.sh "$run"` が全部 `ok`
 - `$D sign-in "$run" weight` で作ったアカウント
 
 - **手で記録する。** `w=$($D uuid)` として、`$D push "$run" weight "[{\"type\":\"create_weight_record\",\"weightRecord\":{\"id\":\"$w\",\"weightKg\":60.5,\"measuredAt\":$(date +%s)000,\"timeZone\":\"Asia/Tokyo\"}}]"` を送る。`results[0].result` が `applied`
@@ -33,7 +32,7 @@ Preconditions:
 
 ## Gotchas
 
-- `update_weight_record` の `version` は、直したあとの版（届いた `version` に 1 を足した値）。届いた版のままで送ると `rejected`（`version_too_low`）になる
+- `update_weight_record` の `version` は、届いた `version` に 1 を足して送る。2 より小さいと `rejected`（`version_too_low`）になる。新しい版は、送った版と今の版に 1 を足した値の大きいほうになるので、届いた版のままでも 2 以上なら受け付けられ、版は上がる
 - 取りに行く応答は、記録ごとに今の形が1つ出る。消した記録は `<種類>_deletion` の種類で出る
 - 体重の傾向は、日ごとにいちばん早い記録を代表にして出す。直す手順は、取り込む前（その日の記録が `$w` だけのとき）に回さないと、`trendKg` が直した値にならない
 - `weight_trend` の `recordId` はいつも同じ（全部 0 の UUID）で、毎回全体が出直す
