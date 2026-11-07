@@ -1,11 +1,11 @@
 import { advanceEstimations } from "../estimation/domain/advance-estimations";
-import { computeNextEstimationAttemptsAt } from "../estimation/domain/begin-estimation-attempts";
+import { computeNextEstimationJobAt } from "../estimation/domain/begin-estimation-attempts";
 import type { EstimationProvider } from "../estimation/domain/estimation-provider";
 import { deleteLeftoverMealPhotoFiles } from "../meal/domain/delete-leftover-meal-photo-files";
 import type { MealPhotoArchive } from "../meal/domain/meal-photo-archive";
 import { advanceReplies } from "../reply/domain/advance-replies";
 import type { ConversationProvider } from "../reply/domain/conversation-provider";
-import { computeNextReplyAttemptsAt } from "../reply/domain/begin-reply-attempts";
+import { computeNextReplyJobAt } from "../reply/domain/begin-reply-attempts";
 import type { ReplyWatchers } from "../reply/domain/create-reply-watchers";
 import { classifySentTexts } from "../sent-text/domain/classify-sent-texts";
 import { advanceSubscriptionCheck } from "../subscription-status/domain/advance-subscription-check";
@@ -59,7 +59,7 @@ export const accountAlarmJobs: readonly AlarmJob<
       );
       return { ...toStoppable(stoppedError), report: { ...emptyReport, ...advanced } };
     },
-    computeNextAt: computeNextEstimationAttemptsAt,
+    computeNextAt: computeNextEstimationJobAt,
   },
   // 返事。同じアラームで推定し終えた食事の栄養を返事の文脈に入れるため、推定のあとに置く
   {
@@ -79,7 +79,7 @@ export const accountAlarmJobs: readonly AlarmJob<
         report: { ...emptyReport, ...replied, replyAttempts: attempts },
       };
     },
-    computeNextAt: computeNextReplyAttemptsAt,
+    computeNextAt: computeNextReplyJobAt,
   },
   // 写真の控えの消し残しの消し直し
   {

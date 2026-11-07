@@ -91,9 +91,7 @@ export const beginReplyAttempts = (
 
 // 返事の仕事が次に動く時刻。待っている依頼を作った時刻（過ぎているので、すぐ動く）と、続いている生成の次に試みる時刻のうち、いちばん早いもの。
 // アラームの並びが張る時刻に使う。beginReplyAttempts が始めるものと同じ依頼と生成から出すので、条件を変えるときは両方をそろえる
-export const computeNextReplyAttemptsAt = (
-  stores: Pick<RecordKindStores, "reply">,
-): Date | undefined =>
+export const computeNextReplyJobAt = (stores: Pick<RecordKindStores, "reply">): Date | undefined =>
   findEarliest([
     ...stores.reply.findWaitingRequests().map(({ requestedAt }) => requestedAt),
     ...stores.reply

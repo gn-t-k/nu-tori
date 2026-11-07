@@ -21,7 +21,7 @@ describe("記録の見張り", () => {
     });
   });
 
-  describe("見張った記録の値が変わったとき", () => {
+  describe("値が変わった記録と、無いところから消えた記録を、逆の順に見張ったとき", () => {
     let first: RecordId;
     let second: RecordId;
     beforeEach(() => {
@@ -66,6 +66,21 @@ describe("記録の見張り", () => {
       values.set(recordId, { status: "value", value: { step: "waiting" } });
       watcher.watch(kind, recordId);
       values.set(recordId, { status: "value", value: { step: "waiting" } });
+      watcher.addChanges();
+    });
+
+    test("変更を足さないこと", () => {
+      expect(changes).toEqual([]);
+    });
+  });
+
+  describe("見張った記録が消えたまま変わらないとき", () => {
+    let recordId: RecordId;
+    beforeEach(() => {
+      recordId = generateRecordId();
+      values.set(recordId, { status: "deleted" });
+      watcher.watch(kind, recordId);
+      values.set(recordId, { status: "deleted" });
       watcher.addChanges();
     });
 

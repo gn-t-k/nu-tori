@@ -136,6 +136,18 @@ export const beginEstimationAttempts = (
     return { attempts, usageEvents };
   });
 
+// 推定の仕事が次に動く時刻。待っている予定の時刻と、続いている推定の次に試みる時刻のうち、いちばん早いもの。
+// アラームの並びが張る時刻に使う。beginEstimationAttempts が始めるものと同じ予定と推定から出すので、条件を変えるときは両方をそろえる
+export const computeNextEstimationJobAt = (
+  stores: Pick<RecordKindStores, "estimationSchedule" | "estimation">,
+): Date | undefined =>
+  findEarliest([
+    stores.estimationSchedule.findWaitingSchedules(undefined)[0]?.dueAt,
+    ...stores.estimation
+      .findContinuingEstimations()
+      .map(({ attempts }) => computeNextEstimationAttemptAt(attempts)),
+  ]);
+
 const findScheduledMeal = (stores: Pick<RecordKindStores, "meal">, mealId: RecordId): Meal => {
   const meal = stores.meal.find(mealId);
   if (meal === undefined) {
@@ -154,15 +166,3 @@ const findSentText = (
   }
   return sentText;
 };
-
-// 推定の仕事が次に動く時刻。待っている予定の時刻と、続いている推定の次に試みる時刻のうち、いちばん早いもの。
-// アラームの並びが張る時刻に使う。beginEstimationAttempts が始めるものと同じ予定と推定から出すので、条件を変えるときは両方をそろえる
-export const computeNextEstimationAttemptsAt = (
-  stores: Pick<RecordKindStores, "estimationSchedule" | "estimation">,
-): Date | undefined =>
-  findEarliest([
-    stores.estimationSchedule.findWaitingSchedules(undefined)[0]?.dueAt,
-    ...stores.estimation
-      .findContinuingEstimations()
-      .map(({ attempts }) => computeNextEstimationAttemptAt(attempts)),
-  ]);
