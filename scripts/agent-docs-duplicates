@@ -1,0 +1,157 @@
+#!/usr/bin/env node
+// エージェントが読む文書のあいだで、同じ段落か同じ箇条書きの1項目が2か所以上にあると落とす（#930）
+// 言い換えの重複はレビュー役に残し、ここでは空白の違いを除いて一字一句同じものだけを見る
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const { lstatSync, readdirSync, readFileSync } = require("node:fs");
+const { join } = require("node:path");
+
+const main = () => {
+  const args = process.argv.slice(2);
+  if (args.length > 1) {
+    console.error("使い方: scripts/agent-docs-duplicates [<リポジトリのルート>]");
+    return 2;
+  }
+  const root = args[0] ?? join(__dirname, "..");
+  const duplicates = findDuplicates(agentDocuments(root));
+  if (duplicates.length === 0) return 0;
+  for (const { text, places } of duplicates) {
+    console.error(places.map(({ path, line }) => `${path}:${line}`).join("\n"));
+    console.error(`  ${text}\n`);
+  }
+  console.error(
+    `上の ${duplicates.length} 件は、同じ段落か箇条書きの1項目が2か所以上にある。1か所に置き、ほかからはその文書と見出しを指す。` +
+      "どうしても両方に要るなら、理由を添えて scripts/agent-docs-duplicates の ALLOWED に足す",
+  );
+  return 1;
+};
+
+// 見出し・1語の箇条書き・コードの1行のような短い行は、重なっても当たり前なので見ない。長さは空白を除いた文字の数
+const MIN_LENGTH = 30;
+
+// 両方に置く理由があるもの。{ text: 重なった文, reason: 理由 } の形で、文は落ちたときの出力から写す。空白の違いは見ない
+const ALLOWED = [];
+
+// エージェントが読む文書。.claude/skills/ のうち .agents/skills/ へのリンクは、リンク先で1回だけ数える。
+// 置き場を足すときは、scripts/check の target_files と、テストの「文書の置き場ごと」にも足す
+const DOCUMENT_ROOTS = ["docs/agents", ".claude/agents", ".claude/skills", ".agents/skills"];
+
+const agentDocuments = (root) => {
+  const paths = ["AGENTS.md", "CODING_STANDARDS.md"];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
+      paths.push(`${entry.name}/AGENTS.md`);
+    }
+  }
+  const external = externalSkills(root);
+  for (const directory of DOCUMENT_ROOTS) {
+    paths.push(...markdownFiles(root, directory).filter((path) => !external.has(skillName(path))));
+  }
+  return paths.filter((path) => isFile(join(root, path))).map((path) => ({ path, text: readFileSync(join(root, path), "utf8") }));
+};
+
+// skills-lock.json で入れたスキルは、更新で上書きされて直せないので見ない（docs/agents/tooling.md の「スキル」）
+const externalSkills = (root) => {
+  const lock = join(root, "skills-lock.json");
+  if (!isFile(lock)) return new Set();
+  return new Set(Object.keys(JSON.parse(readFileSync(lock, "utf8")).skills));
+};
+
+const skillName = (path) => {
+  const match = /^\.(?:agents|claude)\/skills\/([^/]+)\//.exec(path);
+  return match?.[1];
+};
+
+const markdownFiles = (root, directory) => {
+  const found = [];
+  const walk = (path) => {
+    const stat = lstatOrUndefined(join(root, path));
+    if (stat === undefined || stat.isSymbolicLink()) return;
+    if (stat.isDirectory()) {
+      for (const name of readdirSync(join(root, path)).sort()) walk(`${path}/${name}`);
+    } else if (stat.isFile() && path.endsWith(".md")) {
+      found.push(path);
+    }
+  };
+  walk(directory);
+  return found;
+};
+
+const lstatOrUndefined = (path) => {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  }
+};
+
+const isFile = (path) => lstatOrUndefined(path)?.isFile() ?? false;
+
+const findDuplicates = (documents) => {
+  const placesByKey = new Map();
+  for (const { path, text } of documents) {
+    for (const block of blocks(text)) {
+      const key = withoutSpaces(block.text);
+      if ([...key].length < MIN_LENGTH || ALLOWED.some((allowed) => withoutSpaces(allowed.text) === key)) continue;
+      const found = placesByKey.get(key) ?? { text: block.text, places: [] };
+      found.places.push({ path, line: block.line });
+      placesByKey.set(key, found);
+    }
+  }
+  return [...placesByKey.values()].filter(({ places }) => places.length >= 2);
+};
+
+// 日本語の文は折り返しで空白が入るので、空白をすべて除いて比べる
+const withoutSpaces = (text) => text.replace(/\s+/g, "");
+
+// 段落と、箇条書きの1項目（入れ子の項目は別の項目）を、空白をつめた文と始まりの行で返す。
+// 見出し、表、コードのかたまり、先頭の frontmatter は文として比べないので返さない
+const blocks = (text) => {
+  const lines = text.split("\n");
+  const found = [];
+  let current;
+  const close = () => {
+    if (current !== undefined) found.push({ line: current.line, text: current.parts.join(" ").replace(/\s+/g, " ").trim() });
+    current = undefined;
+  };
+  let fence;
+  let index = 0;
+  if (lines[0] === "---") {
+    const end = lines.indexOf("---", 1);
+    if (end !== -1) index = end + 1;
+  }
+  for (; index < lines.length; index++) {
+    const raw = lines[index];
+    const content = raw.replace(/^\s*(?:>\s?)*/, "");
+    const marker = /^(`{3,}|~{3,})/.exec(content.trim());
+    if (fence !== undefined) {
+      if (marker !== null && marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = undefined;
+      continue;
+    }
+    if (marker !== null) {
+      close();
+      fence = marker[1];
+      continue;
+    }
+    if (content.trim() === "" || /^#{1,6}\s/.test(content) || content.startsWith("|") || /^(?:-{3,}|\*{3,})$/.test(content.trim())) {
+      close();
+      continue;
+    }
+    const item = /^(?:[-*+]|\d+[.)])\s+(.*)$/.exec(content);
+    if (item !== null) {
+      close();
+      current = { line: index + 1, parts: [item[1]] };
+      continue;
+    }
+    if (current === undefined) current = { line: index + 1, parts: [] };
+    current.parts.push(content);
+  }
+  close();
+  return found;
+};
+
+if (require.main === module) {
+  process.exitCode = main();
+}
