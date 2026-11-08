@@ -11,11 +11,11 @@ cd "$CLAUDE_PROJECT_DIR"
 
 contexts=()
 
-# クラウドの clone は浅く、git log・git blame で辿れる履歴が数十コミットで切れるため、全部取る（#932）。
-# 数秒で終わるので、ほかの準備より先に回す。セッションのほうの git fetch と .git/shallow.lock を取り合って
-# 落ちることがあるので、少し待って取り直す。失敗してもセッションは止めない
+# クラウドの clone は浅く、git log・git blame で辿れる履歴が数十コミットで切れるため、全部取る（#932）
+# 数秒で終わるので、ほかの準備より先に回す。失敗してもセッションは止めない
 if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
   unshallow_log=""
+  # セッションのほうの git fetch と .git/shallow.lock を取り合って落ちることがあるので、少し待って取り直す
   for attempt in 1 2 3; do
     if unshallow_log=$(timeout 120 git fetch -q --unshallow origin 2>&1); then
       break
