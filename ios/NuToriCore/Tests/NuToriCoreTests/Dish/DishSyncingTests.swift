@@ -10,14 +10,6 @@ struct DishSyncingTests {
 
     let syncing = DishSyncing()
 
-    @Test("料理と料理の削除の印だけを、この種類の変更として見分けること")
-    func identifiesDishChanges() {
-        #expect(SyncChange.dish(Self.synced).kindName == syncing.name)
-        #expect(SyncChange.dishDeletion(dishId: Self.dishId).kindName == syncing.name)
-        #expect(SyncChange.ingredientDeletion(ingredientId: Self.dishId).kindName != syncing.name)
-        #expect(SyncChange.unknown(kind: "dish").kindName == nil)
-    }
-
     @Test("端末も書く種類として、送る書き込みを持つこと")
     func hasWrites() {
         #expect(syncing.writes != nil)

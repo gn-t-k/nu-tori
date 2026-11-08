@@ -1,7 +1,7 @@
 public import NuToriAPI
 
 /// 1つの種類に当てる変更。
-/// 種類の名前と変更を別々に受け取らず、変更の `kindName` から組むので、ほかの種類の変更が混ざらない
+/// どちらの作り方も変更の `kindName` で分けるので、ほかの種類の変更が混ざらない
 public struct KindChanges: Sendable, Equatable {
     public let kind: RecordKindName
     public let changes: [SyncChange]
@@ -15,13 +15,20 @@ public struct KindChanges: Sendable, Equatable {
     /// 知らない種類の変更（`kindName` が nil）は読み飛ばし、空の種類は作らない
     public static func grouping(_ changes: [SyncChange]) -> [KindChanges] {
         var groups: [KindChanges] = []
+        var run: (kind: RecordKindName, changes: [SyncChange])?
         for change in changes {
             guard let kind = change.kindName else { continue }
-            if let last = groups.last, last.kind == kind {
-                groups[groups.count - 1] = KindChanges(kind: kind, changes: last.changes + [change])
-            } else {
-                groups.append(KindChanges(kind: kind, changes: [change]))
+            if run?.kind == kind {
+                run?.changes.append(change)
+                continue
             }
+            if let run {
+                groups.append(KindChanges(kind: run.kind, changes: run.changes))
+            }
+            run = (kind, [change])
+        }
+        if let run {
+            groups.append(KindChanges(kind: run.kind, changes: run.changes))
         }
         return groups
     }

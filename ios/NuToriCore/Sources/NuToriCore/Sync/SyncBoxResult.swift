@@ -31,8 +31,15 @@ public struct SyncBoxResult: Sendable, Equatable {
         self.healthSyncState = healthSyncState
     }
 
-    /// ローカルの記録の変更の結果。変更は種類ごとに分けずに並べ、続けて並ぶ同じ種類を1つにまとめて当てる
-    public init(enqueuing: [PendingEntry] = [], changes: [SyncChange]) {
-        self.init(enqueuing: enqueuing, kindChanges: KindChanges.grouping(changes))
+    /// 変更を種類ごとに分けずに並べて渡す。続けて並ぶ同じ種類を1つにまとめて当てる
+    public init(
+        enqueuing: [PendingEntry] = [],
+        changes: [SyncChange],
+        // swiftlint:disable:next no_nil_default_argument
+        healthSyncState: HealthSyncState? = nil
+    ) {
+        self.init(
+            enqueuing: enqueuing, kindChanges: KindChanges.grouping(changes),
+            healthSyncState: healthSyncState)
     }
 }

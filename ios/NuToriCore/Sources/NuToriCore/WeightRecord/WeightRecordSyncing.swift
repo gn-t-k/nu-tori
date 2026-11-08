@@ -93,8 +93,7 @@ public struct WeightRecordSyncing: CacheApplying, RecordKindWrites {
             enqueuing: try writes.map {
                 try PendingWeightRecordWrite(enqueuedAt: now(), write: $0).entry()
             },
-            kindChanges: KindChanges.grouping(
-                records.map { .weightRecord(SyncedWeightRecord($0)) }),
+            changes: records.map { .weightRecord(SyncedWeightRecord($0)) },
             healthSyncState: healthSyncState
         )
     }

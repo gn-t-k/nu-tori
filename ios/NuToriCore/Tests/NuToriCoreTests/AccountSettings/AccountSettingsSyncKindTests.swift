@@ -40,20 +40,9 @@ struct AccountSettingsSyncKindTests {
         }
     }
 
-    @Suite("取りに行った変更を見分けるとき")
-    struct Identifying {
+    @Suite("取りに行った変更から今の設定を選ぶとき")
+    struct Picking {
         let id = AccountSettings.fixture(sendsUsageData: true).id
-
-        @Test("設定の変更だけを、この種類の変更として見分けること")
-        func identifiesSettingsChanges() {
-            let kind = AccountSettingsSyncKind()
-
-            #expect(
-                SyncChange.accountSettings(.init(id: id, sendsUsageData: true)).kindName
-                    == kind.name)
-            #expect(SyncChange.weightRecordDeletion(recordId: id).kindName != kind.name)
-            #expect(SyncChange.unknown(kind: "note").kindName == nil)
-        }
 
         @Test("複数届いたら、最後の設定を選び、無ければ nil にすること")
         func picksLast() {

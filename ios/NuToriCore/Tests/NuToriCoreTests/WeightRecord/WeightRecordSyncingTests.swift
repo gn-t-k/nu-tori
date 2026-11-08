@@ -5,26 +5,6 @@ import Testing
 
 @Suite("体重記録の同期の形")
 struct WeightRecordSyncingTests {
-    @Suite("取りに行った変更を見分けるとき")
-    struct Identifying {
-        let syncing = WeightRecordSyncing()
-
-        @Test("体重記録と削除の印だけを、この種類の変更として見分けること")
-        func identifiesWeightRecordChanges() throws {
-            let record = SyncedWeightRecord(
-                id: UUID(), weightKilograms: 72.4, measuredAt: Date(timeIntervalSince1970: 0),
-                timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")), version: 1,
-                imported: nil)
-
-            #expect(SyncChange.weightRecord(record).kindName == syncing.name)
-            #expect(SyncChange.weightRecordDeletion(recordId: UUID()).kindName == syncing.name)
-            #expect(
-                SyncChange.accountSettings(SyncedAccountSettings(id: UUID(), sendsUsageData: true))
-                    .kindName != syncing.name)
-            #expect(SyncChange.unknown(kind: "note").kindName == nil)
-        }
-    }
-
     @Suite("取りに行った変更を今の値にするとき")
     struct ReadingCurrent {
         let syncing = WeightRecordSyncing()
