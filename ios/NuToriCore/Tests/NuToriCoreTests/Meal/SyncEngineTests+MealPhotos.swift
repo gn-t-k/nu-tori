@@ -11,23 +11,26 @@ extension SyncEngineTests {
         struct Recording {
             let uploader: MealPhotoUploaderMock
             let photos: MealPhotos
+            let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
-            let photoId: UUID
             let original: Data
+            let edit: UserEdit
 
             init() throws {
                 uploader = .ok()
                 photos = .fixture(uploader: uploader)
-                engine = .fixture(store: try .ok(), transport: .sync(), mealPhotos: photos)
-                photoId = UUID()
+                store = try .ok()
+                engine = .fixture(store: store, transport: .sync(), mealPhotos: photos)
                 original = Data([0x0A, 0x0B])
+                edit = .recordingCapturedAtLunch(original)
             }
 
             @Test("元の大きさの写真をアプリの中に置き、食事の ID を添えて縮小版を裏で送り始めること")
             func keepsAndUploads() async throws {
-                let meal = try await engine.recordMeal(
-                    .capturedAtLunch(photoId: photoId), originals: [photoId: original])
+                _ = try await engine.apply(edit, in: .gmt)
 
+                let meal = try #require(store.cache.meals.values.first)
+                let photoId = try #require(meal.photoIds.first)
                 let file = try #require(await photos.photoFile(mealId: meal.id, photoId: photoId))
                 #expect(try Data(contentsOf: file) == original)
                 #expect(
@@ -45,9 +48,7 @@ extension SyncEngineTests {
                 transport = .sync()
                 engine = .fixture(store: try .ok(), transport: transport, mealPhotos: .fixture())
                 for _ in 0..<2 {
-                    let photoId = UUID()
-                    try await engine.recordMeal(
-                        .capturedAtLunch(photoId: photoId), originals: [photoId: Data([0x01])])
+                    _ = try await engine.apply(.recordingCapturedAtLunch(Data([0x01])), in: .gmt)
                 }
             }
 
@@ -71,11 +72,11 @@ extension SyncEngineTests {
                 uploader = .ok()
                 photos = .fixture(uploader: uploader)
                 let store = try SyncBoxMock<RecordCacheMock>.ok()
-                let photoId = UUID()
-                meal = try await SyncEngine.fixture(
+                _ = try await SyncEngine.fixture(
                     store: store, transport: .error(URLError(.notConnectedToInternet)),
                     mealPhotos: photos
-                ).recordMeal(.capturedAtLunch(photoId: photoId), originals: [photoId: Data([0x01])])
+                ).apply(.recordingCapturedAtLunch(Data([0x01])), in: .gmt)
+                meal = try #require(store.cache.meals.values.first)
                 engine = .fixture(
                     store: store,
                     transport: .sync(pullPages: [
@@ -109,13 +110,13 @@ extension SyncEngineTests {
             init() async throws {
                 uploader = .ok()
                 photos = .fixture(uploader: uploader)
+                let store = try SyncBoxMock<RecordCacheMock>.ok()
                 engine = .fixture(
-                    store: try .ok(),
+                    store: store,
                     transport: .sync(rejectedWriteIndexes: [0], currents: [0: .absent]),
                     mealPhotos: photos)
-                let photoId = UUID()
-                meal = try await engine.recordMeal(
-                    .capturedAtLunch(photoId: photoId), originals: [photoId: Data([0x01])])
+                _ = try await engine.apply(.recordingCapturedAtLunch(Data([0x01])), in: .gmt)
+                meal = try #require(store.cache.meals.values.first)
             }
 
             @Test("その食事のアプリの中の写真を消し、写真の送り残しを取り消すこと")
@@ -135,21 +136,24 @@ extension SyncEngineTests {
             let photos: MealPhotos
             let engine: SyncEngine
             let meal: Meal
+            let card: MealCard
 
             init() async throws {
                 uploader = .ok()
                 photos = .fixture(uploader: uploader)
+                let store = try SyncBoxMock<RecordCacheMock>.ok()
                 engine = .fixture(
-                    store: try .ok(), transport: .error(URLError(.notConnectedToInternet)),
+                    store: store, transport: .error(URLError(.notConnectedToInternet)),
                     mealPhotos: photos)
-                let photoId = UUID()
-                meal = try await engine.recordMeal(
-                    .capturedAtLunch(photoId: photoId), originals: [photoId: Data([0x01])])
+                _ = try await engine.apply(.recordingCapturedAtLunch(Data([0x01])), in: .gmt)
+                meal = try #require(store.cache.meals.values.first)
+                card = MealCard(meal: meal, status: nil, recordedOnThisDevice: true)
             }
 
             @Test("つながらなくても、その食事のアプリの中の写真を消し、写真の送り残しを取り消すこと")
             func discardsPhotos() async throws {
-                try await engine.deleteMeal(id: meal.id)
+                _ = try await engine.apply(
+                    .deleteMeal(card, deletedAt: SyncEngine.fixtureNow), in: .gmt)
 
                 let photoId = try #require(meal.photoIds.first)
                 #expect(await photos.photoFile(mealId: meal.id, photoId: photoId) == nil)
@@ -160,13 +164,16 @@ extension SyncEngineTests {
     }
 }
 
-extension MealDraft {
-    /// 2026-09-22 12:10（東京）に撮り、1分後に送った食事
-    fileprivate static func capturedAtLunch(photoId: UUID) throws -> MealDraft {
-        MealDraft.captured(
-            photoId: photoId,
-            takenAt: Date(timeIntervalSince1970: 1_790_046_600),
-            sentAt: Date(timeIntervalSince1970: 1_790_046_660),
-            deviceTimeZone: try #require(TimeZone(identifier: "Asia/Tokyo")))
+extension UserEdit {
+    /// 2026-09-22 12:10（東京）に撮り、1分後に送った食事を、元の写真 `original` で記録する
+    fileprivate static func recordingCapturedAtLunch(_ original: Data) -> UserEdit {
+        .recordCapturedMeal(
+            MealPhotoOriginal(
+                data: original,
+                exif: .takenAt(
+                    PhotoExif.WallClock(
+                        year: 2026, month: 9, day: 22, hour: 12, minute: 10, second: 0),
+                    utcOffsetSeconds: 32_400)),
+            sentAt: Date(timeIntervalSince1970: 1_790_046_660))
     }
 }

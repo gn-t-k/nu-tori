@@ -81,6 +81,8 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let meal: Meal
+            let card: MealCard
+            let deletedAt: Date
 
             init() throws {
                 export = .ok()
@@ -88,13 +90,15 @@ extension SyncEngineTests {
                 meal = try Meal.fixture(
                     eatenAt: "2026-09-22T12:10:00+09:00", sentAt: "2026-09-22T12:11:00+09:00")
                 store.cache.upsert(meal)
+                card = MealCard(meal: meal, status: nil, recordedOnThisDevice: true)
+                deletedAt = SyncEngine.fixtureNow
                 engine = .fixture(
                     store: store, transport: .sync(), nutritionHealthExport: export)
             }
 
             @Test("キャッシュから消したあとに、呼ぶこと")
             func exportsAfterRemoving() async throws {
-                try await engine.deleteMeal(id: meal.id)
+                _ = try await engine.apply(.deleteMeal(card, deletedAt: deletedAt), in: .gmt)
 
                 #expect(store.cache.meals[meal.id] == nil)
                 #expect(export.exportCount == 1)
@@ -106,12 +110,16 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
             let meal: Meal
+            let card: MealCard
+            let deletedAt: Date
 
             init() throws {
                 store = try .ok()
                 meal = try Meal.fixture(
                     eatenAt: "2026-09-22T12:10:00+09:00", sentAt: "2026-09-22T12:11:00+09:00")
                 store.cache.upsert(meal)
+                card = MealCard(meal: meal, status: nil, recordedOnThisDevice: true)
+                deletedAt = SyncEngine.fixtureNow
                 engine = .fixture(
                     store: store, transport: .sync(),
                     nutritionHealthExport: NutritionHealthExportMock.error(ExportFailure()))
@@ -119,7 +127,7 @@ extension SyncEngineTests {
 
             @Test("食事を消すことは成功させること")
             func stillDeletes() async throws {
-                try await engine.deleteMeal(id: meal.id)
+                _ = try await engine.apply(.deleteMeal(card, deletedAt: deletedAt), in: .gmt)
 
                 #expect(store.cache.meals[meal.id] == nil)
             }

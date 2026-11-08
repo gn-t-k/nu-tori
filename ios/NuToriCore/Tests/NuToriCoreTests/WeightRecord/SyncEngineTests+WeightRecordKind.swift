@@ -97,5 +97,58 @@ extension SyncEngineTests {
                 #expect(export.writes.map(\.version) == [4])
             }
         }
+
+        @Suite("体重を記録したとき")
+        struct Saving {
+            let store: SyncBoxMock<RecordCacheMock>
+            let export: WeightHealthExportMock
+            let engine: SyncEngine
+            let edit: UserEdit
+
+            init() throws {
+                let record = try WeightRecord.manual(
+                    72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                store = try .ok()
+                export = .ok()
+                engine = .fixture(store: store, transport: .sync(), weightHealthExport: export)
+                edit = .saveWeight(
+                    .create(kilograms: 72.4, instant: record.instant, timeZone: record.timeZone))
+            }
+
+            @Test("キャッシュに当てた体重記録を、ヘルスケアに書き出すこと")
+            func exportsSavedRecord() async throws {
+                _ = try await engine.apply(edit, in: .gmt)
+
+                #expect(export.writes.map(\.id) == Array(store.records.keys))
+            }
+        }
+
+        @Suite("体重を記録して、ヘルスケアに書けなかったとき")
+        struct SavingExportFailed {
+            struct ExportFailure: Error {}
+
+            let store: SyncBoxMock<RecordCacheMock>
+            let engine: SyncEngine
+            let edit: UserEdit
+
+            init() throws {
+                let record = try WeightRecord.manual(
+                    72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+                store = try .ok()
+                engine = .fixture(
+                    store: store, transport: .sync(),
+                    weightHealthExport: WeightHealthExportMock.error(ExportFailure()))
+                edit = .saveWeight(
+                    .create(kilograms: 72.4, instant: record.instant, timeZone: record.timeZone))
+            }
+
+            @Test("書けたものとして返し、キャッシュに残すこと")
+            func stillWrites() async throws {
+                let outcome = try await engine.apply(edit, in: .gmt)
+
+                #expect(outcome == .written(recordCount: 1))
+                #expect(store.records.count == 1)
+            }
+        }
     }
 }

@@ -175,7 +175,6 @@ import SwiftData
             goalSetupNoticeKeeper: goalSetupNoticeKeeper,
             mealPhotos: mealPhotos,
             errorReporting: observation.errorReporting,
-            weightHealthExport: health.engine,
             importHealthChanges: { await health.importChanges() },
             takeStoreRecoveries: { store.takeRecoveries() }
         )

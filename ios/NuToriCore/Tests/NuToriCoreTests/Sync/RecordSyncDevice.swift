@@ -100,7 +100,6 @@ struct RecordSyncDevice {
             ),
             mealPhotos: mealPhotos,
             errorReporting: errorReporting,
-            weightHealthExport: weightHealthExport,
             importHealthChanges: {},
             takeStoreRecoveries: { [] }
         )

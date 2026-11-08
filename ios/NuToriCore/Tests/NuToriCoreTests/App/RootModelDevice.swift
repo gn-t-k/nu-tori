@@ -111,7 +111,6 @@ struct RootModelDevice {
                 errorReporting: errorReporting),
             mealPhotos: mealPhotos,
             errorReporting: errorReporting,
-            weightHealthExport: healthEngine,
             importHealthChanges: {},
             takeStoreRecoveries: { [] }
         )

@@ -12,17 +12,21 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
+            let draft: TextDraft
 
             init() throws {
                 store = try .ok()
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
+                draft = TextDraft(text: "  朝はトーストと牛乳\n")
             }
 
             @Test("前後の空白を除いた本文と、送った時刻とタイムゾーンで、送った文章を作ること")
             func createsSentText() async throws {
-                let sentText = try #require(try await engine.sendText("  朝はトーストと牛乳\n"))
+                let outcome = try await engine.apply(.sendText(draft), in: .gmt)
 
+                let sentText = try #require(store.cache.sentTexts.values.first)
+                #expect(outcome == .written(recordCount: 1))
                 #expect(sentText.body == "朝はトーストと牛乳")
                 #expect(sentText.sentAt == SyncEngine.fixtureNow)
                 #expect(sentText.timeZone == TimeZone(identifier: "Asia/Tokyo"))
@@ -30,19 +34,22 @@ extension SyncEngineTests {
 
             @Test("送り待ちに送った文章の種類の名前で入れてから、キャッシュに送った文章を置くこと")
             func enqueuesThenCaches() async throws {
-                let sentText = try #require(try await engine.sendText("朝はトーストと牛乳"))
+                _ = try await engine.apply(.sendText(draft), in: .gmt)
 
+                let sentText = try #require(store.cache.sentTexts.values.first)
                 #expect(store.entries.map(\.kind) == [.sentText])
                 #expect(
                     store.saves == [
                         .pending(added: 1, removed: 0), .cache(changes: 1, afterSequence: nil),
                     ])
-                #expect(store.cache.sentTexts[sentText.id] == sentText)
+                #expect(store.cache.sentTexts.count == 1)
+                #expect(sentText.body == "朝はトーストと牛乳")
             }
 
             @Test("送ると、ID・本文・送った時刻・タイムゾーンを、作る書き込みで送ること")
             func sendsCreateSentText() async throws {
-                let sentText = try #require(try await engine.sendText("朝はトーストと牛乳"))
+                _ = try await engine.apply(.sendText(draft), in: .gmt)
+                let sentText = try #require(store.cache.sentTexts.values.first)
 
                 _ = try await engine.sync()
 
@@ -60,7 +67,8 @@ extension SyncEngineTests {
 
             @Test("届くまでは応答を待つ文章とせず、届いたら応答を待つ文章とすること")
             func awaitsResponseAfterDelivered() async throws {
-                let sentText = try #require(try await engine.sendText("次は何を食べたらいい？"))
+                _ = try await engine.apply(.sendText(draft), in: .gmt)
+                let sentText = try #require(store.cache.sentTexts.values.first)
                 #expect(try await engine.sentTextsAwaitingResponse().isEmpty)
 
                 _ = try await engine.sync()
@@ -73,17 +81,19 @@ extension SyncEngineTests {
         struct SendingBlank {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
+            let draft: TextDraft
 
             init() throws {
                 store = try .ok()
                 engine = .fixture(store: store, transport: .sync())
+                draft = TextDraft(text: " \n　")
             }
 
             @Test("送った文章を作らず、送り待ちにも入れないこと")
             func sendsNothing() async throws {
-                let sentText = try await engine.sendText(" \n　")
+                let outcome = try await engine.apply(.sendText(draft), in: .gmt)
 
-                #expect(sentText == nil)
+                #expect(outcome == .unwritten)
                 #expect(store.entries.isEmpty)
                 #expect(store.cache.sentTexts.isEmpty)
             }
@@ -95,25 +105,31 @@ extension SyncEngineTests {
             let engine: SyncEngine
             /// 見た目の1字で 100 字、コードポイントで 500 字（家族の絵文字は5つのコードポイント）
             let fiveHundredCodePoints: String
+            let fiveHundredDraft: TextDraft
+            let fiveHundredOneDraft: TextDraft
 
             init() throws {
                 store = try .ok()
                 engine = .fixture(store: store, transport: .sync())
                 fiveHundredCodePoints = String(repeating: "👨‍👩‍👧", count: 100)
+                fiveHundredDraft = TextDraft(text: " \(fiveHundredCodePoints)\n")
+                fiveHundredOneDraft = TextDraft(text: "\(fiveHundredCodePoints)a")
             }
 
             @Test("前後に空白のついた 500 字の文章を送ること")
             func sendsFiveHundred() async throws {
-                let sentText = try await engine.sendText(" \(fiveHundredCodePoints)\n")
+                let outcome = try await engine.apply(.sendText(fiveHundredDraft), in: .gmt)
 
-                #expect(sentText?.body == fiveHundredCodePoints)
+                #expect(outcome == .written(recordCount: 1))
+                #expect(store.cache.sentTexts.values.map(\.body) == [fiveHundredCodePoints])
             }
 
             @Test("501 字の文章を送らないこと")
             func refusesFiveHundredOne() async throws {
-                let sentText = try await engine.sendText("\(fiveHundredCodePoints)a")
+                let outcome = try await engine.apply(.sendText(fiveHundredOneDraft), in: .gmt)
 
-                #expect(sentText == nil)
+                #expect(outcome == .unwritten)
+                #expect(store.cache.sentTexts.isEmpty)
                 #expect(store.entries.isEmpty)
             }
         }
@@ -122,17 +138,20 @@ extension SyncEngineTests {
         struct RejectedWithoutValue {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
+            let draft: TextDraft
 
             init() throws {
                 store = try .ok()
                 engine = .fixture(
                     store: store,
                     transport: .sync(rejectedWriteIndexes: [0], currents: [0: .absent]))
+                draft = TextDraft(text: "朝はトーストと牛乳")
             }
 
             @Test("送った文章をキャッシュから外し、送れなかった文章の行を返すこと")
             func removesSentTextAndReturnsLine() async throws {
-                let sentText = try #require(try await engine.sendText("朝はトーストと牛乳"))
+                _ = try await engine.apply(.sendText(draft), in: .gmt)
+                let sentText = try #require(store.cache.sentTexts.values.first)
 
                 let result = try await engine.sync()
 
@@ -186,7 +205,10 @@ extension SyncEngineTests {
 
             @Test("その場で、その文章から作った食事と、その料理・材料・推定の状態をキャッシュから消すこと")
             func removesWrittenMealsAtOnce() async throws {
-                try await engine.resendAsConversation(sentTextId: sentText.id)
+                _ = try await engine.apply(
+                    .resendAsConversation(
+                        sentTextId: sentText.id, deletedMealCount: writtenMealIds.count),
+                    in: .gmt)
 
                 #expect(Set(store.cache.meals.keys) == [otherMealId])
                 #expect(store.cache.estimationStatuses.isEmpty)
@@ -197,7 +219,10 @@ extension SyncEngineTests {
 
             @Test("会話として送り直す書き込み1つを、送り待ちに入れること")
             func enqueuesOneWrite() async throws {
-                try await engine.resendAsConversation(sentTextId: sentText.id)
+                _ = try await engine.apply(
+                    .resendAsConversation(
+                        sentTextId: sentText.id, deletedMealCount: writtenMealIds.count),
+                    in: .gmt)
 
                 #expect(
                     try store.entries.map { try PendingSentTextWrite(entry: $0).write }
@@ -206,7 +231,10 @@ extension SyncEngineTests {
 
             @Test("送ると、その文章を、会話として送り直す書き込みで送ること")
             func sendsResendAsConversation() async throws {
-                try await engine.resendAsConversation(sentTextId: sentText.id)
+                _ = try await engine.apply(
+                    .resendAsConversation(
+                        sentTextId: sentText.id, deletedMealCount: writtenMealIds.count),
+                    in: .gmt)
 
                 _ = try await engine.sync()
 
@@ -237,7 +265,8 @@ extension SyncEngineTests {
 
             @Test("送り直す書き込み1つを送り待ちに入れ、キャッシュは変えないこと")
             func enqueuesOneWrite() async throws {
-                try await engine.resend(sentTextId: sentText.id)
+                _ = try await engine.apply(
+                    .resendReply(sentTextId: sentText.id, reason: .halted), in: .gmt)
 
                 #expect(
                     try store.entries.map { try PendingSentTextWrite(entry: $0).write }
@@ -247,7 +276,8 @@ extension SyncEngineTests {
 
             @Test("送ると、その文章を、送り直す書き込みで送ること")
             func sendsResend() async throws {
-                try await engine.resend(sentTextId: sentText.id)
+                _ = try await engine.apply(
+                    .resendReply(sentTextId: sentText.id, reason: .halted), in: .gmt)
 
                 _ = try await engine.sync()
 
