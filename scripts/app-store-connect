@@ -188,9 +188,21 @@ const toApiUrl = (value) => {
   return url;
 };
 
-module.exports = { readFinanceReport, assertAnalyticsPath, toSegmentDownloadUrl, signShortLivedJwt };
+// 役割 Developer の鍵（エージェントの読むだけの鍵）で1ページを読む。scripts/check-app-version が使う
+const readJson = async (target) => {
+  const { keyId, issuerId, privateKey } = loadKey("NU_TORI_ASC");
+  const response = await fetch(toApiUrl(target), {
+    method: "GET",
+    headers: { Authorization: `Bearer ${signShortLivedJwt({ keyId, issuerId, privateKey })}` },
+  });
+  const body = await response.text();
+  if (!response.ok) throw new ExpectedFailure(`${response.status} ${body}`);
+  return JSON.parse(body);
+};
 
-// scripts/finance・テスト・scripts/discovery-analytics-wizard が require したときは、読む道だけを貸し、コマンドとしては動かない
+module.exports = { readFinanceReport, readJson, assertAnalyticsPath, toSegmentDownloadUrl, signShortLivedJwt };
+
+// scripts/finance・scripts/check-app-version・テスト・scripts/discovery-analytics-wizard が require したときは、読む道だけを貸し、コマンドとしては動かない
 if (require.main === module) {
   // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
   main().catch((error) => {
