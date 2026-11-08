@@ -63,14 +63,9 @@ extension SyncEngineTests {
                     store: store, transport: .error(URLError(.notConnectedToInternet)))
                 meal = try await engine.recordLunch(photoId: UUID())
                 try await store.apply(
-                    SyncBoxResult(kindChanges: [
-                        KindChanges(
-                            kind: .mealEstimationStatus,
-                            changes: [
-                                .mealEstimationStatus(
-                                    SyncedMealEstimationStatus(
-                                        mealId: meal.id, status: .awaitingPhotos))
-                            ])
+                    SyncBoxResult(changes: [
+                        .mealEstimationStatus(
+                            SyncedMealEstimationStatus(mealId: meal.id, status: .awaitingPhotos))
                     ]))
             }
 

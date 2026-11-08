@@ -168,31 +168,20 @@ extension SyncEngineTests {
                         try SyncedMeal.written(id: $0, sentTextId: sentText.id)
                     } + [try SyncedMeal.written(id: otherMealId, sentTextId: UUID())]
                 try await store.apply(
-                    SyncBoxResult(kindChanges: [
-                        KindChanges(kind: .meal, changes: meals.map { .meal($0) }),
-                        KindChanges(kind: .sentText, changes: [.sentText(.init(sentText))]),
-                        KindChanges(
-                            kind: .mealEstimationStatus,
-                            changes: writtenMealIds.map {
+                    SyncBoxResult(
+                        changes: meals.map { .meal($0) }
+                            + [.sentText(.init(sentText))]
+                            + writtenMealIds.map {
                                 .mealEstimationStatus(.init(mealId: $0, status: .estimated))
-                            }),
-                        KindChanges(
-                            kind: .dish,
-                            changes: [
+                            }
+                            + [
                                 .dish(
                                     SyncedDish(
                                         id: dishId, mealId: writtenMealIds[1], name: "うどん",
-                                        quantity: nil, positionInMeal: 0, version: 1))
-                            ]),
-                        KindChanges(
-                            kind: .dishEstimationStatus,
-                            changes: [
-                                .dishEstimationStatus(.init(dishId: dishId, status: .estimated))
-                            ]),
-                        KindChanges(
-                            kind: .ingredient,
-                            changes: [.ingredient(.noodles(id: ingredientId, dishId: dishId))]),
-                    ]))
+                                        quantity: nil, positionInMeal: 0, version: 1)),
+                                .dishEstimationStatus(.init(dishId: dishId, status: .estimated)),
+                                .ingredient(.noodles(id: ingredientId, dishId: dishId)),
+                            ]))
             }
 
             @Test("その場で、その文章から作った食事と、その料理・材料・推定の状態をキャッシュから消すこと")
@@ -243,10 +232,7 @@ extension SyncEngineTests {
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
                 try await store.apply(
-                    SyncBoxResult(kindChanges: [
-                        KindChanges(
-                            kind: .sentText, changes: [.sentText(.init(sentText))])
-                    ]))
+                    SyncBoxResult(changes: [.sentText(.init(sentText))]))
             }
 
             @Test("送り直す書き込み1つを送り待ちに入れ、キャッシュは変えないこと")

@@ -19,10 +19,6 @@ public struct WeightRecordSyncing: CacheApplying, RecordKindWrites {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
         let pending = try PendingWeightRecordWrite(entry: entry)
         switch pending.write {
@@ -78,9 +74,7 @@ public struct WeightRecordSyncing: CacheApplying, RecordKindWrites {
     {
         SyncBoxResult(
             enqueuing: [try write.entry()],
-            kindChanges: [
-                KindChanges(kind: name, changes: [.weightRecord(SyncedWeightRecord(record))])
-            ]
+            changes: [.weightRecord(SyncedWeightRecord(record))]
         )
     }
 
@@ -99,12 +93,8 @@ public struct WeightRecordSyncing: CacheApplying, RecordKindWrites {
             enqueuing: try writes.map {
                 try PendingWeightRecordWrite(enqueuedAt: now(), write: $0).entry()
             },
-            kindChanges: records.isEmpty
-                ? []
-                : [
-                    KindChanges(
-                        kind: name, changes: records.map { .weightRecord(SyncedWeightRecord($0)) })
-                ],
+            kindChanges: KindChanges.grouping(
+                records.map { .weightRecord(SyncedWeightRecord($0)) }),
             healthSyncState: healthSyncState
         )
     }

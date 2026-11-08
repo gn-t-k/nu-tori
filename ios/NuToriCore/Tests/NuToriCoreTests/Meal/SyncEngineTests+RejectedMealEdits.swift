@@ -276,11 +276,7 @@ extension SyncEngineTests {
                 try await engine.correctIngredientQuantity(id: Writes.riceId, to: 150)
                 line = try RejectedMealEdits.line(try await engine.sync())
                 try await store.apply(
-                    SyncBoxResult(kindChanges: [
-                        KindChanges(
-                            kind: .ingredient,
-                            changes: [.ingredientDeletion(ingredientId: Writes.chickenId)])
-                    ]))
+                    SyncBoxResult(changes: [.ingredientDeletion(ingredientId: Writes.chickenId)]))
             }
 
             @Test("料理の行の下に出すこと")
@@ -332,10 +328,7 @@ extension SyncEngineTests {
                     let store = try await Writes.seededStore()
                     line = try await GoneIngredient.rejectedLine(store: store)
                     try await store.apply(
-                        SyncBoxResult(kindChanges: [
-                            KindChanges(
-                                kind: .dish, changes: [.dishDeletion(dishId: Writes.dishId)])
-                        ]))
+                        SyncBoxResult(changes: [.dishDeletion(dishId: Writes.dishId)]))
                     card = RejectedMealEdits.card(of: store)
                 }
 

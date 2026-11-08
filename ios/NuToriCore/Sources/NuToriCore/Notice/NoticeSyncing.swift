@@ -19,10 +19,6 @@ public struct NoticeSyncing: CacheApplying, RecordKindWrites {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
         let pending = try PendingNoticeWrite(entry: entry)
         switch pending.write {
@@ -61,7 +57,7 @@ public struct NoticeSyncing: CacheApplying, RecordKindWrites {
     {
         SyncBoxResult(
             enqueuing: [try write.entry()],
-            kindChanges: [KindChanges(kind: name, changes: [.notice(SyncedNotice(notice))])]
+            changes: [.notice(SyncedNotice(notice))]
         )
     }
 
@@ -71,10 +67,7 @@ public struct NoticeSyncing: CacheApplying, RecordKindWrites {
     ) throws -> SyncBoxResult {
         SyncBoxResult(
             enqueuing: [try write.entry()],
-            kindChanges: [
-                KindChanges(
-                    kind: name, changes: [.notice(SyncedNotice(notice.responded(response)))])
-            ]
+            changes: [.notice(SyncedNotice(notice.responded(response)))]
         )
     }
 

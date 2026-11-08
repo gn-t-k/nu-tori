@@ -13,10 +13,6 @@ public struct AccountSettingsSyncKind: CacheApplying, RecordKindWrites {
 
     public var writes: (any RecordKindWrites)? { self }
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
         let pending = try PendingAccountSettingsWrite(entry: entry)
         switch pending.write {
@@ -47,14 +43,9 @@ public struct AccountSettingsSyncKind: CacheApplying, RecordKindWrites {
     {
         SyncBoxResult(
             enqueuing: [try write.entry()],
-            kindChanges: [
-                KindChanges(
-                    kind: name,
-                    changes: [
-                        .accountSettings(
-                            SyncedAccountSettings(
-                                id: settings.id, sendsUsageData: settings.sendsUsageData))
-                    ])
+            changes: [
+                .accountSettings(
+                    SyncedAccountSettings(id: settings.id, sendsUsageData: settings.sendsUsageData))
             ]
         )
     }

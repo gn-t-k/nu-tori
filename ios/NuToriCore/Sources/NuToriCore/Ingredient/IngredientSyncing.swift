@@ -18,10 +18,6 @@ public struct IngredientSyncing: CacheApplying, RecordKindWrites {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
         let pending = try PendingIngredientWrite(entry: entry)
         switch pending.write {
@@ -86,9 +82,7 @@ public struct IngredientSyncing: CacheApplying, RecordKindWrites {
         let corrected = ingredient.withQuantity(quantity, source: .corrected)
         return SyncBoxResult(
             enqueuing: [try write.entry()],
-            kindChanges: [
-                KindChanges(kind: name, changes: [.ingredient(SyncedIngredient(corrected))])
-            ]
+            changes: [.ingredient(SyncedIngredient(corrected))]
         )
     }
 

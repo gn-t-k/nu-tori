@@ -6,22 +6,22 @@ import Testing
 @Suite("体重記録の同期の形")
 struct WeightRecordSyncingTests {
     @Suite("取りに行った変更を見分けるとき")
-    struct Owning {
+    struct Identifying {
         let syncing = WeightRecordSyncing()
 
-        @Test("体重記録と削除の印を受け持ち、アカウントの設定と知らない種類は受け持たないこと")
-        func ownsOnlyWeightRecordChanges() throws {
+        @Test("体重記録と削除の印だけを、この種類の変更として見分けること")
+        func identifiesWeightRecordChanges() throws {
             let record = SyncedWeightRecord(
                 id: UUID(), weightKilograms: 72.4, measuredAt: Date(timeIntervalSince1970: 0),
                 timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")), version: 1,
                 imported: nil)
 
-            #expect(syncing.owns(.weightRecord(record)))
-            #expect(syncing.owns(.weightRecordDeletion(recordId: UUID())))
+            #expect(SyncChange.weightRecord(record).kindName == syncing.name)
+            #expect(SyncChange.weightRecordDeletion(recordId: UUID()).kindName == syncing.name)
             #expect(
-                !syncing.owns(
-                    .accountSettings(SyncedAccountSettings(id: UUID(), sendsUsageData: true))))
-            #expect(!syncing.owns(.unknown(kind: "note")))
+                SyncChange.accountSettings(SyncedAccountSettings(id: UUID(), sendsUsageData: true))
+                    .kindName != syncing.name)
+            #expect(SyncChange.unknown(kind: "note").kindName == nil)
         }
     }
 

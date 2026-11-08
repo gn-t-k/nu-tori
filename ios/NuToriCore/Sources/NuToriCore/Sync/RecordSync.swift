@@ -138,9 +138,7 @@ public actor RecordSync {
     private func applyOutOfSyncResponse(_ changes: [SyncChange]) async throws {
         try await store.apply(
             SyncBoxResult(
-                kindChanges: changes.compactMap { change in
-                    change.kindName.map { KindChanges(kind: $0, changes: [change]) }
-                }))
+                kindChanges: KindChanges.grouping(changes)))
     }
 
     /// キャッシュにその ID の知らせがあるか（答えていても）

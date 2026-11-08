@@ -18,10 +18,6 @@ public struct DishSyncing: CacheApplying, RecordKindWrites {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
         let pending = try PendingDishWrite(entry: entry)
         switch pending.write {
@@ -111,7 +107,7 @@ public struct DishSyncing: CacheApplying, RecordKindWrites {
     public func adding(_ dish: Dish, enqueuing write: PendingDishWrite) throws -> SyncBoxResult {
         SyncBoxResult(
             enqueuing: [try write.entry()],
-            kindChanges: [KindChanges(kind: name, changes: [.dish(SyncedDish(dish))])]
+            changes: [.dish(SyncedDish(dish))]
         )
     }
 
@@ -119,31 +115,23 @@ public struct DishSyncing: CacheApplying, RecordKindWrites {
     public func correcting(_ edit: DishEdit, enqueuing write: PendingDishWrite) throws
         -> SyncBoxResult
     {
-        var kindChanges = [KindChanges(kind: name, changes: [.dish(SyncedDish(edit.dish))])]
-        if !edit.ingredients.isEmpty {
-            kindChanges.append(
-                KindChanges(
-                    kind: IngredientSyncing.kindName,
-                    changes: edit.ingredients.map { .ingredient(SyncedIngredient($0)) }))
-        }
-        return SyncBoxResult(enqueuing: [try write.entry()], kindChanges: kindChanges)
+        SyncBoxResult(
+            enqueuing: [try write.entry()],
+            changes: [.dish(SyncedDish(edit.dish))]
+                + edit.ingredients.map { .ingredient(SyncedIngredient($0)) }
+        )
     }
 
     /// 料理を消したときの結果。送り待ちに足し、料理と材料と料理ごとの推定の状態を、削除の印と同じ形でキャッシュから消す
     public func deleting(
         dishId: UUID, ingredientIds: [UUID], enqueuing write: PendingDishWrite
     ) throws -> SyncBoxResult {
-        var kindChanges = [
-            KindChanges(kind: name, changes: [.dishDeletion(dishId: dishId)]),
-            DishEstimationStatusSyncing.removing(dishId: dishId),
-        ]
-        if !ingredientIds.isEmpty {
-            kindChanges.append(
-                KindChanges(
-                    kind: IngredientSyncing.kindName,
-                    changes: ingredientIds.map { .ingredientDeletion(ingredientId: $0) }))
-        }
-        return SyncBoxResult(enqueuing: [try write.entry()], kindChanges: kindChanges)
+        SyncBoxResult(
+            enqueuing: [try write.entry()],
+            changes: [.dishDeletion(dishId: dishId)]
+                + DishEstimationStatusSyncing.removing(dishId: dishId)
+                + ingredientIds.map { .ingredientDeletion(ingredientId: $0) }
+        )
     }
 
     /// 今の値を書いてから、削除の印の料理を消す。親の食事がまだ無くても置く（届く順は約束しない）。キャッシュに無い料理の削除の印は読み飛ばす（返し直されるため）

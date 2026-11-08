@@ -23,10 +23,6 @@ public struct SentTextStatusSyncing: CacheApplying {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     /// 届いた順に状態を書く。送った文章がまだ無い状態も置く（届く順は約束しない）。状態は消えない。
     /// キャッシュは送った文章の ID で引く
     public func apply(_ changes: [SyncChange], to cache: any KeyedRecordCache<Status, UUID>) throws

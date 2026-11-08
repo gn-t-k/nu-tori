@@ -125,11 +125,13 @@ extension SyncEngineTests {
                     transport: .sync(pullPages: [
                         """
                         {"changes":[
-                          {"sequence":1,"kind":"note","recordId":"n1","record":{}},
+                          {"sequence":1,"kind":"account_settings","recordId":"00000000-0000-4000-8000-0000000000a1",
+                            "record":{"id":"00000000-0000-4000-8000-0000000000a1","sendsUsageData":true}},
                           {"sequence":2,"kind":"weight_record","recordId":"00000000-0000-4000-8000-0000000000b1",
                             "record":{"id":"00000000-0000-4000-8000-0000000000b1","weightKg":72.4,
                               "measuredAt":1767225600000,"timeZone":"Asia/Tokyo","version":1}},
-                          {"sequence":3,"kind":"note","recordId":"n2","record":{}},
+                          {"sequence":3,"kind":"account_settings","recordId":"00000000-0000-4000-8000-0000000000a1",
+                            "record":{"id":"00000000-0000-4000-8000-0000000000a1","sendsUsageData":false}},
                           {"sequence":4,"kind":"unregistered","recordId":"u1","record":{}}
                         ],"hasMore":false,"nextAfterSequence":4,"startedOn":null}
                         """

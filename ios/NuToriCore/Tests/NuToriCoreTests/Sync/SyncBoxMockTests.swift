@@ -26,9 +26,7 @@ struct SyncBoxMockTests {
             try await box.apply(
                 SyncBoxResult(
                     enqueuing: [entry],
-                    kindChanges: [
-                        KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
-                    ]
+                    kindChanges: KindChanges.grouping([RecordKindMock.change])
                 ))
 
             #expect(
@@ -81,9 +79,7 @@ struct SyncBoxMockTests {
             try await box.apply(
                 SyncBoxResult(
                     resolvedWriteIds: [resolved.writeId],
-                    kindChanges: [
-                        KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
-                    ]
+                    kindChanges: KindChanges.grouping([RecordKindMock.change])
                 ))
 
             #expect(

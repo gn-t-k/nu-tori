@@ -11,13 +11,14 @@ struct IngredientSyncingTests {
     let syncing = IngredientSyncing()
 
     @Test("材料と材料の削除の印だけを、この種類の変更として見分けること")
-    func ownsOnlyIngredientChanges() {
+    func identifiesIngredientChanges() {
         let synced = SyncedIngredient.fixture(nutrients: [:])
 
-        #expect(syncing.owns(.ingredient(synced)))
-        #expect(syncing.owns(.ingredientDeletion(ingredientId: Self.ingredientId)))
-        #expect(!syncing.owns(.dish(.fixture())))
-        #expect(!syncing.owns(.unknown(kind: "ingredient")))
+        #expect(SyncChange.ingredient(synced).kindName == syncing.name)
+        #expect(
+            SyncChange.ingredientDeletion(ingredientId: Self.ingredientId).kindName == syncing.name)
+        #expect(SyncChange.dish(.fixture()).kindName != syncing.name)
+        #expect(SyncChange.unknown(kind: "ingredient").kindName == nil)
     }
 
     @Test("端末も書く種類として、送る書き込みを持つこと")

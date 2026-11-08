@@ -3,15 +3,19 @@ import NuToriAPI
 import NuToriCore
 import NuToriTestSupport
 
-/// テスト用の登録簿の1行。当てられた変更の数を、メモリのキャッシュに数える。サーバーの `note` の変更（`SyncChange.unknown`）を持つ。
-/// 種類の名前は、テストのために列挙へ case を足さず、本物の `accountSettings` を借りる（`RecordKindRegistry.ok(extra:)` は同じ名前の本物を替える）。
+/// テスト用の登録簿の1行。当てられた変更の数を、メモリのキャッシュに数える。
+/// 種類の名前と変更は、テストのために列挙へ case を足さず、本物の `accountSettings` を借りる（`RecordKindRegistry.ok(extra:)` は同じ名前の本物を替える）。
 /// 送り待ちの中身は、消す体重記録の ID の文字列
 struct RecordKindMock: RecordKind {
     struct Failure: Error, Equatable {}
     /// 送り待ちの中身が、体重記録の ID の文字列に読めない
     struct UnreadableContent: Error {}
 
-    static let changeKind = "note"
+    /// この種類に当てる変更の1つ
+    static let change = SyncChange.accountSettings(
+        SyncedAccountSettings(
+            id: UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!, sendsUsageData: true))
+
     let failure: Failure?
 
     static func ok() -> RecordKindMock {
@@ -51,10 +55,6 @@ struct RecordKindMock: RecordKind {
         let failure: Failure?
 
         var writes: (any RecordKindWrites)? { self }
-
-        func owns(_ change: SyncChange) -> Bool {
-            if case .unknown(let kind) = change { kind == RecordKindMock.changeKind } else { false }
-        }
 
         func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
             if let failure { throw failure }

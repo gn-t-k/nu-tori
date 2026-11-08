@@ -1,4 +1,5 @@
 public import Foundation
+public import NuToriAPI
 
 /// 箱に当てる結果。push の結果も、pull の頁も、ローカルでの記録の変更も、ヘルスケアの取り込みも、同じ形で当てる
 public struct SyncBoxResult: Sendable, Equatable {
@@ -28,5 +29,10 @@ public struct SyncBoxResult: Sendable, Equatable {
         self.kindChanges = kindChanges
         self.syncState = syncState
         self.healthSyncState = healthSyncState
+    }
+
+    /// ローカルの記録の変更の結果。変更は種類ごとに分けずに並べ、続けて並ぶ同じ種類を1つにまとめて当てる
+    public init(enqueuing: [PendingEntry] = [], changes: [SyncChange]) {
+        self.init(enqueuing: enqueuing, kindChanges: KindChanges.grouping(changes))
     }
 }
