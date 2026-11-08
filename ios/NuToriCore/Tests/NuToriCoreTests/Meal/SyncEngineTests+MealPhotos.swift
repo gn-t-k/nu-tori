@@ -163,17 +163,3 @@ extension SyncEngineTests {
         }
     }
 }
-
-extension UserEdit {
-    /// 2026-09-22 12:10（東京）に撮り、1分後に送った食事を、元の写真 `original` で記録する
-    fileprivate static func recordingCapturedAtLunch(_ original: Data) -> UserEdit {
-        .recordCapturedMeal(
-            MealPhotoOriginal(
-                data: original,
-                exif: .takenAt(
-                    PhotoExif.WallClock(
-                        year: 2026, month: 9, day: 22, hour: 12, minute: 10, second: 0),
-                    utcOffsetSeconds: 32_400)),
-            sentAt: Date(timeIntervalSince1970: 1_790_046_660))
-    }
-}

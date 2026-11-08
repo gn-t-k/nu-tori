@@ -19,7 +19,7 @@ extension SyncEngineTests {
                 store = try .ok()
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
-                edit = .recordingLunch
+                edit = .recordingCapturedAtLunch(Data([0x01]))
                 timeZone = try #require(TimeZone(identifier: "Asia/Tokyo"))
             }
 
@@ -470,23 +470,10 @@ extension SyncEngine {
     {
         let before = Set(store.cache.meals.keys)
         let outcome = try await apply(
-            .recordingLunch, in: try #require(TimeZone(identifier: "Asia/Tokyo")))
+            .recordingCapturedAtLunch(Data([0x01])),
+            in: try #require(TimeZone(identifier: "Asia/Tokyo")))
         try #require(outcome == .written(recordCount: 1))
         return try #require(store.cache.meals.values.first { !before.contains($0.id) })
-    }
-}
-
-extension UserEdit {
-    /// 2026-09-22 12:10（東京）に撮り、1分後に送った昼の食事を記録する。撮った時刻は写真の付帯情報から読み、`MealDraft.lunch` と同じ食事になる
-    fileprivate static var recordingLunch: UserEdit {
-        .recordCapturedMeal(
-            MealPhotoOriginal(
-                data: Data([0x01]),
-                exif: .takenAt(
-                    PhotoExif.WallClock(
-                        year: 2026, month: 9, day: 22, hour: 12, minute: 10, second: 0),
-                    utcOffsetSeconds: 32_400)),
-            sentAt: Date(timeIntervalSince1970: 1_790_046_660))
     }
 }
 

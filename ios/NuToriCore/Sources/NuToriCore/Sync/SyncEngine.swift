@@ -39,14 +39,95 @@ public actor SyncEngine {
         case .none:
             break
         case .weightRecord:
-            if case .weightSaved(let record) = written {
-                try? await weightHealthExport.exportWeightRecord(record)
+            guard case .weightSaved(let record) = written else {
+                assertionFailure("体重記録を書き出す編集が、体重記録を書いていない: \(edit)")
+                break
             }
+            try? await weightHealthExport.exportWeightRecord(record)
         case .nutrition:
             try await exportNutritionBestEffort()
         }
         return written.outcome
     }
+
+    /// 送り待ちから作る見え方（まだ届いていない記録と、まだ送れていない料理）。画面に渡す
+    public func pendingAppearance() async throws -> PendingAppearance {
+        PendingAppearance(
+            pendingEntries: try await store.pendingEntries(), kinds: store.recordKinds)
+    }
+
+    /// 応答を待つ送った文章（`Timeline.Conversation.sentTextIdsAwaitingResponse(undelivered:)`）。
+    /// 見守る要求をつなぐ文章と、つながっていなければ数秒おきに取りに行くかを決める
+    public func sentTextsAwaitingResponse() async throws -> Set<UUID> {
+        Timeline.Conversation(
+            sentTexts: try await store.sentTexts(), statuses: try await store.sentTextStatuses(),
+            replies: [], streams: [:]
+        ).sentTextIdsAwaitingResponse(
+            undelivered: UndeliveredRecords(
+                pendingEntries: try await store.pendingEntries(), kinds: store.recordKinds))
+    }
+
+    /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
+    public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
+        let settings = AccountSettings(
+            id: AccountSettings.id(forAccountId: accountId),
+            sendsUsageData: sendsUsageData
+        )
+        try await writingCache {
+            try await store.apply(
+                AccountSettingsSyncKind().saving(
+                    settings, enqueuing: pending(.updateAccountSettings(settings))))
+        }
+    }
+
+    public func usageDataSetting() async throws -> UsageDataSetting {
+        UsageDataSetting(
+            accountSettings: try await store.accountSettings(),
+            hasCompletedInitialPull: try await store.syncState()?.hasCompletedInitialPull ?? false
+        )
+    }
+
+    public func sync() async throws -> SyncResult {
+        var rejectedWrites: [RejectedWrite] = []
+        var awaitingPullWriteIds: [UUID] = []
+        let stoppedBy: SyncResult.StopReason?
+        if let pushStop = try await pushPendingWrites(
+            collectingRejectionsIn: &rejectedWrites, awaitingPullIn: &awaitingPullWriteIds)
+        {
+            stoppedBy = pushStop
+        } else {
+            stoppedBy = try await pullChanges()
+            if stoppedBy == nil, !awaitingPullWriteIds.isEmpty {
+                try await writingCache {
+                    try await store.apply(SyncBoxResult(resolvedWriteIds: awaitingPullWriteIds))
+                }
+            }
+        }
+        return SyncResult(
+            rejectedWrites: rejectedWrites,
+            ending: stoppedBy.map { .stopped($0) } ?? .finished
+        )
+    }
+
+    public struct UnknownRecordError: Error, Equatable {
+        public let recordId: UUID
+
+        public init(recordId: UUID) {
+            self.recordId = recordId
+        }
+    }
+
+    private let store: any SyncBox & RecordCacheReading
+    private let client: NuToriAPIClient
+    private let accountId: String
+    private let device: SyncDevice
+    private let timeZone: @Sendable () -> TimeZone
+    private let now: @Sendable () -> Date
+    private let readableKinds: Set<RecordKindName>
+    private let errorReporting: any ErrorReportingSession
+    private let weightHealthExport: any WeightHealthExport
+    private let nutritionHealthExport: any NutritionHealthExport
+    private let mealPhotos: MealPhotos
 
     private func save(_ write: WeightEntry.Write) async throws -> WeightRecord {
         switch write {
@@ -146,7 +227,7 @@ public actor SyncEngine {
     private func renameDish(id dishId: UUID, to typedName: String) async throws -> Dish {
         let dish = try await cachedDish(id: dishId)
         guard let edit = DishEdit.renaming(dish, to: typedName) else { return dish }
-        try await apply(edit)
+        try await applyDishEdit(edit)
         return edit.dish
     }
 
@@ -159,7 +240,7 @@ public actor SyncEngine {
         else {
             return dish
         }
-        try await apply(edit)
+        try await applyDishEdit(edit)
         return edit.dish
     }
 
@@ -234,85 +315,6 @@ public actor SyncEngine {
                 SentTextSyncing().resending(enqueuing: pending(.resend(sentTextId: sentTextId))))
         }
     }
-
-    /// 送り待ちから作る見え方（まだ届いていない記録と、まだ送れていない料理）。画面に渡す
-    public func pendingAppearance() async throws -> PendingAppearance {
-        PendingAppearance(
-            pendingEntries: try await store.pendingEntries(), kinds: store.recordKinds)
-    }
-
-    /// 応答を待つ送った文章（`Timeline.Conversation.sentTextIdsAwaitingResponse(undelivered:)`）。
-    /// 見守る要求をつなぐ文章と、つながっていなければ数秒おきに取りに行くかを決める
-    public func sentTextsAwaitingResponse() async throws -> Set<UUID> {
-        Timeline.Conversation(
-            sentTexts: try await store.sentTexts(), statuses: try await store.sentTextStatuses(),
-            replies: [], streams: [:]
-        ).sentTextIdsAwaitingResponse(
-            undelivered: UndeliveredRecords(
-                pendingEntries: try await store.pendingEntries(), kinds: store.recordKinds))
-    }
-
-    /// 利用状況を送るかの切り替え。電波が無くても受け付け、送り待ちに並べる
-    public func setSendsUsageData(_ sendsUsageData: Bool) async throws {
-        let settings = AccountSettings(
-            id: AccountSettings.id(forAccountId: accountId),
-            sendsUsageData: sendsUsageData
-        )
-        try await writingCache {
-            try await store.apply(
-                AccountSettingsSyncKind().saving(
-                    settings, enqueuing: pending(.updateAccountSettings(settings))))
-        }
-    }
-
-    public func usageDataSetting() async throws -> UsageDataSetting {
-        UsageDataSetting(
-            accountSettings: try await store.accountSettings(),
-            hasCompletedInitialPull: try await store.syncState()?.hasCompletedInitialPull ?? false
-        )
-    }
-
-    public func sync() async throws -> SyncResult {
-        var rejectedWrites: [RejectedWrite] = []
-        var awaitingPullWriteIds: [UUID] = []
-        let stoppedBy: SyncResult.StopReason?
-        if let pushStop = try await pushPendingWrites(
-            collectingRejectionsIn: &rejectedWrites, awaitingPullIn: &awaitingPullWriteIds)
-        {
-            stoppedBy = pushStop
-        } else {
-            stoppedBy = try await pullChanges()
-            if stoppedBy == nil, !awaitingPullWriteIds.isEmpty {
-                try await writingCache {
-                    try await store.apply(SyncBoxResult(resolvedWriteIds: awaitingPullWriteIds))
-                }
-            }
-        }
-        return SyncResult(
-            rejectedWrites: rejectedWrites,
-            ending: stoppedBy.map { .stopped($0) } ?? .finished
-        )
-    }
-
-    public struct UnknownRecordError: Error, Equatable {
-        public let recordId: UUID
-
-        public init(recordId: UUID) {
-            self.recordId = recordId
-        }
-    }
-
-    private let store: any SyncBox & RecordCacheReading
-    private let client: NuToriAPIClient
-    private let accountId: String
-    private let device: SyncDevice
-    private let timeZone: @Sendable () -> TimeZone
-    private let now: @Sendable () -> Date
-    private let readableKinds: Set<RecordKindName>
-    private let errorReporting: any ErrorReportingSession
-    private let weightHealthExport: any WeightHealthExport
-    private let nutritionHealthExport: any NutritionHealthExport
-    private let mealPhotos: MealPhotos
 
     /// 書いた結果。体重記録は、ヘルスケアに書き出すために持つ
     private enum Written {
@@ -421,7 +423,7 @@ public actor SyncEngine {
     }
 
     /// 直した料理と比例の材料を、送り待ちを先に保存してからキャッシュに当てる
-    private func apply(_ edit: DishEdit) async throws {
+    private func applyDishEdit(_ edit: DishEdit) async throws {
         try await writingCache {
             try await store.apply(
                 DishSyncing().correcting(edit, enqueuing: pending(edit.write)))
