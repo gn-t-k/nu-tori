@@ -1,6 +1,5 @@
 import type { RecordId } from "../../record-id";
 import type { KindFollows, RecordKind } from "../record-kind";
-import { readStoredRecord } from "../read-stored-record";
 
 // サーバーだけが書く種類を作る。端末からの書き込みを宣言せず、今の値は find から作る（値が無ければ、無いと返す）。
 // 親の記録と一緒に消える種類（記録の ID が親の ID の、推定の状態など）は、whenGone を deletion_mark にして親を渡す。
@@ -34,6 +33,7 @@ export const createServerOnlyKind = <
     if (kind.whenGone === "deletion_mark" && !kind.parent.exists(recordId)) {
       return kind.parent.hasDeletion(recordId) ? { status: "deleted" } : { status: "absent" };
     }
-    return readStoredRecord({ find: kind.find }, recordId);
+    const value = kind.find(recordId);
+    return value === undefined ? { status: "absent" } : { status: "value", value };
   },
 });
