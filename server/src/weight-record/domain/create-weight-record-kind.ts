@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 import type { RecordId } from "../../domain/record-id";
 import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { readStoredRecord } from "../../domain/sync-ledger/read-stored-record";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
@@ -32,13 +32,7 @@ export const createWeightRecordKind = (
   },
   follows: undefined,
   whenGone: "deletion_mark",
-  readCurrent: (recordId): CurrentRecord<WeightRecord> => {
-    const weightRecord = dependencies.store.find(recordId);
-    if (weightRecord !== undefined) {
-      return { status: "value", value: weightRecord };
-    }
-    return dependencies.store.hasDeletion(recordId) ? { status: "deleted" } : { status: "absent" };
-  },
+  readCurrent: (recordId) => readStoredRecord(dependencies.store, recordId),
 });
 
 type Dependencies = {

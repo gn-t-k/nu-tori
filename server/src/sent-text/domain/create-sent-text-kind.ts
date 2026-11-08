@@ -3,7 +3,7 @@ import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { RecordId } from "../../domain/record-id";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { readStoredRecord } from "../../domain/sync-ledger/read-stored-record";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
@@ -39,10 +39,7 @@ export const createSentTextKind = (
   },
   follows: undefined,
   whenGone: "never",
-  readCurrent: (recordId): CurrentRecord<SentText> => {
-    const sentText = stores.sentText.find(recordId);
-    return sentText === undefined ? { status: "absent" } : { status: "value", value: sentText };
-  },
+  readCurrent: (recordId) => readStoredRecord(stores.sentText, recordId),
 });
 
 // 送った文章の書き込みが、送った文章のほかに変える記録の種類。会話として送り直すと、文章の食事が消える

@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import type { RecordId } from "../../domain/record-id";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { readStoredRecord } from "../../domain/sync-ledger/read-stored-record";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import { computeReestimatedDishEditedEvents } from "../../dish/domain/compute-reestimated-dish-edited-events";
@@ -30,15 +30,7 @@ export const createIngredientKind = (
   },
   follows: undefined,
   whenGone: "deletion_mark",
-  readCurrent: (ingredientId): CurrentRecord<Ingredient> => {
-    const ingredient = stores.ingredient.find(ingredientId);
-    if (ingredient !== undefined) {
-      return { status: "value", value: ingredient };
-    }
-    return stores.ingredient.hasDeletion(ingredientId)
-      ? { status: "deleted" }
-      : { status: "absent" };
-  },
+  readCurrent: (ingredientId) => readStoredRecord(stores.ingredient, ingredientId),
 });
 
 // 材料の量を直すと料理の版が上がるので、料理の変更も足す

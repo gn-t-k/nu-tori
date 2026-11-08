@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 import type { RecordId } from "../../domain/record-id";
 import { isCalendarDay } from "../../domain/is-calendar-day";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { readStoredRecord } from "../../domain/sync-ledger/read-stored-record";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import {
@@ -32,10 +32,7 @@ export const createNoticeKind = (
   },
   follows: undefined,
   whenGone: "never",
-  readCurrent: (recordId): CurrentRecord<Notice> => {
-    const notice = store.find(recordId);
-    return notice === undefined ? { status: "absent" } : { status: "value", value: notice };
-  },
+  readCurrent: (recordId) => readStoredRecord(store, recordId),
 });
 
 const decideCreate = (
