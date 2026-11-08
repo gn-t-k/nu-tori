@@ -29,8 +29,6 @@ App Store Connect の版のページの iPhone の欄は「iPhone with Dynamic I
 
 App Store Connect の画面の名前は英語のまま書く（`docs/agents/tooling.md` の「App Store Connect を読む」）。
 
-- 版が審査に通ったら、次のビルドの前に版の番号（`ios/NuTori.xcodeproj/project.pbxproj` の `MARKETING_VERSION`。3つのターゲットのすべての構成）を上げる。通った版の番号のままのビルドは、App Store Connect が ITMS-90186（その版の列は閉じた）と ITMS-90062（`CFBundleShortVersionString` が通った版より大きくない）で断り、TestFlight にも届かない（ビルド 138。1.0 が通ったあと）。番号は、直しだけなら3つ目、機能を足したら2つ目を上げる
-
 審査に出すのは、アプリの版と、最初のサブスクリプション2つ（月額・年額）とそのサブスクリプショングループを一緒に。最初のサブスクリプションとそのグループは、アプリの版と一緒にしか出せない。決めた経緯は「[仕様: App Store の掲載と提出](https://github.com/gn-t-k/nu-tori/issues/853)」の「審査に出す」。
 
 ```mermaid
@@ -86,6 +84,7 @@ flowchart LR
 
 - 4 の前後で、そろったかをエージェントが読む: `/v1/reviewSubmissions?filter[app]=<app>` で提出の ID と状態を取り、`/v1/reviewSubmissions/<id>/items` で中身の数と状態を読む。そろうと、中身が4つ（版1・サブスクリプション2・グループ1）で、どれも `READY_FOR_REVIEW` になる（2026-11-04 に確かめた）。中身のどれが何かは、この鍵では読めない
 - リリースは「Manually release this version」。審査が通ったら、開発者が LP を出す PR と時機をそろえて、手で公開する
+- 版が審査に通ったら、次のビルドの前に版の番号（`ios/NuTori.xcodeproj/project.pbxproj` の `MARKETING_VERSION`。3つのターゲットのすべての構成）を上げる。通った版の番号のままのビルドは、App Store Connect が ITMS-90186（その版の列は閉じた）と ITMS-90062（`CFBundleShortVersionString` が通った版より大きくない）で断り、TestFlight にも届かない（ビルド 138。1.0 が通ったあと）。番号は、直しだけなら3つ目、機能を足したら2つ目を上げる
 - 審査で却下・指摘されたら、指摘の文と返事を `ready-for-human` の Issue に残す。掲載情報かアプリを直すなら、その Issue からチケットを切る
 
 ### 審査の人への返事の下書き
