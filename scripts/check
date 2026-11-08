@@ -101,7 +101,7 @@ target_files() {
     # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は確かめに使い、エージェントが読む文書は重なりを見るので残す
     { grep -vE '\.md$' <<< "$files" || true; grep -Fx DESIGN.md <<< "$files" || true; } | grep -E "^($paths)" || true
     # エージェントが読む文書は、重なりを見る。どれがそうかは scripts/agent-docs-duplicates が決める
-    # CI の changes ジョブは、setup-node を通さずに runner に入っている node で呼ぶ
+    # CI の changes ジョブは setup-node を通さずに runner に入っている node で呼ぶので、--pick の口は依存を持たず、Node の版を選ばない書き方にとどめる
     if [ "$target" = scripts ]; then
         node "$root/scripts/agent-docs-duplicates" --pick "$root" <<< "$files" || return 1
     fi
@@ -115,7 +115,7 @@ check_changed() {
         upstream=origin/main
     base="$(git -C "$root" merge-base "$upstream" HEAD 2> /dev/null)" || base=""
     if [ -z "$base" ] || ! files="$(changed_files "$base")" || ! picked="$(pick_unpushed_targets "$base")"; then
-        echo "${upstream} と比べられないので、server と site と ios と scripts のすべてを確かめる"
+        echo "${upstream} と比べられないか、対象を選べないので、server と site と ios と scripts のすべてを確かめる"
         check_target server
         check_target site
         check_target ios

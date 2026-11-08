@@ -152,42 +152,65 @@ describe("エージェントが読む文書の重なり", () => {
   });
 
   describe("--pick で選ばないとき", () => {
-    const pickNothing = (files, path) => {
-      const { root } = run(files);
-      try {
-        const result = pick(root, [path]);
+    describe("置き場の外の文書のとき", () => {
+      let root;
+      before(() => {
+        ({ root } = run({}));
+      });
+      after(() => rmSync(root, { recursive: true, force: true }));
+
+      it("GLOSSARY.md を選ばないこと", () => {
+        const result = pick(root, ["GLOSSARY.md"]);
         assert.equal(result.status, 0, result.stderr);
         assert.equal(result.stdout, "");
-      } finally {
-        rmSync(root, { recursive: true, force: true });
-      }
-    };
-
-    describe("置き場の外の文書のとき", () => {
-      it("GLOSSARY.md を選ばないこと", () => {
-        pickNothing({}, "GLOSSARY.md");
       });
 
       it("docs/adr/ の文書を選ばないこと", () => {
-        pickNothing({}, "docs/adr/0001.md");
+        const result = pick(root, ["docs/adr/0001.md"]);
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(result.stdout, "");
       });
     });
 
     describe("skills-lock.json で入れたスキルのとき", () => {
+      let root;
+      before(() => {
+        ({ root } = run({ "skills-lock.json": JSON.stringify({ version: 1, skills: { tdd: { source: "mattpocock/skills" } } }) }));
+      });
+      after(() => rmSync(root, { recursive: true, force: true }));
+
       it("そのスキルの文書を選ばないこと", () => {
-        pickNothing({ "skills-lock.json": JSON.stringify({ version: 1, skills: { tdd: { source: "mattpocock/skills" } } }) }, ".agents/skills/tdd/SKILL.md");
+        const result = pick(root, [".agents/skills/tdd/SKILL.md"]);
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(result.stdout, "");
       });
     });
 
     describe(". で始まるディレクトリの AGENTS.md のとき", () => {
+      let root;
+      before(() => {
+        ({ root } = run({}));
+      });
+      after(() => rmSync(root, { recursive: true, force: true }));
+
       it("選ばないこと", () => {
-        pickNothing({}, ".github/AGENTS.md");
+        const result = pick(root, [".github/AGENTS.md"]);
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(result.stdout, "");
       });
     });
 
     describe("置き場の中の文書でないファイルのとき", () => {
+      let root;
+      before(() => {
+        ({ root } = run({}));
+      });
+      after(() => rmSync(root, { recursive: true, force: true }));
+
       it("選ばないこと", () => {
-        pickNothing({}, ".agents/skills/verify-server/scripts/run");
+        const result = pick(root, [".agents/skills/verify-server/scripts/run"]);
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(result.stdout, "");
       });
     });
   });
