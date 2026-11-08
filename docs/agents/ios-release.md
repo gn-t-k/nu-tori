@@ -29,6 +29,8 @@ App Store Connect の版のページの iPhone の欄は「iPhone with Dynamic I
 
 App Store Connect の画面の名前は英語のまま書く（`docs/agents/tooling.md` の「App Store Connect を読む」）。
 
+- 版が審査に通ったら、次のビルドの前に版の番号（`ios/NuTori.xcodeproj/project.pbxproj` の `MARKETING_VERSION`。3つのターゲットのすべての構成）を上げる。通った版の番号のままのビルドは、App Store Connect が ITMS-90186（その版の列は閉じた）と ITMS-90062（`CFBundleShortVersionString` が通った版より大きくない）で断り、TestFlight にも届かない（ビルド 138。1.0 が通ったあと）。番号は、直しだけなら3つ目、機能を足したら2つ目を上げる
+
 審査に出すのは、アプリの版と、最初のサブスクリプション2つ（月額・年額）とそのサブスクリプショングループを一緒に。最初のサブスクリプションとそのグループは、アプリの版と一緒にしか出せない。決めた経緯は「[仕様: App Store の掲載と提出](https://github.com/gn-t-k/nu-tori/issues/853)」の「審査に出す」。
 
 ```mermaid
