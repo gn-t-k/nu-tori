@@ -5,7 +5,7 @@ import Testing
 
 @Suite("変更の種類の名前")
 struct SyncChangeKindNameTests {
-    @Suite("登録簿にある種類の変更のとき")
+    @Suite("端末が知っている種類の変更のとき")
     struct Known {
         let id: UUID
 
