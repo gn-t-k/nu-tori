@@ -37,10 +37,10 @@ nonisolated struct RecordKindMock: RecordKind {
         -> PendingEntry
     {
         PendingEntry(
-            writeId: writeId, enqueuedAt: enqueuedAt, kind: .accountSettings, content: Data([0x01]))
+            writeId: writeId, enqueuedAt: enqueuedAt, kind: Self.name, content: Data([0x01]))
     }
 
-    /// この種類に当てる変更の1つ
+    static let name = RecordKindName.accountSettings
     static let change = SyncChange.accountSettings(
         SyncedAccountSettings(id: UUID(), sendsUsageData: true))
 
@@ -58,7 +58,7 @@ nonisolated struct RecordKindMock: RecordKind {
 
     /// キャッシュに依らない部分
     private nonisolated struct Synced: SyncedRecordKind, RecordKindWrites {
-        let name = RecordKindName.accountSettings
+        let name = RecordKindMock.name
 
         var writes: (any RecordKindWrites)? { self }
 
