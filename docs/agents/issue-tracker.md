@@ -77,25 +77,22 @@ GitHub Issueを作る。
 
 ## 機能の受け入れ条件を地図の形で書く
 
-`/to-spec`・`/to-tickets` で作る Issue で、ユーザーから見える機能を足す、または入口や見え方を変える受け入れ条件は、検証の地図（`.agents/skills/verify-<アプリ>/features/` の機能のファイル）の項目と同じ形で書く。形の正本は `.agents/skills/verify-<アプリ>/MAP-FORMAT.md` で、条件の1行が地図の1行になるように、次の4つを書き分ける。
+`/to-tickets` で作るチケットで、ユーザーから見える機能を足す、または入口や見え方を変える受け入れ条件は、検証の地図（`.agents/skills/verify-<アプリ>/features/` の機能のファイル）の項目と同じ形で書く。`/to-spec` の雛形には受け入れ条件の節が無いので、仕様では `Testing Decisions` に同じ形で書く。各項目の中身は `.agents/skills/verify-<アプリ>/MAP-FORMAT.md` の節のとおりで、機能ごとに ID と振る舞いの行を置き、その下に次の3つを入れ子にする。
 
-- 短い ID と、1行の振る舞い。地図の `Sub-features` に移す
-- 入口：ユーザーの操作と、そのとき端末が呼ぶ API。入口が複数あれば全部。`How to get to it (user POV)` に移す
-- 前提：動かす前に要る状態。`Driving it with verify-server` の `Preconditions:` に移す
-- 見える結果：何をすると、何が見えれば動いたと言えるか。`Driving it with verify-server` の各項目に移す
+- 入口：`How to get to it (user POV)` の行になる
+- 前提：`Driving it with verify-server` の `Preconditions:` の行になる
+- 見える結果：`Driving it with verify-server` の項目から、送るコマンドを除いたもの
 
 ```markdown
 - [ ] `weight-source-deleted` 取り込み元で消した体重記録が消える
-- [ ] 入口：ヘルスケアで、取り込んだ体重を消す。端末は `source_deleted_weight_record` を送る
-- [ ] 前提：ヘルスケアから取り込んだ体重記録がある
-- [ ] 見える結果：その記録の ID で `source_deleted_weight_record` を送ると `applied`。取りに行くと、その記録の変更が `weight_record_deletion`（`record` は空）になり、`weight_record` としては出ない
+  - 入口：ヘルスケアで、取り込んだ体重を消す。端末は `source_deleted_weight_record` を送る
+  - 前提：ヘルスケアから取り込んだ体重記録がある
+  - 見える結果：その記録の ID で `source_deleted_weight_record` を送ると `applied`。取りに行くと、その記録の変更が `weight_record_deletion`（`record` は空）になり、`weight_record` としては出ない
 ```
 
-前提が、地図のほかの項目で作れる状態（例の「取り込んだ体重記録」は「取り込む」の項目で作れる）なら、移すときは `Preconditions:` に足さず、その項目のあとに並べる。送るコマンドと `Gotchas` は条件に書かず、実装役が動かして確かめるときに書く。テスト・内部の作り・文書についての条件は、この形にしない。
+テスト・内部の作り・文書についての条件は、この形にしない。実装の PR で、この条件を地図に移す（`docs/agents/git.md` の「動かして確かめる」の 3）。地図がまだ無いアプリ（今は iOS）では移さない。
 
-実装の PR で、この条件を地図の機能のファイルに移す（`docs/agents/git.md` の「動かして確かめる」の 3）。地図がまだ無いアプリ（今は iOS）では移さず、条件は Issue に残る。
-
-予定の機能を、実装の前に地図へ書かない。`/pstack:maintain-verification-skill` は、アプリと食い違う地図をずれとして扱い、まだ無い機能の項目を直したり消したりするため。実装の前の置き場は Issue の受け入れ条件だけにする。
+実装の前の置き場は Issue の受け入れ条件だけにし、地図には載せない（`/pstack:maintain-verification-skill` が、アプリと食い違う地図をずれとして扱うため。`MAP-FORMAT.md` の最後の段落）。
 
 **Why:** 受け入れ条件と地図を別の形で書くと、実装役が地図の項目を一から書き直し、条件で決めた入口が地図から漏れる。条件を地図の形で先に書いておけば、実装の PR で移すだけになり、どの入口を通せば受け入れたと言えるかが Issue の段階で決まる（#902）。
 
