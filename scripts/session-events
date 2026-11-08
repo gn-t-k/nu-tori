@@ -1,0 +1,69 @@
+#!/usr/bin/env node
+// 子のセッションの list_events の結果が大きくファイルに置かれたとき、イベントごとに1行の要約にする（docs/agents/tooling.md の「子のセッションを読む」）
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const fs = require("node:fs");
+const { ExpectedFailure } = require("./expected-failure.js");
+
+const summarizeEvents = (saved) => {
+  // 置かれたファイルは、囲みの行のあいだに JSON が1行で入る。囲みの文は変わりうるので、{ で始まる行だけを読む
+  const json = saved.split("\n").find((line) => line.trim().startsWith("{"));
+  if (json === undefined) throw new ExpectedFailure("list_events の結果の JSON の行が見つからない。ツールの結果が置かれたファイルを渡す");
+  const page = JSON.parse(json).ccr;
+  const lines = page.data.map((event) => {
+    const kind = Object.keys(event).find((key) => key !== "created_at");
+    const summary = summarizeEvent(event[kind].internal_anthropic_catchall);
+    return [event.created_at.slice(11, 19), kind, summary].filter(Boolean).join(" ");
+  });
+  if (page.has_more) lines.push(`（古いイベントが残っている。前のページは before_id: ${page.first_id}）`);
+  return lines;
+};
+
+// 計測の値（トークン、費用、時間）が1件に数千文字あるので、読む人に要る文だけを抜く
+const summarizeEvent = (body) => {
+  if (typeof body?.result === "string") return oneLine(`[${body.subtype}] ${body.result}`);
+  const content = body?.message?.content;
+  if (content === undefined) return "";
+  return oneLine(typeof content === "string" ? content : content.map(summarizeBlock).filter(Boolean).join(" "));
+};
+
+const summarizeBlock = (block) => {
+  switch (block.type) {
+    case "text":
+      return block.text;
+    case "tool_use":
+      return `[${block.name}] ${JSON.stringify(block.input)}`;
+    case "tool_result": {
+      // ファイルに置かれるほど大きくなるのは、ほとんどがツールの結果（読んだファイルやコマンドの出力）なので、そこだけ頭で切る
+      const TOOL_RESULT_LENGTH = 200;
+      const content = block.content ?? "";
+      const text = oneLine(typeof content === "string" ? content : content.map((part) => part.text ?? "").join(" "));
+      return text.length > TOOL_RESULT_LENGTH ? `[結果] ${text.slice(0, TOOL_RESULT_LENGTH)}…` : `[結果] ${text}`;
+    }
+    default:
+      return undefined;
+  }
+};
+
+const oneLine = (text) => text.replace(/\s+/g, " ").trim();
+
+module.exports = { summarizeEvents };
+
+// テストが require したときは動かない
+if (require.main === module) {
+  const [file] = process.argv.slice(2);
+  if (!file) {
+    console.error("使い方: scripts/session-events <list_events の結果が置かれたファイル>");
+    process.exitCode = 2;
+  } else {
+    try {
+      console.log(summarizeEvents(fs.readFileSync(file, "utf8")).join("\n"));
+    } catch (error) {
+      // 想定外の失敗は、スタックを残すため投げ直す
+      if (!(error instanceof ExpectedFailure)) throw error;
+      console.error(error.message);
+      process.exitCode = 1;
+    }
+  }
+}

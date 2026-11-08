@@ -17,4 +17,18 @@ else
     unset SENTRY_AUTH_TOKEN SENTRY_TOKEN
 fi
 
-exec npx -y sentry@0.46.0 "$@"
+args=("$@")
+# issue events の期間の既定は 7 日で、それより前に起きた課題は空で返る。issue list の既定（90 日）にそろえる
+if [ "${1:-}" = issue ] && [ "${2:-}" = events ]; then
+    period_given=false
+    for arg in "$@"; do
+        case "$arg" in
+            -t | -t?* | --period | --period=*) period_given=true ;;
+        esac
+    done
+    if [ "$period_given" = false ]; then
+        args+=(--period 90d)
+    fi
+fi
+
+exec npx -y sentry@0.46.0 ${args[@]+"${args[@]}"}

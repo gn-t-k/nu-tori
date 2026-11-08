@@ -26,6 +26,14 @@ pstack は Claude Code のプラグイン `pstack@cursor-plugins` で入れ、�
 
 worktree やセッションを並べるときは、pstack の `principle-separate-before-serializing-shared-state` を読む。#613 では、並べた実装役が同じ DerivedData を取り合い、`database is locked` で落ちた
 
+## 子のセッションを読む
+
+立てた子のセッション（`create_session`）の様子は、小さいほうから読む。`list_events` は `kinds` で絞ってもイベントの本文が大きく、出力の上限（約10万文字）を超えて読み直すことになった（#910 の親のセッションと振り返りのセッション。#933）
+
+1. `get_session` の `status_bucket` と `post_turn_summary`（1件3千文字ほど）で、終わったか、何をしたかを見る。足りればここで止める
+2. 中身が要るときは、`list_events` を `kinds` で絞って呼ぶ。`["assistant"]` は `limit: 100` でも上限に収まった。`["user"]`（ツールの結果を含む）と、絞らない呼び方は、`limit: 100` で13万〜27万文字になり、ファイルに置かれた。`["result"]` は1件に計測の値が数千文字つく
+3. ファイルに置かれたら、`scripts/session-events <ファイル>` でイベントごとの1行にする（ツールの結果は頭だけにする。27万文字が2万文字ほどになった）。最後の行の `before_id` で、前のページを読む
+
 ## hook
 
 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。
@@ -53,7 +61,7 @@ worktree やセッションを並べるときは、pstack の `principle-separat
 
 Sentry の課題・イベント・スタック・端末・版・件数は、`scripts/sentry`（Sentry の公式の CLI、npm の `sentry`）で読む。版・テレメトリの停止・組織は、このスクリプトの1か所に書く。MCP の設定には Sentry を置かない。調べた経緯は `docs/research/sentry-agent-access.md`。
 
-- 読む: `scripts/sentry issue list <project> --json`、`scripts/sentry issue view <短い ID> --json`（課題と最新のイベント）、`scripts/sentry issue events <短い ID> --full`（イベントごとのスタック）
+- 読む: `scripts/sentry issue list <project> --json`、`scripts/sentry issue view <短い ID> --json`（課題と最新のイベント）、`scripts/sentry issue events <短い ID> --full`（イベントごとのスタック）。`issue events` の CLI の既定の期間は7日で、それより前の課題は空で返るので、期間を渡さないときはスクリプトが `--period 90d` を足す
 - 書き込みのコマンド（`resolve`、`archive`、`merge` など）と、Seer を使うコマンド（`explain`、`plan`）は使わない
 - 読んだイベントの中身（端末の ID、利用者、要求のヘッダー）は、公開の Issue・PR・コメントに貼らない。貼るのはスタックの関数名と、版・OS・件数まで
 - 認証は読むだけにする
