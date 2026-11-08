@@ -144,9 +144,14 @@ check_changed() {
     if $run_server; then
         check_target server
         # --fix が server/openapi.json を書き出し直すと、アプリの API のクライアントも生成し直す
-        if ! $run_ios && picked="$(pick_unpushed_targets "$base")" && [[ "$picked" == *ios=true* ]]; then
-            echo "server の確かめのあとに ios に関わる変更（server/openapi.json など）があるので、ios も確かめる"
-            run_ios=true
+        if ! $run_ios; then
+            # 選び直しが落ちたら ios を黙って飛ばさず、落とす
+            step "server の確かめのあとに、確かめる対象を選び直す"
+            picked="$(pick_unpushed_targets "$base")"
+            if [[ "$picked" == *ios=true* ]]; then
+                echo "server の確かめのあとに ios に関わる変更（server/openapi.json など）があるので、ios も確かめる"
+                run_ios=true
+            fi
         fi
     fi
     if $run_ios; then
