@@ -10,7 +10,9 @@ nonisolated final class CachedMealEstimationStatus {
 
     init(_ record: MealEstimationStatusSyncing.Status) {
         mealId = record.mealId
-        status = Self.stored(record.status)
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
+        status = ""
+        apply(record)
     }
 
     func apply(_ record: MealEstimationStatusSyncing.Status) {

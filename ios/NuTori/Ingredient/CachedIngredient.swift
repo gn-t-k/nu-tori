@@ -26,20 +26,18 @@ nonisolated final class CachedIngredient {
 
     init(_ ingredient: Ingredient) {
         ingredientId = ingredient.id
-        dishId = ingredient.dishId
-        name = ingredient.name
-        quantity = ingredient.quantity
-        quantitySource = ingredient.quantitySource.stored
-        unit = ingredient.unit
-        edibleGramsPerUnit = ingredient.edibleGramsPerUnit
-        positionInDish = ingredient.positionInDish
-        let stored = Self.stored(ingredient.nutrientSource)
-        sourceType = stored.type
-        labelBasisGrams = stored.labelBasisGrams
-        foodNumber = stored.foodNumber
-        let nutrients = Self.stored(ingredient.nutrients)
-        nutrientNames = nutrients.names
-        nutrientValues = nutrients.values
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
+        dishId = UUID()
+        name = ""
+        quantity = 0
+        quantitySource = ""
+        unit = ""
+        edibleGramsPerUnit = 0
+        positionInDish = 0
+        sourceType = ""
+        nutrientNames = []
+        nutrientValues = []
+        apply(ingredient)
     }
 
     /// 同じ ID が届き直したときは、その値にそろえる

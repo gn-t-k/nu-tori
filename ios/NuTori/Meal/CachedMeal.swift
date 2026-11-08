@@ -18,13 +18,14 @@ nonisolated final class CachedMeal {
 
     init(_ meal: Meal) {
         mealId = meal.id
-        eatenAt = meal.eatenAt
-        eatenUtcOffsetSeconds = meal.eatenUtcOffsetSeconds
-        sentAt = meal.sentAt
-        sentTimeZoneIdentifier = meal.sentTimeZone.identifier
-        entry = meal.entry.storedName
-        sentTextId = meal.sentTextId
-        photoIds = meal.photoIds
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
+        eatenAt = .distantPast
+        eatenUtcOffsetSeconds = 0
+        sentAt = .distantPast
+        sentTimeZoneIdentifier = ""
+        entry = ""
+        photoIds = []
+        apply(meal)
     }
 
     /// 食事は直す手段を持たないが、同じ ID が届き直したときはその値にそろえる

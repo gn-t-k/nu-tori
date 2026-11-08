@@ -19,13 +19,12 @@ nonisolated final class CachedDish {
 
     init(_ dish: Dish) {
         dishId = dish.id
-        mealId = dish.mealId
-        name = dish.name
-        quantity = dish.quantity?.value
-        unit = dish.quantity?.unit
-        quantitySource = dish.quantity?.source.stored
-        positionInMeal = dish.positionInMeal
-        version = dish.version
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
+        mealId = UUID()
+        name = ""
+        positionInMeal = 0
+        version = 0
+        apply(dish)
     }
 
     /// 同じ ID が届き直したときは、その値にそろえる

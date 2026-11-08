@@ -39,23 +39,14 @@ nonisolated final class CachedGoal {
 
     init(_ goal: Goal) {
         goalId = goal.id
-        startedDay = goal.startedDay.yearMonthDay
-        startingWeightTrendKilograms = goal.startingWeightTrendKilograms
-        targetWeightKilograms = goal.targetWeightKilograms
-        decidedAt = goal.decidedAt
-        timeZoneIdentifier = goal.timeZone.identifier
-        direction = Self.stored(goal.direction)
-        deadlineDay = goal.direction.weightChange?.deadlineDay.yearMonthDay
-        pacePlan = goal.direction.weightChange.map { Self.stored($0.pacePlan) }
-        endedDay = goal.closure?.endedDay.yearMonthDay
-        nextGoalId = goal.closure?.nextGoalId
-        endReason = goal.closure.map { Self.stored($0.endReason) }
-        achievedDay = goal.achievement?.achievedDay.yearMonthDay
-        achievementJudgedAt = goal.achievement?.judgedAt
-        achievementTimeZoneIdentifier = goal.achievement?.timeZone.identifier
-        deadlineWeightTrendKilograms = goal.deadlineConfirmation?.deadlineWeightTrendKilograms
-        deadlineConfirmedAt = goal.deadlineConfirmation?.confirmedAt
-        deadlineConfirmationTimeZoneIdentifier = goal.deadlineConfirmation?.timeZone.identifier
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
+        startedDay = ""
+        startingWeightTrendKilograms = 0
+        targetWeightKilograms = 0
+        decidedAt = .distantPast
+        timeZoneIdentifier = ""
+        direction = ""
+        apply(goal)
     }
 
     /// 届いた値にそろえる。達成した・期限の日を確定した・閉じた目標は、同じ ID で届き直す

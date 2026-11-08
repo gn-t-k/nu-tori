@@ -19,14 +19,16 @@ nonisolated final class CachedDailyGuide {
 
     init(_ guide: DailyGuide) {
         guideId = guide.id
-        goalId = guide.goalId
-        expenditureEstimateId = guide.expenditureEstimateId
-        effectiveDay = guide.effectiveDay.yearMonthDay
-        energyKilocalories = guide.energyKilocalories
-        proteinGrams = guide.proteinGrams
-        fatGrams = guide.fatGrams
-        carbohydrateGrams = guide.carbohydrateGrams
-        limitHits = guide.limitHits.map(Self.stored)
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
+        goalId = UUID()
+        expenditureEstimateId = UUID()
+        effectiveDay = ""
+        energyKilocalories = 0
+        proteinGrams = 0
+        fatGrams = 0
+        carbohydrateGrams = 0
+        limitHits = []
+        apply(guide)
     }
 
     /// 1日の目安は変わらないが、同じ ID が届き直したときはその値にそろえる

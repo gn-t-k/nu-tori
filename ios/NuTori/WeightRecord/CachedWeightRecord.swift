@@ -14,11 +14,11 @@ nonisolated final class CachedWeightRecord {
 
     init(_ record: WeightRecord) throws {
         recordId = record.id
-        kilograms = record.kilograms
-        measuredAt = record.instant
-        timeZoneIdentifier = record.timeZone.identifier
-        version = record.version
-        importedJSON = nil
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
+        kilograms = 0
+        measuredAt = .distantPast
+        timeZoneIdentifier = ""
+        version = 0
         try apply(record)
     }
 

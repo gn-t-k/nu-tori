@@ -16,11 +16,10 @@ nonisolated final class CachedSentTextStatus {
 
     init(_ record: SentTextStatusSyncing.Status) {
         sentTextId = record.sentTextId
-        let stored = record.status.storedValue
-        classification = stored.classification
-        replyStatus = stored.replyStatus
-        replyFailureReason = stored.replyFailureReason
-        replyHaltReason = stored.replyHaltReason
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
+        classification = ""
+        replyStatus = ""
+        apply(record)
     }
 
     func apply(_ record: SentTextStatusSyncing.Status) {

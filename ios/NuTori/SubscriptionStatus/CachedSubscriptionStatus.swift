@@ -21,6 +21,7 @@ nonisolated final class CachedSubscriptionStatus {
 
     init(_ status: SubscriptionStatus) {
         singletonKey = Self.onlyKey
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
         isTestUser = false
         apply(status)
     }

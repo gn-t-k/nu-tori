@@ -15,10 +15,11 @@ nonisolated final class CachedExpenditureEstimate {
 
     init(_ estimate: ExpenditureEstimate) {
         estimateId = estimate.id
-        effectiveDay = estimate.effectiveDay.yearMonthDay
-        expenditureKilocalories = estimate.expenditureKilocalories
-        estimatedAt = estimate.estimatedAt
-        initialSource = estimate.initialSource.map(Self.stored)
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
+        effectiveDay = ""
+        expenditureKilocalories = 0
+        estimatedAt = .distantPast
+        apply(estimate)
     }
 
     /// 推定は変わらないが、同じ ID が届き直したときはその値にそろえる

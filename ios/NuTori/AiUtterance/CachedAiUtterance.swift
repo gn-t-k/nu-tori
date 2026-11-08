@@ -13,9 +13,11 @@ nonisolated final class CachedAiUtterance {
 
     init(_ utterance: AiUtterance) {
         utteranceId = utterance.id
-        body = utterance.body
-        sentTextId = utterance.sentTextId
-        mealIds = utterance.mealIds
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
+        body = ""
+        sentTextId = UUID()
+        mealIds = []
+        apply(utterance)
     }
 
     /// 返事は変わらないが、同じ ID が届き直したときはその値にそろえる
