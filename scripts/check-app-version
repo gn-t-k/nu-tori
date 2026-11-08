@@ -7,7 +7,7 @@
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const { ExpectedFailure } = require("./expected-failure.js");
-const { readJson } = require("./app-store-connect");
+const { readApiPage } = require("./app-store-connect");
 
 const APP_ID = "6816842705";
 const PROJECT = join(__dirname, "..", "ios", "NuTori.xcodeproj", "project.pbxproj");
@@ -26,7 +26,7 @@ const NOT_YET_APPROVED = new Set([
 
 const main = async () => {
   const marketingVersion = readMarketingVersion(readFileSync(PROJECT, "utf8"));
-  const page = await readJson(
+  const page = await readApiPage(
     `/v1/apps/${APP_ID}/appStoreVersions?filter[platform]=IOS&fields[appStoreVersions]=versionString,appStoreState&limit=200`,
   );
   const approved = findBlockingApprovedVersion(

@@ -43,13 +43,7 @@ const main = async () => {
   while (url) {
     // links.next も同じ口のはずだが、鍵を送る前に毎回確かめる
     if (analytics) assertAnalyticsPath(url);
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${signShortLivedJwt({ keyId, issuerId, privateKey })}` },
-    });
-    const body = await response.text();
-    if (!response.ok) throw new ExpectedFailure(`${response.status} ${body}`);
-    const page = JSON.parse(body);
+    const page = await readApiPage(url, { keyId, issuerId, privateKey });
     if (!followAll) {
       console.log(JSON.stringify(page, null, 2));
       return;
@@ -188,19 +182,18 @@ const toApiUrl = (value) => {
   return url;
 };
 
-// 役割 Developer の鍵（エージェントの読むだけの鍵）で1ページを読む。scripts/check-app-version が使う
-const readJson = async (target) => {
-  const { keyId, issuerId, privateKey } = loadKey("NU_TORI_ASC");
-  const response = await fetch(toApiUrl(target), {
+// 鍵を付けた GET で API の1ページを読む。main と scripts/check-app-version が使う。check-app-version には役割 Developer の鍵（NU_TORI_ASC）を渡す
+const readApiPage = async (url, key = loadKey("NU_TORI_ASC")) => {
+  const response = await fetch(toApiUrl(url), {
     method: "GET",
-    headers: { Authorization: `Bearer ${signShortLivedJwt({ keyId, issuerId, privateKey })}` },
+    headers: { Authorization: `Bearer ${signShortLivedJwt(key)}` },
   });
   const body = await response.text();
   if (!response.ok) throw new ExpectedFailure(`${response.status} ${body}`);
   return JSON.parse(body);
 };
 
-module.exports = { readFinanceReport, readJson, assertAnalyticsPath, toSegmentDownloadUrl, signShortLivedJwt };
+module.exports = { readFinanceReport, readApiPage, assertAnalyticsPath, toSegmentDownloadUrl, signShortLivedJwt };
 
 // scripts/finance・scripts/check-app-version・テスト・scripts/discovery-analytics-wizard が require したときは、読む道だけを貸し、コマンドとしては動かない
 if (require.main === module) {
