@@ -15,10 +15,11 @@ nonisolated final class CachedSyncState {
 
     init(_ state: SyncState) {
         singletonKey = Self.onlyKey
-        afterSequence = state.afterSequence
-        hasCompletedInitialPull = state.hasCompletedInitialPull
-        readableKinds = Self.names(of: state.readableKinds)
-        startedOn = state.startedOn
+        // 値は apply が入れる。SwiftData の行は、省けない欄に値を入れてからでないと apply を呼べないので、仮の値を入れておく
+        afterSequence = 0
+        hasCompletedInitialPull = false
+        readableKinds = []
+        apply(state)
     }
 
     func syncState() -> SyncState {

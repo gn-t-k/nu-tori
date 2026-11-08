@@ -17,12 +17,11 @@ nonisolated final class CachedNotice {
 
     init(_ notice: Notice) {
         noticeId = notice.id
-        kind = notice.kind.storedName
-        issuedAt = notice.issuedAt
-        timeZoneIdentifier = notice.timeZone.identifier
-        targetDay = notice.targetDay?.yearMonthDay
-        respondedAt = notice.response?.respondedAt
-        responseTimeZoneIdentifier = notice.response?.timeZone.identifier
+        // 値は apply が入れる。SwiftData の行は、省けない欄に値を入れてからでないと apply を呼べないので、仮の値を入れておく
+        kind = ""
+        issuedAt = .distantPast
+        timeZoneIdentifier = ""
+        apply(notice)
     }
 
     /// 届いた値（サーバーの今の値を含む）にそろえる

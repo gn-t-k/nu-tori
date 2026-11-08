@@ -12,9 +12,11 @@ nonisolated final class CachedSentText {
 
     init(_ sentText: SentText) {
         sentTextId = sentText.id
-        body = sentText.body
-        sentAt = sentText.sentAt
-        timeZoneIdentifier = sentText.timeZone.identifier
+        // 値は apply が入れる。SwiftData の行は、省けない欄に値を入れてからでないと apply を呼べないので、仮の値を入れておく
+        body = ""
+        sentAt = .distantPast
+        timeZoneIdentifier = ""
+        apply(sentText)
     }
 
     /// 送った文章は直す手段を持たないが、同じ ID が届き直したときはその値にそろえる

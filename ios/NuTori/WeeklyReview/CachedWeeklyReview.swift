@@ -22,16 +22,12 @@ nonisolated final class CachedWeeklyReview {
     var goalId: UUID?
 
     init(_ review: WeeklyReview) {
-        let stored = Stored(review.outcome)
         reviewId = review.id
-        effectiveDay = review.effectiveDay.yearMonthDay
-        reviewedAt = review.reviewedAt
-        timeZoneIdentifier = review.timeZone.identifier
-        expenditureEstimateId = stored.expenditureEstimateId
-        dailyGuideId = stored.dailyGuideId
-        mainReason = stored.mainReason
-        deferralReason = stored.deferralReason
-        goalId = stored.goalId
+        // 値は apply が入れる。SwiftData の行は、省けない欄に値を入れてからでないと apply を呼べないので、仮の値を入れておく
+        effectiveDay = ""
+        reviewedAt = .distantPast
+        timeZoneIdentifier = ""
+        apply(review)
     }
 
     /// 見直しは変わらないが、同じ ID が届き直したときはその値にそろえる

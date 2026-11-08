@@ -18,13 +18,14 @@ nonisolated final class CachedMeal {
 
     init(_ meal: Meal) {
         mealId = meal.id
-        eatenAt = meal.eatenAt
-        eatenUtcOffsetSeconds = meal.eatenUtcOffsetSeconds
-        sentAt = meal.sentAt
-        sentTimeZoneIdentifier = meal.sentTimeZone.identifier
-        entry = meal.entry.storedName
-        sentTextId = meal.sentTextId
-        photoIds = meal.photoIds
+        // 値は apply が入れる。SwiftData の行は、省けない欄に値を入れてからでないと apply を呼べないので、仮の値を入れておく
+        eatenAt = .distantPast
+        eatenUtcOffsetSeconds = 0
+        sentAt = .distantPast
+        sentTimeZoneIdentifier = ""
+        entry = ""
+        photoIds = []
+        apply(meal)
     }
 
     /// 食事は直す手段を持たないが、同じ ID が届き直したときはその値にそろえる

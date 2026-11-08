@@ -11,8 +11,10 @@ nonisolated final class CachedAccountSettings {
 
     init(_ settings: AccountSettings) {
         singletonKey = Self.onlyKey
-        settingsId = settings.id
-        sendsUsageData = settings.sendsUsageData
+        // 値は apply が入れる。SwiftData の行は、省けない欄に値を入れてからでないと apply を呼べないので、仮の値を入れておく
+        settingsId = UUID()
+        sendsUsageData = false
+        apply(settings)
     }
 
     func accountSettings() -> AccountSettings {
