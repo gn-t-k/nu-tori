@@ -58,6 +58,27 @@ jobs:
           key: openapi-generator-${{ hashFiles('ios/.swift-version', 'ios/OpenAPIGenerator/Package.resolved') }}
       - run: scripts/check ios
 
+  # 審査に通った版と同じ番号のまま ios/ を変えると、merge のあとの Xcode Cloud のビルドが App Store Connect に断られる（#959）。merge の前に止める
+  # 鍵はリポジトリの Secret にあり、フォークと Dependabot の PR には渡らないので、その回は飛ばす
+  ios-version:
+    needs: changes
+    if: >-
+      needs.changes.outputs.ios == 'true' && (github.event_name == 'push' ||
+      (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
+    runs-on: ubuntu-latest
+    # 通った回は 1 分かからない。止まった回を既定の 6 時間残さない
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: server/.node-version
+      - run: scripts/check-app-version
+        env:
+          NU_TORI_ASC_KEY_ID: ${{ secrets.NU_TORI_ASC_KEY_ID }}
+          NU_TORI_ASC_ISSUER_ID: ${{ secrets.NU_TORI_ASC_ISSUER_ID }}
+          NU_TORI_ASC_PRIVATE_KEY: ${{ secrets.NU_TORI_ASC_PRIVATE_KEY }}
+
   # 必須にしない。xcode-27 がプレビューを抜けたら、必須にするかを決め直す
   # UI テストは ios-ui-test.yml で回し、main への push ではそちらがビルドもする
   ios-app:

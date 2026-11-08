@@ -35,7 +35,7 @@ const main = async () => {
   const analytics = flags.includes("--analytics");
   // 鍵が無いときも、断る口は Not authenticated より先に断る
   if (analytics) assertAnalyticsPath(toApiUrl(target));
-  const { keyId, issuerId, privateKey } = loadKey(analytics ? "NU_TORI_ASC_SALES" : "NU_TORI_ASC");
+  const key = loadKey(analytics ? "NU_TORI_ASC_SALES" : "NU_TORI_ASC");
 
   const followAll = flags.includes("--all");
   let url = toApiUrl(target);
@@ -43,13 +43,7 @@ const main = async () => {
   while (url) {
     // links.next も同じ口のはずだが、鍵を送る前に毎回確かめる
     if (analytics) assertAnalyticsPath(url);
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${signShortLivedJwt({ keyId, issuerId, privateKey })}` },
-    });
-    const body = await response.text();
-    if (!response.ok) throw new ExpectedFailure(`${response.status} ${body}`);
-    const page = JSON.parse(body);
+    const page = await readApiPage(url, key);
     if (!followAll) {
       console.log(JSON.stringify(page, null, 2));
       return;
@@ -188,9 +182,20 @@ const toApiUrl = (value) => {
   return url;
 };
 
-module.exports = { readFinanceReport, assertAnalyticsPath, toSegmentDownloadUrl, signShortLivedJwt };
+// 鍵を付けた GET で API の1ページを読む
+const readApiPage = async (url, key) => {
+  const response = await fetch(toApiUrl(url), {
+    method: "GET",
+    headers: { Authorization: `Bearer ${signShortLivedJwt(key)}` },
+  });
+  const body = await response.text();
+  if (!response.ok) throw new ExpectedFailure(`${response.status} ${body}`);
+  return JSON.parse(body);
+};
 
-// scripts/finance・テスト・scripts/discovery-analytics-wizard が require したときは、読む道だけを貸し、コマンドとしては動かない
+module.exports = { readFinanceReport, readApiPage, loadKey, assertAnalyticsPath, toSegmentDownloadUrl, signShortLivedJwt };
+
+// scripts/finance・scripts/check-app-version・テスト・scripts/discovery-analytics-wizard が require したときは、読む道だけを貸し、コマンドとしては動かない
 if (require.main === module) {
   // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
   main().catch((error) => {

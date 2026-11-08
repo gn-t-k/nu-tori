@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+// アプリの版の番号（project.pbxproj の MARKETING_VERSION）が、審査に通った版より大きいかを確かめる。CI の check.yml が ios/ を変えた回で呼ぶ
+// 通った版と同じか小さい番号のビルドは、App Store Connect が ITMS-90186・ITMS-90062 で断り、TestFlight にも届かない（#959）
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
+const { ExpectedFailure } = require("./expected-failure.js");
+const { readApiPage, loadKey } = require("./app-store-connect");
+
+const APP_ID = "6816842705";
+const PROJECT = join(__dirname, "..", "ios", "NuTori.xcodeproj", "project.pbxproj");
+
+// 審査に通る前の状態。ここに無い状態（知らない新しい状態も）は通ったとみなし、版の番号を上げさせる側に倒す
+const NOT_YET_APPROVED = new Set([
+  "PREPARE_FOR_SUBMISSION",
+  "READY_FOR_REVIEW",
+  "WAITING_FOR_REVIEW",
+  "IN_REVIEW",
+  "REJECTED",
+  "DEVELOPER_REJECTED",
+  "METADATA_REJECTED",
+  "INVALID_BINARY",
+]);
+
+const main = async () => {
+  const marketingVersion = readMarketingVersion(readFileSync(PROJECT, "utf8"));
+  const page = await readApiPage(
+    `/v1/apps/${APP_ID}/appStoreVersions?filter[platform]=IOS&fields[appStoreVersions]=versionString,appStoreState&limit=200`,
+    // 版の一覧は、エージェントが読むのと同じ役割 Developer の鍵で読める
+    loadKey("NU_TORI_ASC"),
+  );
+  const approved = findBlockingApprovedVersion(
+    marketingVersion,
+    page.data.map(({ attributes }) => attributes),
+  );
+  if (approved) {
+    throw new ExpectedFailure(
+      `MARKETING_VERSION ${marketingVersion} は、審査に通った版 ${approved.versionString}（${approved.appStoreState}）より大きくない。` +
+        "ios/NuTori.xcodeproj/project.pbxproj の MARKETING_VERSION をすべて上げる（docs/agents/ios-release.md の「審査に出す」）",
+    );
+  }
+  console.log(`MARKETING_VERSION ${marketingVersion} は、審査に通ったどの版よりも大きい`);
+};
+
+// すべての構成で同じ値のはずなので、食い違えば止まる
+const readMarketingVersion = (project) => {
+  const versions = new Set([...project.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map(([, value]) => value.trim()));
+  if (versions.size !== 1) {
+    throw new ExpectedFailure(`MARKETING_VERSION がそろっていない: ${[...versions].join(", ") || "無い"}`);
+  }
+  const [version] = versions;
+  if (!/^\d+(\.\d+){0,2}$/.test(version)) throw new ExpectedFailure(`MARKETING_VERSION の形が読めない: ${version}`);
+  return version;
+};
+
+// 通った版のうち、いちばん大きいものが marketingVersion 以上ならそれを返す。無ければ null
+const findBlockingApprovedVersion = (marketingVersion, appStoreVersions) => {
+  const approved = appStoreVersions
+    .filter(({ appStoreState }) => !NOT_YET_APPROVED.has(appStoreState))
+    .toSorted((a, b) => compareVersions(b.versionString, a.versionString));
+  const [latest] = approved;
+  return latest && compareVersions(marketingVersion, latest.versionString) <= 0 ? latest : null;
+};
+
+// 欠けた桁は 0 とみなす（1.0 と 1.0.0 は同じ）
+const compareVersions = (a, b) => {
+  const [left, right] = [a, b].map((version) => version.split(".").map(Number));
+  for (let index = 0; index < Math.max(left.length, right.length); index++) {
+    const difference = (left[index] ?? 0) - (right[index] ?? 0);
+    if (difference !== 0) return Math.sign(difference);
+  }
+  return 0;
+};
+
+module.exports = { readMarketingVersion, findBlockingApprovedVersion, compareVersions };
+
+// テストが require したときは、コマンドとしては動かない
+if (require.main === module) {
+  // process.exit は、パイプに書きかけの stderr を切ることがあるので、終了コードだけを決めて抜ける
+  main().catch((error) => {
+    console.error(error instanceof ExpectedFailure ? error.message : error);
+    process.exitCode = 1;
+  });
+}
