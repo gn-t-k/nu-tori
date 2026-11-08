@@ -12,7 +12,7 @@ nonisolated final class CachedUsualWeighingTime {
 
     init(_ usualWeighingTime: UsualWeighingTime) {
         singletonKey = Self.onlyKey
-        // 値は apply が入れる。SwiftData の行は、省けない欄に値を入れてからでないと apply を呼べないので、仮の値を入れておく
+        // 値は apply が入れる。欄をすべて埋めるまで apply を呼べない（Swift の init の決まり）ので、省けない欄に仮の値を入れる
         usualWeighingTimeId = UUID()
         minuteOfDay = 0
         apply(usualWeighingTime)
