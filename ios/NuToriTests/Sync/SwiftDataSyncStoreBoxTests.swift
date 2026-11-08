@@ -32,7 +32,7 @@ struct SwiftDataSyncStoreBoxTests {
                 SyncBoxResult(
                     enqueuing: [entry],
                     kindChanges: [
-                        KindChanges(kind: .accountSettings, changes: [RecordKindMock.change])
+                        KindChanges.owned(by: .accountSettings, in: [RecordKindMock.change])
                     ]
                 ))
 
@@ -56,7 +56,7 @@ struct SwiftDataSyncStoreBoxTests {
             result = SyncBoxResult(
                 enqueuing: [entry],
                 kindChanges: [
-                    KindChanges(kind: .accountSettings, changes: [RecordKindMock.change])
+                    KindChanges.owned(by: .accountSettings, in: [RecordKindMock.change])
                 ],
                 syncState: SwiftDataSyncStoreBoxTests.pulledState,
                 healthSyncState: SwiftDataSyncStoreBoxTests.importedHealthState
@@ -124,9 +124,9 @@ struct SwiftDataSyncStoreBoxTests {
             try await store.apply(
                 SyncBoxResult(
                     kindChanges: [
-                        KindChanges(
-                            kind: .accountSettings,
-                            changes: Array(repeating: RecordKindMock.change, count: 250))
+                        KindChanges.owned(
+                            by: .accountSettings,
+                            in: Array(repeating: RecordKindMock.change, count: 250))
                     ],
                     syncState: SwiftDataSyncStoreBoxTests.pulledState
                 ))

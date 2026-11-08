@@ -72,9 +72,9 @@ struct HealthDishWriteStoringTests {
             store = try SwiftDataSyncStore(inMemory: true)
             try await store.apply(
                 SyncBoxResult(kindChanges: [
-                    KindChanges(
-                        kind: .dish,
-                        changes: [
+                    KindChanges.owned(
+                        by: .dish,
+                        in: [
                             .dish(
                                 SyncedDish(
                                     id: HealthDishWriteStoringTests.firstDishId, mealId: mealId,
@@ -82,9 +82,9 @@ struct HealthDishWriteStoringTests {
                                     quantity: .init(value: 1, unit: "杯", source: .estimated),
                                     positionInMeal: 0, version: 1))
                         ]),
-                    KindChanges(
-                        kind: .ingredient,
-                        changes: [
+                    KindChanges.owned(
+                        by: .ingredient,
+                        in: [
                             .ingredient(
                                 SyncedIngredient(
                                     id: UUID(), dishId: HealthDishWriteStoringTests.firstDishId,

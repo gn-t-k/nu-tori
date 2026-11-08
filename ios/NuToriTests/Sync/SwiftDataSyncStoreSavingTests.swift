@@ -135,16 +135,16 @@ struct SwiftDataSyncStoreSavingTests {
             try await store.apply(
                 SyncBoxResult(
                     kindChanges: [
-                        KindChanges(
-                            kind: AccountSettingsSyncKind.kindName,
-                            changes: [
+                        KindChanges.owned(
+                            by: AccountSettingsSyncKind.kindName,
+                            in: [
                                 .accountSettings(
                                     SyncedAccountSettings(
                                         id: settings.id, sendsUsageData: settings.sendsUsageData))
                             ]),
-                        KindChanges(
-                            kind: WeightRecordSyncing.kindName,
-                            changes: [.weightRecordDeletion(recordId: removed.id)]),
+                        KindChanges.owned(
+                            by: WeightRecordSyncing.kindName,
+                            in: [.weightRecordDeletion(recordId: removed.id)]),
                     ],
                     syncState: SyncState(
                         afterSequence: 4,
