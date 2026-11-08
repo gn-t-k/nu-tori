@@ -40,18 +40,9 @@ struct AccountSettingsSyncKindTests {
         }
     }
 
-    @Suite("取りに行った変更を見分けるとき")
-    struct Owning {
+    @Suite("取りに行った変更から今の設定を選ぶとき")
+    struct Picking {
         let id = AccountSettings.fixture(sendsUsageData: true).id
-
-        @Test("設定の変更だけを自分のものとすること")
-        func ownsOnlySettings() {
-            let kind = AccountSettingsSyncKind()
-
-            #expect(kind.owns(.accountSettings(.init(id: id, sendsUsageData: true))))
-            #expect(!kind.owns(.weightRecordDeletion(recordId: id)))
-            #expect(!kind.owns(.unknown(kind: "note")))
-        }
 
         @Test("複数届いたら、最後の設定を選び、無ければ nil にすること")
         func picksLast() {

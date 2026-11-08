@@ -12,10 +12,6 @@ public struct AiUtteranceSyncing: CacheApplying {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     /// 届いた順に返事を書く。送った文章がまだ無い返事も置く（届く順は約束しない）。返事は消えない
     public func apply(_ changes: [SyncChange], to cache: any KeyedRecordCache<AiUtterance, UUID>)
         throws

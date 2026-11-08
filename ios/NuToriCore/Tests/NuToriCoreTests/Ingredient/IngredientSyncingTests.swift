@@ -10,16 +10,6 @@ struct IngredientSyncingTests {
 
     let syncing = IngredientSyncing()
 
-    @Test("材料と材料の削除の印だけを、この種類の変更として見分けること")
-    func ownsOnlyIngredientChanges() {
-        let synced = SyncedIngredient.fixture(nutrients: [:])
-
-        #expect(syncing.owns(.ingredient(synced)))
-        #expect(syncing.owns(.ingredientDeletion(ingredientId: Self.ingredientId)))
-        #expect(!syncing.owns(.dish(.fixture())))
-        #expect(!syncing.owns(.unknown(kind: "ingredient")))
-    }
-
     @Test("端末も書く種類として、送る書き込みを持つこと")
     func hasWrites() {
         #expect(syncing.writes != nil)

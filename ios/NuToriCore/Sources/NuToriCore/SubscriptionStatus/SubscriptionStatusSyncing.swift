@@ -11,10 +11,6 @@ public struct SubscriptionStatusSyncing: CacheApplying {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     /// 最後に届いた状態を置く。届いていなければ何もしない。消えない
     public func apply(
         _ changes: [SyncChange], to cache: any SingleRecordCache<SubscriptionStatus>

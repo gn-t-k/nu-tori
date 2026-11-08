@@ -16,28 +16,16 @@ extension SyncEngineTests {
         static func seededStore() async throws -> SyncBoxMock<RecordCacheMock> {
             let store = try SyncBoxMock<RecordCacheMock>.ok()
             try await store.apply(
-                SyncBoxResult(kindChanges: [
-                    KindChanges(
-                        kind: .dish,
-                        changes: [
-                            .dish(
-                                SyncedDish(
-                                    id: dishId, mealId: mealId, name: "親子丼",
-                                    quantity: .init(value: 1, unit: "杯", source: .estimated),
-                                    positionInMeal: 0, version: 1))
-                        ]),
-                    KindChanges(
-                        kind: .dishEstimationStatus,
-                        changes: [.dishEstimationStatus(.init(dishId: dishId, status: .estimated))]),
-                    KindChanges(
-                        kind: .ingredient,
-                        changes: [
-                            .ingredient(
-                                ingredient(id: riceId, name: "ご飯", quantity: 200, position: 0)),
-                            .ingredient(
-                                ingredient(id: chickenId, name: "鶏もも肉", quantity: 80, position: 1)),
-                        ]),
-                    KindChanges(kind: .meal, changes: [.meal(try meal())]),
+                SyncBoxResult(changes: [
+                    .dish(
+                        SyncedDish(
+                            id: dishId, mealId: mealId, name: "親子丼",
+                            quantity: .init(value: 1, unit: "杯", source: .estimated),
+                            positionInMeal: 0, version: 1)),
+                    .dishEstimationStatus(.init(dishId: dishId, status: .estimated)),
+                    .ingredient(ingredient(id: riceId, name: "ご飯", quantity: 200, position: 0)),
+                    .ingredient(ingredient(id: chickenId, name: "鶏もも肉", quantity: 80, position: 1)),
+                    .meal(try meal()),
                 ]))
             return store
         }
@@ -153,9 +141,7 @@ extension SyncEngineTests {
             init() async throws {
                 store = try .ok()
                 try await store.apply(
-                    SyncBoxResult(kindChanges: [
-                        KindChanges(kind: .meal, changes: [.meal(try DishWrites.meal())])
-                    ]))
+                    SyncBoxResult(changes: [.meal(try DishWrites.meal())]))
                 engine = .fixture(store: store, transport: .sync())
             }
 

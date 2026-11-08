@@ -89,6 +89,7 @@ struct SwiftDataSyncStoreSavingTests {
         let kept: WeightRecord
         let removed: WeightRecord
         let settings: AccountSettings
+        let result: SyncBoxResult
 
         init() async throws {
             store = try SwiftDataSyncStore(inMemory: true)
@@ -128,32 +129,31 @@ struct SwiftDataSyncStoreSavingTests {
                     write: .createWeightRecord(removed)
                 )
             )
+            result = SyncBoxResult(
+                kindChanges: [
+                    KindChanges.owned(
+                        by: AccountSettingsSyncKind.kindName,
+                        in: [
+                            .accountSettings(
+                                SyncedAccountSettings(
+                                    id: settings.id, sendsUsageData: settings.sendsUsageData))
+                        ]),
+                    KindChanges.owned(
+                        by: WeightRecordSyncing.kindName,
+                        in: [.weightRecordDeletion(recordId: removed.id)]),
+                ],
+                syncState: SyncState(
+                    afterSequence: 4,
+                    hasCompletedInitialPull: true,
+                    readableKinds: [.weightRecord],
+                    startedOn: nil
+                )
+            )
         }
 
         @Test("設定が残り、印の付いた記録が消えること")
         func keepsSettingsAndRemovesRecord() async throws {
-            try await store.apply(
-                SyncBoxResult(
-                    kindChanges: [
-                        KindChanges(
-                            kind: AccountSettingsSyncKind.kindName,
-                            changes: [
-                                .accountSettings(
-                                    SyncedAccountSettings(
-                                        id: settings.id, sendsUsageData: settings.sendsUsageData))
-                            ]),
-                        KindChanges(
-                            kind: WeightRecordSyncing.kindName,
-                            changes: [.weightRecordDeletion(recordId: removed.id)]),
-                    ],
-                    syncState: SyncState(
-                        afterSequence: 4,
-                        hasCompletedInitialPull: true,
-                        readableKinds: [.weightRecord],
-                        startedOn: nil
-                    )
-                )
-            )
+            try await store.apply(result)
 
             #expect(try await store.accountSettings() == settings)
             #expect(try await store.weightRecord(id: removed.id) == nil)

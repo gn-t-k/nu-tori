@@ -19,10 +19,6 @@ public struct WeightTrendSyncing: CacheApplying {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     /// 日ごとに差し替えず、丸ごと置き換える。届いていなければ何もしない。
     /// 日が1つも無い並びは、傾向が無いのと同じなので空にする（キャッシュの置き方で、読んだ値が変わらないように）
     public func apply(_ changes: [SyncChange], to cache: any SingleRecordCache<WeightTrend>) throws

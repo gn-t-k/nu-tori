@@ -19,10 +19,6 @@ public struct MealSyncing: CacheApplying, RecordKindWrites {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
         let pending = try PendingMealWrite(entry: entry)
         switch pending.write {
@@ -95,7 +91,7 @@ public struct MealSyncing: CacheApplying, RecordKindWrites {
     public func recording(_ meal: Meal, enqueuing write: PendingMealWrite) throws -> SyncBoxResult {
         SyncBoxResult(
             enqueuing: [try write.entry()],
-            kindChanges: [KindChanges(kind: name, changes: [.meal(SyncedMeal(meal))])]
+            changes: [.meal(SyncedMeal(meal))]
         )
     }
 
@@ -111,7 +107,7 @@ public struct MealSyncing: CacheApplying, RecordKindWrites {
             photoIds: meal.photoIds)
         return SyncBoxResult(
             enqueuing: [try write.entry()],
-            kindChanges: [KindChanges(kind: name, changes: [.meal(SyncedMeal(corrected))])]
+            changes: [.meal(SyncedMeal(corrected))]
         )
     }
 
@@ -119,10 +115,8 @@ public struct MealSyncing: CacheApplying, RecordKindWrites {
     public func deleting(mealId: UUID, enqueuing write: PendingMealWrite) throws -> SyncBoxResult {
         SyncBoxResult(
             enqueuing: [try write.entry()],
-            kindChanges: [
-                KindChanges(kind: name, changes: [.mealDeletion(mealId: mealId)]),
-                MealEstimationStatusSyncing.removing(mealId: mealId),
-            ]
+            changes: [.mealDeletion(mealId: mealId)]
+                + MealEstimationStatusSyncing.removing(mealId: mealId)
         )
     }
 

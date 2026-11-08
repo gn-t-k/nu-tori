@@ -19,10 +19,6 @@ public struct SentTextSyncing: CacheApplying, RecordKindWrites {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     public func syncWrite(for entry: PendingEntry) throws -> SyncWrite {
         let pending = try PendingSentTextWrite(entry: entry)
         switch pending.write {
@@ -92,7 +88,7 @@ public struct SentTextSyncing: CacheApplying, RecordKindWrites {
     {
         SyncBoxResult(
             enqueuing: [try write.entry()],
-            kindChanges: [KindChanges(kind: name, changes: [.sentText(SyncedSentText(sentText))])]
+            changes: [.sentText(SyncedSentText(sentText))]
         )
     }
 
@@ -109,22 +105,13 @@ public struct SentTextSyncing: CacheApplying, RecordKindWrites {
         let mealIds = meals.filter { $0.sentTextId == sentTextId }.map(\.id)
         let dishIds = dishes.filter { mealIds.contains($0.mealId) }.map(\.id)
         let ingredientIds = ingredients.filter { dishIds.contains($0.dishId) }.map(\.id)
-        let kindChanges = [
-            KindChanges(
-                kind: MealSyncing.kindName, changes: mealIds.map { .mealDeletion(mealId: $0) }),
-            KindChanges(
-                kind: MealEstimationStatusSyncing.kindName,
-                changes: mealIds.map { .mealEstimationStatusDeletion(mealId: $0) }),
-            KindChanges(
-                kind: DishSyncing.kindName, changes: dishIds.map { .dishDeletion(dishId: $0) }),
-            KindChanges(
-                kind: DishEstimationStatusSyncing.kindName,
-                changes: dishIds.map { .dishEstimationStatusDeletion(dishId: $0) }),
-            KindChanges(
-                kind: IngredientSyncing.kindName,
-                changes: ingredientIds.map { .ingredientDeletion(ingredientId: $0) }),
-        ].filter { !$0.changes.isEmpty }
-        return SyncBoxResult(enqueuing: [try write.entry()], kindChanges: kindChanges)
+        let changes: [SyncChange] =
+            mealIds.map { .mealDeletion(mealId: $0) }
+            + mealIds.map { .mealEstimationStatusDeletion(mealId: $0) }
+            + dishIds.map { .dishDeletion(dishId: $0) }
+            + dishIds.map { .dishEstimationStatusDeletion(dishId: $0) }
+            + ingredientIds.map { .ingredientDeletion(ingredientId: $0) }
+        return SyncBoxResult(enqueuing: [try write.entry()], changes: changes)
     }
 
     /// 送り直したときの結果。送り待ちに足すだけで、キャッシュは変えない

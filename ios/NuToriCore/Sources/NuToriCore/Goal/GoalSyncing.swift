@@ -12,10 +12,6 @@ public struct GoalSyncing: CacheApplying {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     /// 届いた順に目標を書く。達成した・期限の日を確定した・閉じた目標は同じ ID で届き直すので、その値にそろえる。目標は消えない
     public func apply(_ changes: [SyncChange], to cache: any KeyedRecordCache<Goal, UUID>) throws {
         for goal in current(from: changes) {

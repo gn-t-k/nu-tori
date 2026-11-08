@@ -192,7 +192,7 @@
         ) -> SyncBoxResult {
             SyncBoxResult(
                 kindChanges: kinds.map { kind in
-                    KindChanges(kind: kind.name, changes: scenario.records.filter { kind.owns($0) })
+                    KindChanges.owned(by: kind.name, in: scenario.records)
                 }.filter { !$0.changes.isEmpty },
                 syncState: SyncState(
                     afterSequence: 0,

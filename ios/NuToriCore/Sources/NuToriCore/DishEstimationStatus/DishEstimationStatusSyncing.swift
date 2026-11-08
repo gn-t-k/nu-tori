@@ -30,12 +30,8 @@ public struct DishEstimationStatusSyncing: CacheApplying {
     public init() {}
 
     /// 料理を消したときに、その料理の推定の状態を、削除の印と同じ形でキャッシュから消す変更
-    static func removing(dishId: UUID) -> KindChanges {
-        KindChanges(kind: kindName, changes: [.dishEstimationStatusDeletion(dishId: dishId)])
-    }
-
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
+    static func removing(dishId: UUID) -> [SyncChange] {
+        [.dishEstimationStatusDeletion(dishId: dishId)]
     }
 
     /// 届いた順に状態を書いてから、削除の印の状態を消す。料理がまだ無い状態も置く（届く順は約束しない）。

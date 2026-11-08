@@ -18,23 +18,19 @@ struct SwiftDataSyncStoreBoxTests {
         let log: RecordKindMock.Log
         let store: SwiftDataSyncStore
         let entry: PendingEntry
+        let result: SyncBoxResult
 
         init() throws {
             log = RecordKindMock.Log()
             store = try SwiftDataSyncStore(
                 inMemory: true, kinds: RecordKindRegistry([RecordKindMock.ok(log: log)]))
             entry = RecordKindMock.entry()
+            result = SyncBoxResult(enqueuing: [entry], changes: [RecordKindMock.change])
         }
 
         @Test("送り待ちが残り、種類に変更が当たること")
         func keepsEntryAndAppliesChanges() async throws {
-            try await store.apply(
-                SyncBoxResult(
-                    enqueuing: [entry],
-                    kindChanges: [
-                        KindChanges(kind: .accountSettings, changes: [RecordKindMock.change])
-                    ]
-                ))
+            try await store.apply(result)
 
             #expect(try await store.pendingEntries() == [entry])
             #expect(log.appliedChangeCount == 1)
@@ -56,7 +52,7 @@ struct SwiftDataSyncStoreBoxTests {
             result = SyncBoxResult(
                 enqueuing: [entry],
                 kindChanges: [
-                    KindChanges(kind: .accountSettings, changes: [RecordKindMock.change])
+                    KindChanges.owned(by: RecordKindMock.name, in: [RecordKindMock.change])
                 ],
                 syncState: SwiftDataSyncStoreBoxTests.pulledState,
                 healthSyncState: SwiftDataSyncStoreBoxTests.importedHealthState
@@ -112,24 +108,25 @@ struct SwiftDataSyncStoreBoxTests {
     struct PullingManyChanges {
         let log: RecordKindMock.Log
         let store: SwiftDataSyncStore
+        let result: SyncBoxResult
 
         init() throws {
             log = RecordKindMock.Log()
             store = try SwiftDataSyncStore(
                 inMemory: true, kinds: RecordKindRegistry([RecordKindMock.ok(log: log)]))
+            result = SyncBoxResult(
+                kindChanges: [
+                    KindChanges.owned(
+                        by: RecordKindMock.name,
+                        in: Array(repeating: RecordKindMock.change, count: 250))
+                ],
+                syncState: SwiftDataSyncStoreBoxTests.pulledState
+            )
         }
 
         @Test("全部当てたあとに、通し番号が進むこと")
         func advancesSequenceAfterAllChanges() async throws {
-            try await store.apply(
-                SyncBoxResult(
-                    kindChanges: [
-                        KindChanges(
-                            kind: .accountSettings,
-                            changes: Array(repeating: RecordKindMock.change, count: 250))
-                    ],
-                    syncState: SwiftDataSyncStoreBoxTests.pulledState
-                ))
+            try await store.apply(result)
 
             #expect(log.appliedChangeCount == 250)
             #expect(try await store.syncState() == SwiftDataSyncStoreBoxTests.pulledState)

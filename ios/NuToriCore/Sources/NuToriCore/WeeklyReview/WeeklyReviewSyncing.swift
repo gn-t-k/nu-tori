@@ -12,10 +12,6 @@ public struct WeeklyReviewSyncing: CacheApplying {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     /// 届いた順に見直しを書く。指す記録がまだキャッシュに無くても書く。見直しは消えない
     public func apply(
         _ changes: [SyncChange], to cache: any KeyedRecordCache<WeeklyReview, UUID>

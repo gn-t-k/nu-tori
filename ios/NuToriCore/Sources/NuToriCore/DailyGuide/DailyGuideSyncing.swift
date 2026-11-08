@@ -12,10 +12,6 @@ public struct DailyGuideSyncing: CacheApplying {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     /// 届いた順に1日の目安を書く。目標と推定消費カロリーがまだ無い1日の目安も置く（届く順は約束しない）。1日の目安は消えない
     public func apply(_ changes: [SyncChange], to cache: any KeyedRecordCache<DailyGuide, UUID>)
         throws

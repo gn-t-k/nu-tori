@@ -25,9 +25,7 @@ struct SyncBoxSaveOrderTests {
             try SyncBoxSaveOrder.apply(
                 SyncBoxResult(
                     enqueuing: [entry],
-                    kindChanges: [
-                        KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
-                    ]
+                    kindChanges: KindChanges.grouping([RecordKindMock.change])
                 ),
                 kinds: kinds, cache: cache,
                 savePending: { log.saves.append(.pending(enqueued: $0, healthSyncState: $1)) },
@@ -68,9 +66,7 @@ struct SyncBoxSaveOrderTests {
             try SyncBoxSaveOrder.apply(
                 SyncBoxResult(
                     enqueuing: [entry],
-                    kindChanges: [
-                        KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
-                    ],
+                    kindChanges: KindChanges.grouping([RecordKindMock.change]),
                     healthSyncState: state
                 ),
                 kinds: kinds, cache: cache,
@@ -119,9 +115,7 @@ struct SyncBoxSaveOrderTests {
                 resolvedWriteId = UUID()
                 result = SyncBoxResult(
                     resolvedWriteIds: [resolvedWriteId],
-                    kindChanges: [
-                        KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
-                    ]
+                    kindChanges: KindChanges.grouping([RecordKindMock.change])
                 )
             }
 
@@ -158,9 +152,7 @@ struct SyncBoxSaveOrderTests {
                 kinds = RecordKindRegistry([RecordKindMock.ok()])
                 result = SyncBoxResult(
                     resolvedWriteIds: [UUID()],
-                    kindChanges: [
-                        KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
-                    ]
+                    kindChanges: KindChanges.grouping([RecordKindMock.change])
                 )
             }
 
@@ -193,11 +185,8 @@ struct SyncBoxSaveOrderTests {
             cache = RecordCacheMock()
             kinds = RecordKindRegistry([RecordKindMock.ok()])
             result = SyncBoxResult(
-                kindChanges: [
-                    KindChanges(
-                        kind: .accountSettings,
-                        changes: Array(repeating: .unknown(kind: "note"), count: 250))
-                ],
+                kindChanges: KindChanges.grouping(
+                    Array(repeating: RecordKindMock.change, count: 250)),
                 syncState: .fixture(afterSequence: 7)
             )
         }
@@ -261,9 +250,7 @@ struct SyncBoxSaveOrderTests {
             cache = RecordCacheMock()
             kinds = RecordKindRegistry([RecordKindMock.error(.init())])
             result = SyncBoxResult(
-                kindChanges: [
-                    KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")])
-                ],
+                kindChanges: KindChanges.grouping([RecordKindMock.change]),
                 syncState: .fixture(afterSequence: 9)
             )
         }
@@ -297,8 +284,8 @@ struct SyncBoxSaveOrderTests {
             kinds = RecordKindRegistry([RecordKindMock.ok()])
             result = SyncBoxResult(
                 kindChanges: [
-                    KindChanges(kind: .accountSettings, changes: [.unknown(kind: "note")]),
-                    KindChanges(kind: .weightRecord, changes: []),
+                    KindChanges.owned(by: .accountSettings, in: [RecordKindMock.change]),
+                    KindChanges.owned(by: .weightRecord, in: []),
                 ]
             )
         }

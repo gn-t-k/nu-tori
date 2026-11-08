@@ -12,10 +12,6 @@ public struct ExpenditureEstimateSyncing: CacheApplying {
 
     public init() {}
 
-    public func owns(_ change: SyncChange) -> Bool {
-        change.kindName == name
-    }
-
     /// 届いた順に推定を書く。推定は消えない
     public func apply(
         _ changes: [SyncChange], to cache: any KeyedRecordCache<ExpenditureEstimate, UUID>

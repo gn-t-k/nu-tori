@@ -450,7 +450,7 @@ public actor SyncEngine {
                     resolvedWriteIds: resolvedWriteIds,
                     kindChanges: currentChanges.filter { !$0.value.isEmpty }
                         .sorted { $0.key < $1.key }
-                        .map { KindChanges(kind: $0.key, changes: $0.value) }
+                        .map { KindChanges.owned(by: $0.key, in: $0.value) }
                 ))
         }
         await discardPhotos(ofDeletedMealsIn: currentChanges[MealSyncing.kindName] ?? [])
@@ -487,7 +487,7 @@ public actor SyncEngine {
                 let kinds = store.recordKinds
                 // 登録簿に無い種類の変更は読み飛ばす。名前がサーバーとそろっているかは、テストで見張る
                 let ownedChanges = kinds.map { kind in
-                    KindChanges(kind: kind.name, changes: page.changes.filter { kind.owns($0) })
+                    KindChanges.owned(by: kind.name, in: page.changes)
                 }.filter { !$0.changes.isEmpty }
                 // ヘルスケアへの書き直しは、届いた体重記録に行う
                 let revised = try await revisedManualRecords(
