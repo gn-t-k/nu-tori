@@ -50,41 +50,64 @@ extension SyncEngineTests {
                 nutrientSource: .estimated, nutrients: ["energy_kcal": 150])
         }
 
+        /// 置き場のキャッシュにある食事のカード
+        static func card(in store: SyncBoxMock<RecordCacheMock>) throws -> MealCard {
+            MealCard(
+                meal: try #require(store.cache.meals[mealId]), status: .estimated,
+                recordedOnThisDevice: true)
+        }
+
+        /// 置き場のキャッシュにある親子丼
+        static func dish(in store: SyncBoxMock<RecordCacheMock>) throws -> Dish {
+            try #require(store.cache.dishes[dishId])
+        }
+
+        /// 置き場のキャッシュにある親子丼のご飯
+        static func rice(in store: SyncBoxMock<RecordCacheMock>) throws -> Ingredient {
+            try #require(store.cache.ingredients[riceId])
+        }
+
+        /// 置き場のキャッシュにある、その食事の料理のうち、足した味噌汁
+        static func addedMisoSoup(in store: SyncBoxMock<RecordCacheMock>) -> Dish? {
+            store.cache.dishes.values.first { $0.mealId == mealId && $0.name == "味噌汁" }
+        }
+
         @Suite("料理を足したとき")
         struct Adding {
             let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
+            let card: MealCard
 
             init() async throws {
                 store = try await DishWrites.seededStore()
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
+                card = try DishWrites.card(in: store)
             }
 
             @Test("前後の空白を除いた名前で、量の無い料理を、その食事の料理の最後の次の並び順に置くこと")
             func addsDishAfterLast() async throws {
-                let dish = try #require(
-                    try await engine.addDish(named: " 味噌汁\n", toMeal: DishWrites.mealId))
+                let outcome = try await engine.apply(.addDish(named: " 味噌汁\n", to: card), in: .gmt)
 
-                #expect(dish.name == "味噌汁")
-                #expect(dish.mealId == DishWrites.mealId)
+                let dish = try #require(DishWrites.addedMisoSoup(in: store))
+                #expect(outcome == .written(recordCount: 1))
                 #expect(dish.quantity == nil)
                 #expect(dish.positionInMeal == 1)
-                #expect(store.cache.dishes[dish.id] == dish)
+                #expect(store.cache.dishes.count == 2)
             }
 
             @Test("料理の ID を UUID の版 4 で振ること")
             func usesVersion4Id() async throws {
-                let dish = try #require(
-                    try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId))
+                _ = try await engine.apply(.addDish(named: "味噌汁", to: card), in: .gmt)
 
+                let dish = try #require(DishWrites.addedMisoSoup(in: store))
                 #expect(dish.id.uuidString.dropFirst(14).first == "4")
             }
 
             @Test("送り待ちに料理の種類の名前で入れてから、キャッシュに料理を置くこと")
             func enqueuesThenCaches() async throws {
-                _ = try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId)
+                _ = try await engine.apply(.addDish(named: "味噌汁", to: card), in: .gmt)
 
                 #expect(store.entries.map(\.kind) == [.dish])
                 #expect(
@@ -95,8 +118,8 @@ extension SyncEngineTests {
 
             @Test("送ると、料理の ID・食事の ID・名前・並び順を、料理を作る書き込みで送ること")
             func sendsCreateDish() async throws {
-                let dish = try #require(
-                    try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId))
+                _ = try await engine.apply(.addDish(named: "味噌汁", to: card), in: .gmt)
+                let dish = try #require(DishWrites.addedMisoSoup(in: store))
 
                 _ = try await engine.sync()
 
@@ -115,18 +138,20 @@ extension SyncEngineTests {
                 let store: SyncBoxMock<RecordCacheMock>
                 let engine: SyncEngine
                 let name: String
+                let card: MealCard
 
                 init() async throws {
                     store = try await DishWrites.seededStore()
                     engine = .fixture(store: store, transport: .sync())
                     name = "  "
+                    card = try DishWrites.card(in: store)
                 }
 
-                @Test("足さずに nil を返すこと")
+                @Test("足さないこと")
                 func ignoresBlankName() async throws {
-                    let dish = try await engine.addDish(named: name, toMeal: DishWrites.mealId)
+                    let outcome = try await engine.apply(.addDish(named: name, to: card), in: .gmt)
 
-                    #expect(dish == nil)
+                    #expect(outcome == .unwritten)
                     #expect(store.entries.isEmpty)
                     #expect(store.cache.dishes.count == 1)
                 }
@@ -137,19 +162,22 @@ extension SyncEngineTests {
         struct AddingToMealWithoutDishes {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
+            let card: MealCard
 
             init() async throws {
                 store = try .ok()
                 try await store.apply(
                     SyncBoxResult(changes: [.meal(try DishWrites.meal())]))
                 engine = .fixture(store: store, transport: .sync())
+                card = try DishWrites.card(in: store)
             }
 
             @Test("並び順を 0 にすること")
             func placesFirst() async throws {
-                let dish = try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId)
+                _ = try await engine.apply(.addDish(named: "味噌汁", to: card), in: .gmt)
 
-                #expect(dish?.positionInMeal == 0)
+                let dish = try #require(DishWrites.addedMisoSoup(in: store))
+                #expect(dish.positionInMeal == 0)
             }
         }
 
@@ -157,6 +185,7 @@ extension SyncEngineTests {
         struct AddingRejectedWithoutValue {
             let store: SyncBoxMock<RecordCacheMock>
             let engine: SyncEngine
+            let card: MealCard
 
             init() async throws {
                 store = try await DishWrites.seededStore()
@@ -165,12 +194,13 @@ extension SyncEngineTests {
                     transport: .sync(
                         rejectedWriteIndexes: [0], currents: [0: .absent],
                         rejectionReasons: [0: "record_not_found"]))
+                card = try DishWrites.card(in: store)
             }
 
             @Test("足した料理をキャッシュから外すこと")
             func removesAddedDish() async throws {
-                let dish = try #require(
-                    try await engine.addDish(named: "味噌汁", toMeal: DishWrites.mealId))
+                _ = try await engine.apply(.addDish(named: "味噌汁", to: card), in: .gmt)
+                let dish = try #require(DishWrites.addedMisoSoup(in: store))
 
                 _ = try await engine.sync()
 
@@ -185,16 +215,18 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
+            let dish: Dish
 
             init() async throws {
                 store = try await DishWrites.seededStore()
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
+                dish = try DishWrites.dish(in: store)
             }
 
             @Test("送り待ちに入れてから、料理の量と比例させた材料の量をキャッシュに当てること")
             func appliesProportionToCache() async throws {
-                try await engine.correctDishQuantity(id: DishWrites.dishId, to: 1.5)
+                _ = try await engine.apply(.correctDishQuantity(dish, to: 1.5), in: .gmt)
 
                 #expect(store.entries.map(\.kind) == [.dish])
                 #expect(
@@ -212,7 +244,7 @@ extension SyncEngineTests {
 
             @Test("送ると、名前と直した量と比例させた材料の量を、料理を直す書き込み1つで送ること")
             func sendsOneUpdateDish() async throws {
-                try await engine.correctDishQuantity(id: DishWrites.dishId, to: 1.5)
+                _ = try await engine.apply(.correctDishQuantity(dish, to: 1.5), in: .gmt)
 
                 _ = try await engine.sync()
 
@@ -240,19 +272,22 @@ extension SyncEngineTests {
                 let store: SyncBoxMock<RecordCacheMock>
                 let engine: SyncEngine
                 let quantity: Double
+                let dish: Dish
 
                 init() async throws {
                     store = try await DishWrites.seededStore()
                     engine = .fixture(store: store, transport: .sync())
                     quantity = 0
+                    dish = try DishWrites.dish(in: store)
                 }
 
-                @Test("送らずにキャッシュの料理をそのまま返すこと")
+                @Test("送らず、キャッシュの料理を変えないこと")
                 func ignoresOutOfRange() async throws {
-                    let dish = try await engine.correctDishQuantity(
-                        id: DishWrites.dishId, to: quantity)
+                    let outcome = try await engine.apply(
+                        .correctDishQuantity(dish, to: quantity), in: .gmt)
 
-                    #expect(dish.quantity?.value == 1)
+                    #expect(outcome == .unwritten)
+                    #expect(store.cache.dishes[DishWrites.dishId]?.quantity?.value == 1)
                     #expect(store.entries.isEmpty)
                 }
             }
@@ -263,25 +298,27 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
+            let dish: Dish
 
             init() async throws {
                 store = try await DishWrites.seededStore()
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
+                dish = try DishWrites.dish(in: store)
             }
 
             @Test("送り待ちに入れてから、キャッシュの料理の名前を直すこと")
             func renamesInCache() async throws {
-                let dish = try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
+                let outcome = try await engine.apply(.renameDish(dish, to: "カツ丼"), in: .gmt)
 
-                #expect(dish.name == "カツ丼")
+                #expect(outcome == .written(recordCount: 1))
                 #expect(store.cache.dishes[DishWrites.dishId]?.name == "カツ丼")
                 #expect(store.entries.map(\.kind) == [.dish])
             }
 
             @Test("送ると、量を省いて直した名前だけを、料理を直す書き込みで送ること")
             func sendsUpdateDish() async throws {
-                _ = try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
+                _ = try await engine.apply(.renameDish(dish, to: "カツ丼"), in: .gmt)
 
                 _ = try await engine.sync()
 
@@ -299,18 +336,21 @@ extension SyncEngineTests {
                 let store: SyncBoxMock<RecordCacheMock>
                 let engine: SyncEngine
                 let name: String
+                let dish: Dish
 
                 init() async throws {
                     store = try await DishWrites.seededStore()
                     engine = .fixture(store: store, transport: .sync())
                     name = " "
+                    dish = try DishWrites.dish(in: store)
                 }
 
-                @Test("送らずに前の名前の料理を返すこと")
+                @Test("送らず、キャッシュの料理の名前を変えないこと")
                 func keepsPreviousNameForBlank() async throws {
-                    let dish = try await engine.renameDish(id: DishWrites.dishId, to: name)
+                    let outcome = try await engine.apply(.renameDish(dish, to: name), in: .gmt)
 
-                    #expect(dish.name == "親子丼")
+                    #expect(outcome == .unwritten)
+                    #expect(store.cache.dishes[DishWrites.dishId]?.name == "親子丼")
                     #expect(store.entries.isEmpty)
                 }
             }
@@ -318,17 +358,17 @@ extension SyncEngineTests {
             @Suite("キャッシュに無い料理のとき")
             struct UnknownDish {
                 let engine: SyncEngine
-                let unknownId: UUID
+                let unknownDish: Dish
 
                 init() async throws {
                     engine = .fixture(store: try await DishWrites.seededStore(), transport: .sync())
-                    unknownId = UUID()
+                    unknownDish = .fixture(mealId: DishWrites.mealId)
                 }
 
                 @Test("直さずに投げること")
                 func throwsForUnknownDish() async throws {
-                    await #expect(throws: SyncEngine.UnknownRecordError(recordId: unknownId)) {
-                        _ = try await engine.renameDish(id: unknownId, to: "カツ丼")
+                    await #expect(throws: SyncEngine.UnknownRecordError(recordId: unknownDish.id)) {
+                        _ = try await engine.apply(.renameDish(unknownDish, to: "カツ丼"), in: .gmt)
                     }
                 }
             }
@@ -339,19 +379,21 @@ extension SyncEngineTests {
             let store: SyncBoxMock<RecordCacheMock>
             let transport: ClientTransportMock
             let engine: SyncEngine
+            let rice: Ingredient
 
             init() async throws {
                 store = try await DishWrites.seededStore()
                 transport = .sync()
                 engine = .fixture(store: store, transport: transport)
+                rice = try DishWrites.rice(in: store)
             }
 
             @Test("送り待ちに入れてから、材料の量と出どころを「直した」にしてキャッシュに当て、料理の量は変えないこと")
             func correctsInCache() async throws {
-                let ingredient = try await engine.correctIngredientQuantity(
-                    id: DishWrites.riceId, to: 150)
+                let outcome = try await engine.apply(
+                    .correctIngredientQuantity(rice, to: 150), in: .gmt)
 
-                #expect(ingredient.quantity == 150)
+                #expect(outcome == .written(recordCount: 1))
                 #expect(store.entries.map(\.kind) == [.ingredient])
                 #expect(store.cache.ingredients[DishWrites.riceId]?.quantity == 150)
                 #expect(store.cache.ingredients[DishWrites.riceId]?.quantitySource == .corrected)
@@ -360,7 +402,7 @@ extension SyncEngineTests {
 
             @Test("送ると、材料の ID と直した量を、材料を直す書き込みで送ること")
             func sendsUpdateIngredient() async throws {
-                _ = try await engine.correctIngredientQuantity(id: DishWrites.riceId, to: 150)
+                _ = try await engine.apply(.correctIngredientQuantity(rice, to: 150), in: .gmt)
 
                 _ = try await engine.sync()
 
@@ -376,19 +418,22 @@ extension SyncEngineTests {
                 let store: SyncBoxMock<RecordCacheMock>
                 let engine: SyncEngine
                 let quantity: Double
+                let rice: Ingredient
 
                 init() async throws {
                     store = try await DishWrites.seededStore()
                     engine = .fixture(store: store, transport: .sync())
                     quantity = -10
+                    rice = try DishWrites.rice(in: store)
                 }
 
-                @Test("送らずにキャッシュの材料をそのまま返すこと")
+                @Test("送らず、キャッシュの材料を変えないこと")
                 func ignoresOutOfRange() async throws {
-                    let ingredient = try await engine.correctIngredientQuantity(
-                        id: DishWrites.riceId, to: quantity)
+                    let outcome = try await engine.apply(
+                        .correctIngredientQuantity(rice, to: quantity), in: .gmt)
 
-                    #expect(ingredient.quantity == 200)
+                    #expect(outcome == .unwritten)
+                    #expect(store.cache.ingredients[DishWrites.riceId]?.quantity == 200)
                     #expect(store.entries.isEmpty)
                 }
             }
@@ -400,6 +445,7 @@ extension SyncEngineTests {
             let transport: ClientTransportMock
             let nutritionHealthExport: NutritionHealthExportMock
             let engine: SyncEngine
+            let dish: Dish
 
             init() async throws {
                 store = try await DishWrites.seededStore()
@@ -408,11 +454,12 @@ extension SyncEngineTests {
                 engine = .fixture(
                     store: store, transport: transport,
                     nutritionHealthExport: nutritionHealthExport)
+                dish = try DishWrites.dish(in: store)
             }
 
             @Test("その場で、料理と材料と料理ごとの推定の状態をキャッシュから消し、食事は残すこと")
             func removesFromCache() async throws {
-                try await engine.deleteDish(id: DishWrites.dishId)
+                _ = try await engine.apply(.deleteDish(dish), in: .gmt)
 
                 #expect(store.cache.dishes.isEmpty)
                 #expect(store.cache.ingredients.isEmpty)
@@ -423,14 +470,14 @@ extension SyncEngineTests {
 
             @Test("ヘルスケアから料理を消しに行くこと")
             func exportsNutrition() async throws {
-                try await engine.deleteDish(id: DishWrites.dishId)
+                _ = try await engine.apply(.deleteDish(dish), in: .gmt)
 
                 #expect(nutritionHealthExport.exportCount == 1)
             }
 
             @Test("送ると、料理の ID を、料理を消す書き込みで送ること")
             func sendsDeleteDish() async throws {
-                try await engine.deleteDish(id: DishWrites.dishId)
+                _ = try await engine.apply(.deleteDish(dish), in: .gmt)
 
                 _ = try await engine.sync()
 
@@ -459,7 +506,8 @@ extension SyncEngineTests {
                                     positionInMeal: 0, version: 3))
                         ],
                         rejectionReasons: [0: "ingredients_replaced"]))
-                try await engine.correctDishQuantity(id: DishWrites.dishId, to: 1.5)
+                _ = try await engine.apply(
+                    .correctDishQuantity(try DishWrites.dish(in: store), to: 1.5), in: .gmt)
             }
 
             @Test("料理の量を、サーバーの料理の今の値に戻すこと")
@@ -486,7 +534,8 @@ extension SyncEngineTests {
                         rejectedWriteIndexes: [0],
                         currents: [0: .deletedIngredient(ingredientId: DishWrites.riceId)],
                         rejectionReasons: [0: "ingredients_replaced"]))
-                _ = try await engine.correctIngredientQuantity(id: DishWrites.riceId, to: 150)
+                _ = try await engine.apply(
+                    .correctIngredientQuantity(try DishWrites.rice(in: store), to: 150), in: .gmt)
             }
 
             @Test("置き換わった前の材料を、削除の印でキャッシュから外すこと")
@@ -510,7 +559,8 @@ extension SyncEngineTests {
                     transport: .sync(
                         rejectedWriteIndexes: [0], currents: [0: .absent],
                         rejectionReasons: [0: "record_not_found"]))
-                _ = try await engine.renameDish(id: DishWrites.dishId, to: "カツ丼")
+                _ = try await engine.apply(
+                    .renameDish(try DishWrites.dish(in: store), to: "カツ丼"), in: .gmt)
             }
 
             @Test("料理をキャッシュから外すこと")
@@ -533,7 +583,8 @@ extension SyncEngineTests {
                     transport: .sync(
                         rejectedWriteIndexes: [0], currents: [0: .absent],
                         rejectionReasons: [0: "record_not_found"]))
-                _ = try await engine.correctIngredientQuantity(id: DishWrites.riceId, to: 150)
+                _ = try await engine.apply(
+                    .correctIngredientQuantity(try DishWrites.rice(in: store), to: 150), in: .gmt)
             }
 
             @Test("材料をキャッシュから外すこと")

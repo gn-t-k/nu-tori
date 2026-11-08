@@ -54,9 +54,11 @@ extension SyncEngineTests {
                 store = try await Writes.seededStore()
                 engine = RejectedMealEdits.engine(
                     current: .meal(try Writes.meal()), reason: "out_of_range", store: store)
-                try await engine.correctMealTime(
-                    mealId: Writes.mealId,
-                    eatenAt: try Date("2026-09-22T19:40:00+09:00", strategy: .iso8601))
+                _ = try await engine.apply(
+                    .correctMealTime(
+                        try Writes.card(in: store),
+                        eatenAt: try Date("2026-09-22T19:40:00+09:00", strategy: .iso8601)),
+                    in: .gmt)
             }
 
             @Test("直そうとした時刻で「直せませんでした」を時刻の下に出し、サーバーの時刻に戻すこと")
@@ -81,9 +83,11 @@ extension SyncEngineTests {
                 engine = RejectedMealEdits.engine(
                     current: .deletedMeal(mealId: Writes.mealId), reason: "record_not_found",
                     store: store)
-                try await engine.correctMealTime(
-                    mealId: Writes.mealId,
-                    eatenAt: try Date("2026-09-22T19:40:00+09:00", strategy: .iso8601))
+                _ = try await engine.apply(
+                    .correctMealTime(
+                        try Writes.card(in: store),
+                        eatenAt: try Date("2026-09-22T19:40:00+09:00", strategy: .iso8601)),
+                    in: .gmt)
             }
 
             @Test("端末で見せていた時刻で「記録できませんでした」をカードを外した位置に出すこと")
@@ -105,7 +109,8 @@ extension SyncEngineTests {
                 engine = RejectedMealEdits.engine(
                     current: .dish(RejectedMealEdits.oyakodon(quantity: 1, version: 2)),
                     reason: "out_of_range", store: store)
-                try await engine.renameDish(id: Writes.dishId, to: "カツ丼")
+                _ = try await engine.apply(
+                    .renameDish(try Writes.dish(in: store), to: "カツ丼"), in: .gmt)
             }
 
             @Test("直そうとした名前で「直せませんでした」を料理の行の下に出すこと")
@@ -130,7 +135,8 @@ extension SyncEngineTests {
                 engine = RejectedMealEdits.engine(
                     current: .dish(RejectedMealEdits.oyakodon(quantity: 2, version: 3)),
                     reason: "ingredients_replaced", store: store)
-                try await engine.correctDishQuantity(id: Writes.dishId, to: 1.5)
+                _ = try await engine.apply(
+                    .correctDishQuantity(try Writes.dish(in: store), to: 1.5), in: .gmt)
             }
 
             @Test("直そうとした量で「直せませんでした」を料理の行の下に出し、料理の今の値に戻すこと")
@@ -151,7 +157,8 @@ extension SyncEngineTests {
                 let engine = RejectedMealEdits.engine(
                     current: .deletedDish(dishId: Writes.dishId), reason: "record_not_found",
                     store: store)
-                try await engine.renameDish(id: Writes.dishId, to: "カツ丼")
+                _ = try await engine.apply(
+                    .renameDish(try Writes.dish(in: store), to: "カツ丼"), in: .gmt)
                 return engine
             }
 
@@ -197,7 +204,8 @@ extension SyncEngineTests {
             static func engine(store: SyncBoxMock<RecordCacheMock>) async throws -> SyncEngine {
                 let engine = RejectedMealEdits.engine(
                     current: .absent, reason: "record_not_found", store: store)
-                try await engine.addDish(named: "味噌汁", toMeal: Writes.mealId)
+                _ = try await engine.apply(
+                    .addDish(named: "味噌汁", to: try Writes.card(in: store)), in: .gmt)
                 return engine
             }
 
@@ -249,7 +257,8 @@ extension SyncEngineTests {
                 engine = RejectedMealEdits.engine(
                     current: .deletedIngredient(ingredientId: Writes.riceId),
                     reason: "ingredients_replaced", store: store)
-                try await engine.correctIngredientQuantity(id: Writes.riceId, to: 150)
+                _ = try await engine.apply(
+                    .correctIngredientQuantity(try Writes.rice(in: store), to: 150), in: .gmt)
             }
 
             @Test("「ご飯 150 g に直せませんでした」をその材料のあった位置に出すこと")
@@ -273,7 +282,8 @@ extension SyncEngineTests {
                 let engine = RejectedMealEdits.engine(
                     current: .deletedIngredient(ingredientId: Writes.riceId),
                     reason: "ingredients_replaced", store: store)
-                try await engine.correctIngredientQuantity(id: Writes.riceId, to: 150)
+                _ = try await engine.apply(
+                    .correctIngredientQuantity(try Writes.rice(in: store), to: 150), in: .gmt)
                 line = try RejectedMealEdits.line(try await engine.sync())
                 try await store.apply(
                     SyncBoxResult(changes: [.ingredientDeletion(ingredientId: Writes.chickenId)]))
@@ -295,7 +305,8 @@ extension SyncEngineTests {
                 let engine = RejectedMealEdits.engine(
                     current: .deletedIngredient(ingredientId: Writes.riceId),
                     reason: "record_not_found", store: store)
-                try await engine.correctIngredientQuantity(id: Writes.riceId, to: 150)
+                _ = try await engine.apply(
+                    .correctIngredientQuantity(try Writes.rice(in: store), to: 150), in: .gmt)
                 return try RejectedMealEdits.line(try await engine.sync())
             }
 
@@ -366,7 +377,8 @@ extension SyncEngineTests {
                         Writes.ingredient(
                             id: Writes.riceId, name: "ご飯", quantity: 200, position: 0)),
                     reason: "out_of_range", store: store)
-                try await engine.correctIngredientQuantity(id: Writes.riceId, to: 150)
+                _ = try await engine.apply(
+                    .correctIngredientQuantity(try Writes.rice(in: store), to: 150), in: .gmt)
             }
 
             @Test("直そうとした量で「直せませんでした」を材料の行の下に出すこと")
@@ -396,8 +408,10 @@ extension SyncEngineTests {
                             1: .deletedIngredient(ingredientId: Writes.riceId),
                         ],
                         rejectionReasons: [0: "out_of_range", 1: "ingredients_replaced"]))
-                try await engine.renameDish(id: Writes.dishId, to: "カツ丼")
-                try await engine.correctIngredientQuantity(id: Writes.riceId, to: 150)
+                _ = try await engine.apply(
+                    .renameDish(try Writes.dish(in: store), to: "カツ丼"), in: .gmt)
+                _ = try await engine.apply(
+                    .correctIngredientQuantity(try Writes.rice(in: store), to: 150), in: .gmt)
             }
 
             @Test("どちらの1行も残すこと")

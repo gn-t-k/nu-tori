@@ -28,7 +28,7 @@ struct SyncEngineTests {
 
             @Test("手で記録した版 1 の記録を、送り待ちに1件足す保存と同じ保存で置くこと")
             func savesRecordWithPendingWrite() async throws {
-                try await engine.save(firstWrite)
+                _ = try await engine.apply(.saveWeight(firstWrite), in: .gmt)
 
                 let pending = try #require(store.pendingWeightRecords.first)
                 let record = try #require(store.records.values.first)
@@ -42,8 +42,8 @@ struct SyncEngineTests {
 
             @Test("記録の ID と書き込みの ID に、書き込みごとに違う UUID v4 を振ること")
             func assignsVersion4IdsPerWrite() async throws {
-                try await engine.save(firstWrite)
-                try await engine.save(secondWrite)
+                _ = try await engine.apply(.saveWeight(firstWrite), in: .gmt)
+                _ = try await engine.apply(.saveWeight(secondWrite), in: .gmt)
 
                 let ids = store.pendingWeightRecords.map(\.writeId) + Array(store.records.keys)
                 #expect(Set(ids).count == 4)
@@ -74,7 +74,7 @@ struct SyncEngineTests {
 
             @Test("直した記録を置き、送り待ちを1件足すこと")
             func savesCorrection() async throws {
-                try await engine.save(.correct(corrected))
+                _ = try await engine.apply(.saveWeight(.correct(corrected)), in: .gmt)
 
                 #expect(store.records[original.id] == corrected)
                 let pending = try #require(store.pendingWeightRecords.first)
@@ -98,7 +98,7 @@ struct SyncEngineTests {
             @Test("送り待ちに足さず、知らない記録だと投げること")
             func throwsUnknownRecord() async throws {
                 await #expect(throws: SyncEngine.UnknownRecordError(recordId: unknown.id)) {
-                    try await engine.save(.correct(unknown))
+                    _ = try await engine.apply(.saveWeight(.correct(unknown)), in: .gmt)
                 }
                 #expect(store.pendingWeightRecords.isEmpty)
             }
@@ -122,7 +122,7 @@ struct SyncEngineTests {
             @Test("置き場のエラーをそのまま投げ、キャッシュの保存の失敗として送ること")
             func throwsStoreError() async throws {
                 await #expect(throws: Failure()) {
-                    try await engine.save(write)
+                    _ = try await engine.apply(.saveWeight(write), in: .gmt)
                 }
                 #expect(reporting.reported == [.cacheSave])
             }
@@ -145,7 +145,7 @@ struct SyncEngineTests {
             @Test("送らず、失敗を呼び出し側に返すこと")
             func doesNotReport() async {
                 await #expect(throws: URLError.self) {
-                    try await engine.save(write)
+                    _ = try await engine.apply(.saveWeight(write), in: .gmt)
                 }
                 #expect(reporting.reported.isEmpty)
             }
@@ -168,7 +168,7 @@ struct SyncEngineTests {
             @Test("送らないこと")
             func doesNotReport() async {
                 await #expect(throws: CancellationError.self) {
-                    try await engine.save(write)
+                    _ = try await engine.apply(.saveWeight(write), in: .gmt)
                 }
                 #expect(reporting.reported.isEmpty)
             }

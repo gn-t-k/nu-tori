@@ -23,7 +23,6 @@ public actor RecordSync {
         goalSetupNoticeKeeper: GoalSetupNoticeKeeper,
         mealPhotos: MealPhotos,
         errorReporting: any ErrorReportingSession,
-        weightHealthExport: any WeightHealthExport,
         importHealthChanges: @escaping @Sendable () async -> Void,
         takeStoreRecoveries: @escaping @Sendable () -> [HandledFailure]
     ) {
@@ -37,7 +36,6 @@ public actor RecordSync {
         self.goalSetupNoticeKeeper = goalSetupNoticeKeeper
         self.mealPhotos = mealPhotos
         self.errorReporting = errorReporting
-        self.weightHealthExport = weightHealthExport
         self.importHealthChanges = importHealthChanges
         self.takeStoreRecoveries = takeStoreRecoveries
     }
@@ -165,7 +163,7 @@ public actor RecordSync {
         await mealPhotos.resendPendingUploads()
     }
 
-    /// ユーザーの編集を書き、`UserEdit.aftermath` の後始末をする。書き込みは送り待ちに並び、送り終えるのを待たずに返す。
+    /// ユーザーの編集を書き（`SyncEngine.apply(_:in:)`。ヘルスケアへの書き出しも含む）、`UserEdit.aftermath` の後始末をする。書き込みは送り待ちに並び、送り終えるのを待たずに返す。
     /// `timeZone` は端末の今のタイムゾーン（写真の撮影時刻を読む）。サインインしていなければ書かない。
     /// 書けなかったら投げる（食事の記録では、それより前の食事は記録してある）
     public func perform(_ edit: UserEdit, in timeZone: TimeZone) async throws -> UserEdit.Outcome {
@@ -174,8 +172,8 @@ public actor RecordSync {
         if let recordId = aftermath.replacedRecordId {
             await reflection.recordReplacing(id: recordId)
         }
-        let written = try await write(edit, with: engine, in: timeZone)
-        guard case .written = written.outcome else { return .unwritten }
+        let outcome = try await engine.apply(edit, in: timeZone)
+        guard case .written = outcome else { return .unwritten }
         await publishFromPending(engine)
         switch aftermath.followUp {
         case .sync:
@@ -183,16 +181,13 @@ public actor RecordSync {
         case .weightRecorded:
             // 積んだ答えは、このあとの同期で送る
             _ = await noteToMissedWeightRecordWatch(after: .weightRecorded)
-            if case .weightSaved(let record) = written {
-                try? await weightHealthExport.exportWeightRecord(record)
-            }
             syncInBackground()
         case .estimation:
             Task { await self.followEstimationAfterSending() }
         case .replies:
             Task { await self.followRepliesAfterSending() }
         }
-        return written.outcome
+        return outcome
     }
 
     /// 裏へ回ったとき・サインアウトしたときに、見守る要求をすべて切る。前面に戻って同期を終えたら、つなぎ直す
@@ -250,7 +245,6 @@ public actor RecordSync {
     private let missedWeightRecordWatch: MissedWeightRecordWatch
     private let goalSetupNoticeKeeper: GoalSetupNoticeKeeper
     private let errorReporting: any ErrorReportingSession
-    private let weightHealthExport: any WeightHealthExport
     private let importHealthChanges: @Sendable () async -> Void
     private let takeStoreRecoveries: @Sendable () -> [HandledFailure]
     /// 初めての取得を測り始めた時刻。測る前と、終えたあとは無い
@@ -331,99 +325,6 @@ public actor RecordSync {
 
     private func syncAfterReplyWatchClosed() async {
         _ = try? await syncAfterInFlight()
-    }
-
-    /// 書いた結果。体重記録は、ヘルスケアに書き出すために持つ
-    private enum Written {
-        case unwritten
-        case written(recordCount: Int)
-        case weightSaved(WeightRecord)
-
-        var outcome: UserEdit.Outcome {
-            switch self {
-            case .unwritten: .unwritten
-            case .written(let recordCount): .written(recordCount: recordCount)
-            case .weightSaved: .written(recordCount: 1)
-            }
-        }
-    }
-
-    /// 編集を送り待ちとキャッシュに書く。今と同じ値で、書くものが無ければ `.unwritten`
-    private func write(_ edit: UserEdit, with engine: SyncEngine, in timeZone: TimeZone)
-        async throws -> Written
-    {
-        switch edit {
-        case .saveWeight(let write):
-            let record = try await engine.save(write)
-            return .weightSaved(record)
-        case .recordCapturedMeal(let photo, let sentAt):
-            let photoId = UUID()
-            let takenAt = PhotoTakenTime(
-                exif: photo.exif, pickedAt: sentAt, deviceTimeZone: timeZone)
-            let draft = MealDraft.captured(
-                photoId: photoId, takenAt: takenAt.instant, sentAt: sentAt,
-                deviceTimeZone: timeZone)
-            return try await recordMeals([draft], originals: [photoId: photo.data], with: engine)
-        case .recordPickedMeals(let photos, let pickedAt):
-            let identified = photos.map { (id: UUID(), photo: $0) }
-            let picked = identified.map { photo in
-                PickedPhoto(
-                    id: photo.id,
-                    takenTime: PhotoTakenTime(
-                        exif: photo.photo.exif, pickedAt: pickedAt, deviceTimeZone: timeZone))
-            }
-            // 選ぶ画面は 10 枚までしか選ばせないので、多すぎることは無い
-            guard !picked.isEmpty,
-                let drafts = try? MealDraft.picked(
-                    picked, sentAt: pickedAt, deviceTimeZone: timeZone)
-            else { return .unwritten }
-            return try await recordMeals(
-                drafts,
-                originals: Dictionary(
-                    uniqueKeysWithValues: identified.map { ($0.id, $0.photo.data) }),
-                with: engine)
-        case .correctMealTime(let card, let eatenAt):
-            try await engine.correctMealTime(mealId: card.meal.id, eatenAt: eatenAt)
-            return .written(recordCount: 1)
-        case .deleteMeal(let card, _):
-            try await engine.deleteMeal(id: card.meal.id)
-            return .written(recordCount: 1)
-        case .addDish(let typedName, let card):
-            let dish = try await engine.addDish(named: typedName, toMeal: card.meal.id)
-            return dish == nil ? .unwritten : .written(recordCount: 1)
-        case .renameDish(let dish, let typedName):
-            let renamed = try await engine.renameDish(id: dish.id, to: typedName)
-            return renamed == dish ? .unwritten : .written(recordCount: 1)
-        case .correctDishQuantity(let dish, let value):
-            let corrected = try await engine.correctDishQuantity(id: dish.id, to: value)
-            return corrected == dish ? .unwritten : .written(recordCount: 1)
-        case .correctIngredientQuantity(let ingredient, let quantity):
-            let corrected = try await engine.correctIngredientQuantity(
-                id: ingredient.id, to: quantity)
-            return corrected == ingredient ? .unwritten : .written(recordCount: 1)
-        case .deleteDish(let dish):
-            try await engine.deleteDish(id: dish.id)
-            return .written(recordCount: 1)
-        case .sendText(let draft):
-            let sentText = try await engine.sendText(draft.text)
-            return sentText == nil ? .unwritten : .written(recordCount: 1)
-        case .resendAsConversation(let sentTextId, _):
-            try await engine.resendAsConversation(sentTextId: sentTextId)
-            return .written(recordCount: 1)
-        case .resendReply(let sentTextId, _):
-            try await engine.resend(sentTextId: sentTextId)
-            return .written(recordCount: 1)
-        }
-    }
-
-    /// 写真はアプリの中に置いて裏で送り始める。`originals` は写真の ID ごとの元の写真で、どの食事の写真もそろっている
-    private func recordMeals(
-        _ drafts: [MealDraft], originals: [UUID: Data], with engine: SyncEngine
-    ) async throws -> Written {
-        for draft in drafts {
-            _ = try await engine.recordMeal(draft, originals: originals)
-        }
-        return drafts.isEmpty ? .unwritten : .written(recordCount: drafts.count)
     }
 
     /// 文章を送った・送り直したあと。送り待ちを送り、送り終えたら、見守る要求がつながっていない応答待ちの文章のために、送ってから1分まで数秒おきに取りに行く

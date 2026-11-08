@@ -86,6 +86,30 @@ public enum UserEdit: Sendable {
         }
     }
 
+    /// 書いたあとに、ヘルスケアへ書き出すもの。書き出しの決まりは、種類ごとにここにだけ書く（書き出すのは `SyncEngine.apply(_:in:)`）。
+    /// 食事と料理の栄養と時刻は、サーバーから届いた記録で決まるので、作る・直す編集では書き出さず、取りに行き終えたときの書き出し（`SyncEngine.sync()`）に任せる。
+    /// 消す編集だけは、届くのを待たずにヘルスケアから消すため、その場で書き出す
+    public var healthExport: HealthExport {
+        switch self {
+        case .saveWeight:
+            .weightRecord
+        case .deleteMeal, .deleteDish, .resendAsConversation:
+            .nutrition
+        case .recordCapturedMeal, .recordPickedMeals, .correctMealTime, .addDish, .renameDish,
+            .correctDishQuantity, .correctIngredientQuantity, .sendText, .resendReply:
+            .none
+        }
+    }
+
+    /// 書いたあとに、ヘルスケアへ書き出すもの
+    public enum HealthExport: Equatable, Sendable {
+        case none
+        /// 書いた体重記録を書き出す。書けなくても編集は書けたものとする
+        case weightRecord
+        /// 栄養を書き出し直す（消えた料理をヘルスケアから消す）。書けなくても編集は書けたものとし、書けなかった料理は次の同期で改めて試す
+        case nutrition
+    }
+
     /// 編集の後始末。`replacedRecordId` は書く前に当てる。書いた結果が `Outcome.unwritten` なら、残りはどれもしない。
     /// 書いたら、いつも送り待ちから作る見え方を出す。まだ届いていない記録として、その場で薄く描くため
     public struct Aftermath: Equatable, Sendable {
