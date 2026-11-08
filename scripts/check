@@ -58,7 +58,7 @@ check_target() {
         ios-screenshots) check_ios_screenshots ;;
         server) if $lint_only; then lint_server; else check_server; fi ;;
         site) if $lint_only; then lint_site; else check_site; fi ;;
-        # Lint と1秒かからないテストだけなので、--lint でも同じものを回す
+        # Lint と1秒かからないテストと文書の重なりだけなので、--lint でも同じものを回す
         scripts) check_scripts ;;
     esac
 }
@@ -67,8 +67,11 @@ check_target() {
 pick_targets() {
     local files target
     files="$(cat)"
+    local matched
     for target in ios server site scripts; do
-        if [ -n "$(target_files "$target" "$files")" ]; then
+        # 選び方が落ちたら（node が無い、skills-lock.json が壊れている）、false に倒さずに落とす
+        matched="$(target_files "$target" "$files")" || return 1
+        if [ -n "$matched" ]; then
             echo "$target=true"
         else
             echo "$target=false"
@@ -90,10 +93,18 @@ target_files() {
             # site のページの文字の大きさは、DESIGN.md の typography の最小と比べる
             if [ "$target" = site ]; then paths="$paths|DESIGN\.md\$"; fi
             ;;
-        scripts) paths="scripts/|\.claude/hooks/|\.agents/skills/verify-server/scripts/|\.github/workflows/check\.yml\$" ;;
+        scripts)
+            # skills-lock.json は、文書の重なりを見ないスキルを決める
+            paths="scripts/|\.claude/hooks/|\.agents/skills/verify-server/scripts/|\.github/workflows/check\.yml\$|skills-lock\.json\$"
+            ;;
     esac
-    # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は確かめに使うので残す
+    # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は確かめに使い、エージェントが読む文書は重なりを見るので残す
     { grep -vE '\.md$' <<< "$files" || true; grep -Fx DESIGN.md <<< "$files" || true; } | grep -E "^($paths)" || true
+    # エージェントが読む文書は、重なりを見る。どれがそうかは scripts/agent-docs-duplicates が決める
+    # CI の changes ジョブは setup-node を通さずに runner に入っている node で呼ぶので、--pick の口は依存を持たず、Node の版を選ばない書き方にとどめる
+    if [ "$target" = scripts ]; then
+        node "$root/scripts/agent-docs-duplicates" --pick "$root" <<< "$files" || return 1
+    fi
 }
 
 # CI がまだ見ていない分（まだ push していない変更と作業中の変更）が関わる対象だけを確かめる
@@ -104,7 +115,7 @@ check_changed() {
         upstream=origin/main
     base="$(git -C "$root" merge-base "$upstream" HEAD 2> /dev/null)" || base=""
     if [ -z "$base" ] || ! files="$(changed_files "$base")" || ! picked="$(pick_unpushed_targets "$base")"; then
-        echo "${upstream} と比べられないので、server と site と ios と scripts のすべてを確かめる"
+        echo "${upstream} と比べられないか、対象を選べないので、server と site と ios と scripts のすべてを確かめる"
         check_target server
         check_target site
         check_target ios
@@ -133,9 +144,14 @@ check_changed() {
     if $run_server; then
         check_target server
         # --fix が server/openapi.json を書き出し直すと、アプリの API のクライアントも生成し直す
-        if ! $run_ios && picked="$(pick_unpushed_targets "$base")" && [[ "$picked" == *ios=true* ]]; then
-            echo "server の確かめのあとに ios に関わる変更（server/openapi.json など）があるので、ios も確かめる"
-            run_ios=true
+        if ! $run_ios; then
+            step "server の確かめのあとに、確かめる対象を選び直す"
+            # if の条件の中で呼ぶと set -e が効かず、落ちても ios を飛ばすので、条件の外で代入する
+            picked="$(pick_unpushed_targets "$base")"
+            if [[ "$picked" == *ios=true* ]]; then
+                echo "server の確かめのあとに ios に関わる変更（server/openapi.json など）があるので、ios も確かめる"
+                run_ios=true
+            fi
         fi
     fi
     if $run_ios; then
@@ -159,14 +175,14 @@ changed_files() {
 pick_unpushed_targets() {
     local files from_main picked branch target
     files="$(changed_files "$1")" || return 1
-    picked="$(pick_targets <<< "$files")"
+    picked="$(pick_targets <<< "$files")" || return 1
     if ! from_main="$(git -C "$root" diff --name-only --no-renames origin/main 2> /dev/null)"; then
         echo "$picked"
         return
     fi
     from_main="$from_main
 $(git -C "$root" ls-files --others --exclude-standard)"
-    branch="$(pick_targets <<< "$from_main")"
+    branch="$(pick_targets <<< "$from_main")" || return 1
     for target in ios server site scripts; do
         if [[ "$picked" == *"$target=true"* && "$branch" == *"$target=true"* ]]; then
             echo "$target=true"
@@ -812,6 +828,9 @@ check_scripts() {
     # node のスクリプトは依存を持たないので、Node に入っているテストの道具で回す
     step "node のスクリプトのテスト"
     (cd "$root" && node --test scripts/*.test.js)
+
+    step "エージェントが読む文書に、同じ段落か箇条書きの1項目が重なっていないか"
+    node "$root/scripts/agent-docs-duplicates" "$root"
 }
 
 print_usage() {
@@ -821,7 +840,7 @@ print_usage() {
        scripts/check ios-ui-test [--only <クラス>[/<メソッド>]]... [--repeat <回数>]
        scripts/check --pick-targets < <変わったファイルの一覧>
   引数なし     まだ push していない変更（push 先が無ければ origin/main から分かれた点から）と作業中の変更が関わる、server と site と ios と scripts。
-               文書（*.md）だけなら何も回さない。比べる先が取れなければすべて。全部を回すときは ios server site scripts と並べる
+               文書（*.md）だけなら、エージェントが読む文書のときの scripts のほかは何も回さない。比べる先が取れなければすべて。全部を回すときは ios server site scripts と並べる
   ios          整形、Lint、サーバーを正本にする定数の値、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）。見本の場面を撮るテストは除く
@@ -829,9 +848,10 @@ print_usage() {
                引数なしでは回さない。回し方は docs/agents/ios-release.md の「スクリーンショット」
   server       整形、Lint、サーバーを正本にする定数の値、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   site         公開のページ（nu-tori.app）の整形、Lint、型検査、書き出しと、書き出したページを載せた Worker のテストと、合成のコマンドのテスト
-  scripts      scripts/ と .claude/hooks/ と verify-server の道具のシェルの Lint（ShellCheck）と、node のスクリプトのテスト（scripts/*.test.js）。--fix でも直さない
+  scripts      scripts/ と .claude/hooks/ と verify-server の道具のシェルの Lint（ShellCheck）と、node のスクリプトのテスト（scripts/*.test.js）と、
+               エージェントが読む文書のあいだの同じ段落の重なり（scripts/agent-docs-duplicates）。--fix でも直さない
   --fix        直せるものを直してから確かめる
-  --lint       ios と server と site の整形と Lint だけを回す（scripts は Lint とテストを回す）。対象を省くと、引数なしと同じ選び方をする
+  --lint       ios と server と site の整形と Lint だけを回す（scripts は Lint とテストと文書の重なりを回す）。対象を省くと、引数なしと同じ選び方をする
   --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる
   --repeat     UI テストを、落ちるまで最大その回数くり返す。揺れを再現するときに使う
   --pick-targets  標準入力の変わったファイルの一覧から、確かめる対象を ios=<true|false>、server=<true|false>、site=<true|false>、scripts=<true|false> の4行で出す（CI 向け）

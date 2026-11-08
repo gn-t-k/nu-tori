@@ -184,6 +184,7 @@ flowchart LR
 ## CI
 
 - CI は変わったパスでジョブを分け、main のルールセットでは `check.yml` の `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行い、文書（`*.md`）だけの変更ではジョブを飛ばす。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る。どのパスがどの対象に当たるかの決まりは `scripts/check` に1か所だけ置き、`changes` のジョブは PR の差分を `scripts/check --pick-targets` に渡す。比べる範囲と、差分が取れないときにすべてを確かめることは、呼ぶ側が決める。必須にしないワークフロー（デプロイ、`ios-ui-test.yml`）は `paths` で飛ばしてよい
+- エージェントが読む文書の変更では、文書だけの変更でも `scripts` のジョブを回し、文書のあいだで同じ段落か箇条書きの1項目が重なっていないかを `scripts/agent-docs-duplicates` で見る。どれをエージェントが読む文書とするかは、そのスクリプトにある（#930）
 - GitHub Actions の秘密の値は、main からだけ使える Environment に置く（ADR-0010）
 - ジョブと、そこから呼ぶスクリプトを足す・直すときは、pstack の `principle-make-operations-idempotent` を読む
 - 依存の PR をマージし、落ちた PR の Issue を扱う `dependency-pr.yml` と、Swift Package を上げる `update-swift-packages.yml` は、`GITHUB_TOKEN` でなく、このリポジトリ用の GitHub App のトークン（`actions/create-github-app-token`）で GitHub を操作する。`GITHUB_TOKEN` で出した PR やマージは、ほかのワークフロー（check、deploy、`ios-ui-test.yml`）を起動しないため。App の Client ID は変数 `DEPENDENCY_APP_CLIENT_ID`、秘密鍵は秘密の値 `DEPENDENCY_APP_PRIVATE_KEY` として、main からだけ使える Environment `dependency-updates` に置く。依存の PR の扱い方は `docs/agents/dependencies.md`
