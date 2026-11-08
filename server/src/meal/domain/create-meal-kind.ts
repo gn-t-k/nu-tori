@@ -11,7 +11,7 @@ import { computeCalendarDay } from "../../domain/compute-calendar-day";
 import { isTimeZoneName } from "../../domain/is-time-zone-name";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import type { RejectionReason } from "../../domain/rejection-reason";
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { readStoredRecord } from "../../domain/sync-ledger/read-stored-record";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
 import type { WriteReceiptId } from "../../domain/sync-ledger/create-sync-ledger";
@@ -42,13 +42,7 @@ export const createMealKind = (
   },
   follows: undefined,
   whenGone: "deletion_mark",
-  readCurrent: (recordId): CurrentRecord<Meal> => {
-    const meal = stores.meal.find(recordId);
-    if (meal !== undefined) {
-      return { status: "value", value: meal };
-    }
-    return stores.meal.hasDeletion(recordId) ? { status: "deleted" } : { status: "absent" };
-  },
+  readCurrent: (recordId) => readStoredRecord(stores.meal, recordId),
 });
 
 // 食事の書き込みが、食事のほかに変える記録の種類

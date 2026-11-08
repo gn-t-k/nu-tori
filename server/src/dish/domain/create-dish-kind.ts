@@ -3,7 +3,7 @@ import type { RecordId } from "../../domain/record-id";
 import { isWithinAcceptedRange } from "../../domain/is-within-accepted-range";
 import { mealAwaitsEstimation } from "../../meal-estimation-status/domain/meal-awaits-estimation";
 import type { RecordKindStores } from "../../domain/record-kind-stores";
-import type { CurrentRecord } from "../../domain/sync-ledger/current-record";
+import { readStoredRecord } from "../../domain/sync-ledger/read-stored-record";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
@@ -33,13 +33,7 @@ export const createDishKind = (
   },
   follows: undefined,
   whenGone: "deletion_mark",
-  readCurrent: (dishId): CurrentRecord<Dish> => {
-    const dish = stores.dish.find(dishId);
-    if (dish !== undefined) {
-      return { status: "value", value: dish };
-    }
-    return stores.dish.hasDeletion(dishId) ? { status: "deleted" } : { status: "absent" };
-  },
+  readCurrent: (dishId) => readStoredRecord(stores.dish, dishId),
 });
 
 // 料理の書き込みが、料理のほかに変える記録の種類。食事の推定の状態は、推定の書き込みの口が足しうるので含める
