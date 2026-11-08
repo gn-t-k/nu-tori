@@ -65,6 +65,8 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 
 このリポジトリは公開して開発する（ADR-0010）。開発者自身の健康データ（ヘルスケアの書き出しなど）は、`.gitignore` したファイル（ルートの `.gitignore` が除く `*.local.js`。試作のフォルダの `data.local.js` など）にだけ置き、コミットにも Issue・PR・コメントにも書かない。開発者が良いと言ったものは除く。
 
+gn-t-k/nu-tori-ops（非公開のリポジトリ）を読み書きするとき、そのことを公開の nu-tori（Issue の brief、PR の本文、コミット、文書）に書くときは、`docs/agents/ops.md` を読む。
+
 ### git
 
 コミット、PR の作成、ブランチの更新、GitHub の Issue と PR の操作をするときは `docs/agents/git.md` を読む。
