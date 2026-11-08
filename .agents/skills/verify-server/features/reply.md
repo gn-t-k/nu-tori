@@ -27,7 +27,7 @@ Preconditions:
 
 - **送る。** `t=$($D uuid)` として、`$D push "$run" reply "[{\"type\":\"create_sent_text\",\"sentText\":{\"id\":\"$t\",\"body\":\"今日はよく歩いたので、少し脚が疲れた\",\"sentAt\":$(date +%s)000,\"timeZone\":\"Asia/Tokyo\"}}]"` を送る。`applied`
 - **読み分け。** 数秒おきに `$D pull "$run" reply | jq -c --arg t "$t" '[.[] | select(.kind=="sent_text_status" and .record.sentTextId==$t) | .record] | last'` を読む。`classification` が `conversation` になり、`replyStatus` が進む
-- **見守る。** `$D call "$run" reply GET /v1/sent-texts/$t/reply-stream --timeout 120` を送る。Server-Sent Events で `reply_started`、`text_delta` が流れ、最後が `replied` で閉じる（食事と読み分けられた文章は `classified_as_meal`、止まれば `reply_halted`、作れなければ `reply_failed` で閉じる）
+- **見守る。** `$D call "$run" reply GET /v1/sent-texts/$t/reply-stream --timeout 120` を送る。Server-Sent Events で `reply_started`、`text_delta` が流れ、最後が `replied` で閉じる
 - **取りに行く。** 取りに行く応答に、`$t` に応える返事（種類 `ai_utterance`）が届き、本文が見守る要求で流れた分と同じ。`sent_text_status` の `replyStatus` が返事ありに進む
 - **食事の文章。** 本文を `server/e2e/meal-text-body.ts` の文面にして送る。`classification` が `meal` になり、`sentTextId` が `$t` の `meal` ができる
 - **会話として送り直す。** 食事になった文章に `$D push "$run" reply "[{\"type\":\"resend_sent_text_as_conversation\",\"sentTextId\":\"$t\"}]"` を送る。`applied` で、その文章の食事が消え、返事が作られる
@@ -38,4 +38,9 @@ Preconditions:
 - 読み分けの呼び出しが失敗すると、文章は会話になる。鍵の無い回でも `classification` が `conversation` になるので、それを読み分けが動いた証拠にしない。鍵の無い回で確かめられるのは、送った文章が届き、送った文章の状態ができるまで
 - 鍵の無い回の見守る要求は、返事ができないので閉じない。`--timeout` を付けて送る。切れると 1 で終わり、それまでに届いた分を出して `requests.log` に残す
 - 見守る要求をつなぐ前に返事ができ終わると、本文が流れずに閉じる。送ってすぐにつなぐ
-- 送り直す書き込みは、すでに `awaiting`・`replied` の文章や、すでに会話の文章への「会話として送り直す」にも、何も変えずに `applied` を返す。まだ読み分けられていない文章・食事と読み分けられた文章への `resend_sent_text` は `rejected`（`reply_not_failed`）、読み分け前の文章への「会話として送り直す」は `rejected`（`not_classified_as_meal`）、無い文章は `rejected`（`record_not_found`）。`applied` を証拠にせず、`replyStatus` と返事が届くかを見る。送り直せるのは `failed` のほか、`halted`（`daily_limit` を含む）の文章。鍵の無い回では返事の呼び出しの再試行が続き、`failed` に着くまで待てないので、送り直す2つの入口は確かめられない
+- 送り直す書き込みの `applied` は証拠にしない。`replyStatus` と返事が届くかを見る
+  - `applied` でも何も変えない場合: すでに `awaiting`・`replied` の文章への `resend_sent_text`、すでに会話の文章への「会話として送り直す」
+  - `resend_sent_text` の `rejected`: まだ読み分けられていない文章・食事と読み分けられた文章は `reply_not_failed`、無い文章は `record_not_found`。送り直せるのは `failed` のほか、`halted`（`daily_limit` を含む）の文章
+  - `resend_sent_text_as_conversation` の `rejected`: 読み分け前の文章は `not_classified_as_meal`、無い文章は `record_not_found`
+- 見守る要求は、会話なら `replied` で閉じるが、食事と読み分けられた文章は `classified_as_meal`、止まれば `reply_halted`、作れなければ `reply_failed` で閉じる
+- 鍵の無い回では返事の呼び出しの再試行が続き、`failed` に着くまで待てないので、送り直す2つの入口は確かめられない
