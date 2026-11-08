@@ -30,7 +30,7 @@ worktree やセッションを並べるときは、pstack の `principle-separat
 
 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。
 
-- `session-start.sh`（クラウドで始めたとき）: Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる。依存は、サブエージェントがライブラリのソースを読めるよう入れる（無いと CDN から取り直していた）
+- `session-start.sh`（クラウドで始めたとき）: 浅い clone の履歴を全部取り（`git fetch --unshallow`）、Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる。履歴は、浅いと `git log`・`git blame`・変更の多い所の調べものが数十コミットで切れて取り違えたため取る（#932。測ると3秒ほど、`.git` が 10MB ほど増える）。async で動くが、ほかの準備より先に回すので、ふつうは最初のターンのうちに終わる。履歴を辿る調べものの前に `git rev-parse --is-shallow-repository` が `true` なら、まだ終わっていないか落ちたので、`git fetch --unshallow origin` を自分で回す。依存は、サブエージェントがライブラリのソースを読めるよう入れる（無いと CDN から取り直していた）
 - `check-pstack.sh`（クラウドと手元で始めたとき）: 入っている pstack の版が `pstack-lock.json` と違えば、上の「スキル」の上げ方を知らせる
 - `warn-behind-main.sh`（クラウドで続けたとき〈resume・compact・clear〉と、手元で始めたときと続けたとき）: 作業ツリーが origin/main より遅れていたら知らせ、手元では main を取り込ませる。長いセッションのあいだに main が進み、古い版の働き方の文書を読んでチケットを切り違えたため。手元の worktree は古い main から作られ、まだ無い道具を探して止まったため
 - `block-pkill-f.sh`（Bash を呼ぶ前）: `pkill -f`・`pgrep -f`（`-af` のような束ね方と `--full` を含む）を含むコマンドを止め、終わりの知らせを待つか PID を指して止めるよう返す。`-f` はコマンドライン全体に当たり、そのパターンを含む自分のシェルまで止める（exit 144）。`AGENTS.md` の注意書きだけでは、1週間に4つのセッションで起きたため（#787）。文字列に書いただけでも止まるので、コミットメッセージや本文に書くときは Write で書いたファイルで渡す（heredoc も止まる）

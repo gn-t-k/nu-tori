@@ -1,5 +1,5 @@
 #!/bin/bash
-# クラウドセッション開始時に、Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる（更新があれば別の PR にするよう伝える）。
+# クラウドセッション開始時に、浅い clone の履歴を全部取り、Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる（更新があれば別の PR にするよう伝える）。
 # settings.json で async 実行しているので、結果は次のターンでClaudeに届く。
 set -euo pipefail
 
@@ -10,6 +10,25 @@ fi
 cd "$CLAUDE_PROJECT_DIR"
 
 contexts=()
+
+# クラウドの clone は浅く、git log・git blame で辿れる履歴が数十コミットで切れるため、全部取る（#932）。
+# 数秒で終わるので、ほかの準備より先に回す。セッションのほうの git fetch と .git/shallow.lock を取り合って
+# 落ちることがあるので、少し待って取り直す。失敗してもセッションは止めない
+if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+  unshallow_log=""
+  for attempt in 1 2 3; do
+    if unshallow_log=$(timeout 120 git fetch -q --unshallow origin 2>&1); then
+      break
+    fi
+    if [ "$attempt" -lt 3 ]; then
+      sleep 5
+    fi
+  done
+  if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+    contexts+=("セッション開始時に git の履歴を全部取れませんでした（clone が浅いまま）。git log・git blame で履歴を辿る前に git fetch --unshallow origin を動かし、直らなければユーザーに伝えてください。
+$unshallow_log")
+  fi
+fi
 
 # 失敗してもセッションは止めない
 if ! swift_log=$(scripts/install-swift 2>&1); then
