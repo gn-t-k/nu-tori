@@ -9,11 +9,21 @@ const { join } = require("node:path");
 
 const main = () => {
   const args = process.argv.slice(2);
+  const picking = args[0] === "--pick";
+  if (picking) args.shift();
   if (args.length > 1) {
-    console.error("使い方: scripts/agent-docs-duplicates [<リポジトリのルート>]");
+    console.error("使い方: scripts/agent-docs-duplicates [--pick] [<リポジトリのルート>]");
+    console.error("  --pick  標準入力のパスのうち、エージェントが読む文書だけを1行ずつ出す（scripts/check が対象を選ぶのに使う）");
     return 2;
   }
   const root = args[0] ?? join(__dirname, "..");
+  if (picking) {
+    const isAgentDocument = agentDocumentFilter(root);
+    for (const path of readFileSync(0, "utf8").split("\n")) {
+      if (isAgentDocument(path)) console.log(path);
+    }
+    return 0;
+  }
   const duplicates = findDuplicates(agentDocuments(root));
   if (duplicates.length === 0) return 0;
   for (const { text, places } of duplicates) {
@@ -33,22 +43,32 @@ const MIN_LENGTH = 30;
 // 両方に置く理由があるもの。{ text: 重なった文, reason: 理由 } の形で、文は落ちたときの出力から写す。空白の違いは見ない
 const ALLOWED = [];
 
-// エージェントが読む文書。.claude/skills/ のうち .agents/skills/ へのリンクは、リンク先で1回だけ数える。
-// 置き場を足すときは、scripts/check の target_files と、テストの「文書の置き場ごと」にも足す
+// エージェントが読む文書の置き場。重なりを見る文書集めと --pick（scripts/check が対象を選ぶ）の両方がここを読む。
+// 置き場を足すときは、ここと、テストの「文書の置き場ごと」に足す
 const DOCUMENT_ROOTS = ["docs/agents", ".claude/agents", ".claude/skills", ".agents/skills"];
 
+// パスがエージェントが読む文書かを返す関数を作る。ファイルがあるかは見ないので、消したファイルのパスにも答える
+const agentDocumentFilter = (root) => {
+  const external = externalSkills(root);
+  return (path) => {
+    if (path === "AGENTS.md" || path === "CODING_STANDARDS.md") return true;
+    const directory = /^([^/]+)\/AGENTS\.md$/.exec(path)?.[1];
+    if (directory !== undefined) return !directory.startsWith(".") && directory !== "node_modules";
+    return path.endsWith(".md") && DOCUMENT_ROOTS.some((documentRoot) => path.startsWith(`${documentRoot}/`)) && !external.has(skillName(path));
+  };
+};
+
+// .claude/skills/ のうち .agents/skills/ へのリンクは、リンクをたどらないので、リンク先で1回だけ数える
 const agentDocuments = (root) => {
   const paths = ["AGENTS.md", "CODING_STANDARDS.md"];
   for (const entry of readdirSync(root, { withFileTypes: true })) {
-    if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
-      paths.push(`${entry.name}/AGENTS.md`);
-    }
+    if (entry.isDirectory()) paths.push(`${entry.name}/AGENTS.md`);
   }
-  const external = externalSkills(root);
-  for (const directory of DOCUMENT_ROOTS) {
-    paths.push(...markdownFiles(root, directory).filter((path) => !external.has(skillName(path))));
-  }
-  return paths.filter((path) => isFile(join(root, path))).map((path) => ({ path, text: readFileSync(join(root, path), "utf8") }));
+  for (const directory of DOCUMENT_ROOTS) paths.push(...markdownFiles(root, directory));
+  const isAgentDocument = agentDocumentFilter(root);
+  return paths
+    .filter((path) => isAgentDocument(path) && isFile(join(root, path)))
+    .map((path) => ({ path, text: readFileSync(join(root, path), "utf8") }));
 };
 
 // skills-lock.json で入れたスキルは、更新で上書きされて直せないので見ない（docs/agents/tooling.md の「スキル」）

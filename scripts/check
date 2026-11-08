@@ -77,7 +77,7 @@ pick_targets() {
 }
 
 target_files() {
-    local target="$1" files="$2" paths documents=""
+    local target="$1" files="$2" paths
     case "$target" in
         ios | server | site)
             paths="$target/|shared/|scripts/check\$|\.github/workflows/check\.yml\$"
@@ -93,14 +93,13 @@ target_files() {
         scripts)
             # skills-lock.json は、文書の重なりを見ないスキルを決める
             paths="scripts/|\.claude/hooks/|\.agents/skills/verify-server/scripts/|\.github/workflows/check\.yml\$|skills-lock\.json\$"
-            # エージェントが読む文書は、重なりを見る。選び方は scripts/agent-docs-duplicates と同じ。そのテストの「文書の置き場ごと」に並べた置き場で、そろっていることを確かめる
-            documents='([^./][^/]*/)?AGENTS\.md$|CODING_STANDARDS\.md$|(docs/agents|\.claude/agents|\.claude/skills|\.agents/skills)/.*\.md$'
             ;;
     esac
     # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は確かめに使い、エージェントが読む文書は重なりを見るので残す
     { grep -vE '\.md$' <<< "$files" || true; grep -Fx DESIGN.md <<< "$files" || true; } | grep -E "^($paths)" || true
-    if [ -n "$documents" ]; then
-        grep -E "^($documents)" <<< "$files" || true
+    # エージェントが読む文書は、重なりを見る。どれがそうかは scripts/agent-docs-duplicates が決める
+    if [ "$target" = scripts ]; then
+        node "$root/scripts/agent-docs-duplicates" --pick "$root" <<< "$files"
     fi
 }
 

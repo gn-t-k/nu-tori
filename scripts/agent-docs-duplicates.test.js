@@ -21,6 +21,9 @@ const run = (files) => {
   return { root, result };
 };
 
+const pick = (root, paths) =>
+  spawnSync(process.execPath, [join(__dirname, "agent-docs-duplicates"), "--pick", root], { input: paths.map((path) => `${path}\n`).join(""), encoding: "utf8" });
+
 const pickTargets = (path) => spawnSync(join(__dirname, "check"), ["--pick-targets"], { input: `${path}\n`, encoding: "utf8" });
 
 describe("エージェントが読む文書の重なり", () => {
@@ -114,8 +117,8 @@ describe("エージェントが読む文書の重なり", () => {
     });
   });
 
-  // 重なりを見る文書の選び方と、scripts/check がその変更で scripts を選ぶ決まりは、別々に書いてある。
-  // 片方だけに置き場を足すとずれるので、置き場の一覧を1つにして両方に当てる（パラメータ化テスト）
+  // どれをエージェントが読む文書とするかは、本体の --pick の口と重なりを見る文書集めで同じ判定を使う。
+  // scripts/check はこの口を呼ぶので、置き場を足すときは本体とこの一覧だけを直す
   describe("文書の置き場ごと", () => {
     const places = [
       "AGENTS.md",
@@ -130,11 +133,9 @@ describe("エージェントが読む文書の重なり", () => {
       describe(`${place} のとき`, () => {
         let root;
         let result;
-        let picked;
         before(() => {
           const other = place === "AGENTS.md" ? "CODING_STANDARDS.md" : "AGENTS.md";
           ({ root, result } = run({ [place]: `${PARAGRAPH}\n`, [other]: `${PARAGRAPH}\n` }));
-          picked = pickTargets(place);
         });
         after(() => rmSync(root, { recursive: true, force: true }));
 
@@ -143,10 +144,37 @@ describe("エージェントが読む文書の重なり", () => {
           assert.match(result.stderr, new RegExp(`^${place.replaceAll(".", "\\.")}:1$`, "m"));
         });
 
-        it("変えると scripts/check が scripts を選ぶこと", () => {
-          assert.match(picked.stdout, /^scripts=true$/m);
+        it("--pick で選ぶこと", () => {
+          assert.equal(pick(root, [place]).stdout, `${place}\n`);
         });
       });
     }
+  });
+
+  describe("--pick で選ばないとき", () => {
+    let root;
+    before(() => {
+      ({ root } = run({ "skills-lock.json": JSON.stringify({ version: 1, skills: { tdd: { source: "mattpocock/skills" } } }) }));
+    });
+    after(() => rmSync(root, { recursive: true, force: true }));
+
+    for (const path of ["GLOSSARY.md", "docs/adr/0001.md", "DESIGN.md", "scripts/check", ".agents/skills/tdd/SKILL.md", ".github/AGENTS.md"]) {
+      it(`${path} を選ばないこと`, () => {
+        const result = pick(root, [path]);
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(result.stdout, "");
+      });
+    }
+  });
+
+  // scripts/check の --pick-targets は、エージェントが読む文書の判定を本体の --pick に任せる
+  describe("scripts/check --pick-targets", () => {
+    it("エージェントが読む文書の変更で scripts を選ぶこと", () => {
+      assert.match(pickTargets("docs/agents/git.md").stdout, /^scripts=true$/m);
+    });
+
+    it("エージェントが読む文書でない文書だけの変更では scripts を選ばないこと", () => {
+      assert.match(pickTargets("GLOSSARY.md").stdout, /^scripts=false$/m);
+    });
   });
 });
