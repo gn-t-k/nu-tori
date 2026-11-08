@@ -1,17 +1,16 @@
 import { advanceEstimations } from "../estimation/domain/advance-estimations";
-import { computeNextEstimationAttemptAt } from "../estimation/domain/compute-next-estimation-attempt-at";
+import { computeNextEstimationJobAt } from "../estimation/domain/begin-estimation-attempts";
 import type { EstimationProvider } from "../estimation/domain/estimation-provider";
 import { deleteLeftoverMealPhotoFiles } from "../meal/domain/delete-leftover-meal-photo-files";
 import type { MealPhotoArchive } from "../meal/domain/meal-photo-archive";
 import { advanceReplies } from "../reply/domain/advance-replies";
 import type { ConversationProvider } from "../reply/domain/conversation-provider";
+import { computeNextReplyJobAt } from "../reply/domain/begin-reply-attempts";
 import type { ReplyWatchers } from "../reply/domain/create-reply-watchers";
-import { replyAttemptTimeLimitMs } from "../reply/domain/reply-attempt-time-limit-ms";
 import { classifySentTexts } from "../sent-text/domain/classify-sent-texts";
 import { advanceSubscriptionCheck } from "../subscription-status/domain/advance-subscription-check";
 import { readSubscriptionCheck } from "../subscription-status/domain/read-subscription-check";
 import type { AlarmJob } from "./alarm-job";
-import { computeNextAttemptAt } from "./compute-next-attempt-at";
 import { findEarliest } from "./find-earliest";
 import type { RecordChangeWriter } from "./record-change-writer";
 import type { RecordKindStores } from "./record-kind-stores";
@@ -60,14 +59,7 @@ export const accountAlarmJobs: readonly AlarmJob<
       );
       return { ...toStoppable(stoppedError), report: { ...emptyReport, ...advanced } };
     },
-    // 待っている推定の予定の時刻と、続いている推定の、次に試みる時刻
-    computeNextAt: (stores) =>
-      findEarliest([
-        stores.estimationSchedule.findWaitingSchedules(undefined)[0]?.dueAt,
-        ...stores.estimation
-          .findContinuingEstimations()
-          .map(({ attempts }) => computeNextEstimationAttemptAt(attempts)),
-      ]),
+    computeNextAt: computeNextEstimationJobAt,
   },
   // 返事。同じアラームで推定し終えた食事の栄養を返事の文脈に入れるため、推定のあとに置く
   {
@@ -87,14 +79,7 @@ export const accountAlarmJobs: readonly AlarmJob<
         report: { ...emptyReport, ...replied, replyAttempts: attempts },
       };
     },
-    // 待っている返事の依頼を作った時刻（過ぎているので、すぐ動く）と、続いている返事の生成の、次に試みる時刻
-    computeNextAt: (stores) =>
-      findEarliest([
-        ...stores.reply.findWaitingRequests().map(({ requestedAt }) => requestedAt),
-        ...stores.reply
-          .findContinuingGenerations()
-          .map(({ attempts }) => computeNextAttemptAt(attempts, replyAttemptTimeLimitMs)),
-      ]),
+    computeNextAt: computeNextReplyJobAt,
   },
   // 写真の控えの消し残しの消し直し
   {
