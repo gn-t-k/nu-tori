@@ -67,8 +67,11 @@ check_target() {
 pick_targets() {
     local files target
     files="$(cat)"
+    local matched
     for target in ios server site scripts; do
-        if [ -n "$(target_files "$target" "$files")" ]; then
+        # 選び方が落ちたら（node が無い、skills-lock.json が壊れている）、false に倒さずに落とす
+        matched="$(target_files "$target" "$files")" || return 1
+        if [ -n "$matched" ]; then
             echo "$target=true"
         else
             echo "$target=false"
@@ -98,8 +101,9 @@ target_files() {
     # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は確かめに使い、エージェントが読む文書は重なりを見るので残す
     { grep -vE '\.md$' <<< "$files" || true; grep -Fx DESIGN.md <<< "$files" || true; } | grep -E "^($paths)" || true
     # エージェントが読む文書は、重なりを見る。どれがそうかは scripts/agent-docs-duplicates が決める
+    # CI の changes ジョブは、setup-node を通さずに runner に入っている node で呼ぶ
     if [ "$target" = scripts ]; then
-        node "$root/scripts/agent-docs-duplicates" --pick "$root" <<< "$files"
+        node "$root/scripts/agent-docs-duplicates" --pick "$root" <<< "$files" || return 1
     fi
 }
 
@@ -166,14 +170,14 @@ changed_files() {
 pick_unpushed_targets() {
     local files from_main picked branch target
     files="$(changed_files "$1")" || return 1
-    picked="$(pick_targets <<< "$files")"
+    picked="$(pick_targets <<< "$files")" || return 1
     if ! from_main="$(git -C "$root" diff --name-only --no-renames origin/main 2> /dev/null)"; then
         echo "$picked"
         return
     fi
     from_main="$from_main
 $(git -C "$root" ls-files --others --exclude-standard)"
-    branch="$(pick_targets <<< "$from_main")"
+    branch="$(pick_targets <<< "$from_main")" || return 1
     for target in ios server site scripts; do
         if [[ "$picked" == *"$target=true"* && "$branch" == *"$target=true"* ]]; then
             echo "$target=true"

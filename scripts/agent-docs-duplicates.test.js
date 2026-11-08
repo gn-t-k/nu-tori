@@ -152,19 +152,44 @@ describe("エージェントが読む文書の重なり", () => {
   });
 
   describe("--pick で選ばないとき", () => {
-    let root;
-    before(() => {
-      ({ root } = run({ "skills-lock.json": JSON.stringify({ version: 1, skills: { tdd: { source: "mattpocock/skills" } } }) }));
-    });
-    after(() => rmSync(root, { recursive: true, force: true }));
-
-    for (const path of ["GLOSSARY.md", "docs/adr/0001.md", "DESIGN.md", "scripts/check", ".agents/skills/tdd/SKILL.md", ".github/AGENTS.md"]) {
-      it(`${path} を選ばないこと`, () => {
+    const pickNothing = (files, path) => {
+      const { root } = run(files);
+      try {
         const result = pick(root, [path]);
         assert.equal(result.status, 0, result.stderr);
         assert.equal(result.stdout, "");
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    };
+
+    describe("置き場の外の文書のとき", () => {
+      it("GLOSSARY.md を選ばないこと", () => {
+        pickNothing({}, "GLOSSARY.md");
       });
-    }
+
+      it("docs/adr/ の文書を選ばないこと", () => {
+        pickNothing({}, "docs/adr/0001.md");
+      });
+    });
+
+    describe("skills-lock.json で入れたスキルのとき", () => {
+      it("そのスキルの文書を選ばないこと", () => {
+        pickNothing({ "skills-lock.json": JSON.stringify({ version: 1, skills: { tdd: { source: "mattpocock/skills" } } }) }, ".agents/skills/tdd/SKILL.md");
+      });
+    });
+
+    describe(". で始まるディレクトリの AGENTS.md のとき", () => {
+      it("選ばないこと", () => {
+        pickNothing({}, ".github/AGENTS.md");
+      });
+    });
+
+    describe("置き場の中の文書でないファイルのとき", () => {
+      it("選ばないこと", () => {
+        pickNothing({}, ".agents/skills/verify-server/scripts/run");
+      });
+    });
   });
 
   // scripts/check の --pick-targets は、エージェントが読む文書の判定を本体の --pick に任せる
