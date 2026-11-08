@@ -1,0 +1,472 @@
+<title>告知の見た目</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  試作（#921）。捨てるコード。
+  告知（運営からユーザーへ出す文面）をアプリの中でどう見せるかを、3案（A・B・C）で見比べる。
+  止めたアカウントがサインインし直したときの断る画面は、場面「止めたアカウント」で別の3案（X・Y・Z）を見比べる。
+  届け方・出し方・断る応答の形は #922 で決めるので扱わない。記録はどこにも保存しない。
+-->
+<style>
+/* 左に iPhone の枠（今のタイムラインを模す）、右に問いと切り替え。色は DESIGN.md のトークン */
+:root {
+  --bg: #F2F2F7; --surface: #FFFFFF; --fg: #000000;
+  --fg2: rgba(60,60,67,.6); --fg3: rgba(60,60,67,.3); --sep: rgba(60,60,67,.29);
+  --fill: #EFEFF0; --tint: #6155F5; --own: color-mix(in srgb, #6155F5 22%, #FFFFFF);
+  --error: #FF383C; --ring: #E5E5EA; --p: #F07F1A; --f: #15803D; --c: #2C7BE5;
+  --dim: rgba(0,0,0,.35); --page: #E4E3EC; --bar: #1C1C1E; --bar-fg: #FFFFFF;
+  --font: -apple-system, "SF Pro Text", "Hiragino Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,.6); --fg3: rgba(235,235,245,.3); --sep: rgba(84,84,88,.6);
+  --fill: #323236; --tint: #6D7CFF; --own: color-mix(in srgb, #6D7CFF 30%, #1C1C1E);
+  --error: #FF4245; --ring: #2C2C2E; --p: #E8903A; --f: #228C48; --c: #4290F4;
+  --dim: rgba(0,0,0,.55); --page: #111114; --bar: #F2F2F7; --bar-fg: #000000; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,.6); --fg3: rgba(235,235,245,.3); --sep: rgba(84,84,88,.6);
+  --fill: #323236; --tint: #6D7CFF; --own: color-mix(in srgb, #6D7CFF 30%, #1C1C1E);
+  --error: #FF4245; --ring: #2C2C2E; --p: #E8903A; --f: #228C48; --c: #4290F4;
+  --dim: rgba(0,0,0,.55); --page: #111114; --bar: #F2F2F7; --bar-fg: #000000; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--fg); font-family: var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 96px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 24px; grid-template-columns: minmax(0, 390px) minmax(0, 1fr); align-items: start; }
+@media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+
+/* ===== iPhone の枠 ===== */
+.phone { background: var(--bg); border-radius: 40px; border: 1px solid var(--sep); overflow: hidden; position: relative; height: 780px; display: flex; flex-direction: column; }
+.nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 16px 16px 6px; font-size: 17px; }
+.nav b { font-weight: 600; }
+.capsule { justify-self: start; background: var(--fill); border: 0; border-radius: 999px; padding: 5px 12px; font-size: 13px; color: var(--fg); }
+.acct { justify-self: end; background: none; border: 0; color: var(--tint); position: relative; padding: 4px; line-height: 0; }
+.acct .dot { position: absolute; top: 2px; right: 1px; width: 9px; height: 9px; border-radius: 50%; background: var(--tint); border: 2px solid var(--bg); }
+.strip { display: grid; grid-template-columns: repeat(7, 1fr); padding: 4px 12px 8px; }
+.strip div { display: grid; justify-items: center; gap: 3px; font-size: 11px; color: var(--fg2); }
+.strip i { width: 28px; height: 28px; border-radius: 50%; display: block; }
+.strip .today { color: var(--fg); font-weight: 600; }
+.under { padding: 0 16px 6px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.line { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px; background: var(--surface); border: .5px solid var(--sep); border-radius: 999px; font-size: 13px; width: 100%; text-align: left; }
+.line .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.line .go { color: var(--tint); font-weight: 600; flex: none; }
+.tl { flex: 1; overflow-y: auto; padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.dayh { text-align: center; font-size: 13px; color: var(--fg2); padding-top: 8px; }
+.card { background: var(--surface); border-radius: 12px; padding: 16px; display: grid; gap: 8px; font-size: 15px; line-height: 20px; }
+.card .h { font-weight: 600; }
+.card .b { font-size: 13px; line-height: 18px; color: var(--fg2); }
+.card .clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.card .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.textbtn { background: none; border: 0; color: var(--tint); font-size: 15px; padding: 10px 0; margin: -10px 0; }
+.textbtn.sub { color: var(--fg2); font-size: 13px; }
+.bordered { background: var(--fill); color: var(--tint); border: 0; border-radius: 999px; height: 36px; padding: 0 16px; font-weight: 600; font-size: 15px; justify-self: start; }
+.prominent { background: var(--tint); color: #fff; border: 0; border-radius: 999px; height: 50px; font-weight: 600; font-size: 15px; width: 100%; }
+.own { align-self: flex-end; max-width: 78%; display: grid; gap: 2px; justify-items: start; }
+.own .card { background: var(--own); }
+.own .time { font-size: 11px; color: var(--fg2); }
+.pfc { display: flex; gap: 10px; font-size: 13px; color: var(--fg2); }
+.pfc span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; background: var(--k); }
+.reply { font-size: 17px; line-height: 22px; }
+.failed { color: var(--fg2); }
+.composer { padding: 8px 12px 22px; display: flex; gap: 12px; align-items: center; border-top: .5px solid var(--sep); background: var(--bg); }
+.composer .circ { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--fill); color: var(--tint); flex: none; }
+.composer .circ.cam { background: var(--tint); color: #fff; }
+.composer .field { flex: 1; height: 36px; border-radius: 18px; background: var(--surface); color: var(--fg3); display: flex; align-items: center; padding: 0 14px; font-size: 17px; min-width: 0; }
+.aimark { text-align: center; font-size: 12px; color: var(--fg2); padding-bottom: 6px; background: var(--bg); margin-top: -18px; }
+
+/* 種類の語（大事な告知の見分け） */
+.kind { display: flex; align-items: center; gap: 5px; font-size: 13px; line-height: 18px; color: var(--fg2); }
+.kind.imp-icon { color: var(--fg); font-weight: 600; }
+.kind.imp-red { color: var(--error); font-weight: 600; }
+.kind svg { flex: none; }
+
+/* シート */
+.scrim { position: absolute; inset: 0; background: var(--dim); display: flex; align-items: flex-end; z-index: 5; }
+.sheet { background: var(--bg); width: 100%; height: calc(100% - 52px); border-radius: 12px 12px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+.sheet.half { height: 62%; }
+.grab { width: 36px; height: 5px; border-radius: 3px; background: var(--fg3); margin: 6px auto 0; }
+.sbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 8px 16px; font-size: 17px; }
+.sbar b { font-weight: 600; }
+.sbar .l { justify-self: start; } .sbar .r { justify-self: end; font-weight: 600; }
+.sbar button { background: none; border: 0; color: var(--tint); font-size: 17px; padding: 6px 0; }
+.sbody { flex: 1; overflow-y: auto; padding: 8px 16px 24px; display: grid; gap: 14px; align-content: start; font-size: 17px; line-height: 24px; }
+.sbody h2 { font-size: 22px; line-height: 28px; margin: 0; font-weight: 700; text-wrap: balance; }
+.sbody p { margin: 0; }
+.sbody .meta { font-size: 13px; color: var(--fg2); }
+.sbody .note { font-size: 13px; line-height: 18px; color: var(--fg2); }
+.sfoot { padding: 12px 16px 28px; display: grid; gap: 8px; }
+.group { background: var(--surface); border-radius: 10px; overflow: hidden; }
+.lrow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 16px; min-height: 44px; border: 0; background: none; width: 100%; text-align: left; font-size: 17px; }
+.lrow + .lrow { border-top: .5px solid var(--sep); }
+.lrow .v { color: var(--fg2); flex: none; }
+.lrow .stack { display: grid; gap: 2px; min-width: 0; }
+.lrow .stack .tt { font-size: 15px; line-height: 20px; }
+.lrow .stack .tt.unread { font-weight: 600; }
+.badge { background: var(--tint); color: #fff; border-radius: 999px; font-size: 13px; min-width: 22px; height: 22px; padding: 0 7px; display: inline-grid; place-items: center; margin-right: 6px; }
+.foot { font-size: 13px; color: var(--fg2); padding: 6px 16px 0; line-height: 18px; }
+.bul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+/* サインインの画面（断る画面） */
+.signin { flex: 1; display: flex; flex-direction: column; padding: 24px 16px 28px; gap: 12px; }
+.signin .head { flex: 1; display: grid; justify-items: center; align-content: center; gap: 8px; text-align: center; }
+.mark { width: 56px; height: 56px; border-radius: 13px; background: var(--tint); display: grid; place-items: center; color: #fff; }
+.signin h2 { margin: 0; font-size: 22px; font-weight: 700; }
+.signin .lead { margin: 0; font-size: 17px; line-height: 22px; color: var(--fg2); max-width: 30ch; }
+.consent { background: var(--surface); border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 18px; color: var(--fg2); }
+.consent a, .link { color: var(--tint); text-decoration: none; }
+.status { font-size: 13px; line-height: 18px; }
+.apple { background: var(--fg); color: var(--bg); border-radius: 10px; height: 50px; border: 0; font-weight: 600; font-size: 17px; width: 100%; }
+.stop { flex: 1; display: grid; align-content: center; gap: 16px; padding: 24px 16px; }
+.stop .icon { width: 56px; height: 56px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; color: var(--fg2); }
+.stop h2 { margin: 0; font-size: 22px; line-height: 28px; font-weight: 700; }
+.stop p { margin: 0; font-size: 17px; line-height: 24px; }
+.stop .sub { font-size: 15px; line-height: 20px; color: var(--fg2); }
+.mail { font-family: ui-monospace, Menlo, monospace; font-size: 15px; user-select: all; }
+
+/* ===== 右の説明 ===== */
+.notes { display: grid; gap: 14px; font-size: 15px; line-height: 1.6; min-width: 0; }
+.notes h1 { font-size: 21px; line-height: 1.35; margin: 0; text-wrap: balance; }
+.notes h3 { font-size: 13px; letter-spacing: .04em; color: var(--fg2); margin: 8px 0 0; font-weight: 600; }
+.notes p, .notes ul { margin: 0; } .notes ul { padding-left: 1.2em; }
+.ctrl { display: flex; flex-wrap: wrap; gap: 8px; }
+.ctrl label, .ctrl button { display: flex; gap: 6px; align-items: center; background: var(--surface); border: 0; border-radius: 8px; padding: 7px 11px; font-size: 14px; cursor: pointer; line-height: 1.4; }
+.ctrl label:has(input:checked) { outline: 2px solid var(--tint); }
+.answers { display: grid; gap: 6px; background: var(--surface); border-radius: 10px; padding: 12px 14px; }
+.answers div { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.5; }
+.answers b { font-weight: 600; color: var(--fg2); }
+.state { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--surface); border-radius: 8px; padding: 10px; white-space: pre-wrap; overflow-x: auto; }
+.warn { font-size: 13px; color: var(--fg2); }
+
+/* 切り替えのバー（試作の外側） */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--bar); color: var(--bar-fg); border-radius: 999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.25); font-size: 14px; max-width: calc(100% - 32px); z-index: 20; }
+.switcher button { background: none; border: 0; color: inherit; font-size: 20px; padding: 6px 14px; border-radius: 999px; }
+.switcher span { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: no-preference) { .sheet { animation: up .22s ease-out; } @keyframes up { from { transform: translateY(40px); opacity: .6; } } }
+</style>
+
+<div class="wrap">
+  <div class="phone" id="phone"></div>
+  <div class="notes">
+    <h1 id="vtitle"></h1>
+    <p id="vdesc"></p>
+    <div class="answers" id="answers"></div>
+
+    <h3>場面</h3>
+    <div class="ctrl" id="scenes"></div>
+
+    <div id="tlCtrls">
+      <h3>4. 大事な告知の見分け（どの案にも効く）</h3>
+      <div class="ctrl">
+        <label><input type="radio" name="mark" value="word" id="mark-word"> 種類の語だけ（色を足さない）</label>
+        <label><input type="radio" name="mark" value="icon" id="mark-icon"> 印と太字の種類の語</label>
+        <label><input type="radio" name="mark" value="red" id="mark-red"> 赤い印（DESIGN.md の外。Error は削除だけに使う決まり）</label>
+      </div>
+      <h3>3. 読み返す場所（案を切り替えると、その案の既定に戻る）</h3>
+      <div class="ctrl">
+        <label><input type="checkbox" id="list"> アカウントの画面に「告知」の一覧を置く</label>
+      </div>
+      <h3>操作</h3>
+      <div class="ctrl">
+        <button id="relaunch">アプリを開き直す（読んだ印を消す）</button>
+      </div>
+    </div>
+
+    <div id="rfCtrls" hidden>
+      <h3>断る画面に添えるもの</h3>
+      <div class="ctrl">
+        <label><input type="checkbox" id="subnote"> サブスクリプションは止まらないことと、解約の場所</label>
+      </div>
+    </div>
+
+    <h3>今の状態</h3>
+    <div class="state" id="state"></div>
+    <p class="warn">文面はすべて例です。届け方・出し方（誰にいつ届くか、同意しないと使えないか）と、サーバーが断るときの応答の形は #922 で決めるので、ここでは見え方だけを見ます。</p>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="案の切り替え">
+  <button id="prev" aria-label="前の案">‹</button>
+  <span id="label"></span>
+  <button id="next" aria-label="次の案">›</button>
+</div>
+
+<script>
+/* ---------- 案 ---------- */
+const VARIANTS = {
+  A: { name: 'タイムラインのカード', list: false,
+    desc: '告知を、アプリの知らせと同じ全幅の白いカードにして、出た日のタイムラインの先頭に置く。本文は3行で切り、「続きを読む」でシート。大事な告知は閉じられず、新しい機能だけ「閉じる」を持つ。読み返すのは、その日までタイムラインをさかのぼって。',
+    a: ['タイムラインに並べる', '新しい機能は1枚ずつ「閉じる」。大事な告知は残る', 'タイムラインをさかのぼる（閉じたものは消える）'] },
+  B: { name: '帯の下の1行とシート', list: true,
+    desc: '1日の丸の帯の下に、答えていない知らせの1行と同じカプセルで告知を出す。押すとシートで全文。何件あっても1行にまとめ、読んだら消える。タイムラインは告知で伸びない。読み返すのはアカウントの画面の「告知」の一覧。',
+    a: ['帯の下の1行（タイムラインの外）', '何件でも1行。読めば消える', 'アカウントの画面の一覧'] },
+  C: { name: '開いたときのシートと一覧', list: true,
+    desc: '大事な告知だけ、アプリを開いたときにシートで出す（規約の変更なら同意のシートそのもの）。新しい機能はさえぎらず、アカウントのボタンの点と一覧の件数だけで示す。読み返すのはアカウントの画面の「告知」の一覧。',
+    a: ['大事なものだけシート、ほかは一覧', '新しい機能は点だけ。さえぎらない', 'アカウントの画面の一覧'] },
+};
+const REFUSALS = {
+  X: { name: '書き出しを差し替える', desc: '今のサインインの画面のまま、書き出しの文を「利用を止めています」と問い合わせ先に差し替える。Apple のボタンは残し、別の Apple ID でサインインできる。' },
+  Y: { name: '押したあとの1行', desc: '書き出しは今の「もう一度サインインしてください」のまま。Apple でサインインを押して断られたら、ボタンのすぐ上の1行（今の失敗の1行と同じ場所）に出す。左の画面のボタンを押して確かめる。' },
+  Z: { name: '専用の画面', desc: 'サインインの画面とは別の、止めたことだけを伝える画面にする。理由、問い合わせ先、サポートのページへのボタン。別の Apple ID でサインインするのは文字のボタンに下げる。' },
+};
+const SCENES = {
+  s1: { name: '障害のあと全員へ', ids: ['outage'] },
+  s2: { name: '漏れたおそれのある人だけへ', ids: ['leak'] },
+  s3: { name: '規約の変更と同意のシート', ids: ['terms'] },
+  s4: { name: '利用の停止の予告（本人だけへ）', ids: ['suspend'] },
+  s5: { name: '新しい機能の告知が続く', ids: ['f3', 'f2', 'f1'] },
+  s6: { name: '5. 止めたアカウントがサインインし直す', ids: [] },
+};
+/* ---------- 告知の文面（例） ---------- */
+const ANN = {
+  outage: { kind: '障害', imp: true, to: '全員', day: '11/8', date: '11月8日',
+    title: '11月7日の障害で、推定できなかった食事があります',
+    body: ['11月7日（土）9時ごろから13時ごろまで、食事の推定が止まっていました。いまは直っています。',
+      'そのあいだに送った食事は「推定できませんでした」になっています。その食事を開いて送り直すと、推定します。',
+      '同じ内容を nu-tori.app/announcements にも載せています。'] },
+  leak: { kind: '個人情報', imp: true, to: '本人だけ', day: '11/8', date: '11月8日',
+    title: 'あなたの記録が外から読まれたおそれがあります',
+    body: ['11月6日（金）の約2時間、サーバーの設定の誤りで、一部のアカウントの記録が外から読める状態になっていました。11月7日に直し、個人情報保護委員会に報告しました。',
+      '読まれたおそれのある項目：体重、食事の名前と写真、会話の文章。Apple ID とお支払いの情報は含みません。',
+      '原因：記録を読む API の設定を変えたときに、アカウントの確かめが外れていました。',
+      '起きうること：記録の中身を知った人からの連絡。nu-tori から記録の中身を尋ねることはありません。',
+      'あなたにできること：記録を消したいときは、アカウントの画面の「アカウントを削除」で消せます。',
+      'お問い合わせ：support@nu-tori.app（nu-tori.app/support にフォームもあります）'] },
+  terms: { kind: '規約の変更', imp: true, consent: true, to: '全員', day: '11/8', date: '11月8日',
+    title: '12月1日から利用規約が変わります',
+    body: ['年間プランを足すため、利用規約を変えます。12月1日（火）から新しい規約になります。',
+      '変わるところ：料金のプランに年間プランを足す／年間プランを途中でやめたときの扱い。',
+      '使い続けるには、新しい規約への同意が要ります。全文は nu-tori.app/terms で読めます。'] },
+  suspend: { kind: '利用の停止', imp: true, to: '本人だけ', day: '11/8', date: '11月8日',
+    title: '11月15日から、このアカウントの利用を止めます',
+    body: ['利用規約の「禁止すること」に当たる使い方（自動のプログラムで推定を繰り返し送る）が続いているため、11月15日（日）からこのアカウントの利用を止めます。',
+      '止めたあとはサインインできなくなります。サブスクリプションは止まらないので、続けないときは iPhone の設定から解約してください。',
+      '心当たりがないときは support@nu-tori.app へお問い合わせください。'] },
+  f1: { kind: '新しい機能', imp: false, to: '全員', day: '11/8', date: '11月8日',
+    title: '体重をヘルスケアから読めるようになりました', body: ['体重計がヘルスケアに書いた体重を、アプリを開いたときに読みます。アカウントの画面の「ヘルスケア」でオンにできます。'] },
+  f2: { kind: '新しい機能', imp: false, to: '全員', day: '11/7', date: '11月7日',
+    title: '写真をまとめて送れるようになりました', body: ['「写真」から最大10枚まで選んで、まとめて送れます。1枚ずつ推定します。'] },
+  f3: { kind: '新しい機能', imp: false, to: '全員', day: '11/6', date: '11月6日',
+    title: '週の振り返りに、先週との差が出るようになりました', body: ['週の振り返りのカードに、平均の体重と kcal の先週との差を出します。'] },
+};
+// 一覧で読み返す見本の、前に読んだ告知
+const OLD = [{ id: 'old1', kind: '新しい機能', imp: false, date: '10月20日', title: '会話の返事で太字と箇条書きを描くようになりました', body: ['返事の中の太字と箇条書きを、そのまま描くようにしました。'] }];
+const all = (id) => ANN[id] || OLD.find((o) => o.id === id);
+
+/* ---------- 状態 ---------- */
+const S = { variant: 'A', refuse: 'X', scene: 's1', mark: 'icon', list: false, read: new Set(), closed: new Set(), agreed: false, sheet: null, yPressed: false, subnote: true };
+(function initFromUrl() {
+  const q = new URLSearchParams(location.search);
+  const h = location.hash.replace('#', '').split('-');
+  const v = q.get('variant') || h[0]; const sc = q.get('scene') || h[1];
+  if (SCENES[sc]) S.scene = sc;
+  if (VARIANTS[v]) S.variant = v; if (REFUSALS[v]) S.refuse = v;
+  S.list = VARIANTS[S.variant].list;
+})();
+const isRefusal = () => S.scene === 's6';
+const sceneAnns = () => SCENES[S.scene].ids;
+const unread = () => sceneAnns().filter((id) => !S.read.has(id) && !S.closed.has(id));
+const $ = (id) => document.getElementById(id);
+
+/* ---------- アイコン（SF Symbols の代わり） ---------- */
+const I = {
+  person: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3.4"/><path d="M5.6 18.6c1.6-2.3 3.8-3.4 6.4-3.4s4.8 1.1 6.4 3.4"/></svg>',
+  cam: '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8.5 5l1.4-2h4.2l1.4 2H20a2 2 0 012 2v11a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2h4.5zM12 17a4.5 4.5 0 100-9 4.5 4.5 0 000 9z"/></svg>',
+  photo: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="6" y="3" width="15" height="13" rx="2"/><path d="M3 7v11a2 2 0 002 2h12"/><path d="M8 14l3.5-4 3 3 2-2 3 3"/></svg>',
+  scale: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M7.5 10a5 5 0 019 0"/><path d="M12 10.5l1.6-2.6"/></svg>',
+  warn: (c) => `<svg width="15" height="15" viewBox="0 0 24 24" fill="${c}"><path d="M10.3 3.6a2 2 0 013.4 0l8.4 14.6A2 2 0 0120.4 21H3.6a2 2 0 01-1.7-2.8L10.3 3.6z"/><path d="M12 9v5" stroke="var(--surface)" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1.25" fill="var(--surface)"/></svg>`,
+  hand: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
+  apple: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8s2.3-1.3 3.1-2.5c1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1zM13.9 5c.7-.8 1.2-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4z"/></svg>',
+  mark: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 5v7l4 3"/></svg>',
+};
+
+/* ---------- 部品 ---------- */
+function kindLabel(a) {
+  if (!a.imp) return `<div class="kind">${a.kind}・${a.date}</div>`;
+  if (S.mark === 'word') return `<div class="kind">${a.kind}・${a.date}</div>`;
+  if (S.mark === 'icon') return `<div class="kind imp-icon">${I.warn('currentColor')}${a.kind}<span style="font-weight:400;color:var(--fg2)">・${a.date}</span></div>`;
+  return `<div class="kind imp-red">${I.warn('currentColor')}${a.kind}<span style="font-weight:400;color:var(--fg2)">・${a.date}</span></div>`;
+}
+function ring(p, f, c) { // 1日の丸（P・F・C の割合）
+  const a = p * 3.6, b = a + f * 3.6, d = b + c * 3.6;
+  return `<i style="background:radial-gradient(circle,var(--bg) 9.5px,transparent 10px),conic-gradient(var(--p) 0 ${a}deg,var(--f) 0 ${b}deg,var(--c) 0 ${d}deg,var(--ring) 0)"></i>`;
+}
+const STRIP = [['月', 30, 25, 40], ['火', 28, 22, 44], ['水', 25, 30, 35], ['木', 32, 20, 38], ['金', 27, 28, 36], ['土', 12, 8, 14], ['日', 14, 10, 16]];
+function navBar() {
+  const dot = S.variant === 'C' && sceneAnns().some((id) => !ANN[id].imp && !S.read.has(id)) ? '<span class="dot" aria-label="新しい告知"></span>' : '';
+  return `<div class="nav"><button class="capsule" tabindex="-1">71.0 kg まで ›</button><b>11月8日（日）</b><button class="acct" id="openAcct" aria-label="アカウント">${I.person}${dot}</button></div>
+    <div class="strip">${STRIP.map(([d, p, f, c], i) => `<div class="${i === 6 ? 'today' : ''}">${ring(p, f, c)}${d}</div>`).join('')}</div>`;
+}
+function bLine() {
+  if (S.variant !== 'B') return '';
+  const u = unread(); if (!u.length) return '';
+  const imp = u.some((id) => ANN[id].imp);
+  const lead = imp && S.mark !== 'word' ? `<span style="color:${S.mark === 'red' ? 'var(--error)' : 'var(--fg)'};line-height:0">${I.warn('currentColor')}</span>` : '';
+  const text = u.length === 1 ? ANN[u[0]].title : `告知が${u.length}件あります`;
+  const go = ANN[u[0]].consent ? '読んで同意' : '読む';
+  return `<button class="line" id="bline">${lead}<span class="t">${text}</span><span class="go">${go}</span></button>`;
+}
+function aCard(id) {
+  const a = ANN[id];
+  if (S.closed.has(id)) return '';
+  if (a.consent && S.agreed) return `<div class="card">${kindLabel(a)}<div class="h">${a.title}</div><div class="b">12月1日からの利用規約に同意しました。</div><button class="textbtn" style="justify-self:end" data-open="${id}">規約の変更を読む ›</button></div>`;
+  const act = a.consent ? `<button class="bordered" data-consent="1">読んで同意する</button>`
+    : `<div class="row">${a.imp ? '<span></span>' : `<button class="textbtn sub" data-close="${id}">閉じる</button>`}<button class="textbtn" data-open="${id}">続きを読む ›</button></div>`;
+  return `<div class="card">${kindLabel(a)}<div class="h">${a.title}</div><div class="b clamp">${a.body[0]}</div>${act}</div>`;
+}
+function own(inner, time) { return `<div class="own"><div class="card">${inner}</div><span class="time">${time}</span></div>`; }
+function meal(name, kcal, p, f, c) { return `<div class="h">${name}</div><div class="b">${kcal} kcal</div><div class="pfc"><span style="--k:var(--p)">P ${p} g</span><span style="--k:var(--f)">F ${f} g</span><span style="--k:var(--c)">C ${c} g</span></div>`; }
+function day(key, label, body) {
+  const cards = S.variant === 'A' ? sceneAnns().filter((id) => ANN[id].day === key).map(aCard).join('') : '';
+  return `<div class="dayh">${label}</div>${cards}${body}`;
+}
+function timeline() {
+  const s1 = S.scene === 's1';
+  return `<div class="tl" id="tl">
+    ${day('11/6', '11月6日（金）', own('<div class="h">72.6 kg</div>', '7:08') + own(meal('親子丼', '680', 32, 18, 92), '12:31') + '<div class="reply">昼は親子丼ですね。たんぱく質がしっかり取れています。</div>')}
+    ${day('11/7', '11月7日（土）', own('<div class="h">72.5 kg</div>', '7:15') + own(s1 ? '<div class="h">鮭おにぎりと味噌汁</div><div class="b failed">推定できませんでした</div>' : meal('鮭おにぎりと味噌汁', '420', 18, 7, 70), '10:42'))}
+    ${day('11/8', '11月8日（日）', own('<div class="h">72.4 kg</div>', '7:12') + own(meal('鮭の塩焼き定食', '620', 38, 16, 78), '12:05'))}
+  </div>`;
+}
+function composer() {
+  return `<div class="composer"><span class="circ cam">${I.cam}</span><span class="circ">${I.photo}</span><span class="circ">${I.scale}</span><span class="field">書く</span></div><div class="aimark">AI が読んで返事をします</div>`;
+}
+
+/* ---------- シート ---------- */
+function detailBody(a) {
+  return `<div class="sbody">${kindLabel(a)}<h2>${a.title}</h2>${a.body.map((p) => `<p>${p}</p>`).join('')}<p class="note">${a.to === '本人だけ' ? 'この告知は、あなたのアカウントだけに出しています。' : ''}</p></div>`;
+}
+function sheetHtml() {
+  const s = S.sheet; if (!s) return '';
+  if (s.type === 'detail') {
+    const a = all(s.id);
+    return `<div class="scrim" data-scrim="1"><div class="sheet ${S.variant === 'C' && s.launch ? 'half' : ''}"><div class="grab"></div><div class="sbar"><span></span><b></b><button class="r" data-done="1">完了</button></div>${detailBody(a)}</div></div>`;
+  }
+  if (s.type === 'consent') {
+    const a = ANN.terms;
+    return `<div class="scrim"><div class="sheet"><div class="grab"></div><div class="sbar"><button class="l" data-done="1">キャンセル</button><b>利用規約の変更</b><span></span></div>
+      <div class="sbody">${kindLabel(a)}<h2>${a.title}</h2><p>${a.body[0]}</p><div class="group" style="padding:12px 16px;font-size:15px;line-height:22px"><ul class="bul"><li>料金のプランに、年間プラン（8,800円）を足します</li><li>年間プランを途中でやめても、期間の終わりまで使えます。残りの期間の返金は Apple の手続きに任せます</li></ul></div>
+      <p><a class="link" href="https://nu-tori.app/terms" target="_blank" rel="noopener">新しい利用規約の全文を読む ↗</a></p></div>
+      <div class="sfoot"><button class="prominent" data-agree="1">同意する</button></div></div></div>`;
+  }
+  if (s.type === 'account') {
+    const listed = [...sceneAnns().slice().reverse(), ...OLD.map((o) => o.id)];
+    const nUnread = sceneAnns().filter((id) => !S.read.has(id)).length;
+    if (s.page === 'root') {
+      const annRow = S.list ? `<div class="group"><button class="lrow" data-page="list"><span>告知</span><span class="v">${nUnread ? `<span class="badge">${nUnread}</span>` : ''}›</span></button></div>` : '';
+      return `<div class="scrim"><div class="sheet"><div class="grab"></div><div class="sbar"><span></span><b>アカウント</b><button class="r" data-done="1">完了</button></div>
+        <div class="sbody" style="gap:28px">
+          <div class="group"><div class="lrow"><span>サブスクリプション</span><span class="v">年間プラン ›</span></div></div>
+          ${annRow}
+          <div class="group"><div class="lrow"><span>ヘルスケア</span><span class="v">›</span></div></div>
+          <div class="group"><div class="lrow"><span>記録忘れの通知</span><span class="v">オン</span></div></div>
+          <div class="group"><div class="lrow"><span>利用状況を送る</span><span class="v">オン</span></div></div>
+          ${S.list ? '' : '<p class="foot" style="margin-top:-16px">この案の既定では、告知の一覧を置きません。右の「アカウントの画面に一覧を置く」で足せます。</p>'}
+        </div></div></div>`;
+    }
+    if (s.page === 'list') {
+      return `<div class="scrim"><div class="sheet"><div class="grab"></div><div class="sbar"><button class="l" data-page="root">‹ アカウント</button><b>告知</b><button class="r" data-done="1">完了</button></div>
+        <div class="sbody"><div class="group">${listed.map((id) => { const a = all(id); const u = ANN[id] && !S.read.has(id);
+          return `<button class="lrow" data-page="detail" data-id="${id}"><span class="stack">${kindLabel(a)}<span class="tt ${u ? 'unread' : ''}">${a.title}</span></span><span class="v">›</span></button>`; }).join('')}</div>
+        <p class="foot">出た順に新しいものから。閉じた告知も、ここでは読めます。</p></div></div></div>`;
+    }
+    const a = all(s.id);
+    return `<div class="scrim"><div class="sheet"><div class="grab"></div><div class="sbar"><button class="l" data-page="list">‹ 告知</button><b></b><button class="r" data-done="1">完了</button></div>${detailBody(a)}${a.consent && !S.agreed ? '<div class="sfoot"><button class="prominent" data-consent="1">読んで同意する</button></div>' : ''}</div></div>`;
+  }
+  return '';
+}
+
+/* ---------- 断る画面 ---------- */
+const CONTACT = 'support@nu-tori.app';
+function subLine() { return S.subnote ? 'サブスクリプションは止まりません。続けないときは、iPhone の設定の Apple アカウント → サブスクリプションから解約してください。' : ''; }
+function refusal() {
+  const consent = `<div class="consent">続けると、<a href="#">利用規約</a>と<a href="#">プライバシーポリシー</a>に同意したことになります。</div>`;
+  const head = (lead) => `<div class="head"><div class="mark">${I.mark}</div><h2>nu-tori</h2><p class="lead">${lead}</p></div>`;
+  if (S.refuse === 'X') {
+    return `<div class="signin">${head(`このアカウントは、利用規約により利用を止めています。お問い合わせは <span class="mail">${CONTACT}</span> へ。`)}
+      ${S.subnote ? `<p class="status" style="color:var(--fg2)">${subLine()}</p>` : ''}${consent}<button class="apple">${I.apple} Apple でサインイン</button></div>`;
+  }
+  if (S.refuse === 'Y') {
+    const st = S.yPressed ? `<p class="status">このアカウントは利用を止めているため、サインインできません。お問い合わせは <span class="mail">${CONTACT}</span> へ。${S.subnote ? '<br>' + subLine() : ''}</p>` : '';
+    return `<div class="signin">${head('もう一度サインインしてください。同じ Apple ID で続けると、記録はそのまま戻ります。')}${consent}${st}<button class="apple" id="yApple">${I.apple} Apple でサインイン</button></div>`;
+  }
+  return `<div class="stop"><div class="icon">${I.hand}</div><h2>このアカウントの利用を止めています</h2>
+    <p>利用規約の「禁止すること」に当たる使い方があったため、11月15日から利用を止めています。</p>
+    ${S.subnote ? `<p class="sub">${subLine()}</p>` : ''}
+    <p class="sub">お問い合わせ：<span class="mail">${CONTACT}</span></p>
+    <button class="bordered" style="justify-self:stretch;height:50px">サポートのページを開く ↗</button>
+    <button class="textbtn" style="justify-self:center;margin-top:4px">別の Apple ID でサインイン</button></div>`;
+}
+
+/* ---------- 描く ---------- */
+function render() {
+  const phone = $('phone');
+  if (isRefusal()) {
+    phone.innerHTML = refusal();
+  } else {
+    phone.innerHTML = navBar() + `<div class="under">${bLine()}</div>` + timeline() + composer() + sheetHtml();
+    const tl = $('tl'); if (tl) tl.scrollTop = tl.scrollHeight;
+    if (S.variant === 'A' && S.scene === 's5') tl.scrollTop = 0;
+  }
+  const v = isRefusal() ? REFUSALS[S.refuse] : VARIANTS[S.variant];
+  const key = isRefusal() ? S.refuse : S.variant;
+  $('label').textContent = `${key}（${v.name}）`;
+  $('vtitle').textContent = isRefusal() ? `断る画面 案 ${key}：${v.name}` : `案 ${key}：${v.name}`;
+  $('vdesc').textContent = v.desc;
+  $('answers').innerHTML = isRefusal()
+    ? `<div><b>5. 断る画面</b><span>${v.name}</span></div>`
+    : ['1. どこに出す', '2. 煩わしさ', '3. 読み返す'].map((q, i) => `<div><b>${q}</b><span>${v.a[i]}</span></div>`).join('') + `<div><b>4. 見分け</b><span>${{ word: '種類の語だけ', icon: '印と太字の種類の語', red: '赤い印' }[S.mark]}</span></div>`;
+  $('tlCtrls').hidden = isRefusal(); $('rfCtrls').hidden = !isRefusal();
+  $('mark-' + S.mark).checked = true; $('list').checked = S.list; $('subnote').checked = S.subnote;
+  document.querySelectorAll('#scenes input').forEach((r) => { r.checked = r.value === S.scene; });
+  $('state').textContent = JSON.stringify(isRefusal()
+    ? { 場面: SCENES[S.scene].name, 案: key, サインインを押した: S.yPressed, 解約の案内: S.subnote }
+    : { 場面: SCENES[S.scene].name, 案: key, 告知: sceneAnns().map((id) => ({ 題: ANN[id].title, 宛先: ANN[id].to, 大事: ANN[id].imp, 状態: S.closed.has(id) ? '閉じた' : S.read.has(id) ? '読んだ' : 'まだ' })), 同意: ANN.terms && S.scene === 's3' ? S.agreed : undefined, 開いているシート: S.sheet ? S.sheet.type + (S.sheet.page ? '/' + S.sheet.page : '') : null }, null, 2);
+  try { history.replaceState(null, '', '#' + key + '-' + S.scene); } catch (e) { /* 試作なので無視 */ }
+}
+function launch() { // アプリを開いたとき。C だけ、まだ読んでいない大事な告知をシートで出す
+  S.sheet = null;
+  if (S.variant === 'C' && !isRefusal()) {
+    const id = unread().find((x) => ANN[x].imp);
+    if (id) S.sheet = ANN[id].consent ? { type: 'consent' } : { type: 'detail', id, launch: true };
+  }
+}
+function reset() { S.read.clear(); S.closed.clear(); S.agreed = false; S.yPressed = false; launch(); }
+
+/* ---------- 操作 ---------- */
+$('phone').addEventListener('click', (e) => {
+  const t = e.target.closest('button,[data-scrim]'); if (!t) return;
+  const d = t.dataset;
+  if (t.id === 'openAcct') S.sheet = { type: 'account', page: 'root' };
+  else if (t.id === 'yApple') S.yPressed = true;
+  else if (t.id === 'bline') { const u = unread(); if (ANN[u[0]].consent) S.sheet = { type: 'consent' }; else if (u.length === 1) { S.sheet = { type: 'detail', id: u[0] }; S.read.add(u[0]); } else { u.forEach((id) => { if (!ANN[id].consent) S.read.add(id); }); S.sheet = { type: 'account', page: 'list' }; } }
+  else if (d.open) { S.sheet = { type: 'detail', id: d.open }; S.read.add(d.open); }
+  else if (d.close) S.closed.add(d.close);
+  else if (d.consent) S.sheet = { type: 'consent' };
+  else if (d.agree) { S.agreed = true; S.read.add('terms'); S.sheet = null; }
+  else if (d.done) { if (S.sheet && S.sheet.type === 'detail') S.read.add(S.sheet.id); S.sheet = null; }
+  else if (d.page) { S.sheet = { type: 'account', page: d.page, id: d.id }; if (d.id && ANN[d.id] && !ANN[d.id].consent) S.read.add(d.id); }
+  else if (d.scrim && e.target === t) { if (S.sheet && S.sheet.type === 'detail') S.read.add(S.sheet.id); S.sheet = null; }
+  else return;
+  render();
+});
+$('scenes').innerHTML = Object.entries(SCENES).map(([k, s]) => `<label><input type="radio" name="scene" value="${k}" id="scene-${k}"> ${s.name}</label>`).join('');
+$('scenes').addEventListener('change', (e) => { S.scene = e.target.value; reset(); render(); });
+document.querySelectorAll('input[name=mark]').forEach((r) => r.addEventListener('change', () => { S.mark = r.value; render(); }));
+$('list').addEventListener('change', (e) => { S.list = e.target.checked; render(); });
+$('subnote').addEventListener('change', (e) => { S.subnote = e.target.checked; render(); });
+$('relaunch').addEventListener('click', () => { reset(); render(); });
+function cycle(step) {
+  if (isRefusal()) { const k = Object.keys(REFUSALS); S.refuse = k[(k.indexOf(S.refuse) + step + k.length) % k.length]; S.yPressed = false; }
+  else { const k = Object.keys(VARIANTS); S.variant = k[(k.indexOf(S.variant) + step + k.length) % k.length]; S.list = VARIANTS[S.variant].list; reset(); }
+  render();
+}
+$('prev').addEventListener('click', () => cycle(-1));
+$('next').addEventListener('click', () => cycle(1));
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') cycle(-1); if (e.key === 'ArrowRight') cycle(1);
+});
+launch(); render();
+</script>
