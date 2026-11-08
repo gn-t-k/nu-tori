@@ -21,7 +21,7 @@ describe("記録の見張り", () => {
     });
   });
 
-  describe("値が変わった記録と、無いところから消えた記録を、逆の順に見張ったとき", () => {
+  describe("値が変わった記録と、無いところから消えた記録を、変えた順と逆に見張ったとき", () => {
     let first: RecordId;
     let second: RecordId;
     beforeEach(() => {
