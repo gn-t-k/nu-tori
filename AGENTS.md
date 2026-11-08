@@ -12,7 +12,7 @@ Issueはこのリポジトリ（gn-t-k/nu-tori）のGitHub Issuesで管理する
 
 ### ドメインドキュメント
 
-単一コンテキスト構成：リポジトリ直下に `GLOSSARY.md` と `docs/adr/` を1つずつ置く。詳細は `docs/agents/domain.md` を参照。
+機能や概念をコード・Issue・文書から探す前、概念に名前を付けるとき（Issue・テスト名など）、ADR を書くときは、`docs/agents/domain.md` を読む。探す前には、そこにあるとおり `GLOSSARY.md` で語と避ける語を引く。
 
 ### デザイン
 
