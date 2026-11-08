@@ -77,7 +77,7 @@ GitHub Issueを作る。
 
 ## 機能の受け入れ条件を地図の形で書く
 
-`/to-tickets` で作るチケットで、ユーザーから見える機能を足す、または入口や見え方を変える受け入れ条件は、検証の地図（`.agents/skills/verify-<アプリ>/features/` の機能のファイル）の項目と同じ形で書く。`/to-spec` の雛形には受け入れ条件の節が無いので、仕様では `Testing Decisions` に同じ形で書く。各項目の中身は `.agents/skills/verify-<アプリ>/MAP-FORMAT.md` の節のとおりで、機能ごとに ID と振る舞いの行を置き、その下に次の3つを入れ子にする。
+`/to-tickets` で作るチケットで、ユーザーから見える機能を足す、または入口や見え方を変える受け入れ条件は、検証の地図（`.agents/skills/verify-<アプリ>/features/` の機能のファイル）の項目と同じ形で書く。`/to-spec` の雛形には受け入れ条件の節が無いので、仕様では `Testing Decisions` に同じ形で書く。各項目の中身は `.agents/skills/verify-<アプリ>/MAP-FORMAT.md` の4つの節（`Sub-features`・`How to get to it (user POV)`・`Driving it with verify-server`・`Gotchas`）のとおりで、機能ごとに ID と振る舞いの行を置き、その下に次の3つを入れ子にする。
 
 - 入口：`How to get to it (user POV)` の行になる
 - 前提：`Driving it with verify-server` の `Preconditions:` の行になる
@@ -92,7 +92,7 @@ GitHub Issueを作る。
 
 テスト・内部の作り・文書についての条件は、この形にしない。実装の PR で、この条件を地図に移す（`docs/agents/git.md` の「動かして確かめる」の 3）。地図がまだ無いアプリ（今は iOS）では移さない。
 
-実装の前の置き場は Issue の受け入れ条件だけにし、地図には載せない（`/pstack:maintain-verification-skill` が、アプリと食い違う地図をずれとして扱うため。`MAP-FORMAT.md` の最後の段落）。
+実装の前の置き場は Issue の受け入れ条件だけにし、地図には載せない（`/pstack:maintain-verification-skill` が、アプリと食い違う地図をずれとして扱うため。`MAP-FORMAT.md` の、予定の機能を書かない理由）。
 
 **Why:** 受け入れ条件と地図を別の形で書くと、実装役が地図の項目を一から書き直し、条件で決めた入口が地図から漏れる。条件を地図の形で先に書いておけば、実装の PR で移すだけになり、どの入口を通せば受け入れたと言えるかが Issue の段階で決まる（#902）。
 
