@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <!--
   試作（#921）。捨てるコード。
-  告知（運営からユーザーへ出す文面）をアプリの中でどう見せるかを、3案（A・B・C）で見比べる。
+  1〜4: お知らせ（運営からユーザーへ出す文面）を、タイムラインのカードにする形（#921 で選んだ）で、本人だけのものの続きの見せ方を2案（A1・A2）見比べる。
   止めたアカウントがサインインし直したときの断る画面は、場面「止めたアカウント」で別の3案（X・Y・Z）を見比べる。
   届け方・出し方・断る応答の形は #922 で決めるので扱わない。記録はどこにも保存しない。
 -->
@@ -59,6 +59,7 @@ button:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
 .card .b { font-size: 13px; line-height: 18px; color: var(--fg2); }
 .card .clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .card .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+a.textbtn { text-decoration: none; display: inline-block; }
 .textbtn { background: none; border: 0; color: var(--tint); font-size: 15px; padding: 10px 0; margin: -10px 0; }
 .textbtn.sub { color: var(--fg2); font-size: 13px; }
 .bordered { background: var(--fill); color: var(--tint); border: 0; border-radius: 999px; height: 36px; padding: 0 16px; font-weight: 600; font-size: 15px; justify-self: start; }
@@ -76,7 +77,7 @@ button:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
 .composer .field { flex: 1; height: 36px; border-radius: 18px; background: var(--surface); color: var(--fg3); display: flex; align-items: center; padding: 0 14px; font-size: 17px; min-width: 0; }
 .aimark { text-align: center; font-size: 12px; color: var(--fg2); padding-bottom: 6px; background: var(--bg); margin-top: -18px; }
 
-/* 種類の語（大事な告知の見分け） */
+/* 種類の語（大事なお知らせの見分け） */
 .kind { display: flex; align-items: center; gap: 5px; font-size: 13px; line-height: 18px; color: var(--fg2); }
 .kind.imp-icon { color: var(--fg); font-weight: 600; }
 .kind.imp-red { color: var(--error); font-weight: 600; }
@@ -157,15 +158,11 @@ button:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
     <div class="ctrl" id="scenes"></div>
 
     <div id="tlCtrls">
-      <h3>4. 大事な告知の見分け（どの案にも効く）</h3>
+      <h3>4. 大事なお知らせの見分け（どの案にも効く）</h3>
       <div class="ctrl">
         <label><input type="radio" name="mark" value="word" id="mark-word"> 種類の語だけ（色を足さない）</label>
         <label><input type="radio" name="mark" value="icon" id="mark-icon"> 印と太字の種類の語</label>
         <label><input type="radio" name="mark" value="red" id="mark-red"> 赤い印（DESIGN.md の外。Error は削除だけに使う決まり）</label>
-      </div>
-      <h3>3. 読み返す場所（案を切り替えると、その案の既定に戻る）</h3>
-      <div class="ctrl">
-        <label><input type="checkbox" id="list"> アカウントの画面に「告知」の一覧を置く</label>
       </div>
       <h3>操作</h3>
       <div class="ctrl">
@@ -195,15 +192,12 @@ button:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
 <script>
 /* ---------- 案 ---------- */
 const VARIANTS = {
-  A: { name: 'タイムラインのカード', list: false,
-    desc: '告知を、アプリの知らせと同じ全幅の白いカードにして、出た日のタイムラインの先頭に置く。本文は3行で切り、「続きを読む」でシート。大事な告知は閉じられず、新しい機能だけ「閉じる」を持つ。読み返すのは、その日までタイムラインをさかのぼって。',
-    a: ['タイムラインに並べる', '新しい機能は1枚ずつ「閉じる」。大事な告知は残る', 'タイムラインをさかのぼる（閉じたものは消える）'] },
-  B: { name: '帯の下の1行とシート', list: true,
-    desc: '1日の丸の帯の下に、答えていない知らせの1行と同じカプセルで告知を出す。押すとシートで全文。何件あっても1行にまとめ、読んだら消える。タイムラインは告知で伸びない。読み返すのはアカウントの画面の「告知」の一覧。',
-    a: ['帯の下の1行（タイムラインの外）', '何件でも1行。読めば消える', 'アカウントの画面の一覧'] },
-  C: { name: '開いたときのシートと一覧', list: true,
-    desc: '大事な告知だけ、アプリを開いたときにシートで出す（規約の変更なら同意のシートそのもの）。新しい機能はさえぎらず、アカウントのボタンの点と一覧の件数だけで示す。読み返すのはアカウントの画面の「告知」の一覧。',
-    a: ['大事なものだけシート、ほかは一覧', '新しい機能は点だけ。さえぎらない', 'アカウントの画面の一覧'] },
+  A1: { name: '本人だけのものはカードに全文', list: true,
+    desc: 'お知らせを、アプリの知らせと同じ全幅の白いカードにして、出た日のタイムラインの先頭に置く。閉じる操作は持たず、新しい記録に押されて上へ流れていく。全員へのものは本文を3行で切り、「続きを読む ↗」で nu-tori.app/announcements を開く。本人だけへのもの（web に載せられない）は、カードに全文を出す。',
+    a: ['タイムラインのカード', '閉じない。流れていく', 'アカウントの画面の「お知らせ ↗」から web'] },
+  A2: { name: '本人だけのものはシートで続き', list: true,
+    desc: 'A-1 と同じく、全員へのものは「続きを読む ↗」で web を開く。本人だけへのものは本文を3行で切り、「続きを読む」でアプリの中のシートに全文を出す（web には載せない）。',
+    a: ['タイムラインのカード', '閉じない。流れていく', 'アカウントの画面の「お知らせ ↗」から web（本人だけのものはタイムラインをさかのぼる）'] },
 };
 const REFUSALS = {
   X: { name: '書き出しを差し替える', desc: '今のサインインの画面のまま、書き出しの文を「利用を止めています」と問い合わせ先に差し替える。Apple のボタンは残し、別の Apple ID でサインインできる。' },
@@ -215,10 +209,10 @@ const SCENES = {
   s2: { name: '漏れたおそれのある人だけへ', ids: ['leak'] },
   s3: { name: '規約の変更と同意のシート', ids: ['terms'] },
   s4: { name: '利用の停止の予告（本人だけへ）', ids: ['suspend'] },
-  s5: { name: '新しい機能の告知が続く', ids: ['f3', 'f2', 'f1'] },
+  s5: { name: '新しい機能のお知らせが続く', ids: ['f3', 'f2', 'f1'] },
   s6: { name: '5. 止めたアカウントがサインインし直す', ids: [] },
 };
-/* ---------- 告知の文面（例） ---------- */
+/* ---------- お知らせの文面（例） ---------- */
 const ANN = {
   outage: { kind: '障害', imp: true, to: '全員', day: '11/8', date: '11月8日',
     title: '11月7日の障害で、推定できなかった食事があります',
@@ -250,12 +244,12 @@ const ANN = {
   f3: { kind: '新しい機能', imp: false, to: '全員', day: '11/6', date: '11月6日',
     title: '週の振り返りに、先週との差が出るようになりました', body: ['週の振り返りのカードに、平均の体重と kcal の先週との差を出します。'] },
 };
-// 一覧で読み返す見本の、前に読んだ告知
+// 一覧で読み返す見本の、前に読んだお知らせ
 const OLD = [{ id: 'old1', kind: '新しい機能', imp: false, date: '10月20日', title: '会話の返事で太字と箇条書きを描くようになりました', body: ['返事の中の太字と箇条書きを、そのまま描くようにしました。'] }];
 const all = (id) => ANN[id] || OLD.find((o) => o.id === id);
 
 /* ---------- 状態 ---------- */
-const S = { variant: 'A', refuse: 'X', scene: 's1', mark: 'icon', list: false, read: new Set(), closed: new Set(), agreed: false, sheet: null, yPressed: false, subnote: true };
+const S = { variant: 'A1', refuse: 'X', scene: 's1', mark: 'icon', list: false, read: new Set(), closed: new Set(), agreed: false, sheet: null, yPressed: false, subnote: true };
 (function initFromUrl() {
   const q = new URLSearchParams(location.search);
   const h = location.hash.replace('#', '').split('-');
@@ -294,7 +288,7 @@ function ring(p, f, c) { // 1日の丸（P・F・C の割合）
 }
 const STRIP = [['月', 30, 25, 40], ['火', 28, 22, 44], ['水', 25, 30, 35], ['木', 32, 20, 38], ['金', 27, 28, 36], ['土', 12, 8, 14], ['日', 14, 10, 16]];
 function navBar() {
-  const dot = S.variant === 'C' && sceneAnns().some((id) => !ANN[id].imp && !S.read.has(id)) ? '<span class="dot" aria-label="新しい告知"></span>' : '';
+  const dot = S.variant === 'C' && sceneAnns().some((id) => !ANN[id].imp && !S.read.has(id)) ? '<span class="dot" aria-label="新しいお知らせ"></span>' : '';
   return `<div class="nav"><button class="capsule" tabindex="-1">71.0 kg まで ›</button><b>11月8日（日）</b><button class="acct" id="openAcct" aria-label="アカウント">${I.person}${dot}</button></div>
     <div class="strip">${STRIP.map(([d, p, f, c], i) => `<div class="${i === 6 ? 'today' : ''}">${ring(p, f, c)}${d}</div>`).join('')}</div>`;
 }
@@ -303,22 +297,24 @@ function bLine() {
   const u = unread(); if (!u.length) return '';
   const imp = u.some((id) => ANN[id].imp);
   const lead = imp && S.mark !== 'word' ? `<span style="color:${S.mark === 'red' ? 'var(--error)' : 'var(--fg)'};line-height:0">${I.warn('currentColor')}</span>` : '';
-  const text = u.length === 1 ? ANN[u[0]].title : `告知が${u.length}件あります`;
+  const text = u.length === 1 ? ANN[u[0]].title : `お知らせが${u.length}件あります`;
   const go = ANN[u[0]].consent ? '読んで同意' : '読む';
   return `<button class="line" id="bline">${lead}<span class="t">${text}</span><span class="go">${go}</span></button>`;
 }
+const WEB = 'https://nu-tori.app/announcements';
 function aCard(id) {
   const a = ANN[id];
-  if (S.closed.has(id)) return '';
-  if (a.consent && S.agreed) return `<div class="card">${kindLabel(a)}<div class="h">${a.title}</div><div class="b">12月1日からの利用規約に同意しました。</div><button class="textbtn" style="justify-self:end" data-open="${id}">規約の変更を読む ›</button></div>`;
-  const act = a.consent ? `<button class="bordered" data-consent="1">読んで同意する</button>`
-    : `<div class="row">${a.imp ? '<span></span>' : `<button class="textbtn sub" data-close="${id}">閉じる</button>`}<button class="textbtn" data-open="${id}">続きを読む ›</button></div>`;
-  return `<div class="card">${kindLabel(a)}<div class="h">${a.title}</div><div class="b clamp">${a.body[0]}</div>${act}</div>`;
+  const personal = a.to === '本人だけ';
+  if (a.consent && S.agreed) return `<div class="card">${kindLabel(a)}<div class="h">${a.title}</div><div class="b">12月1日からの利用規約に同意しました。</div><a class="textbtn link" style="justify-self:end" href="${WEB}" target="_blank" rel="noopener" data-web="${id}">続きを読む ↗</a></div>`;
+  if (a.consent) return `<div class="card">${kindLabel(a)}<div class="h">${a.title}</div><div class="b clamp">${a.body[0]}</div><button class="bordered" data-consent="1">読んで同意する</button></div>`;
+  if (personal && S.variant === 'A1') return `<div class="card">${kindLabel(a)}<div class="h">${a.title}</div>${a.body.map((p) => `<div class="b">${p}</div>`).join('')}<div class="b" style="color:var(--fg3)">このお知らせは、あなたのアカウントだけに出しています。</div></div>`;
+  const more = personal ? `<button class="textbtn" data-open="${id}">続きを読む ›</button>` : `<a class="textbtn link" href="${WEB}" target="_blank" rel="noopener" data-web="${id}">続きを読む ↗</a>`;
+  return `<div class="card">${kindLabel(a)}<div class="h">${a.title}</div><div class="b clamp">${a.body[0]}</div><div class="row"><span></span>${more}</div></div>`;
 }
 function own(inner, time) { return `<div class="own"><div class="card">${inner}</div><span class="time">${time}</span></div>`; }
 function meal(name, kcal, p, f, c) { return `<div class="h">${name}</div><div class="b">${kcal} kcal</div><div class="pfc"><span style="--k:var(--p)">P ${p} g</span><span style="--k:var(--f)">F ${f} g</span><span style="--k:var(--c)">C ${c} g</span></div>`; }
 function day(key, label, body) {
-  const cards = S.variant === 'A' ? sceneAnns().filter((id) => ANN[id].day === key).map(aCard).join('') : '';
+  const cards = sceneAnns().filter((id) => ANN[id].day === key).map(aCard).join('');
   return `<div class="dayh">${label}</div>${cards}${body}`;
 }
 function timeline() {
@@ -335,7 +331,7 @@ function composer() {
 
 /* ---------- シート ---------- */
 function detailBody(a) {
-  return `<div class="sbody">${kindLabel(a)}<h2>${a.title}</h2>${a.body.map((p) => `<p>${p}</p>`).join('')}<p class="note">${a.to === '本人だけ' ? 'この告知は、あなたのアカウントだけに出しています。' : ''}</p></div>`;
+  return `<div class="sbody">${kindLabel(a)}<h2>${a.title}</h2>${a.body.map((p) => `<p>${p}</p>`).join('')}<p class="note">${a.to === '本人だけ' ? 'このお知らせは、あなたのアカウントだけに出しています。' : ''}</p></div>`;
 }
 function sheetHtml() {
   const s = S.sheet; if (!s) return '';
@@ -354,7 +350,7 @@ function sheetHtml() {
     const listed = [...sceneAnns().slice().reverse(), ...OLD.map((o) => o.id)];
     const nUnread = sceneAnns().filter((id) => !S.read.has(id)).length;
     if (s.page === 'root') {
-      const annRow = S.list ? `<div class="group"><button class="lrow" data-page="list"><span>告知</span><span class="v">${nUnread ? `<span class="badge">${nUnread}</span>` : ''}›</span></button></div>` : '';
+      const annRow = `<div class="group"><a class="lrow link" style="color:var(--fg)" href="${WEB}" target="_blank" rel="noopener"><span>お知らせ</span><span class="v">↗</span></a></div>`;
       return `<div class="scrim"><div class="sheet"><div class="grab"></div><div class="sbar"><span></span><b>アカウント</b><button class="r" data-done="1">完了</button></div>
         <div class="sbody" style="gap:28px">
           <div class="group"><div class="lrow"><span>サブスクリプション</span><span class="v">年間プラン ›</span></div></div>
@@ -362,17 +358,17 @@ function sheetHtml() {
           <div class="group"><div class="lrow"><span>ヘルスケア</span><span class="v">›</span></div></div>
           <div class="group"><div class="lrow"><span>記録忘れの通知</span><span class="v">オン</span></div></div>
           <div class="group"><div class="lrow"><span>利用状況を送る</span><span class="v">オン</span></div></div>
-          ${S.list ? '' : '<p class="foot" style="margin-top:-16px">この案の既定では、告知の一覧を置きません。右の「アカウントの画面に一覧を置く」で足せます。</p>'}
+          <p class="foot" style="margin-top:-16px">「お知らせ」は nu-tori.app/announcements を開く。アプリの中に一覧は持たない。</p>
         </div></div></div>`;
     }
     if (s.page === 'list') {
-      return `<div class="scrim"><div class="sheet"><div class="grab"></div><div class="sbar"><button class="l" data-page="root">‹ アカウント</button><b>告知</b><button class="r" data-done="1">完了</button></div>
+      return `<div class="scrim"><div class="sheet"><div class="grab"></div><div class="sbar"><button class="l" data-page="root">‹ アカウント</button><b>お知らせ</b><button class="r" data-done="1">完了</button></div>
         <div class="sbody"><div class="group">${listed.map((id) => { const a = all(id); const u = ANN[id] && !S.read.has(id);
           return `<button class="lrow" data-page="detail" data-id="${id}"><span class="stack">${kindLabel(a)}<span class="tt ${u ? 'unread' : ''}">${a.title}</span></span><span class="v">›</span></button>`; }).join('')}</div>
-        <p class="foot">出た順に新しいものから。閉じた告知も、ここでは読めます。</p></div></div></div>`;
+        <p class="foot">出た順に新しいものから。閉じたお知らせも、ここでは読めます。</p></div></div></div>`;
     }
     const a = all(s.id);
-    return `<div class="scrim"><div class="sheet"><div class="grab"></div><div class="sbar"><button class="l" data-page="list">‹ 告知</button><b></b><button class="r" data-done="1">完了</button></div>${detailBody(a)}${a.consent && !S.agreed ? '<div class="sfoot"><button class="prominent" data-consent="1">読んで同意する</button></div>' : ''}</div></div>`;
+    return `<div class="scrim"><div class="sheet"><div class="grab"></div><div class="sbar"><button class="l" data-page="list">‹ お知らせ</button><b></b><button class="r" data-done="1">完了</button></div>${detailBody(a)}${a.consent && !S.agreed ? '<div class="sfoot"><button class="prominent" data-consent="1">読んで同意する</button></div>' : ''}</div></div>`;
   }
   return '';
 }
@@ -407,7 +403,7 @@ function render() {
   } else {
     phone.innerHTML = navBar() + `<div class="under">${bLine()}</div>` + timeline() + composer() + sheetHtml();
     const tl = $('tl'); if (tl) tl.scrollTop = tl.scrollHeight;
-    if (S.variant === 'A' && S.scene === 's5') tl.scrollTop = 0;
+    if (S.scene === 's5') tl.scrollTop = 0;
   }
   const v = isRefusal() ? REFUSALS[S.refuse] : VARIANTS[S.variant];
   const key = isRefusal() ? S.refuse : S.variant;
@@ -418,14 +414,14 @@ function render() {
     ? `<div><b>5. 断る画面</b><span>${v.name}</span></div>`
     : ['1. どこに出す', '2. 煩わしさ', '3. 読み返す'].map((q, i) => `<div><b>${q}</b><span>${v.a[i]}</span></div>`).join('') + `<div><b>4. 見分け</b><span>${{ word: '種類の語だけ', icon: '印と太字の種類の語', red: '赤い印' }[S.mark]}</span></div>`;
   $('tlCtrls').hidden = isRefusal(); $('rfCtrls').hidden = !isRefusal();
-  $('mark-' + S.mark).checked = true; $('list').checked = S.list; $('subnote').checked = S.subnote;
+  $('mark-' + S.mark).checked = true; $('subnote').checked = S.subnote;
   document.querySelectorAll('#scenes input').forEach((r) => { r.checked = r.value === S.scene; });
   $('state').textContent = JSON.stringify(isRefusal()
     ? { 場面: SCENES[S.scene].name, 案: key, サインインを押した: S.yPressed, 解約の案内: S.subnote }
-    : { 場面: SCENES[S.scene].name, 案: key, 告知: sceneAnns().map((id) => ({ 題: ANN[id].title, 宛先: ANN[id].to, 大事: ANN[id].imp, 状態: S.closed.has(id) ? '閉じた' : S.read.has(id) ? '読んだ' : 'まだ' })), 同意: ANN.terms && S.scene === 's3' ? S.agreed : undefined, 開いているシート: S.sheet ? S.sheet.type + (S.sheet.page ? '/' + S.sheet.page : '') : null }, null, 2);
+    : { 場面: SCENES[S.scene].name, 案: key, お知らせ: sceneAnns().map((id) => ({ 題: ANN[id].title, 宛先: ANN[id].to, 大事: ANN[id].imp, 状態: S.closed.has(id) ? '閉じた' : S.read.has(id) ? '読んだ' : 'まだ' })), 同意: ANN.terms && S.scene === 's3' ? S.agreed : undefined, 開いているシート: S.sheet ? S.sheet.type + (S.sheet.page ? '/' + S.sheet.page : '') : null }, null, 2);
   try { history.replaceState(null, '', '#' + key + '-' + S.scene); } catch (e) { /* 試作なので無視 */ }
 }
-function launch() { // アプリを開いたとき。C だけ、まだ読んでいない大事な告知をシートで出す
+function launch() { // アプリを開いたとき。C だけ、まだ読んでいない大事なお知らせをシートで出す
   S.sheet = null;
   if (S.variant === 'C' && !isRefusal()) {
     const id = unread().find((x) => ANN[x].imp);
@@ -436,6 +432,7 @@ function reset() { S.read.clear(); S.closed.clear(); S.agreed = false; S.yPresse
 
 /* ---------- 操作 ---------- */
 $('phone').addEventListener('click', (e) => {
+  const w = e.target.closest('[data-web]'); if (w) { S.read.add(w.dataset.web); setTimeout(render, 0); return; }
   const t = e.target.closest('button,[data-scrim]'); if (!t) return;
   const d = t.dataset;
   if (t.id === 'openAcct') S.sheet = { type: 'account', page: 'root' };
@@ -454,7 +451,6 @@ $('phone').addEventListener('click', (e) => {
 $('scenes').innerHTML = Object.entries(SCENES).map(([k, s]) => `<label><input type="radio" name="scene" value="${k}" id="scene-${k}"> ${s.name}</label>`).join('');
 $('scenes').addEventListener('change', (e) => { S.scene = e.target.value; reset(); render(); });
 document.querySelectorAll('input[name=mark]').forEach((r) => r.addEventListener('change', () => { S.mark = r.value; render(); }));
-$('list').addEventListener('change', (e) => { S.list = e.target.checked; render(); });
 $('subnote').addEventListener('change', (e) => { S.subnote = e.target.checked; render(); });
 $('relaunch').addEventListener('click', () => { reset(); render(); });
 function cycle(step) {
