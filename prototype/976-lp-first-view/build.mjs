@@ -1,6 +1,6 @@
 // 試作（捨てる）: LP の版 a のファーストビューで「何のアプリか」をどこに書くかの見比べ。
 // 本物の LP を書き出した site/dist から、ヘッダーとファーストビューだけを案ごとに差し替えた1枚の HTML を作る。
-// 回し方: site/ で `pnpm exec vite build` のあと、リポジトリ直下で `node prototype/lp-first-view/build.mjs`
+// 回し方: site/ で `pnpm exec vite build` のあと、リポジトリ直下で `node prototype/976-lp-first-view/build.mjs`
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -64,6 +64,22 @@ const variants = [
     header,
     h1,
     lead: `<p class="lp-lead">食事の写真でカロリーを記録し、<wbr/>体重の動きから、あなたに合った1日のカロリーを毎週計算し直す iPhone のアプリです。</p>`,
+  },
+  {
+    key: "B2",
+    name: "補足を2文に（開発者の案）",
+    note: "見出しはそのまま。補足の1文目で何のアプリか、2文目で今の「すること」を言う",
+    header,
+    h1,
+    lead: `<p class="lp-lead">あなたに合った1日の摂取カロリーを計算するiPhoneアプリです。あなたがすることは、体重を量ることと食べる前に写真を1枚撮ることだけです。</p>`,
+  },
+  {
+    key: "B3",
+    name: "B2 に「毎週計算し直す」",
+    note: "B2 の1文目を「毎週計算し直す」にして一度きりの計算機と分け、2文目の「あなたが」を落とす",
+    header,
+    h1,
+    lead: `<p class="lp-lead">あなたに合った1日の摂取カロリーを毎週計算し直す iPhone アプリです。することは、体重を量ることと食べる前に写真を1枚撮ることだけです。</p>`,
   },
   {
     key: "C",
