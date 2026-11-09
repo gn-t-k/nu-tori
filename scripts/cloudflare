@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# エージェントと人が Cloudflare の、例外にならない振る舞い（Workers Logs、呼び出しの数・誤り・CPU 時間）と、`nu-tori.app` の DMARC の集計と、LP の訪問の集計（Web Analytics）を読む。環境の対応と呼ぶ先を、ここ1か所に置く
+# エージェントと人が Cloudflare の、例外にならない振る舞い（Workers Logs、呼び出しの数・誤り・CPU 時間）と、`nu-tori.app` の DMARC の集計と、LP の訪問の集計（Web Analytics）と、評価の写真の置き場（R2 のバケット nu-tori-evals）を読む。環境の対応と呼ぶ先を、ここ1か所に置く
 set -euo pipefail
 
 usage() {
@@ -10,6 +10,8 @@ usage() {
   scripts/cloudflare metrics <development|production> [何時間前から（既定 24）]
   scripts/cloudflare dmarc [何日前から（既定 7）]
   scripts/cloudflare web-analytics [何日前から（既定 7、93 まで）]
+  scripts/cloudflare evals list [キーの頭]
+  scripts/cloudflare evals get <キー> <書き出すパス>
 EOF
     exit 2
 }
@@ -30,6 +32,30 @@ case "$command" in
         ;;
     # DMARC の報告と LP の訪問はドメインのもので、環境の区別が無い
     dmarc | web-analytics) ;;
+    # 評価の写真はアプリの環境と別のバケットに置くので、環境の区別が無い（#519）
+    evals)
+        [ $# -ge 1 ] || usage
+        evals_action="$1"
+        shift
+        case "$evals_action" in
+            list)
+                [ $# -le 1 ] || usage
+                evals_prefix="${1:-}"
+                ;;
+            get)
+                [ $# -eq 2 ] || usage
+                evals_key="$1"
+                evals_out="$2"
+                ;;
+            *) usage ;;
+        esac
+        # キーは英数字と ._-/ だけにする。S3 の署名のためにキーを符号化する手間を省く
+        case "${evals_prefix:-}${evals_key:-}" in
+            *[!A-Za-z0-9._/-]*) echo "キーは英数字と ._-/ だけにする" >&2; exit 2 ;;
+        esac
+        # 下の「何日前から」の確かめに、evals の引数を渡さない
+        set --
+        ;;
     *) usage ;;
 esac
 
@@ -45,7 +71,15 @@ if [ "$command" = web-analytics ] && [ "${since:-7}" -gt 93 ]; then usage; fi
 # LP の訪問の集計は Account Analytics Read だけのトークンで読む。Workers Logs を読めるトークンを、見つけてもらう役の環境（nu-tori-discovery）に置かないため
 # アカウントの ID は、そのトークンが見る1つのアカウントから引く（scripts/finance と同じ）。置く値を1つにするため
 # デプロイ用の CLOUDFLARE_API_TOKEN（書き込みの権限）は使わない
-if [ "$command" = web-analytics ]; then
+# 評価の写真は、バケット nu-tori-evals だけを読める R2 のトークン（Object Read only）の、S3 互換の API の鍵の組で読む
+# Cloudflare の文書は、そのトークンが REST の API で使えないとしている。Workers Logs を読むトークンでも読まない（アプリの写真のバケットを読める権限を足さないため）
+if [ "$command" = evals ]; then
+    if [ -z "${NU_TORI_CLOUDFLARE_ACCOUNT_ID:-}" ] || [ -z "${NU_TORI_CLOUDFLARE_EVALS_ACCESS_KEY_ID:-}" ] || [ -z "${NU_TORI_CLOUDFLARE_EVALS_SECRET_ACCESS_KEY:-}" ]; then
+        echo "Not authenticated: NU_TORI_CLOUDFLARE_ACCOUNT_ID と NU_TORI_CLOUDFLARE_EVALS_ACCESS_KEY_ID と NU_TORI_CLOUDFLARE_EVALS_SECRET_ACCESS_KEY が要る" >&2
+        exit 1
+    fi
+    token=""
+elif [ "$command" = web-analytics ]; then
     if [ -z "${NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN:-}" ]; then
         echo "Not authenticated: NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN が要る" >&2
         exit 1
@@ -67,6 +101,14 @@ get_json() {
 post_json() {
     curl --silent --show-error --fail-with-body -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" --data @- "$1"
+}
+
+# get_evals URL [curl に足す引数...] は、評価のバケットに S3 の署名つきの GET を送る
+get_evals() {
+    local url="$1"
+    shift
+    curl --silent --show-error --fail-with-body --aws-sigv4 "aws:amz:auto:s3" \
+        --user "$NU_TORI_CLOUDFLARE_EVALS_ACCESS_KEY_ID:$NU_TORI_CLOUDFLARE_EVALS_SECRET_ACCESS_KEY" "$@" "$url"
 }
 
 # GraphQL は、問い合わせの誤りや権限の不足を HTTP 200 と errors で返すので、errors があれば失敗として抜ける
@@ -215,6 +257,56 @@ case "$command" in
                     process.exitCode = 1;
                 }
             });'
+        ;;
+    evals)
+        evals_bucket="https://$NU_TORI_CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com/nu-tori-evals"
+        case "$evals_action" in
+            list)
+                # 1回に 1000 件までしか返らないので、続きの印（NextContinuationToken）をたどり、キー・バイト数・更新の時刻を JSON の配列で出す
+                pages="$(mktemp)"
+                trap 'rm -f "$pages"' EXIT
+                continuation=""
+                while :; do
+                    query="list-type=2&max-keys=1000"
+                    [ -z "$evals_prefix" ] || query="$query&prefix=$evals_prefix"
+                    [ -z "$continuation" ] || query="$query&continuation-token=$(CONTINUATION="$continuation" node -e 'process.stdout.write(encodeURIComponent(process.env.CONTINUATION))')"
+                    if ! page="$(get_evals "$evals_bucket?$query")"; then
+                        printf '%s\n' "$page" >&2
+                        exit 1
+                    fi
+                    printf '%s' "$page" | tr -d '\n' >> "$pages"
+                    printf '\n' >> "$pages"
+                    continuation="$(printf '%s' "$page" | node -e '
+                        let body = "";
+                        process.stdin.on("data", (chunk) => (body += chunk)).on("end", () => {
+                            if (/<IsTruncated>true<\/IsTruncated>/.test(body)) {
+                                const next = body.match(/<NextContinuationToken>([^<]*)<\/NextContinuationToken>/);
+                                if (next) console.log(next[1]);
+                            }
+                        });')"
+                    [ -n "$continuation" ] || break
+                done
+                # shellcheck disable=SC2016 # node に渡す JavaScript で、$ はシェルの展開ではない
+                node -e '
+                    const unescape = (text) => text.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+                    const field = (xml, name) => unescape(xml.match(new RegExp(`<${name}>([^<]*)</${name}>`))?.[1] ?? "");
+                    const objects = require("node:fs").readFileSync(process.argv[1], "utf8").split("\n")
+                        .flatMap((page) => page.match(/<Contents>.*?<\/Contents>/g) ?? [])
+                        .map((xml) => ({ key: field(xml, "Key"), size: Number(field(xml, "Size")), lastModified: field(xml, "LastModified") }));
+                    console.log(JSON.stringify(objects, null, 2));' "$pages"
+                ;;
+            get)
+                # 失敗の本文（XML の誤り）を書き出す先に残さないよう、一時のファイルに受けてから移す
+                body="$(mktemp)"
+                trap 'rm -f "$body"' EXIT
+                if ! get_evals "$evals_bucket/$evals_key" --output "$body"; then
+                    cat "$body" >&2
+                    echo >&2
+                    exit 1
+                fi
+                mv "$body" "$evals_out"
+                ;;
+        esac
         ;;
     # 先頭の確かめと一覧がずれたとき、何もせず 0 で抜けないようにする
     *) usage ;;
