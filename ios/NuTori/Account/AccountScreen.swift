@@ -285,11 +285,11 @@ struct AccountScreen: View {
     private var inquiryURL: URL {
         var components = URLComponents(
             string:
-                "https://docs.google.com/forms/d/e/1FAIpQLSdHsd92hXKR20it2cOAj70P3OQXpHfe3p6BRDmBBZVxILxjSg/viewform"
+                "https://docs.google.com/forms/d/e/1FAIpQLSdK6EJ0RBZ_-eTgptzCicXlPRQZewtAJXcMKPgVFjnMucZjFQ/viewform"
         )!
         components.queryItems = [URLQueryItem(name: "usp", value: "pp_url")]
         if let accountId {
-            components.queryItems?.append(URLQueryItem(name: "entry.2004378953", value: accountId))
+            components.queryItems?.append(URLQueryItem(name: "entry.206742813", value: accountId))
         }
         return components.url!
     }

@@ -26,7 +26,7 @@ describe("nu-tori.app の配信", () => {
 
     test("問い合わせのフォームとメールの窓口へリンクすること", async () => {
       const body = await response.text();
-      expect(body).toContain('<a href="https://forms.gle/KGg899DaWghiYnTx7">');
+      expect(body).toContain('<a href="https://forms.gle/FVJZQyoeTYeM3AFk7">');
       expect(body).toContain('<a href="mailto:support@nu-tori.app">');
     });
 
@@ -55,7 +55,7 @@ describe("nu-tori.app の配信", () => {
 
     test("問い合わせのフォームと、メールの窓口と、告知のページへリンクすること", async () => {
       const body = await response.text();
-      expect(body).toContain('<a href="https://forms.gle/KGg899DaWghiYnTx7">');
+      expect(body).toContain('<a href="https://forms.gle/FVJZQyoeTYeM3AFk7">');
       expect(body).toContain('<a href="mailto:support@nu-tori.app">');
       expect(body).toContain('<a href="/announcements">');
     });
