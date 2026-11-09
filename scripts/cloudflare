@@ -78,7 +78,6 @@ if [ "$command" = evals ]; then
         echo "Not authenticated: NU_TORI_CLOUDFLARE_ACCOUNT_ID と NU_TORI_CLOUDFLARE_EVALS_ACCESS_KEY_ID と NU_TORI_CLOUDFLARE_EVALS_SECRET_ACCESS_KEY が要る" >&2
         exit 1
     fi
-    token=""
 elif [ "$command" = web-analytics ]; then
     if [ -z "${NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN:-}" ]; then
         echo "Not authenticated: NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN が要る" >&2

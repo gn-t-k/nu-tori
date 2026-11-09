@@ -302,11 +302,19 @@ fi
 step "${BUCKET} を読めた"
 for app_bucket in $APP_BUCKETS; do
   status="$(r2_status "$app_bucket")"
-  if [[ "$status" == 2* ]]; then
-    warn "${app_bucket} を読めてしまった（${status}）。この鍵の Permissions が広すぎる"
-    note "R2 の API Tokens の Manage で nu-tori-evals-read を Revoke（戻せない）してから、2 の段からやり直す"
-    exit 1
-  fi
+  case "$status" in
+    2*)
+      warn "${app_bucket} を読めてしまった（${status}）。この鍵の Permissions が広すぎる"
+      note "R2 の API Tokens の Manage で nu-tori-evals-read を Revoke（戻せない）してから、2 の段からやり直す"
+      exit 1
+      ;;
+    # 拒まれた（401・403）ときだけを「読めない」とする。つながらない（000）や 5xx では確かめられていない
+    401 | 403) ;;
+    *)
+      warn "${app_bucket} を読めるか確かめられなかった（${status}）。つながりを見て、3 の段から回し直す"
+      exit 1
+      ;;
+  esac
   step "${app_bucket} は読めない（${status}）"
 done
 pause "Enter で次へ"
