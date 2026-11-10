@@ -24,8 +24,8 @@ Preconditions:
 
 - `$D sign-in "$run" weight` で作ったアカウント
 
-- **手で記録する。** `w=$($D uuid)` として、`$D push "$run" weight "[{\"type\":\"create_weight_record\",\"weightRecord\":{\"id\":\"$w\",\"weightKg\":60.5,\"measuredAt\":$(date +%s)000,\"timeZone\":\"Asia/Tokyo\"}}]"` を送る。`results[0].result` が `applied`
-- **届いたかを読む。** `$D pull "$run" weight | jq -c '.[] | select(.kind=="weight_record" or .kind=="weight_trend") | {kind, record}'` を読む。`weight_record` の `id` が `$w`、`weightKg` が `60.5`、`version` が `1`。`weight_trend` の `days` に今日の日付と `trendKg` がある
+- **手で記録する。** `w=$($D uuid)` として、`$D push "$run" weight "[{\"type\":\"create_weight_record\",\"weightRecord\":{\"id\":\"$w\",\"weightKg\":60.5,\"measuredAt\":$(date +%s)000,\"timeZone\":\"Asia/Tokyo\"}}]"` を送る。`applied`
+- **届いたかを読む。** `$D pull "$run" weight | jq -c '.[] | select(.kind=="weight_record" or .kind=="weight_trend") | {kind, record}'` を読む。`weight_record` の `id` が `$w`、`weightKg` が `60.5`、`version` が `1`。`weight_trend` の `days` に今日の日付（記録の `timeZone` の Asia/Tokyo での日付。UTC の `date` とは日がずれることがある）と `trendKg` がある
 - **直す。** `$D push "$run" weight "[{\"type\":\"update_weight_record\",\"weightRecord\":{\"id\":\"$w\",\"weightKg\":60.0,\"measuredAt\":$(date +%s)000,\"timeZone\":\"Asia/Tokyo\",\"version\":2}}]"` を送る。`applied` で、取りに行くと `$w` の最後の `weight_record` が `weightKg` `60`、`version` `2`。体重の傾向の `trendKg` も `60` に出し直される
 - **取り込む。** `i=$($D uuid)` として、`$D push "$run" weight "[{\"type\":\"create_weight_record\",\"weightRecord\":{\"id\":\"$i\",\"weightKg\":61.0,\"measuredAt\":$(date +%s)000,\"timeZone\":\"Asia/Tokyo\",\"imported\":{\"sourceAppName\":\"ヘルスケア\",\"sourceBundleId\":\"com.apple.Health\",\"healthkitSampleUuid\":\"$($D uuid)\",\"bodyFat\":{\"percentage\":25.0,\"healthkitSampleUuid\":\"$($D uuid)\"}}}}]"` を送る。`applied` で、取りに行くと `$i` の `weight_record` があり、`imported.bodyFat.percentage` が `25`
 - **取り込み元で消す。** `$D push "$run" weight "[{\"type\":\"source_deleted_weight_record\",\"weightRecordId\":\"$i\"}]"` を送る。`applied` で、取りに行くと `$i` の変更が `weight_record_deletion`（`record` は空）になり、`weight_record` としては出ない
