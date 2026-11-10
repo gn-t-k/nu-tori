@@ -64,6 +64,8 @@ const alertAndResolve = (dryRun) => {
     const now = new Date();
     const closed = [...known.values()].flat().filter((issue) => isResolvable(issue, now));
     for (const issue of closed) {
+      // 解決の印がある Issue は、毎時のログに出さずに飛ばす
+      if (readLatestState(issue) === resolvedState) continue;
       if (writeLimitReached()) return;
       // 解決の種類が決まっていないプロジェクトの課題は、飛ばして下の知らせを続ける
       if (resolveClosedIssue(issue, { dryRun, strict: false })) writes += 1;
@@ -116,7 +118,10 @@ const resolveClosedIssue = (issue, { dryRun, strict }) => {
     console.log(`何もしない: #${issue.number} は完了で閉じていない`);
     return false;
   }
-  if (readLatestState(issue) === resolvedState) return false;
+  if (readLatestState(issue) === resolvedState) {
+    console.log(`何もしない: #${issue.number} は解決の印が付いている`);
+    return false;
+  }
   if (!dryRun && !resolveTokenGiven()) throw new ExpectedFailure("NU_TORI_SENTRY_RESOLVE_TOKEN が無い");
   const plan = planResolution(readSentryIssue(shortId));
   if (plan.action === "undecided" && strict) throw new ExpectedFailure(`${shortId} は${plan.reason}`);
