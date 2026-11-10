@@ -6,6 +6,7 @@ import {
   type DeviceSession,
   createDeviceClient,
 } from "./device-client";
+import { createWeightWrite } from "./create-weight-write";
 import { decideStandardLoseGoal, sampleBodyData } from "./decide-standard-lose-goal";
 import {
   computeTodayOfStartedOn,
@@ -62,7 +63,9 @@ const runFreeTrialFlow = async (options: Flow, session: DeviceSession): Promise<
   // 新しいアカウントは前の週を持たないので、体重を量って目標を決めたのを 7 日前にする。
   // 開始の日が前の週に入り、今週の月曜の週がまだ見直していない週になる
   const goalDecidedAt = new Date(Date.now() - 7 * millisecondsPerDay);
-  await recordWeight(session, new Date(goalDecidedAt.getTime() - 60_000));
+  await session.pushAppliedWrites([
+    createWeightWrite(goalDecidedAt.getTime() - 60_000, options.client.timeZone),
+  ]);
   options.log("7日前の体重を記録した");
   const goalId = await decideGoal(options, session, goalDecidedAt);
   await requirePulledWeeklyReview(options, session, goalId);
@@ -133,21 +136,6 @@ const requireSessionRevoked = async (session: DeviceSession) => {
   }
 };
 
-const recordWeight = async (session: DeviceSession, measuredAt: Date): Promise<void> => {
-  await session.pushAppliedWrites([
-    {
-      id: generateRecordId(),
-      type: "create_weight_record",
-      weightRecord: {
-        id: generateRecordId(),
-        weightKg: 60.5,
-        measuredAt: measuredAt.getTime(),
-        timeZone: "Asia/Tokyo",
-      },
-    },
-  ]);
-};
-
 // 初めての目標を、端末と同じ順で決める。使い始めたばかりで食べた量の記録が無いので逆算できず、身体データを添えて式で出す。
 // 減量の標準の案を、見せていた値のとおりに決め、同じ要求の ID の再送と、取りに行く応答に届くことまでを確かめる。
 // 目標の設定の要求は、開発用の環境だけで受け付ける時刻の差し替えで、決めた時刻（decidedAt）に送ったことにする。決めた目標の ID を返す
@@ -180,15 +168,11 @@ const decideGoal = async (
 
   // 期限は 13 週。開始の日は、サーバーが決めた日を目標案の応答から受け取って数える
   const decidedOn = computeCalendarDayInTimeZone(decidedAt, options.client.timeZone);
-  const { decisionRequest, decision, decided } = await decideStandardLoseGoal(session, {
+  const { proposals, decisionRequest, decision, decided } = await decideStandardLoseGoal(session, {
     decidedAt,
     deadlineOn: addDays(decidedOn, 90),
-    onProposals: (proposals) => {
-      options.log(
-        `目標案を受け取った（推定消費カロリーの出どころ ${proposals.expenditureSource}）`,
-      );
-    },
   });
+  options.log(`目標案を受け取った（推定消費カロリーの出どころ ${proposals.expenditureSource}）`);
   const decidedKinds = decided.changes.map(({ kind }) => kind);
   if (decidedKinds.join("・") !== "goal・daily_guide・expenditure_estimate") {
     throw new Error(`決めた記録の並びが違う（${decidedKinds.join("・")}）`);

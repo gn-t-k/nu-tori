@@ -15,19 +15,12 @@ export const sampleBodyData = {
 // 減量の標準の案を、目標案で見せていた値のとおりに決める。端末が目標案から目標を決めるのと同じ順で送る。
 // 使い始めたばかりで食べた量の記録が無い人として、身体データを添えて式で出す。
 // 目標の設定の要求は decidedAt に送ったことにする（開発用の環境だけで効く時刻の差し替え）ので、開始の日は decidedAt の日になる。
-// 決めた要求（再送を確かめるため）と、その応答の本文と読んだ形を返す
+// 受け取った目標案と、決めた要求（再送を確かめるため）と、その応答の本文と読んだ形を返す
 export const decideStandardLoseGoal = async (
   session: DeviceSession,
-  {
-    decidedAt,
-    deadlineOn,
-    onProposals,
-  }: {
-    decidedAt: Date;
-    deadlineOn: string;
-    onProposals?: (proposals: z.infer<typeof goalProposalsSchema>) => void;
-  },
+  { decidedAt, deadlineOn }: { decidedAt: Date; deadlineOn: string },
 ): Promise<{
+  proposals: z.infer<typeof goalProposalsSchema>;
   decisionRequest: Record<string, unknown>;
   decision: unknown;
   decided: Extract<z.infer<typeof goalDecisionSchema>, { status: "decided" }>;
@@ -46,8 +39,6 @@ export const decideStandardLoseGoal = async (
   if (standard?.status !== "offered") {
     throw new Error(`目標案に、出せる標準の案が無い（${standard?.status ?? "枠が無い"}）`);
   }
-  onProposals?.(proposals);
-
   const decisionRequest = {
     requestId: generateRecordId(),
     startedOn: proposals.startedOn,
@@ -66,5 +57,5 @@ export const decideStandardLoseGoal = async (
   if (decided.status !== "decided") {
     throw new Error(`目標が決まらず、${decided.status} が返った`);
   }
-  return { decisionRequest, decision, decided };
+  return { proposals, decisionRequest, decision, decided };
 };

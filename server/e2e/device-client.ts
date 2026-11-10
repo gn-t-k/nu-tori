@@ -49,7 +49,7 @@ export type DeviceSession = SavedSession & {
   probeSessionStatusCode: () => Promise<number>;
 };
 
-export type GoalSetupPath = "preview" | "proposals" | "decisions";
+type GoalSetupPath = "preview" | "proposals" | "decisions";
 
 export type SavedSession = z.infer<typeof savedSessionSchema>;
 

@@ -1,11 +1,11 @@
 import { match } from "ts-pattern";
+import { createWeightWrite } from "./create-weight-write";
 import { decideStandardLoseGoal } from "./decide-standard-lose-goal";
 import type { DeviceClient, DeviceSession } from "./device-client";
 import { expiredAccountAgeDays, requireFreeTrialEnded } from "./read-free-trial-last-day";
 import { addDays } from "../src/domain/add-days";
 import { computeCalendarDayInTimeZone } from "../src/domain/compute-calendar-day-in-time-zone";
 import { millisecondsPerDay } from "../src/domain/milliseconds-per-day";
-import { generateRecordId } from "../src/domain/record-id";
 
 // 時の経過で起きる知らせを、待たずにアプリで見るための場面。
 // 確かめの口でサインインし、体重と目標を過去の時刻で送る。
@@ -34,18 +34,18 @@ export const createScenario = (
 const createGoalDeadlinePassed = async (client: DeviceClient): Promise<DeviceSession> => {
   const session = await client.signIn();
   const decidedAt = new Date(Date.now() - 49 * millisecondsPerDay);
-  await decideGoalWithDailyWeights(session, {
+  await decideGoalWithDailyWeights(client, session, {
     decidedAt,
     deadlineOn: addDays(computeCalendarDayInTimeZone(decidedAt, client.timeZone), 30),
   });
   return session;
 };
 
-// 7日前に使い始め、13週後を期限とする減量の目標を決めた。開始の日が前の週に入り、今週の月曜の週がまだ見直していない週になる
+// 7日前に使い始め、90日後を期限とする減量の目標を決めた。開始の日が前の週に入り、今週の月曜の週がまだ見直していない週になる
 const createUnreviewedWeek = async (client: DeviceClient): Promise<DeviceSession> => {
   const decidedAt = new Date(Date.now() - 7 * millisecondsPerDay);
   const session = await client.signIn(new Date(decidedAt.getTime() - 2 * 60_000));
-  await decideGoalWithDailyWeights(session, {
+  await decideGoalWithDailyWeights(client, session, {
     decidedAt,
     deadlineOn: addDays(computeCalendarDayInTimeZone(decidedAt, client.timeZone), 90),
   });
@@ -53,7 +53,7 @@ const createUnreviewedWeek = async (client: DeviceClient): Promise<DeviceSession
 };
 
 // 60日前に使い始めた。目標は決めない（決める前に、サブスクリプション切れの知らせと課金の画面が出る）。
-// 無料体験が終わっていなければ、課金を入れた日を直すよう書いて投げる
+// この場面だけは、無料体験が終わったかを確かめに取りに行き、終わっていなければ課金を入れた日を直すよう書いて投げる。無料体験の知らせはサーバーが書かず、端末が届いた状態から出すので、取りに行っても場面は崩れない
 const createFreeTrialExpired = async (client: DeviceClient): Promise<DeviceSession> => {
   const session = await client.signIn(
     new Date(Date.now() - expiredAccountAgeDays * millisecondsPerDay),
@@ -65,29 +65,20 @@ const createFreeTrialExpired = async (client: DeviceClient): Promise<DeviceSessi
 // 目標を決める1分前に体重を量って decidedAt に目標を決め、そのあと今まで毎日同じ時刻に体重を量ったことにする。
 // 決めたあとの体重は、目標の計算の元に入らないよう、決めてから送る。送る要求は送り切った印を付けないので、判定を起こさない
 const decideGoalWithDailyWeights = async (
+  client: DeviceClient,
   session: DeviceSession,
   goal: { decidedAt: Date; deadlineOn: string },
 ): Promise<void> => {
   const firstMeasuredAt = goal.decidedAt.getTime() - 60_000;
-  await session.pushAppliedWrites([createWeightWrite(firstMeasuredAt)]);
+  await session.pushAppliedWrites([createWeightWrite(firstMeasuredAt, client.timeZone)]);
   await decideStandardLoseGoal(session, goal);
   const laterMeasuredAts = Array.from(
     { length: Math.floor((Date.now() - firstMeasuredAt) / millisecondsPerDay) },
     (_, index) => firstMeasuredAt + (index + 1) * millisecondsPerDay,
   );
   if (laterMeasuredAts.length > 0) {
-    await session.pushAppliedWrites(laterMeasuredAts.map(createWeightWrite));
+    await session.pushAppliedWrites(
+      laterMeasuredAts.map((measuredAt) => createWeightWrite(measuredAt, client.timeZone)),
+    );
   }
 };
-
-// 体重は作り話にする（公開リポジトリ）。目標を決めたときと同じ値のままにし、減量の目標体重に届かせない
-const createWeightWrite = (measuredAt: number) => ({
-  id: generateRecordId(),
-  type: "create_weight_record" as const,
-  weightRecord: {
-    id: generateRecordId(),
-    weightKg: 60.5,
-    measuredAt,
-    timeZone: "Asia/Tokyo",
-  },
-});
