@@ -282,6 +282,7 @@ struct AccountScreen: View {
     }
 
     /// アカウント ID を読み終えるまでは、事前入力の無いフォームを開く
+    /// フォームは site の supportContact.formUrl と同じもの
     private var inquiryURL: URL {
         var components = URLComponents(
             string:
