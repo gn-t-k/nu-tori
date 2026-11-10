@@ -31,7 +31,7 @@ Preconditions:
 - **取りに行く。** 取りに行く応答に、`$t` に応える返事（種類 `ai_utterance`）が届き、本文が見守る要求で流れた分と同じ。`sent_text_status` の `replyStatus` が返事ありに進む
 - **食事の文章。** 本文を `server/e2e/meal-text-body.ts` の文面にして送る。`classification` が `meal` になり、`sentTextId` が `$t` の `meal` ができる
 - **会話として送り直す。** 食事になった文章に `$D push "$run" reply "[{\"type\":\"resend_sent_text_as_conversation\",\"sentTextId\":\"$t\"}]"` を送る。`applied` で、その文章の食事が消え、返事が作られる
-- **送り直す。** `replyStatus` が `failed` か `halted`（`daily_limit` を含む）の文章に `$D push "$run" reply "[{\"type\":\"resend_sent_text\",\"sentTextId\":\"$t\"}]"` を送る。`applied` で、`replyStatus` が `awaiting` に戻り、返事が作られる。手元で `halted` の文章を作るには、`$D sign-in "$run" rexp --as-of "$(date -u -d '-60 days' +%FT%TZ)"` のアカウント（無料体験の終わったアカウント）で「送る」を回す。見守る要求が `reply_halted`（`subscription_expired`）で閉じる。この文章に送り直すと、`applied` で、つなぎ直した見守る要求がまた `reply_halted` で閉じる
+- **送り直す。** `replyStatus` が `failed` か `halted`（`daily_limit` を含む）の文章に `$D push "$run" reply "[{\"type\":\"resend_sent_text\",\"sentTextId\":\"$t\"}]"` を送る。`applied` で、`replyStatus` が `awaiting` に戻り、返事が作られる。手元で `halted` の文章を作るには、`$D sign-in "$run" rexp --as-of "$(date -u -d '-60 days' +%FT%TZ)"` のアカウント（無料体験の終わったアカウント）で「送る」を回す。見守る要求が `reply_halted`（`subscription_expired`）で閉じる。この文章に送り直すと、`applied` で、つなぎ直した見守る要求がまた `reply_halted` で閉じる（鍵が無くても確かめられる）
 
 ## Gotchas
 
@@ -39,4 +39,4 @@ Preconditions:
 - 鍵の無い回の見守る要求は、返事ができないので閉じない。`--timeout` を付けて送る。切れると 1 で終わり、それまでに届いた分を出して `requests.log` に残す
 - 見守る要求をつなぐ前に返事ができ終わると、本文が流れずに閉じる。送ってすぐにつなぐ
 - 送り直す書き込みは、送り直しても何も変わらない文章（すでに返事を待っている・返事のある文章、すでに会話の文章）にも `applied` を返す。`applied` でなく、`replyStatus` と返事が届くかを見る
-- 鍵の無い回では返事の呼び出しの再試行が続き、`failed` に着くまで待てないので、送り直す2つの入口は確かめられない。鍵のある回でも、送り直す（`resend_sent_text`）は返事が作られるまでは確かめられない。返事が作れてしまい `failed` に着かず、手で作れる `subscription_expired` の `halted` は、送り直してもすぐ同じ理由で `halted` に戻る
+- 送り直すで返事が作られるところと、会話として送り直す（`resend_sent_text_as_conversation`）は、鍵の無い回では確かめられない。返事の呼び出しの再試行が続いて `failed` に着くまで待てず、読み分けも食事にならない。鍵のある回でも、送り直す（`resend_sent_text`）で返事が作られるところは確かめられない。返事が作れてしまい `failed` に着かず、手で作れる `halted` の文章で見えるのは上の手順の行の結果まで
