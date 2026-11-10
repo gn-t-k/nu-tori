@@ -35,7 +35,7 @@ Preconditions:
 - **撮っておいた写真。** `entryMethod` を `picked` にして、食事と写真の控えを送る。同じく `estimating` に進む
 - **料理の名前を直す。** 推定できた料理の ID を `d` として、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"親子丼（大盛り）\"}]"` を送る。`applied` で、取りに行くと `$d` の最後の `dish` の名前が変わっている
 - **サブスクリプションを待っている。** `$D sign-in "$run" expired --as-of "$(date -u -d '-60 days' +%FT%TZ)"` のアカウントで撮った食事を送る。写真の控えを送ったあと、`meal_estimation_status` が `awaiting_subscription`（鍵が無くても確かめられる）
-- **消す。** `$D push "$run" meal "[{\"type\":\"delete_meal\",\"mealId\":\"$m\"}]"` を送る。`applied` で、取りに行くと `$m` の変更が `meal_deletion` と `meal_estimation_status_deletion`（どちらも `record` は空）になる。推定できた食事なら、その料理の `dish_deletion`・`dish_estimation_status_deletion`・`ingredient_deletion` も届く
+- **消す。** `$D push "$run" meal "[{\"type\":\"delete_meal\",\"mealId\":\"$m\"}]"` を送る。`applied` で、取りに行くと `$m` の変更が `meal_deletion` と `meal_estimation_status_deletion`（どちらも `record` は空）になる。推定できた食事なら、その料理の `dish_deletion` と材料の `ingredient_deletion` も届く。名前を直した料理なら `dish_estimation_status_deletion` も届く（直していない料理には届かない）
 
 ## Gotchas
 

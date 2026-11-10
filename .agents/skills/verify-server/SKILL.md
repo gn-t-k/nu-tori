@@ -18,7 +18,7 @@ run=$($S/start.sh)        # ポートを変えるときは $S/start.sh 8800
 - 空の DB に D1 の移行を当て、`wrangler dev --local` を開発用の設定（`wrangler.jsonc` の上の階層）で立てる。Durable Object の移行は、最初の要求で各 Durable Object が当てる
 - 立ったと言えるのは、ログの `Ready on` と `GET /health` が `{"status":"ok"}` の両方が揃ったとき。最後の行に回のフォルダ（`.scratch/verify-server/<時刻>-<ポート>/`、gitignore 済み）を出す
 - 秘密の値は手元だけの偽物で、Apple と Sentry には届かない。確かめのサインインの口（`/v1/e2e/*`、`docs/agents/server-e2e.md`）は、この回だけの秘密の値で開く
-- 推定・読み分け・返事は Anthropic を呼ぶ。開発用のワークスペース（`nu-tori-development`）の鍵を `VERIFY_SERVER_ANTHROPIC_API_KEY` で渡して立てたときだけ、結果まで進む。クラウドのセッションでは、この鍵が `NU_TORI_ANTHROPIC_API_KEY`（`server/evals/` の評価の鍵）に入っているので、`VERIFY_SERVER_ANTHROPIC_API_KEY="$NU_TORI_ANTHROPIC_API_KEY" $S/start.sh` で立てる。渡さなければ呼び出しは `authentication_error` で失敗し、そこから先は下の「確かめられないとき」の入口になる
+- 推定・読み分け・返事は Anthropic を呼ぶ。開発用のワークスペース（`nu-tori-development`）の鍵を `VERIFY_SERVER_ANTHROPIC_API_KEY` で渡して立てたときだけ、結果まで進む。環境に `NU_TORI_ANTHROPIC_API_KEY`（`server/evals/` の評価の鍵）があれば、それがこの鍵なので、`VERIFY_SERVER_ANTHROPIC_API_KEY="$NU_TORI_ANTHROPIC_API_KEY" $S/start.sh` で立てる。渡さなければ呼び出しは `authentication_error` で失敗し、そこから先は下の「確かめられないとき」の入口になる
 - 1つの回は1つのポートと1つのフォルダを持つので、並べて立ててよい。自分で立てていないポートで何かが応答していれば、`start.sh` は断って止まる。人の開いている `wrangler dev` を叩かない
 
 ## Doctor
@@ -70,6 +70,7 @@ $D                                              # オプション（時刻の差
 次の入口は手元で通せない。`docs/agents/git.md` の「動かして確かめる」で「確かめていない」と書くときに、確かめる場所をここから引く。ほかの入口を通せなかったときは、試したコマンドと、揃わなかった前提を書く。
 
 - Anthropic の鍵が無い回では、推定・読み分け・返事の結果まで進まない。推定が始まる（`estimating`）ことと、Anthropic まで届いた（確かめの口で `authentication_error`）ことまでが確かめられる。結果は、merge のあとに `deploy.yml` の `main-flow-on-development`（開発用の環境で本物の提供元を通す）が確かめる
+- 返事が作れなかった（`failed`）文章を送り直して返事が作られるところは、鍵があっても通せない（`features/reply.md` の Gotchas）。`main-flow-on-development` も通らない。`server/src/sent-text/http/resend.test.ts` が確かめていて、本物の経路では TestFlight の版で確かめる
 - Sign in with Apple、Apple のサーバー間通知、App Store の取引は、Apple を通すので手元で動かせない。TestFlight の版で確かめる
 - アプリの画面は、このスキルの外。Mac のセッションの UI テストで確かめる
 
