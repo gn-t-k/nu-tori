@@ -23,15 +23,6 @@
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block-pkill-f.sh"
           }
         ]
-      },
-      {
-        "matcher": "mcp__claude-code-remote__archive_session",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block-self-archive.sh"
-          }
-        ]
       }
     ],
     "SessionStart": [
