@@ -13,7 +13,7 @@ description: "nu-tori の iPhone アプリ（ios/）を Mac のシミュレー�
 
 確かめ方は2つある。地図の機能のファイルが、入口ごとにどちらを使うかを書いている。
 
-1. **UI テストのある流れ**: その UI テストを `ui-test.sh` で回す。流れの正本は UI テスト（`docs/agents/testing.md` の「ロジックと UI の分担」）なので、地図に手順を書き直さない
+1. **UI テストのある流れ**: その UI テストを `ui-test.sh` で回す。流れの正本は UI テスト（`docs/agents/testing.md` の「ロジックと UI の分担」）
 2. **UI テストの無い入口と、変えた画面を自分の目で見るとき**: `start.sh` で端末を作り、`launch.sh` で場面を選んで開き、MobileBuildMCP で触る
 
 ## UI テストで確かめる
@@ -96,4 +96,4 @@ $S/shot.sh "$run" weight-recorded     # 名前は英数字とハイフン（PR �
 $S/stop.sh "$run"
 ```
 
-この回が作ったシミュレーターだけを止めて消す。`evidence/` とログは残す。消すのはいつも `stop.sh "$run"` で、失敗して作り直すときも、そのたびに回す。MobileBuildMCP のプロファイルを `verify-ios` にしたままなら、既定に戻す。UI テストの回（`ui-test.sh`）は端末を残さないので、片付けは要らない。
+この回が作ったシミュレーターだけを止めて消す。`evidence/` とログは残す。消すのはいつも `stop.sh "$run"` で、失敗して作り直すときも、そのたびに回す。UI テストの回（`ui-test.sh`）は端末を残さないので、片付けは要らない。

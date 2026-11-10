@@ -9,6 +9,12 @@ main() {
         pick_targets
         return
     fi
+    if [ "${1-}" = --simulator-kind ]; then
+        # 検証スキル（verify-ios）が、UI テストと同じ機種とランタイムで自分の端末を作るために読む
+        [ $# -eq 1 ] || usage_error
+        latest_iphone_kind
+        return
+    fi
 
     local targets="" target
     while [ $# -gt 0 ]; do
@@ -95,7 +101,7 @@ target_files() {
             ;;
         scripts)
             # skills-lock.json は、文書の重なりを見ないスキルを決める
-            paths="scripts/|\.claude/hooks/|\.agents/skills/verify-[a-z]+/scripts/|\.github/workflows/check\.yml\$|skills-lock\.json\$"
+            paths="scripts/|\.claude/hooks/|\.agents/skills/verify-[^/]+/scripts/|\.github/workflows/check\.yml\$|skills-lock\.json\$"
             ;;
     esac
     # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は確かめに使い、エージェントが読む文書は重なりを見るので残す
@@ -839,6 +845,7 @@ print_usage() {
        scripts/check [ios | server | site | scripts] --lint [--fix]
        scripts/check ios-ui-test [--only <クラス>[/<メソッド>]]... [--repeat <回数>]
        scripts/check --pick-targets < <変わったファイルの一覧>
+       scripts/check --simulator-kind
   引数なし     まだ push していない変更（push 先が無ければ origin/main から分かれた点から）と作業中の変更が関わる、server と site と ios と scripts。
                文書（*.md）だけなら、エージェントが読む文書のときの scripts のほかは何も回さない。比べる先が取れなければすべて。全部を回すときは ios server site scripts と並べる
   ios          整形、Lint、サーバーを正本にする定数の値、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
@@ -855,6 +862,7 @@ print_usage() {
   --only       UI テストを、そのクラスかメソッドだけにする。重ねて指定できる
   --repeat     UI テストを、落ちるまで最大その回数くり返す。揺れを再現するときに使う
   --pick-targets  標準入力の変わったファイルの一覧から、確かめる対象を ios=<true|false>、server=<true|false>、site=<true|false>、scripts=<true|false> の4行で出す（CI 向け）
+  --simulator-kind  UI テストに使う iPhone のシミュレーターの機種とランタイムを「<機種> <ランタイム>」の1行で出す（verify-ios 向け）
 USAGE
 }
 
@@ -1021,14 +1029,8 @@ latest_iphone_simulator() {
 # UI テストに使う複製を、複製の元から作って ID を ui_test_simulator に入れる
 # 起動中のシミュレータは複製できず、共有の iPhone はほかのセッションが起動していることがあるので、テストに使わない複製の元を持つ
 clone_ui_test_simulator() {
-    local prefix="nu-tori ui-test" base_name="nu-tori ui-test-base" latest device_type runtime base lock
-    latest="$(latest_iphone_simulator)"
-    read -r device_type runtime < <(list_simulators_with_runtime | jq -r --arg id "$latest" \
-        '.[] | select(.udid == $id) | "\(.deviceTypeIdentifier) \(.runtime)"') || true
-    if [ -z "$device_type" ] || [ -z "$runtime" ]; then
-        echo "シミュレータ $latest の機種とランタイムが取れない" >&2
-        return 1
-    fi
+    local prefix="nu-tori ui-test" base_name="nu-tori ui-test-base" device_type runtime base lock
+    read -r device_type runtime < <(latest_iphone_kind)
 
     # 2つのチェックアウトが同時に複製の元を作ったり、同じ置き去りの複製を消したりしないよう、ロックを持つ
     lock="${TMPDIR:-/tmp}/nu-tori-ui-test-base.lock"
@@ -1098,6 +1100,19 @@ delete_abandoned_ui_test_simulators() {
                 xcrun simctl delete "$udid"
             fi
         done
+}
+
+# latest_iphone_simulator の機種とランタイムを「<機種> <ランタイム>」の1行で出す
+latest_iphone_kind() {
+    local latest kind
+    latest="$(latest_iphone_simulator)"
+    kind="$(list_simulators_with_runtime | jq -r --arg id "$latest" \
+        '.[] | select(.udid == $id) | "\(.deviceTypeIdentifier) \(.runtime)"')"
+    if [ -z "$kind" ]; then
+        echo "シミュレータ $latest の機種とランタイムが取れない" >&2
+        return 1
+    fi
+    echo "$kind"
 }
 
 list_simulators_with_runtime() {

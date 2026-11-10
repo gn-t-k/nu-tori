@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # この回のシミュレーターで、アプリを UI テストと同じ起動の値（偽の同期サーバーの場面）で開く。開いていれば閉じてから開き直す。
-# 記録はメモリにだけ置くので、開き直すたびに場面の始めに戻る。
-# 使い方: launch.sh <回のフォルダ> <アカウント> <API の場面> [<名前>=<値>]...
-#   アカウントと API の場面は ios/NuTori/UITesting/UITestLaunch.swift の Account と API の rawValue（signed-in と previous-day など）
-#   <名前>=<値> は起動の値を足す・替える（UI_TEST_NOW=2026-10-05T09:00、UI_TEST_PICKED_PHOTOS=1、TZ=UTC など）
+# 記録はメモリにだけ置くので、開き直すたびに場面の始めに戻る。引数なしで使い方を出す
 set -euo pipefail
 # shellcheck source=SCRIPTDIR/lib.sh
 . "$(dirname "$0")/lib.sh"
 if [ $# -lt 3 ]; then
-    sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//' >&2
+    cat >&2 << 'USAGE'
+使い方: launch.sh <回のフォルダ> <アカウント> <API の場面> [<名前>=<値>]...
+  アカウントと API の場面は ios/NuTori/UITesting/UITestLaunch.swift の Account と API の rawValue（signed-in と previous-day など）
+  <名前>=<値> は起動の値を足す・替える（UI_TEST_NOW=2026-10-05T09:00、UI_TEST_PICKED_PHOTOS=1、TZ=UTC など）
+USAGE
     exit 2
 fi
 load_run "$1"
@@ -29,9 +30,15 @@ xcrun simctl terminate "$UDID" "$bundle_id" 2> /dev/null || true
 env "${child_env[@]}" xcrun simctl launch "$UDID" "$bundle_id" -AppleLanguages '(ja)' -AppleLocale ja_JP > /dev/null
 printf '%s\n' "$(date +%T) launch ${values[*]}" >> "$run_dir/evidence/actions.log"
 
-# 起動の値を読み違えると、アプリはすぐ止まる（UI_TEST_NOW の形など）。数秒動き続けたら開いたとする
-sleep 3
-if ! app_running; then
+# 新しい端末での初めての起動は、一覧に出るまで数秒かかる。起動の値を読み違えると、出たあとすぐ止まる（UI_TEST_NOW の形など）。
+# 1秒おきに3回続けて（約2秒）一覧に見えたら開いたとする
+running_for=0
+for _ in $(seq 1 30); do
+    if app_running; then running_for=$((running_for + 1)); else running_for=0; fi
+    [ "$running_for" -ge 3 ] && break
+    sleep 1
+done
+if [ "$running_for" -lt 3 ]; then
     echo "アプリが止まった。起動の値を見直す（ログは xcrun simctl spawn $UDID log show --last 1m --predicate 'process == \"NuTori\"'）" >&2
     exit 1
 fi

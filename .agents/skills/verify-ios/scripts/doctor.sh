@@ -5,7 +5,7 @@ set -euo pipefail
 # shellcheck source=SCRIPTDIR/lib.sh
 . "$(dirname "$0")/lib.sh"
 load_run "${1-}"
-[ -n "${IOS_TREE-}" ] || { echo "NG  start.sh が組み終えていない。stop.sh で消し、start.sh で作り直す"; exit 1; }
+[ -n "${BUILT-}" ] || { echo "NG  start.sh が組み終えていない。stop.sh で消し、start.sh で作り直す"; exit 1; }
 
 ok=true
 # 1つ目の引数が見出し、残りが確かめるコマンド
