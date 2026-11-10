@@ -32,6 +32,9 @@ import SwiftData
                 if let launch = UITestLaunch.current {
                     return try launch.runtime()
                 }
+                if let launch = ScenarioAccountLaunch.current {
+                    return try launch.runtime()
+                }
             #endif
             return try live()
         } catch is SwiftDataSyncStore.NotOpened {
