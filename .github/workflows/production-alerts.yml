@@ -1,4 +1,5 @@
 # 本番の知らせ（いまは Sentry の新しい・急に増えた・再発した課題）を、needs-triage の Issue にする。エージェントが /triage で拾う
+# その Issue が完了で閉じたら（直した PR の merge など）、Sentry の課題を解決にする
 # 載せる欄と、重複の避け方は scripts/production-alerts。調べた経緯は docs/research/alerts-to-issues.md
 name: production-alerts
 
@@ -7,20 +8,23 @@ on:
   schedule:
     - cron: "17 * * * *"
   workflow_dispatch:
-
-# 前の回が書き終わる前に次の回が同じ課題の Issue を作らないよう、1本ずつ回す
-concurrency:
-  group: production-alerts
-  cancel-in-progress: false
+  # issues の出来事は main のワークフローで回り、ref も main なので、main からだけ使える Environment を使える
+  issues:
+    types: [closed]
 
 permissions: {}
 
 jobs:
   sentry:
+    if: github.event_name != 'issues'
+    # 前の回が書き終わる前に次の回が同じ課題の Issue を作らないよう、1本ずつ回す
+    concurrency:
+      group: production-alerts
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     # 詰まった回が既定の 6 時間残ると、そのあいだの回が concurrency で待たされて捨てられる
     timeout-minutes: 10
-    # Sentry の読むだけのトークンは、main からだけ使える Environment に置く（ADR-0010）
+    # Sentry のトークン（読むだけと、解決）は、main からだけ使える Environment に置く（ADR-0010）
     environment: production-alerts
     permissions:
       contents: read
@@ -36,3 +40,36 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NU_TORI_SENTRY_READ_TOKEN: ${{ secrets.NU_TORI_SENTRY_READ_TOKEN }}
+          # 閉じたときの回が取りこぼした課題を解決する。スクリプトは解決の呼び出しにだけ渡す
+          NU_TORI_SENTRY_RESOLVE_TOKEN: ${{ secrets.NU_TORI_SENTRY_RESOLVE_TOKEN }}
+
+  resolve:
+    # 印の無い Issue と、予定なしで閉じた Issue では回さない。印を信じてよいかは、スクリプトが確かめる
+    if: >-
+      github.event_name == 'issues' &&
+      github.event.issue.state_reason == 'completed' &&
+      contains(github.event.issue.body, '<!-- sentry-issue: ')
+    # 毎時の回と同じ列に並べ、同じ Issue に印を2度付けない。ジョブに付けるので、印の無い Issue が閉じた回は並ばない。
+    # 待てるのは1本だけで、あふれて捨てられた回の課題は、毎時の回が拾う
+    concurrency:
+      group: production-alerts
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production-alerts
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: server/.node-version
+      - run: scripts/production-alerts resolve "$ISSUE_NUMBER"
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ github.token }}
+          NU_TORI_SENTRY_READ_TOKEN: ${{ secrets.NU_TORI_SENTRY_READ_TOKEN }}
+          NU_TORI_SENTRY_RESOLVE_TOKEN: ${{ secrets.NU_TORI_SENTRY_RESOLVE_TOKEN }}
