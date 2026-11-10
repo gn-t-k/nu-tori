@@ -3,16 +3,16 @@
 
 const assert = require("node:assert/strict");
 const { describe, it, before } = require("node:test");
-const { isResolvable, planResolution, ExpectedFailure } = require("./production-alerts");
+const { isResolvable, planResolution } = require("./production-alerts");
 
 const now = new Date("2026-11-10T00:00:00Z");
-const closedIssue = (fields) => ({ state: "closed", state_reason: "completed", closed_at: "2026-11-09T00:00:00Z", ...fields });
+const issueWith = (fields) => ({ state: "closed", state_reason: "completed", closed_at: "2026-11-09T00:00:00Z", ...fields });
 
 describe("閉じた Issue を解決の対象にするか", () => {
   describe("完了で閉じたとき", () => {
     let result;
     before(() => {
-      result = isResolvable(closedIssue({}), now);
+      result = isResolvable(issueWith({}), now);
     });
 
     it("対象にすること", () => {
@@ -23,7 +23,7 @@ describe("閉じた Issue を解決の対象にするか", () => {
   describe("予定なしで閉じたとき", () => {
     let result;
     before(() => {
-      result = isResolvable(closedIssue({ state_reason: "not_planned" }), now);
+      result = isResolvable(issueWith({ state_reason: "not_planned" }), now);
     });
 
     it("対象にしないこと", () => {
@@ -34,7 +34,7 @@ describe("閉じた Issue を解決の対象にするか", () => {
   describe("開いているとき", () => {
     let result;
     before(() => {
-      result = isResolvable(closedIssue({ state: "open", state_reason: null, closed_at: null }), now);
+      result = isResolvable(issueWith({ state: "open", state_reason: null, closed_at: null }), now);
     });
 
     it("対象にしないこと", () => {
@@ -45,7 +45,7 @@ describe("閉じた Issue を解決の対象にするか", () => {
   describe("閉じてから7日を過ぎたとき", () => {
     let result;
     before(() => {
-      result = isResolvable(closedIssue({ closed_at: "2026-11-02T23:59:59Z" }), now);
+      result = isResolvable(issueWith({ closed_at: "2026-11-02T23:59:59Z" }), now);
     });
 
     it("対象にしないこと", () => {
@@ -78,8 +78,13 @@ describe("Sentry の課題をどうするか決める", () => {
   });
 
   describe("知らないプロジェクトの未解決の課題のとき", () => {
-    it("止まること", () => {
-      assert.throws(() => planResolution({ status: "unresolved", project: { slug: "nu-tori-web" } }), ExpectedFailure);
+    let result;
+    before(() => {
+      result = planResolution({ status: "unresolved", project: { slug: "nu-tori-web" } });
+    });
+
+    it("解決の種類が決まっていないと返すこと", () => {
+      assert.equal(result.action, "undecided");
     });
   });
 

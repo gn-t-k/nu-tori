@@ -50,7 +50,7 @@ jobs:
       github.event.issue.state_reason == 'completed' &&
       contains(github.event.issue.body, '<!-- sentry-issue: ')
     # 毎時の回と同じ列に並べ、同じ Issue に印を2度付けない。ジョブに付けるので、印の無い Issue が閉じた回は並ばない。
-    # 待てるのは1本だけで、あふれて捨てられた回の課題は、毎時の回が拾う
+    # 待てるのは1本だけで、あふれた回は捨てられる。捨てられたのが閉じたときの回なら、その課題は毎時の回が拾い、毎時の回なら、知らせが次の回まで遅れる
     concurrency:
       group: production-alerts
       cancel-in-progress: false

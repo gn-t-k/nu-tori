@@ -7,6 +7,7 @@
 
 const { execFileSync } = require("node:child_process");
 const { join } = require("node:path");
+const { ExpectedFailure } = require("./expected-failure.js");
 
 const repository = process.env.GITHUB_REPOSITORY ?? "gn-t-k/nu-tori";
 // 1回に書く数（作る・コメントする）。Issue を速く作りすぎると GitHub が二次の上限で止めるため。残りは次の回で拾う
@@ -36,7 +37,8 @@ const main = () => {
   const operands = rest.filter((arg) => arg !== "--dry-run");
   if (command === "sentry" && operands.length === 0) return alertAndResolve(dryRun);
   if (command === "resolve" && operands.length === 1 && /^[1-9][0-9]*$/.test(operands[0])) {
-    return resolveClosedIssue(readIssue(operands[0]), dryRun);
+    resolveClosedIssue(readIssue(operands[0]), { dryRun, strict: true });
+    return;
   }
   throw new ExpectedFailure(usage);
 };
@@ -52,12 +54,9 @@ const alertAndResolve = (dryRun) => {
     if (!dryRun) github(["--method", "PUT", `repos/${repository}/issues/${issue.number}/lock`]);
   }
   let writes = 0;
-  const canWrite = () => {
-    if (writes === maxWrites) {
-      console.log(`1回に書く上限の ${maxWrites} 件に達したので、残りは次の回で拾う`);
-      return false;
-    }
-    writes += 1;
+  const writeLimitReached = () => {
+    if (writes < maxWrites) return false;
+    console.log(`1回に書く上限の ${maxWrites} 件に達したので、残りは次の回で拾う`);
     return true;
   };
   // 閉じたときの回が落ちたり、concurrency で捨てられたりした Issue を拾う。解決したことを先に印にしておくと、下の知らせが解決のあとの再発を見分けられる
@@ -65,9 +64,9 @@ const alertAndResolve = (dryRun) => {
     const now = new Date();
     const closed = [...known.values()].flat().filter((issue) => isResolvable(issue, now));
     for (const issue of closed) {
-      if (readLatestState(issue) === resolvedState) continue;
-      if (!canWrite()) return;
-      resolveClosedIssue(issue, dryRun);
+      if (writeLimitReached()) return;
+      // 解決の種類が決まっていないプロジェクトの課題は、飛ばして下の知らせを続ける
+      if (resolveClosedIssue(issue, { dryRun, strict: false })) writes += 1;
     }
   } else {
     // 解決のトークンを置く前も、知らせは止めない
@@ -78,7 +77,8 @@ const alertAndResolve = (dryRun) => {
     // 最後に知らせた状態と同じなら何もしない。閉じた Issue も立て直さない（直す前の版の端末から起き続けても、毎時立て直さないため）。
     // 解決にしたら resolved の印を付けるので、解決のあとの再発は、前と違う状態として知らせる
     if (previous && readLatestState(previous) === alert.substatus) continue;
-    if (!canWrite()) return;
+    if (writeLimitReached()) return;
+    writes += 1;
     if (previous?.state === "open") {
       console.log(`コメントする: #${previous.number}（${alert.shortId} が ${alert.substatus}）`);
       if (!dryRun) {
@@ -104,26 +104,25 @@ const alertAndResolve = (dryRun) => {
   }
 };
 
-// 完了で閉じた、印を信じてよい Issue の Sentry の課題を解決にして、Issue に resolved の印を付ける。何度呼んでも、解決と印は1回ずつになる
-const resolveClosedIssue = (issue, dryRun) => {
+// 完了で閉じた、印を信じてよい Issue の Sentry の課題を解決にして、Issue に resolved の印を付ける。何度呼んでも、解決と印は1回ずつになる。
+// 書いたら（印のコメントを足したら）true を返す。strict のときは、解決の種類が決まっていないプロジェクトの課題で止まる
+const resolveClosedIssue = (issue, { dryRun, strict }) => {
   const shortId = trusted(issue) && issue.body?.match(issueMarkPattern)?.[1];
   if (!shortId) {
     console.log(`何もしない: #${issue.number} に信じてよい Sentry の印が無い`);
-    return;
+    return false;
   }
   if (issue.state !== "closed" || issue.state_reason !== "completed") {
     console.log(`何もしない: #${issue.number} は完了で閉じていない`);
-    return;
+    return false;
   }
-  if (readLatestState(issue) === resolvedState) {
-    console.log(`何もしない: #${issue.number} は解決の印が付いている`);
-    return;
-  }
+  if (readLatestState(issue) === resolvedState) return false;
   if (!dryRun && !resolveTokenGiven()) throw new ExpectedFailure("NU_TORI_SENTRY_RESOLVE_TOKEN が無い");
   const plan = planResolution(readSentryIssue(shortId));
-  if (plan.action === "skip") {
+  if (plan.action === "undecided" && strict) throw new ExpectedFailure(`${shortId} は${plan.reason}`);
+  if (plan.action === "skip" || plan.action === "undecided") {
     console.log(`何もしない: ${shortId} は${plan.reason}（#${issue.number}）`);
-    return;
+    return false;
   }
   if (plan.action === "resolve") {
     console.log(`解決にする: ${shortId}（${plan.label}、#${issue.number}）`);
@@ -139,6 +138,7 @@ const resolveClosedIssue = (issue, dryRun) => {
       body: resolvedCommentBody(shortId, plan),
     });
   }
+  return true;
 };
 
 // 毎時の回で拾い直す Issue。閉じた理由が予定なし（wontfix・重複）なら Sentry に触らない
@@ -153,8 +153,8 @@ const planResolution = (sentryIssue) => {
   if (sentryIssue.status === "resolved") return { action: "mark", label: "すでに解決済み" };
   if (sentryIssue.status !== "unresolved") return { action: "skip", reason: `${sentryIssue.status} になっている` };
   const resolution = resolutions[sentryIssue.project?.slug];
-  // 新しいプロジェクトは、解決の種類を決めるまで止める。黙ってすぐ解決にすると、古い版からの再発を知らせ続けるため
-  if (!resolution) throw new ExpectedFailure(`${sentryIssue.project?.slug} の解決の種類が決まっていない`);
+  // 新しいプロジェクトは、解決の種類を決めるまで解決にしない。黙ってすぐ解決にすると、古い版からの再発を知らせ続けるため
+  if (!resolution) return { action: "undecided", reason: `プロジェクト ${sentryIssue.project?.slug} の解決の種類が決まっていない` };
   return { action: "resolve", ...resolution };
 };
 
@@ -340,10 +340,7 @@ const run = (command, args, { input, env, allowFailure = false } = {}) => {
   }
 };
 
-// 自分で出す文（使い方、呼んだコマンドの失敗）は文だけを、想定外の失敗はスタックと cause まで出す
-class ExpectedFailure extends Error {}
-
-module.exports = { isResolvable, planResolution, ExpectedFailure };
+module.exports = { isResolvable, planResolution };
 
 // テストが require したときは、コマンドとしては動かない
 if (require.main === module) {
