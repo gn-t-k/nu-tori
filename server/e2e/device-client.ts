@@ -2,7 +2,7 @@ import { z } from "zod";
 import { e2eRequestHeaders } from "../src/http/e2e-access";
 import { syncWriteSchema } from "../src/http/sync-routes/sync-write-schema";
 
-// 端末と同じ形で Worker の API を呼ぶ。主な流れ（run-main-flow.ts）と、手元で確かめる道具（cli/drive-device.ts）が使う。
+// 端末と同じ形で Worker の API を呼ぶ。主な流れ（run-main-flow.ts）と、手元で確かめる道具（cli/drive-device.ts）と、場面を作る道（create-scenario.ts）が使う。
 // 1つのクライアントを1台の端末として送り（deviceId が同じ）、セッションはサインインで作るか、残したトークンから戻す
 export type DeviceClient = {
   // 端末の状態として送るタイムゾーン
@@ -32,6 +32,13 @@ export type DeviceSession = SavedSession & {
       e2e?: { requestedAt?: Date };
     },
   ) => Promise<Response>;
+  // 目標の設定の要求を、端末のタイムゾーンを添えて requestedAt に送ったことにし（開発用の環境だけで効く時刻の差し替え）、応答の本文を返す。
+  // 同期の外でその場で答えるので、200 でなければ、断った理由（code）を添えて投げる
+  postGoalSetup: (
+    path: GoalSetupPath,
+    body: Record<string, unknown>,
+    requestedAt: Date,
+  ) => Promise<unknown>;
   // 書き込みを送り、書き込みごとの結果を返す。受け付けられなかった書き込みがあれば、どれがなぜかを書いて投げる
   pushAppliedWrites: (writes: Write[]) => Promise<z.infer<typeof writeResultsSchema>["results"]>;
   pullChanges: (afterSequence: number) => Promise<z.infer<typeof changesPageSchema>>;
@@ -41,6 +48,8 @@ export type DeviceSession = SavedSession & {
   // 取りに行く要求を1回送り、状態コードを返す。アカウントを削除したあとは 401
   probeSessionStatusCode: () => Promise<number>;
 };
+
+export type GoalSetupPath = "preview" | "proposals" | "decisions";
 
 export type SavedSession = z.infer<typeof savedSessionSchema>;
 
@@ -100,6 +109,23 @@ export const createDeviceClient = (connection: DeviceConnection): DeviceClient =
       sessionToken,
       accountId,
       call,
+      postGoalSetup: async (path, body, requestedAt) => {
+        const response = await call("POST", `/v1/goal-setup/${path}`, {
+          headers: { "content-type": "application/json" },
+          e2e: { requestedAt },
+          body: JSON.stringify({ timeZone, ...body }),
+        });
+        if (response.status !== 200) {
+          const code = await response
+            .json()
+            .then((json) => z.object({ code: z.string() }).parse(json).code)
+            .catch(() => "なし");
+          throw new Error(
+            `目標の設定の要求 ${path} が断られた（状態コード ${response.status}、理由: ${code}）`,
+          );
+        }
+        return response.json();
+      },
       pushAppliedWrites: async (writes) => {
         const response = await call("POST", "/v1/sync/writes", {
           headers: { "content-type": "application/json" },

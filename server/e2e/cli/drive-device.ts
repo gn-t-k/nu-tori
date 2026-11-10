@@ -10,14 +10,17 @@ import {
   createDeviceClient,
   savedSessionSchema,
 } from "../device-client";
+import { createScenario, scenarioNames } from "../create-scenario";
 import { generateRecordId } from "../../src/domain/record-id";
 import { syncWriteSchema } from "../../src/http/sync-routes/sync-write-schema";
 
 // 手元で確かめる道具（.agents/skills/verify-server の device.sh）が、端末の代わりに要求を送る CLI。
+// scenario は、時の経過で起きる知らせを待たずにアプリで見るための場面のアカウントを作る（docs/agents/ios-mac.md の「時の経過で起きる知らせを確かめる」）。
 // 回のフォルダ（start.sh が作る）の run.env から Worker の URL と秘密の値と端末の ID を読み、セッションを sessions/<名前>.json に残し、送った要求と応答を evidence/requests.log に足す
 const usage = `使い方:
   drive-device.ts uuid
   drive-device.ts sign-in <回のフォルダ> <名前> [--as-of <ISO 8601>]
+  drive-device.ts scenario <回のフォルダ> <名前> <${scenarioNames.join(" | ")}>
   drive-device.ts push <回のフォルダ> <名前> '<書き込みの JSON の配列>'
   drive-device.ts pull <回のフォルダ> <名前> [--after <sequence>]
   drive-device.ts call <回のフォルダ> <名前> <メソッド> <パス> [--e2e] [--as-of <ISO 8601>]
@@ -30,6 +33,7 @@ const main = async ([command, ...args]: string[]): Promise<number> =>
       return Promise.resolve(0);
     })
     .with("sign-in", () => runSignIn(args))
+    .with("scenario", () => runScenario(args))
     .with("push", () => runPush(args))
     .with("pull", () => runPull(args))
     .with("call", () => runCall(args))
@@ -48,6 +52,27 @@ const runSignIn = async (args: string[]): Promise<number> => {
   await mkdir(join(runDir, "sessions"), { recursive: true });
   await writeFile(sessionPath(runDir, name), JSON.stringify(savedSessionSchema.parse(session)));
   console.log(session.accountId);
+  return 0;
+};
+
+// 時の経過で起きる知らせの場面のアカウントを作り、セッションを sessions/<名前>.json に残す。
+// アプリのデバッグビルドに渡す起動の値（ios/NuTori/App/ScenarioAccountLaunch.swift）を、KEY=値 の行で出す
+const runScenario = async (args: string[]): Promise<number> => {
+  const [runDir, name, scenario] = requirePositionals(
+    parseArgs({ args, allowPositionals: true }).positionals,
+    z.tuple([z.string(), z.string(), z.enum(scenarioNames)]),
+  );
+  const run = await openRun(runDir);
+  const session = await createScenario(run.client, scenario);
+  await mkdir(join(runDir, "sessions"), { recursive: true });
+  await writeFile(sessionPath(runDir, name), JSON.stringify(savedSessionSchema.parse(session)));
+  console.log(
+    [
+      `SCENARIO_SERVER_URL=${run.baseUrl}`,
+      `SCENARIO_SESSION_TOKEN=${session.sessionToken}`,
+      `SCENARIO_ACCOUNT_ID=${session.accountId}`,
+    ].join("\n"),
+  );
   return 0;
 };
 
@@ -242,7 +267,7 @@ const openRun = async (runDir: string, { logResponses } = { logResponses: true }
         ),
       ),
     );
-  return { client, resume, log };
+  return { client, resume, log, baseUrl: env.BASE_URL };
 };
 
 const runEnvSchema = z.object({
@@ -277,7 +302,7 @@ const requirePositionals = <T extends z.ZodTuple>(positionals: string[], shape: 
     positionals.map((value, index) => (index === 0 ? resolve(value) : value)),
   );
   if (!parsed.success) {
-    throw new UsageError({ reason: "位置の引数の数が合わない" });
+    throw new UsageError({ reason: "位置の引数の数か値が合わない" });
   }
   return parsed.data;
 };
