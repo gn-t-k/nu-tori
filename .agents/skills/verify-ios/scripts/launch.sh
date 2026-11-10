@@ -17,7 +17,7 @@ account="$2"
 api="$3"
 shift 3
 
-# 既定は UI テストの多くと同じ、知らせの時刻より前の朝（UITestNow.morningBeforeNotice）と日本の時刻
+# 時計は UI テストの既定（UITestNow.morningBeforeNotice。知らせの時刻より前の朝）。時刻帯は日本に決める
 values=("UI_TEST_ACCOUNT=$account" "UI_TEST_API=$api" "UI_TEST_NOW=2026-10-05T06:30" "TZ=Asia/Tokyo" "$@")
 child_env=()
 for value in "${values[@]}"; do
@@ -26,7 +26,7 @@ for value in "${values[@]}"; do
 done
 
 xcrun simctl terminate "$UDID" "$bundle_id" 2> /dev/null || true
-# 英語の端末でも、UI テストと同じ日本の日付と数の書き方にする
+# 端末の言語によらず、日本の利用者と同じ日付と数の書き方にする
 env "${child_env[@]}" xcrun simctl launch "$UDID" "$bundle_id" -AppleLanguages '(ja)' -AppleLocale ja_JP > /dev/null
 printf '%s\n' "$(date +%T) launch ${values[*]}" >> "$run_dir/evidence/actions.log"
 

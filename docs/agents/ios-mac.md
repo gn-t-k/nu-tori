@@ -1,6 +1,6 @@
 # Mac で iOS のアプリを確かめる
 
-- MobileBuildMCP で、変えたら `test_sim` を回し、関係する画面を開いて `screenshot` で確かめる。`test_sim` が行き先を見つけられずに失敗したら、開発者に `xcodebuild -downloadPlatform iOS`（数 GB）を頼む。computer use は、これらで確かめられないときにだけ使う
+- 変えた機能を動かして確かめるのは、`verify-ios` スキル（`.agents/skills/verify-ios/`）。ビルドやテストが行き先のシミュレーターを見つけられずに失敗したら、開発者に `xcodebuild -downloadPlatform iOS`（数 GB）を頼む。computer use は、これらで確かめられないときにだけ使う
 - UI を変えたら、状態ごとのプレビューを、ライトのほか、ダークと最大の文字（AX5）でも描いて確かめる。`scripts/preview-sheet` で並べて描く（下の「プレビューを並べて確かめる」）
 - Mac のシェルは zsh で、合うファイルの無いグロブは「no matches found」で止まる。`grep --include='*.swift'` のように、グロブは引用符で囲む
 - ディスクが溜まったら、`scripts/clean-builds` を回す。引数なしで、元の worktree が無い DerivedData と MobileBuildMCP の置き場、済んだ worktree を並べ、`--delete` で前の2つを消す。済んだ worktree は消さないので、並んだものを見て消すかを決める。`scripts/check` と MobileBuildMCP のビルドは worktree の中の `ios/.build/DerivedData` に置き、worktree と一緒に消えるので、並ぶ DerivedData は Xcode の道具（下の「Xcode の道具」）が作ったもの
