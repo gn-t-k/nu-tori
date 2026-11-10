@@ -34,7 +34,7 @@ export const createScenario = (
 const createGoalDeadlinePassed = async (client: DeviceClient): Promise<DeviceSession> => {
   const session = await client.signIn();
   const decidedAt = new Date(Date.now() - 49 * millisecondsPerDay);
-  await decideGoalWithDailyWeights(client, session, {
+  await decideGoalWithDailyWeights(session, client.timeZone, {
     decidedAt,
     deadlineOn: addDays(computeCalendarDayInTimeZone(decidedAt, client.timeZone), 30),
   });
@@ -45,7 +45,7 @@ const createGoalDeadlinePassed = async (client: DeviceClient): Promise<DeviceSes
 const createUnreviewedWeek = async (client: DeviceClient): Promise<DeviceSession> => {
   const decidedAt = new Date(Date.now() - 7 * millisecondsPerDay);
   const session = await client.signIn(new Date(decidedAt.getTime() - 2 * 60_000));
-  await decideGoalWithDailyWeights(client, session, {
+  await decideGoalWithDailyWeights(session, client.timeZone, {
     decidedAt,
     deadlineOn: addDays(computeCalendarDayInTimeZone(decidedAt, client.timeZone), 90),
   });
@@ -65,12 +65,12 @@ const createFreeTrialExpired = async (client: DeviceClient): Promise<DeviceSessi
 // 目標を決める1分前に体重を量って decidedAt に目標を決め、そのあと今まで毎日同じ時刻に体重を量ったことにする。
 // 決めたあとの体重は、目標の計算の元に入らないよう、決めてから送る。送る要求は送り切った印を付けないので、判定を起こさない
 const decideGoalWithDailyWeights = async (
-  client: DeviceClient,
   session: DeviceSession,
+  timeZone: string,
   goal: { decidedAt: Date; deadlineOn: string },
 ): Promise<void> => {
   const firstMeasuredAt = goal.decidedAt.getTime() - 60_000;
-  await session.pushAppliedWrites([createWeightWrite(firstMeasuredAt, client.timeZone)]);
+  await session.pushAppliedWrites([createWeightWrite(firstMeasuredAt, timeZone)]);
   await decideStandardLoseGoal(session, goal);
   const laterMeasuredAts = Array.from(
     { length: Math.floor((Date.now() - firstMeasuredAt) / millisecondsPerDay) },
@@ -78,7 +78,7 @@ const decideGoalWithDailyWeights = async (
   );
   if (laterMeasuredAts.length > 0) {
     await session.pushAppliedWrites(
-      laterMeasuredAts.map((measuredAt) => createWeightWrite(measuredAt, client.timeZone)),
+      laterMeasuredAts.map((measuredAt) => createWeightWrite(measuredAt, timeZone)),
     );
   }
 };
