@@ -18,7 +18,7 @@ run=$($S/start.sh)        # ポートを変えるときは $S/start.sh 8800
 - 空の DB に D1 の移行を当て、`wrangler dev --local` を開発用の設定（`wrangler.jsonc` の上の階層）で立てる。Durable Object の移行は、最初の要求で各 Durable Object が当てる
 - 立ったと言えるのは、ログの `Ready on` と `GET /health` が `{"status":"ok"}` の両方が揃ったとき。最後の行に回のフォルダ（`.scratch/verify-server/<時刻>-<ポート>/`、gitignore 済み）を出す
 - 秘密の値は手元だけの偽物で、Apple と Sentry には届かない。確かめのサインインの口（`/v1/e2e/*`、`docs/agents/server-e2e.md`）は、この回だけの秘密の値で開く
-- 推定・読み分け・返事は Anthropic を呼ぶ。開発用のワークスペース（`nu-tori-development`）の鍵を `VERIFY_SERVER_ANTHROPIC_API_KEY` で渡して立てたときだけ、結果まで進む。環境に `NU_TORI_ANTHROPIC_API_KEY`（`server/evals/` の評価の鍵）があれば、それがこの鍵なので、`VERIFY_SERVER_ANTHROPIC_API_KEY="$NU_TORI_ANTHROPIC_API_KEY" $S/start.sh` で立てる。渡さなければ呼び出しは `authentication_error` で失敗し、そこから先は下の「確かめられないとき」の入口になる
+- 推定・読み分け・返事は Anthropic を呼ぶ。開発用のワークスペース（`nu-tori-development`）の鍵を `VERIFY_SERVER_ANTHROPIC_API_KEY` で渡して立てたときだけ、結果まで進む。この鍵は `server/evals/` の評価の鍵と同じで、環境変数 `NU_TORI_ANTHROPIC_API_KEY` にあれば `VERIFY_SERVER_ANTHROPIC_API_KEY="$NU_TORI_ANTHROPIC_API_KEY" $S/start.sh`、Mac のキーチェーンにあれば `VERIFY_SERVER_ANTHROPIC_API_KEY="$(security find-generic-password -s nu-tori-eval -a anthropic -w)" $S/start.sh` で立てる。渡さなければ呼び出しは `authentication_error` で失敗し、そこから先は下の「確かめられないとき」の入口になる
 - 1つの回は1つのポートと1つのフォルダを持つので、並べて立ててよい。自分で立てていないポートで何かが応答していれば、`start.sh` は断って止まる。人の開いている `wrangler dev` を叩かない
 
 ## Doctor
