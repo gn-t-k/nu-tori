@@ -10,9 +10,6 @@ const { join } = require("node:path");
 
 const root = join(__dirname, "..");
 
-// 判定の値。出力の1行目にそのまま出る
-const TIER = { phase1: "フェーズ1", wait: "待つ", research: "調べもの" };
-
 const main = () => {
   const args = process.argv.slice(2);
   if (args.length > 1 || (args[0]?.startsWith("-") && !["--stdin", "--list"].includes(args[0]))) {
@@ -143,6 +140,9 @@ const GATES = [
   { name: "本番へ出すもの", paths: [".github/workflows/deploy-worker.yml", ".github/workflows/deploy-site.yml"] },
   { name: "用語・見た目・覆しにくい決定", paths: ["GLOSSARY.md", "DESIGN.md", "docs/adr/"] },
 ];
+
+// 判定の値。出力の1行目にそのまま出る
+const TIER = { phase1: "フェーズ1", wait: "待つ", research: "調べもの" };
 
 const verdictOf = (classified) => {
   if (classified.length === 0) return TIER.wait;
