@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+// テストで gh の代わりに置く、読むのが通る偽物。gh api <パス> --jq .body の形で呼ばれる
+// FAKE_BODY を本文として返し、読んだ API のパスを FAKE_LOG のファイルに書く
+// 拡張子の無いファイルは Node が CommonJS として読むので、import を使わない
+"use strict";
+
+const { writeFileSync } = require("node:fs");
+
+writeFileSync(process.env.FAKE_LOG, `${process.argv[3]}\n`);
+process.stdout.write(`${process.env.FAKE_BODY}\n`);
