@@ -3,7 +3,7 @@ import Testing
 
 @Suite("期限のページで選べる日")
 struct GoalDeadlineChoicesTests {
-    // swiftlint:disable:next no_parameterized_test
+    // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
     @Test("選べるかを決めること", arguments: try TestCase.load())
     func decidesWhetherToAccept(testCase: TestCase) {
         #expect(
