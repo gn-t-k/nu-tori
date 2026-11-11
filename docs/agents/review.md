@@ -33,13 +33,11 @@ merge の決まりは `docs/agents/git.md` にあり、開発者を待たない�
   - LLM の指示を変えたとき: `server/AGENTS.md` の「テスト」（評価を回し、要約を PR の本文に貼る）
   - D1・Durable Object の移行を足すとき: `server/AGENTS.md` の「DB」（並んで足す移行どうしは互いに頼らない）
 - iOS
-  - 型検査の厳しさの設定を変えるとき: `ios/AGENTS.md` の「構成」（3か所をそろえる）
-  - 最低対応版を変えるとき: `ios/AGENTS.md` の「対応する iOS」（2か所をそろえる）
   - 見本の場面を足す・変えるとき: `ios/AGENTS.md` の「見本の場面」（値を LP とそろえ、作り物だけにする）
   - 送り待ちの置き場の形を変えたとき: `docs/agents/ios-mac.md` の「置き場の移行を実機で確かめる」（merge の前に開発者が実機で確かめる）
   - ヘルスケア・カメラ・通知・写真の読み込みに触れた PR を出すとき: `docs/agents/ios-release.md` の「実機の確認」
 - サーバーと iOS の両方
-  - 端末とサーバーの両方に置く決めごとを変えるとき: `docs/agents/shared-rules.md`（`requiredPaceLimitPercent` を手で合わせる、「今は片側だけの決めごと」の一覧の抜けを見る、JSON を足したら生成器にも足す）
+  - 端末とサーバーの両方に置く決めごとを変えるとき: `docs/agents/shared-rules.md`（「今は片側だけの決めごと」の一覧の抜けを見る）
   - 記録の種類を足す、送り待ちのキーを足す・消すとき: `docs/agents/sync.md` の「記録の種類の足し方」と「置き場の約束」
   - 集めるもの、送り先、使い道、残る期間を変えるとき: `docs/agents/privacy.md` の「ポリシーを実装に合わせて保つ」（App Privacy の回答が変わる PR は、マージしたら #861 に表を足す）
 - iOS と site

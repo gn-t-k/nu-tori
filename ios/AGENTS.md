@@ -19,7 +19,6 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 - 食事の写真のファイル（`MealPhotos`。置き場は `AppRuntime` が渡す）: 元の写真と送る縮小版は Application Support（バックアップの対象）に、この端末に元の写真が無い食事（ほかの端末で記録した、機種変更のあと）のために取りに行った縮小版は Caches に置く。取りに行った縮小版は、食事かアカウントを消すまで持ち、それより前にシステムが空けたら、次に見るときに取りに行き直す
 - ファイルを足すとき、`project.pbxproj` は直さない（フォルダの同期で拾われる）
 - `ios` の下を探すときは、Grep の道具か `git grep` を使う。`NuToriCore/.build` などのビルドの置き場が数 GB ある。ビルドの置き場は worktree ごとにできるので、worktree を並べて作業するときは、使い終えたものから消す
-- 型検査の厳しさの設定は `NuToriCore/Package.swift`、`SharedRulesGenerator/Package.swift`、`project.pbxproj` の3か所にあるので、そろえる
 - Bundle ID は変えない。App Store Connect に上げたあとは変えられず、サーバーの Sign in with Apple の `aud` もこの値を見る
 
 ## 端末で行うもの
@@ -46,7 +45,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ## 対応する iOS
 
-- 最低対応版を変えるときは、`project.pbxproj` と `NuToriCore/Package.swift` の2か所をそろえる（今の版の理由は「[iOS の最低対応版を 26 に下げる](https://github.com/gn-t-k/nu-tori/issues/86)」の解決コメント）
+- 今の最低対応版の理由は「[iOS の最低対応版を 26 に下げる](https://github.com/gn-t-k/nu-tori/issues/86)」の解決コメント
 - SwiftData の保存は、メインのコンテキストでだけ行う。バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
 - iOS 27 からの API（`ResultsObserver`、`HistoryObserver` など）の代わりに書いたところには、置き換え先の API を1行のコメントで残す。最低対応版を上げたときに探して置き換えるため
 
