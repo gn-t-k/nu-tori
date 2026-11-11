@@ -12,7 +12,7 @@
 ### ファイルと公開するもの
 
 - 公開するものは export で数える
-- mock のファイル（`mockXxxOk` と `mockXxxError` を対で export する）と、再 export だけの `index.ts`・`testing/index.ts` は、「1つのファイルから1つ」を置き換える。関数と一緒に export するエラーのクラスは「失敗の扱い」
+- mock のファイル（成功の差し替えと失敗の差し替えを export する）と、再 export だけの `index.ts`・`testing/index.ts` は、「1つのファイルから1つ」を置き換える。関数と一緒に export するエラーのクラスは「失敗の扱い」
 - 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/` のディレクトリにし、入口の `foo/index.ts` から再 export する（`foo/foo.ts`、`foo/foo.test.ts`、`foo/foo.mock.ts` を並べる）
 
 ### ファイルの中はトップダウン
@@ -35,7 +35,6 @@ type CreateState = "empty" | "duplicate" | "creatable";
 ### 関数は処理の流れで分ける
 
 - タグ付きユニオンと失敗を1つの関数で受けるときは、ts-pattern の `match(...)` ですべての場合を書き、`.exhaustive()` で閉じる。場合を足したときの漏れが型エラーになる
-- 自分たちのユニオンには `.otherwise()` を使わない。外から来る値（Apple の通知の種類の文字列など）を分けるときだけ使ってよい
 
 ### 失敗の扱い
 
@@ -43,7 +42,6 @@ type CreateState = "empty" | "duplicate" | "creatable";
 - byethrow の使い方は skill の `byethrow` で docs を引く
 - Result は `R.pipe` の中で byethrow の道具（`andThen`・`map`・`mapError`・`orElse`・`andThrough`・`do`／`bind`・`sequence`／`collect` など）でつなぐ。値と失敗を取り出すのは、受け口で応答に直すところだけにする
 - エラーのクラスは、Result の失敗にするものも throw するものも `@praha/error-factory` の `ErrorFactory` で作る。独自のクラスを作るのは、呼び出し側かテストが見分けるときだけにし、見分けないものは `new Error(...)` にする
-- 自分たちのエラーは `name` で見分け、`instanceof` を使わない（Durable Object を越えると効かない。`server/AGENTS.md` の「層」）。テストで throw を確かめる `rejects.toThrow(クラス)` は除く
 - その関数だけが返す・投げるエラーは、関数と同じファイルの下に置き、関数と一緒に export する。「1つのファイルから1つ」を置き換える。2つ以上の関数が返すようになったら、`{エラー名のケバブケース}.ts` に切り出す
 - 関数の失敗のユニオンには名前を付けず、戻り値の型に直に書く。呼び出し側で型が要るときは `R.InferFailure<typeof 関数>` で取り出す
 
@@ -59,7 +57,7 @@ export class AppleAuthorizationCodeRejectedError extends ErrorFactory({
 }) {}
 ```
 
-- 外部のライブラリが投げるもののうち一部だけを Result の失敗にするときは、Promise の `.then` の2つ目の引数で分け、ほかは throw し直す（`R.try` の `catch` の中で throw し直すと、`byethrow/no-throw-in-callback` が落とす）。外部のライブラリのエラーは `instanceof` で見分けてよい
+- 外部のライブラリが投げるもののうち一部だけを Result の失敗にするときは、Promise の `.then` の2つ目の引数で分け、ほかは throw し直す（`R.try` の `catch` の中で throw し直すと、`byethrow/no-throw-in-callback` が落とす）
 
 ```ts
 authentication.api.signInSocial(...).then(
@@ -103,7 +101,6 @@ type Options = { formatProgress: (progress: Progress) => string };
 
 - まとまりは `describe`、テストは `test` で書く
 - 「各テストの前の準備」は、その条件の `describe` のすぐ下の `beforeEach` で行う
-- パラメータ化テストは、`test`・`it`・`describe` に `.each`・`.for` を付けたもののこと
 - 前提にする値は、無ければ投げて型を絞ってから使う
 
 ```ts
@@ -128,7 +125,7 @@ describe("トークン発行に失敗したとき", () => {
 - Vitest は `restoreMocks: true` で動かし、spy が次のテストに漏れないようにする。条件を `beforeEach` だけで決める構造は、これを前提にする
 - モジュールから export された関数を差し替えるときは、mock のファイルを作る。テスト対象に渡すコールバックは、その場で `vi.fn()` を書く
 - mock のファイルでは、使う側が読み込む入口（`./index`）を `import * as module` で読み込み、`vi.spyOn(module, "関数名")` で差し替える
-- 成功は `mockXxxOk`、失敗は `mockXxxError` にし、`Xxx` は差し替える関数の名前に対応させる（`createDatabase` → `mockCreateDatabaseOk`）
+- `mockXxxOk`・`mockXxxError` の `Xxx` は、差し替える関数の名前に対応させる（`createDatabase` → `mockCreateDatabaseOk`）
 - `mockXxxOk` は `overrides` の引数で既定のデータの一部を上書きでき、`mockXxxError` は具体的なエラーの型を受け取る
 - どちらもスパイを return する
 

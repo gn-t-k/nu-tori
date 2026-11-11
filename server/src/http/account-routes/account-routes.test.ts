@@ -12,7 +12,7 @@ import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import {
   mockPhotosBucketDeleteError,
-  mockPhotosBucketListPageSize,
+  mockPhotosBucketListOk,
 } from "../../meal/durable-object/testing/photos-bucket.mock";
 import { mockCaptureExceptionOk } from "../../observability/capture-exception.mock";
 import { mockDeletePostHogPersonOk } from "../../observability/delete-posthog-person/delete-posthog-person.mock";
@@ -200,7 +200,7 @@ describe("アカウントの削除", () => {
         // 1頁の既定の上限（1000件）を超える数を置くと、負荷の高いときに置くだけでテストの時間の上限を超えるので、1頁を1件に絞る。
         // 削除は写真の控えを2回消すので、外のまとまりで置いた photo-1 と合わせて、2回の1頁目では消えきらない3件にする。
         // 消えたかを見る一覧も1頁1件になるが、1件でも残れば空にならないので確かめられる
-        mockPhotosBucketListPageSize(1);
+        mockPhotosBucketListOk({ limit: 1 });
         await env.PHOTOS.put(`${signedIn.accountId}/meal-photos/photo-2`, "jpeg");
         await env.PHOTOS.put(`${signedIn.accountId}/meal-photos/photo-3`, "jpeg");
       });

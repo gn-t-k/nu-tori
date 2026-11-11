@@ -426,10 +426,13 @@ const isPossibleInFood = (nutrient: NutrientName, amount: number, basisGrams: nu
   const maximumGramsPer100Grams = 200;
   const amountPer100Grams = (amount / basisGrams) * 100;
   // mg・µg の項目には、ありえないと言える上限が無いので確かめない
-  return match(nutrientDefinitions[nutrient].unit)
-    .with("kcal", () => amountPer100Grams <= maximumEnergyKcalPer100Grams)
-    .with("g", () => amountPer100Grams <= maximumGramsPer100Grams)
-    .otherwise(() => true);
+  return (
+    match(nutrientDefinitions[nutrient].unit)
+      .with("kcal", () => amountPer100Grams <= maximumEnergyKcalPer100Grams)
+      .with("g", () => amountPer100Grams <= maximumGramsPer100Grams)
+      // oxlint-disable-next-line nu-tori/no-otherwise -- 単位は JSON の import で型が string になり、.exhaustive() で閉じられない。mg・µg と同じく、知らない単位も確かめずに通す
+      .otherwise(() => true)
+  );
 };
 
 const isPresentText = (text: string): boolean => text.trim().length > 0;

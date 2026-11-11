@@ -28,6 +28,9 @@
     "nu-tori/filename-matches-export": "error",
     "nu-tori/import-through-index": "error",
     "nu-tori/no-wrapped-comment": "error",
+    "nu-tori/no-parameterized-test": "error",
+    "nu-tori/no-otherwise": "error",
+    "nu-tori/no-instanceof-own-class": "error",
     "vitest/require-top-level-describe": "error",
     "vitest/no-duplicate-hooks": "error"
   },
