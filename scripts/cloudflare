@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# エージェントと人が Cloudflare の、例外にならない振る舞い（Workers Logs、呼び出しの数・誤り・CPU 時間）と、`nu-tori.app` の DMARC の集計と、LP の訪問の集計（Web Analytics）と、評価の写真の置き場（R2 のバケット nu-tori-evals）を読む。環境の対応と呼ぶ先を、ここ1か所に置く
+# エージェントと人が Cloudflare の、例外にならない振る舞い（Workers Logs、呼び出しの数・誤り・CPU 時間）と、`nu-tori.app` の DMARC の集計と、LP の訪問の集計（Web Analytics）を読む。評価の写真の置き場（R2 のバケット nu-tori-evals）は読み書きする。環境の対応と呼ぶ先を、ここ1か所に置く
 set -euo pipefail
 
 usage() {
@@ -12,6 +12,8 @@ usage() {
   scripts/cloudflare web-analytics [何日前から（既定 7、93 まで）]
   scripts/cloudflare evals list [キーの頭]
   scripts/cloudflare evals get <キー> <書き出すパス>
+  scripts/cloudflare evals put <キー> <上げるファイル>
+  scripts/cloudflare evals delete <キー>
 EOF
     exit 2
 }
@@ -47,6 +49,16 @@ case "$command" in
                 evals_key="$1"
                 evals_out="$2"
                 ;;
+            put)
+                [ $# -eq 2 ] || usage
+                evals_key="$1"
+                evals_file="$2"
+                [ -f "$evals_file" ] || { echo "ファイルが無い: $evals_file" >&2; exit 2; }
+                ;;
+            delete)
+                [ $# -eq 1 ] || usage
+                evals_key="$1"
+                ;;
             *) usage ;;
         esac
         # キーは英数字と ._-/ だけにする。S3 の署名のためにキーを符号化する手間を省く
@@ -71,8 +83,8 @@ if [ "$command" = web-analytics ] && [ "${since:-7}" -gt 93 ]; then usage; fi
 # LP の訪問の集計は Account Analytics Read だけのトークンで読む。Workers Logs を読めるトークンを、見つけてもらう役の環境（nu-tori-discovery）に置かないため
 # アカウントの ID は、そのトークンが見る1つのアカウントから引く（scripts/finance と同じ）。置く値を1つにするため
 # デプロイ用の CLOUDFLARE_API_TOKEN（書き込みの権限）は使わない
-# 評価の写真は、バケット nu-tori-evals だけを読める R2 のトークン（Object Read only）の、S3 互換の API の鍵の組で読む
-# Cloudflare の文書は、そのトークンが REST の API で使えないとしている。Workers Logs を読むトークンでも読まない（アプリの写真のバケットを読める権限を足さないため）
+# 評価の写真は、バケット nu-tori-evals だけを読み書きできる R2 のトークン（Object Read & Write）の、S3 互換の API の鍵の組で扱う
+# Cloudflare の文書は、そのトークンが REST の API で使えないとしている。Workers Logs を読むトークンには R2 の権限を足さない（アプリの写真のバケットまで読めてしまうため）
 if [ "$command" = evals ]; then
     if [ -z "${NU_TORI_CLOUDFLARE_ACCOUNT_ID:-}" ] || [ -z "${NU_TORI_CLOUDFLARE_EVALS_ACCESS_KEY_ID:-}" ] || [ -z "${NU_TORI_CLOUDFLARE_EVALS_SECRET_ACCESS_KEY:-}" ]; then
         echo "Not authenticated: NU_TORI_CLOUDFLARE_ACCOUNT_ID と NU_TORI_CLOUDFLARE_EVALS_ACCESS_KEY_ID と NU_TORI_CLOUDFLARE_EVALS_SECRET_ACCESS_KEY が要る" >&2
@@ -102,8 +114,8 @@ post_json() {
         -H "Content-Type: application/json" --data @- "$1"
 }
 
-# get_evals URL [curl に足す引数...] は、評価のバケットに S3 の署名つきの GET を送る
-get_evals() {
+# send_evals URL [curl に足す引数...] は、評価のバケットに S3 の署名つきの要求を送る（既定は GET）
+send_evals() {
     local url="$1"
     shift
     curl --silent --show-error --fail-with-body --aws-sigv4 "aws:amz:auto:s3" \
@@ -269,7 +281,7 @@ case "$command" in
                     query="list-type=2&max-keys=1000"
                     [ -z "$evals_prefix" ] || query="$query&prefix=$evals_prefix"
                     [ -z "$continuation" ] || query="$query&continuation-token=$(CONTINUATION="$continuation" node -e 'process.stdout.write(encodeURIComponent(process.env.CONTINUATION))')"
-                    if ! page="$(get_evals "$evals_bucket?$query")"; then
+                    if ! page="$(send_evals "$evals_bucket?$query")"; then
                         printf '%s\n' "$page" >&2
                         exit 1
                     fi
@@ -298,12 +310,38 @@ case "$command" in
                 # 失敗の本文（XML の誤り）を書き出す先に残さないよう、一時のファイルに受けてから移す
                 body="$(mktemp)"
                 trap 'rm -f "$body"' EXIT
-                if ! get_evals "$evals_bucket/$evals_key" --output "$body"; then
+                if ! send_evals "$evals_bucket/$evals_key" --output "$body"; then
                     cat "$body" >&2
                     echo >&2
                     exit 1
                 fi
                 mv "$body" "$evals_out"
+                ;;
+            put)
+                case "$evals_key" in
+                    *.jpg | *.jpeg | *.JPG | *.JPEG) content_type="image/jpeg" ;;
+                    *.png | *.PNG) content_type="image/png" ;;
+                    *.heic | *.HEIC) content_type="image/heic" ;;
+                    *.json) content_type="application/json" ;;
+                    *) content_type="application/octet-stream" ;;
+                esac
+                if ! response="$(send_evals "$evals_bucket/$evals_key" --upload-file "$evals_file" -H "Content-Type: $content_type")"; then
+                    printf '%s\n' "$response" >&2
+                    exit 1
+                fi
+                echo "上げた: $evals_key"
+                ;;
+            delete)
+                # 無いキーの DELETE も 204 で成功になるので、打ち間違えて消したと思い込まないよう、先に有るかを確かめる
+                if ! send_evals "$evals_bucket/$evals_key" --head --output /dev/null; then
+                    echo "無いか、確かめられない: $evals_key" >&2
+                    exit 1
+                fi
+                if ! response="$(send_evals "$evals_bucket/$evals_key" --request DELETE)"; then
+                    printf '%s\n' "$response" >&2
+                    exit 1
+                fi
+                echo "消した: $evals_key"
                 ;;
         esac
         ;;

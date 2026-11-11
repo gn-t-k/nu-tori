@@ -90,7 +90,7 @@
 | `DEPENDENCY_APP_PRIVATE_KEY` | GitHub の Environment `dependency-updates` | このリポジトリ用の GitHub App の設定 | リポジトリに書ける | 新しい秘密鍵を作って置いてから、古い秘密鍵を消す |
 | `NU_TORI_SENTRY_READ_TOKEN` | GitHub の Environment `production-alerts` と、エージェントの環境 | Sentry の個人のトークン | 本番の例外を読める | 作り直して両方に置く |
 | `SENTRY_AUTH_TOKEN` | Xcode Cloud のワークフローの Environment | Sentry の組織のトークン | dSYM を上げられる | 作り直して置く |
-| エージェントが読む値（`NU_TORI_ASC_*`、`NU_TORI_CLOUDFLARE_READ_TOKEN`、`NU_TORI_CLOUDFLARE_EVALS_*`、`NU_TORI_POSTHOG_READ_KEY`） | `docs/agents/tooling.md` の、それぞれを読む節 | App Store Connect、Cloudflare、PostHog | TestFlight のフィードバック、本番のログ、利用の数、評価の写真を読める。App Store Connect の鍵はフィードバックを消せる | 作り直して、同じ節の置き場に置く |
+| エージェントが読む値（`NU_TORI_ASC_*`、`NU_TORI_CLOUDFLARE_READ_TOKEN`、`NU_TORI_CLOUDFLARE_EVALS_*`、`NU_TORI_POSTHOG_READ_KEY`） | `docs/agents/tooling.md` の、それぞれを読む節 | App Store Connect、Cloudflare、PostHog | TestFlight のフィードバック、本番のログ、利用の数、評価の写真を読める。App Store Connect の鍵はフィードバックを消せ、評価の写真の鍵は評価の写真と正解の JSON を消せる | 作り直して、同じ節の置き場に置く |
 | Sentry の DSN（`SENTRY_DSN` と iOS）、PostHog のプロジェクトの token（`POSTHOG_PROJECT_TOKEN` と iOS） | Worker と `ios/NuTori/Observability/ObservabilityKeys.swift` | Sentry と PostHog のプロジェクトの設定 | 小さい。アプリに入れて配る値で、偽の出来事を送られるだけ | 偽の出来事で困ったときだけ替える。iOS は新しいビルドが要り、古いビルドは古い値に送り続ける |
 
 App Store Server API の鍵（課金で足す）のように新しい秘密の値を足したら、この表に行を足す。
