@@ -421,9 +421,10 @@ merge_package_resolved() {
 }
 
 # Swift の「正本はサーバーの `名前`」のコメントのすぐ下の定数の値を、サーバーの同じ名前の定数（const 名前 = 値;）の値と比べる
+# 名前が「名前.キー.キー」なら、サーバーの入れ子のオブジェクトの中の値と比べる（nested_server_constant）
 # 両方に置く決めごとは shared/ の JSON から読むので、ここで比べるのは、文に出すだけの値のような、shared/ に置かない写しだけ（docs/agents/shared-rules.md）
 check_server_constant_copies() {
-    local location name value definitions count server_value compared=0 failed=false
+    local location name value definitions shape count server_value compared=0 failed=false
     # CI の ios のジョブはコンテナの中で git を使えない（リポジトリの持ち主が違う）ので、git に頼らず find で集める。ビルドの置き場（.build）は数 GB あるので降りない
     while IFS=$'\t' read -r location name value; do
         compared=$((compared + 1))
@@ -432,10 +433,20 @@ check_server_constant_copies() {
             failed=true
             continue
         fi
-        definitions="$(cd "$root" && find server/src -name '*.ts' ! -name '*.test.ts' -print0 | xargs -0 sed -nE "s/^[[:space:]]*(export )?const ${name}(: [A-Za-z]+)? = ([^;]+);.*/\3/p")"
+        if [[ "$name" == *.* ]]; then
+            shape="${name} を const <名前> = { の中の1行の「<キー>: { ... <キー>: 値 }」で読める定義"
+            if ! definitions="$(nested_server_constant "$name")"; then
+                echo "${location}: ${name} は、名前.キー.キー の形だけ読める（scripts/check の nested_server_constant に足す）" >&2
+                failed=true
+                continue
+            fi
+        else
+            shape="const ${name} = 値;"
+            definitions="$(cd "$root" && find server/src -name '*.ts' ! -name '*.test.ts' -print0 | xargs -0 sed -nE "s/^[[:space:]]*(export )?const ${name}(: [A-Za-z]+)? = ([^;]+);.*/\3/p")"
+        fi
         count="$(grep -c . <<< "$definitions" || true)"
         if [ "$count" -ne 1 ]; then
-            echo "${location}: サーバーの server/src に const ${name} = 値; が ${count} 個ある（1個のはず）" >&2
+            echo "${location}: サーバーの server/src に、${shape} が ${count} 個ある（1個のはず）" >&2
             failed=true
             continue
         fi
@@ -486,6 +497,229 @@ check_server_constant_copies() {
     fi
 }
 
+# 「名前.キー.キー」の値を、const 名前 = { の中の1行の「キー: { ... キー: 値 ... }」から読み、見つけた数だけ行に出す（weeklyPaceRates のハード案）。名前がその形でなければ 1 で返す
+# 今の写しが要る形だけを読む。入れ子を複数行に崩したら、見つからずに落ちるので、ここを広げる
+nested_server_constant() {
+    local base outer inner rest
+    IFS=. read -r base outer inner rest <<< "$1"
+    if [ -z "$inner" ] || [ -n "$rest" ]; then
+        return 1
+    fi
+    # awk を xargs から呼ぶので、ShellCheck は単一引用符の中の $0 を awk のものと見分けられない
+    # shellcheck disable=SC2016
+    (cd "$root" && find server/src -name '*.ts' ! -name '*.test.ts' -print0 | xargs -0 awk -v base="$base" -v outer="$outer" -v inner="$inner" '
+        FNR == 1 { inside = 0 }
+        $0 ~ "^[[:space:]]*(export )?const " base "(: [^=]+)? = [{]" { inside = 1; next }
+        inside && /^[}]/ { inside = 0 }
+        inside && $0 ~ "^[[:space:]]*" outer ": [{]" {
+            if (match($0, "[{,][[:space:]]*" inner ": -?[0-9][0-9_.]*")) {
+                value = substr($0, RSTART, RLENGTH)
+                sub(/.*: /, "", value)
+                print value
+            }
+        }
+    ')
+}
+
+# 型検査の厳しさの設定を、2つの Package.swift の strictSettings と、Xcode のプロジェクトの構成で比べる
+# Xcode のプロジェクトは、厳しさの設定を1つでも持つ構成（今はプロジェクトの Debug・Release。ターゲットはそれを受け継ぐ）を、それぞれ同じ集まりか見る
+# アプリのターゲットだけの SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor は比べない。NuToriCore と生成器は画面を持たないロジックなので、既定で MainActor にしない
+check_strict_settings() {
+    local package expected="" actual failed=false
+    for package in NuToriCore SharedRulesGenerator; do
+        if ! actual="$(package_strict_settings "$ios/$package/Package.swift")"; then
+            return 1
+        fi
+        if [ -z "$actual" ]; then
+            echo "ios/$package/Package.swift の strictSettings から設定を読めない" >&2
+            return 1
+        fi
+        if [ -z "$expected" ]; then
+            expected="$actual"
+        elif [ "$actual" != "$expected" ]; then
+            echo "ios/NuToriCore/Package.swift と ios/$package/Package.swift の strictSettings が違う:" >&2
+            diff <(echo "$expected") <(echo "$actual") >&2 || true
+            failed=true
+        fi
+    done
+
+    local configuration seen="" configurations
+    if ! configurations="$(xcode_strict_settings "$ios/NuTori.xcodeproj/project.pbxproj")"; then
+        return 1
+    fi
+    while IFS=$'\t' read -r configuration actual; do
+        [ -n "$configuration" ] || continue
+        seen="$seen $configuration"
+        actual="$(tr ' ' '\n' <<< "$actual" | sed '/^$/d' | sort -u)"
+        if [ "$actual" != "$expected" ]; then
+            echo "ios/NuTori.xcodeproj/project.pbxproj の ${configuration} の厳しさの設定が、ios/NuToriCore/Package.swift の strictSettings と違う（< が Package.swift、> が project.pbxproj）:" >&2
+            diff <(echo "$expected") <(echo "$actual") >&2 || true
+            failed=true
+        fi
+    done <<< "$configurations"
+    for configuration in Debug Release; do
+        if [[ "$seen " != *" $configuration "* ]]; then
+            echo "ios/NuTori.xcodeproj/project.pbxproj に、厳しさの設定を持つ ${configuration} の構成が無い" >&2
+            failed=true
+        fi
+    done
+
+    if $failed; then
+        echo "型検査の厳しさの設定は、ios/NuToriCore/Package.swift と ios/SharedRulesGenerator/Package.swift の strictSettings と、ios/NuTori.xcodeproj/project.pbxproj の構成の3か所にある。1か所を変えたら、ほかの2か所もそろえる" >&2
+        return 1
+    fi
+}
+
+# strictSettings の設定を、1行に1つの名前にして並べて出す。読み方を知らない設定があれば落ちる
+package_strict_settings() {
+    awk -v file="${1#"$root"/}" '
+        # SWIFT_APPROACHABLE_CONCURRENCY の読み替えは言語モードで変わるので、言語モードも比べる
+        /^[[:space:]]*swiftLanguageModes: \[\.v[0-9]+\]/ {
+            mode = $0
+            sub(/.*\.v/, "", mode)
+            sub(/\].*/, "", mode)
+            print "SwiftLanguageMode" mode
+        }
+        /^var strictSettings/ { inside = 1; next }
+        inside && /^}/ { inside = 0 }
+        !inside { next }
+        /^[[:space:]]*\.treatAllWarnings\(as: \.error\),?[[:space:]]*(\/\/.*)?$/ { print "TreatWarningsAsErrors"; next }
+        /^[[:space:]]*\.enable(Upcoming|Experimental)Feature\("[A-Za-z]+"\),?[[:space:]]*(\/\/.*)?$/ {
+            kind = $0 ~ /Upcoming/ ? "" : "experimental:"
+            name = $0
+            sub(/^[^"]*"/, "", name)
+            sub(/".*/, "", name)
+            print kind name
+            next
+        }
+        /^[[:space:]]*\./ {
+            printf "%s:%d: strictSettings の読み方を知らない設定（scripts/check の package_strict_settings に足す）: %s\n", file, FNR, $0 > "/dev/stderr"
+            failed = 1
+        }
+        END { exit failed }
+    ' "$1" | sort -u
+    return "${PIPESTATUS[0]}"
+}
+
+# 厳しさの設定を1つでも持つ構成ごとに「構成の名前<TAB>空白で区切った名前」を出す
+# SWIFT_APPROACHABLE_CONCURRENCY は、Swift 6 の言語モードで既定でない2つの機能に読み替える（言語モードも比べるので、6 でなくなれば落ちる）
+# 読み方を知らない厳しさの設定（SWIFT_STRICT_CONCURRENCY、OTHER_SWIFT_FLAGS の知らないフラグ）があれば落ちる
+xcode_strict_settings() {
+    awk -v file="${1#"$root"/}" '
+        function camel(key,    parts, count, i, word, result) {
+            count = split(tolower(key), parts, "_")
+            for (i = 1; i <= count; i++) result = result toupper(substr(parts[i], 1, 1)) substr(parts[i], 2)
+            return result
+        }
+        function add(name) { settings = settings " " name; touched = 1 }
+        function unknown(what) {
+            printf "%s:%d: 厳しさの設定の読み方を知らない（scripts/check の xcode_strict_settings に足す）: %s\n", file, FNR, what > "/dev/stderr"
+            failed = 1
+        }
+        /isa = XCBuildConfiguration;/ { inside = 1; settings = ""; touched = 0; next }
+        !inside { next }
+        /^[[:space:]]*SWIFT_TREAT_WARNINGS_AS_ERRORS = / { touched = 1; if (/= YES;/) add("TreatWarningsAsErrors") }
+        /^[[:space:]]*SWIFT_VERSION = / {
+            mode = $3
+            sub(/;$/, "", mode)
+            sub(/\.0$/, "", mode)
+            add("SwiftLanguageMode" mode)
+        }
+        /^[[:space:]]*SWIFT_STRICT_CONCURRENCY = / { unknown($0) }
+        /^[[:space:]]*SWIFT_APPROACHABLE_CONCURRENCY = / {
+            touched = 1
+            if (/= YES;/) { add("InferIsolatedConformances"); add("NonisolatedNonsendingByDefault") }
+        }
+        /^[[:space:]]*SWIFT_UPCOMING_FEATURE_[A-Z_]+ = / {
+            touched = 1
+            if (/= YES;/) {
+                key = $1
+                sub(/^SWIFT_UPCOMING_FEATURE_/, "", key)
+                add(camel(key))
+            }
+        }
+        /^[[:space:]]*OTHER_SWIFT_FLAGS = / {
+            count = split($0, words, /[[:space:]"]+/)
+            # 頭と終わりの " で、split の結果の最初と最後が空になる
+            for (i = 4; i <= count; i++) {
+                if (words[i] == "" || words[i] == ";" || words[i] == "$(inherited)") continue
+                if (words[i] == "-enable-upcoming-feature") { add(words[++i]); continue }
+                if (words[i] == "-enable-experimental-feature") { add("experimental:" words[++i]); continue }
+                if (words[i] == "-warnings-as-errors") { add("TreatWarningsAsErrors"); continue }
+                unknown("OTHER_SWIFT_FLAGS の " words[i])
+            }
+        }
+        /^[[:space:]]*name = / {
+            name = $3
+            sub(/;$/, "", name)
+            if (touched) printf "%s\t%s\n", name, settings
+            inside = 0
+        }
+        END { exit failed }
+    ' "$1"
+}
+
+# 最低対応版を、Xcode のプロジェクトの IPHONEOS_DEPLOYMENT_TARGET と NuToriCore の .iOS(...) で比べる。26 と 26.0 は同じとみなす
+check_ios_deployment_target() {
+    local xcode package
+    xcode="$(sed -nE 's/^[[:space:]]*IPHONEOS_DEPLOYMENT_TARGET = "?([0-9.]+)"?;.*/\1/p' "$ios/NuTori.xcodeproj/project.pbxproj" |
+        sed -E 's/(\.0)+$//' | sort -u)"
+    package="$(sed -nE -e 's/.*\.iOS\(\.v([0-9]+)(_([0-9]+))?\).*/\1.\3/p' -e 's/.*\.iOS\("([0-9.]+)"\).*/\1/p' "$ios/NuToriCore/Package.swift" |
+        sed -E -e 's/\.$//' -e 's/(\.0)+$//' | sort -u)"
+    if [ "$(grep -c . <<< "$xcode" || true)" -ne 1 ]; then
+        echo "ios/NuTori.xcodeproj/project.pbxproj の IPHONEOS_DEPLOYMENT_TARGET が1つの版にそろっていない: $(echo "${xcode:-（無い）}" | tr '\n' ' ')" >&2
+    elif [ "$(grep -c . <<< "$package" || true)" -ne 1 ]; then
+        echo "ios/NuToriCore/Package.swift の platforms から .iOS(...) の版を1つに読めない: $(echo "${package:-（無い）}" | tr '\n' ' ')" >&2
+    elif [ "$xcode" != "$package" ]; then
+        echo "最低対応版が、ios/NuTori.xcodeproj/project.pbxproj の IPHONEOS_DEPLOYMENT_TARGET は ${xcode}、ios/NuToriCore/Package.swift の .iOS(...) は ${package}" >&2
+    else
+        return 0
+    fi
+    echo "最低対応版は project.pbxproj と NuToriCore/Package.swift の2か所にある。1か所を変えたら、もう1か所もそろえる（今の版の理由は ios/AGENTS.md の「対応する iOS」）" >&2
+    return 1
+}
+
+# shared/ の JSON が両側で読まれているかを、ファイルの名前が書かれているかで見る
+# 係数の JSON（*.test-cases.json でないもの）は、端末の書き出しの生成器とサーバーの server/src が、入力と期待値の JSON（*.test-cases.json）は、サーバーのテストと端末のテストが読む
+# CI の ios のジョブは git を使えないので、grep で探す
+check_shared_json_readers() {
+    local file name pattern compared=0 failed=false
+    for file in "$root"/shared/*.json; do
+        [ -e "$file" ] || continue
+        name="${file##*/}"
+        # ranges.json が accepted-ranges.json への参照で通らないよう、名前の前に区切りを求める
+        pattern="(^|[^A-Za-z0-9_.-])${name//./\\.}"
+        compared=$((compared + 1))
+        if [[ "$name" == *.test-cases.json ]]; then
+            if ! grep -rqE --include='*.test.ts' "$pattern" "$server/src"; then
+                echo "shared/${name}: server/src のテスト（*.test.ts）が読んでいない" >&2
+                failed=true
+            fi
+            if ! grep -rqE --include='*.swift' "$pattern" "$ios/NuToriCore/Tests"; then
+                echo "shared/${name}: ios/NuToriCore/Tests のテストが読んでいない" >&2
+                failed=true
+            fi
+        else
+            if ! grep -rqE --include='*.swift' "$pattern" "$ios/SharedRulesGenerator/Sources"; then
+                echo "shared/${name}: 書き出しの生成器（ios/SharedRulesGenerator/Sources）が読んでいない" >&2
+                failed=true
+            fi
+            if ! grep -rqE --include='*.ts' --exclude='*.test.ts' "$pattern" "$server/src"; then
+                echo "shared/${name}: server/src（テストでないファイル）が読んでいない" >&2
+                failed=true
+            fi
+        fi
+    done
+    if [ "$compared" -eq 0 ]; then
+        echo "shared/ に JSON が1つも無い" >&2
+        return 1
+    fi
+    if $failed; then
+        echo "shared/ の決めごとは両側で読む。係数の JSON を足したら書き出しの生成器とサーバーに、入力と期待値の JSON を足したら両方のテストに読ませる（docs/agents/shared-rules.md）" >&2
+        return 1
+    fi
+}
+
 # 全部は数分かかるので、機械で見分けられる決まりの破れを、書いた直後に早く見られるよう分けておく（--lint）
 lint_ios() {
     if ! command -v swift > /dev/null; then
@@ -509,6 +743,15 @@ lint_ios() {
     # 片側だけ変えても落ちるよう、ios と server のどちらを確かめるときも比べる
     step "サーバーを正本にする端末の定数が、サーバーの値と同じか"
     check_server_constant_copies
+
+    step "shared/ の JSON を、端末とサーバーの両方が読んでいるか"
+    check_shared_json_readers
+
+    step "型検査の厳しさの設定が、2つの Package.swift と Xcode のプロジェクトでそろっているか"
+    check_strict_settings
+
+    step "最低対応版が、Xcode のプロジェクトと NuToriCore でそろっているか"
+    check_ios_deployment_target
 }
 
 check_ios_app() {
@@ -724,6 +967,9 @@ lint_server() {
     # 片側だけ変えても落ちるよう、ios と server のどちらを確かめるときも比べる
     step "サーバーを正本にする端末の定数が、サーバーの値と同じか"
     check_server_constant_copies
+
+    step "shared/ の JSON を、端末とサーバーの両方が読んでいるか"
+    check_shared_json_readers
 }
 
 # server と site で同じ手順の、整形と Lint。oxlint は型を見るので、Worker の型の宣言も書き出す
@@ -865,12 +1111,12 @@ print_usage() {
        scripts/check --simulator-kind
   引数なし     まだ push していない変更（push 先が無ければ origin/main から分かれた点から）と作業中の変更が関わる、server と site と ios と scripts。
                文書（*.md）だけなら、エージェントが読む文書のときの scripts のほかは何も回さない。比べる先が取れなければすべて。全部を回すときは ios server site scripts と並べる
-  ios          整形、Lint、サーバーを正本にする定数の値、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
+  ios          整形、Lint、サーバーを正本にする定数の値、shared/ の JSON を両側が読むか、型検査の厳しさの設定と最低対応版のそろい、API のクライアントと両方に置く決めごとの書き出しが最新か、ロジックのパッケージのテスト。macOS では続けて ios-app も
   ios-app      ロジックのパッケージのテストと、アプリと UI テストのビルド（macOS だけ）
   ios-ui-test  ios-app に続けて、UI テスト（macOS だけ）。見本の場面を撮るテストは除く
   ios-screenshots  アプリのビルドに続けて、見本の場面の生の画面を撮り、ios/.build/listing-screens/<場面>.png に書き出す（macOS だけ）。
                引数なしでは回さない。回し方は docs/agents/ios-release.md の「スクリーンショット」
-  server       整形、Lint、サーバーを正本にする定数の値、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
+  server       整形、Lint、サーバーを正本にする定数の値、shared/ の JSON を両側が読むか、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   site         公開のページ（nu-tori.app）の整形、Lint、型検査、書き出しと、書き出したページを載せた Worker のテストと、合成のコマンドのテスト
   scripts      scripts/ と .claude/hooks/ と検証スキルの道具と ios/ci_scripts/ のシェルの Lint（ShellCheck）と、
                ワークフローの Lint（actionlint と、run が pipefail の効く shell で動くか）と、node のスクリプトのテスト（scripts/*.test.js）と、

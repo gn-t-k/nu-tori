@@ -2,8 +2,9 @@
 
 端末とサーバーの両方に置く決めごとは、係数や範囲をデータ（JSON）にしてルートの `shared/` に置き、両側で読む。
 
-- サーバーは import で読み、端末は JSON から書き出した Swift のファイル（`ios/NuToriCore/Sources/NuToriCore/Generated/`）で持つ。書き出しは `ios/SharedRulesGenerator/` のパッケージで動かし、JSON を変えたら `scripts/check ios --fix` で書き出し直す（`scripts/check ios` が最新かを確かめる）。書き出す JSON を足すときは、生成器にも足す
-- 手順は両側に書き、入力と期待値の JSON も `shared/` に置いて両方のテストで読む
+- サーバーは import で読み、端末は JSON から書き出した Swift のファイル（`ios/NuToriCore/Sources/NuToriCore/Generated/`）で持つ。書き出しは `ios/SharedRulesGenerator/` のパッケージで動かし、JSON を変えたら `scripts/check ios --fix` で書き出し直す（`scripts/check ios` が最新かを確かめる）
+- 手順は両側に書き、入力と期待値の JSON（`*.test-cases.json`）も `shared/` に置く
+- 両側で読んでいるか（係数の JSON は生成器とサーバー、入力と期待値の JSON は両方のテスト）は、`scripts/check` の ios と server の Lint の手順がファイルの名前で見る
 - 値や検証の結果が違ったときは、サーバーを正とする
 - 小さな純粋な計算の域を超えたら、TypeScript で1回だけ書き、端末では JavaScriptCore で動かす
 
@@ -88,8 +89,8 @@
 端末が文に出すだけで計算や判定に使わない値（1日の目安の下限など）と、同期の API の決まりの値（1回に送る書き込みの数の上限）は、両側の決めごとではないので `shared/` に置かない。端末の定数に「正本はサーバーの `<サーバーの名前>`」のコメントを添え、そのすぐ下に `let <端末の名前> = <数>` の形で書く（端末の名前はサーバーとそろえなくてよい）。
 
 - `scripts/check` の ios と server の Lint の手順が、コメントの `<サーバーの名前>` でサーバーの `const <サーバーの名前> = <値>;`（`server/src` のテストでないファイルにちょうど1つ）を引き、値が同じかを比べる。サーバーの名前を変えたら、コメントの名前も直す
+- サーバーの値が入れ子のオブジェクトの中にあるときは、`<サーバーの名前>.<キー>.<キー>` で指す（必要な速さの上限の `weeklyPaceRates.lose.hard`）。端末も同じ割合で持ち、% のような読み替えは計算で出す
 - 今の写しは、`ios/` を「正本はサーバーの」で検索して引く
-- 必要な速さの上限（`DailyGuide.requiredPaceLimitPercent`）は、サーバーの割合を % にして持つので、比べる手順に乗らない。サーバーの `weeklyPaceRates` か `maintenanceWeeklyRate` を変えたら、手で合わせる
 
 ## 今は片側だけの決めごと
 
