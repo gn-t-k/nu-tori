@@ -32,5 +32,10 @@ xcrun xcresulttool export attachments --path "$results" --output-path "$run_dir/
 # テストごとの結果を1行ずつ出す
 jq -r '.. | objects | select(.nodeType? == "Test Case") | "\(.result)  \(.nodeIdentifier // .name)"' \
     "$run_dir/evidence/tests.json" | tee "$run_dir/evidence/summary.txt" >&2
+# 名前の誤りや、空白を含む1つの引数（zsh は変数を分けない）では、xcodebuild は0件で成功する
+if [ ! -s "$run_dir/evidence/summary.txt" ]; then
+    echo "回ったテストが0件だった。クラスの名前と、引数を1つずつ渡しているかを見る" >&2
+    status=1
+fi
 echo "$run_dir"
 exit "$status"

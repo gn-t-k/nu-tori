@@ -26,10 +26,11 @@ Preconditions:
 - **送ると返事が届く・送り直す。** `$S/ui-test.sh SendTextWithConversationScenarioUITests`。プリセットを送ると `reply-reading` と吹き出しが出て、返事（「今日は朝ごはんから」）が届くと読んでいますが消える。「昼は親子丼」を送るとカードがつながって親子丼になり、会話として送り直すとカードが消えて返事（「親子丼の話」）が届く。「次の食事は？」は作れなかった1行になり、送り直すと返事（「野菜の多い定食」）が届く
 - **ひらがなを確定して送る。** `$S/ui-test.sh SendConfirmedKanaTextUITests`。確定してから送ると、書く欄が空に戻る
 - **コピーと選択。** `$S/ui-test.sh CopyAndSelectUtteranceUITests`。吹き出しをコピーすると書く欄に貼り付けられ、テキストを選択を選ぶとその場で全体が選ばれ、余白を押すと戻る
-- **手で見るとき。** `$S/launch.sh "$run" signed-in conversation` で開き、`composer-field` に書いて `composer-send` を押す。返事は数回あとの取得で届く
+- **手で見るとき。** `$S/launch.sh "$run" signed-in conversation` で開き、プリセット（`preset-chip` の「ここまでの食事のフィードバック」）を押して書く欄に入れ、`composer-send` を押す。「読んでいます…」のあと、送ってから10秒ほどで返事（`reply`、「今日は朝ごはんから」）が届く。返事の文は2つの要素に出るので、`wait_for_ui` は `textContains` でなく `identifier: "reply"` で待つ
 
 ## Gotchas
 
 - 返事の本文と読み分けは偽の同期サーバーが本文で決めた値。サーバーの読み分けと返事は `verify-server` の [送った文章と返事](../../verify-server/features/reply.md) で確かめる
 - 見守る要求で返事の本文が流れる様子は、偽の同期サーバーでは流れない（取りに行く要求で届く）
-- かなを打つ UI テストは、`scripts/check ios-ui-test` がシミュレーターにかなのキーボードを入れてから回す。手で動かす端末には入っていないので、手では `type_text` で打つ
+- 偽の同期サーバーが答えるのは、プリセット・「昼は親子丼」・「次の食事は？」の本文だけで、ほかの本文には返事も読み分けも返さない（`UITestLaunch+SyncScenario.swift` の `answer(sentText:)`）
+- MobileBuildMCP の `type_text` は US キーボードの文字しか打てず、日本語は打てない。手で日本語を送るときは、プリセットを使うか、画面のかなのキーボード（`launch.sh` が日本語で開くので出る）のキーを押す

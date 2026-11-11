@@ -57,7 +57,7 @@ $S/doctor.sh "$run"
 
 ### 動かし方
 
-起動で選んだプロファイルのまま、MobileBuildMCP の UI の道具で触る。`wait_for_ui`（`identifier` と `predicate: "exists"`）で画面を待ち、`snapshot_ui` で読んで、`tap`・`type_text`・`swipe` で触る。押す先は、地図と UI テストが使う accessibility identifier（`composer-weight`、`weight-row` など）で探す。
+起動で選んだプロファイルのまま、MobileBuildMCP の UI の道具で触る。`wait_for_ui`（`identifier` と `predicate: "exists"`）で画面を待ち、`snapshot_ui` で読んで、`tap`・`type_text`・`swipe` で触る。`type_text` は US キーボードの文字しか打てない。押す先は、地図と UI テストが使う accessibility identifier（`composer-weight`、`weight-row` など）で探す。
 
 アプリを組む・入れる・開く道具（`build_run_sim`、`install_app_sim`、`launch_app_sim`）は使わない。起動の値が付かずに本物の開発用のサーバーへつなごうとし、サインインの画面で止まる。開くのはいつも `launch.sh`。
 

@@ -26,7 +26,7 @@ Preconditions:
 
 - **写真の食事が推定される・消す。** `$S/ui-test.sh RecordMealFromPickedPhotosUITests`。カードが出て、親子丼が届き、今日の丸が「食事の記録あり」になる。食事の画面に親子丼の行が出て（材料の行は出ない）、料理の画面へ潜って戻れる。食事を削除するとカードが消え、今日の丸から「食事の記録あり」が外れる
 - **読んでいるあいだ。** `$S/ui-test.sh ShowPickedPhotosLoadingUITests`。写真を読んでいるあいだ仮のカードが出て、食事のカードが出たら外れる
-- **直す・足す・消す。** `$S/ui-test.sh EditMealUITests`。推定中は「料理を足す」を押せず理由が添えられ、時刻を直すと推定（親子丼 1杯）が届く。料理の画面で量と名前（カツ丼）を直すと推定し直しが届き、味噌汁を足して左へ送って消せ、最後の1品を消すと食事が消える
+- **直す・足す・消す。** `$S/ui-test.sh EditMealUITests`。推定中は「料理を足す」を押せず理由が添えられ、時刻を直すと推定（親子丼）が届く。料理の画面で量と名前（カツ丼）を直すと推定し直しが届き、味噌汁（1杯）を足して左へ送って消せる。最後の1品を左へ送ると確かめが出て、取り消すと料理は残る。料理の画面の「この料理を削除」（`dish-delete`）から「食事を削除」を押すと食事が消える
 - **カードから潜る。** `$S/ui-test.sh OpenWrittenMealFromCardUITests`。文章の食事のカードの右端の余白と右向きの矢印のどちらを押しても、食事の画面へ潜る
 - **手で見るとき。** `$S/launch.sh "$run" signed-in meal-estimation UI_TEST_PICKED_PHOTOS=1` で開き、`composer-photos` を押す（選ぶ画面を開かずに無地の写真を1枚選んだことになる）
 
@@ -34,4 +34,4 @@ Preconditions:
 
 - 写真を選ぶ標準の画面とカメラは差し替えている（`UI_TEST_PICKED_PHOTOS`）。写真の読み込みやカメラに触れた PR は、`docs/agents/ios-release.md` のとおり実機で確かめる
 - 推定の中身（料理と栄養）は偽の同期サーバーの決めた値。サーバーの推定は `verify-server` の [食事の記録と推定](../../verify-server/features/meal-estimation.md) で確かめる
-- 推定は数回あとの取得で届くので、手で動かすときは `wait_for_ui` の `textContains` で料理の名前を 30 秒ほど待つ
+- 推定は、推定中を返した取得の次の取得で届くので、手で動かすときは `wait_for_ui` で `meal-card` を 30 秒ほど待つ（料理の名前はカードの読み上げと文字の2つに出て、`textContains` では1つに決まらず落ちる）

@@ -8,7 +8,7 @@
 - `weight-record-notice` 知らせの時刻を過ぎて今日の記録が無いと、タイムラインに体重の知らせが出て、その中で記録できる
 - `weight-correct` 体重の画面で直すと、タイムラインの値が変わる
 - `weight-offline` 電波が無くても記録した体重がタイムラインに出て、送信待ちと読み上げる
-- `weight-rejected` サーバーが受け付けなかった記録の位置に1行出る
+- `weight-rejected` サーバーが受け付けなかった記録について1行出る
 - `weight-health-import` ヘルスケアの体重が、取り込み元の名前つきでタイムラインに出る
 
 ## How to get to it (user POV)
@@ -26,10 +26,10 @@ Preconditions:
 
 - **入力欄から記録する。** `$S/ui-test.sh RecordWeightFromComposerUITests`。72.6 kg から 0.2 kg 減らして記録すると、タイムラインに 72.4 kg が出て、シートが閉じ、受け付けなかった1行は出ない
 - **入力欄から記録する（手で）。** `$S/launch.sh "$run" signed-in previous-day` で開き、`wait_for_ui` で `composer-weight` を待って `shot.sh "$run" weight-before`。今日の丸（`ring-2026-10-05`）の値が「体重の記録なし」。`composer-weight` を押し、シートの「0.1 kg 減らす」を2回押して、シートの「体重」の値が 72.4 kg になったら、シートの「記録」を押す。`wait_for_ui` で「記録」が `gone` になるのを待ち、`shot.sh "$run" weight-recorded`。タイムラインに昨日の「7:12 72.6 kg」と今日の「6:30 72.4 kg」の `weight-row` が並び、今日の丸の値が「体重の記録あり」になり、`rejected-weight-line` は無い
-- **知らせから記録する。** `$S/ui-test.sh WeightNoticeAfterNoticeTimeUITests`。9:00 に開くとタイムラインに体重の知らせが出て、その中の「記録」で記録すると知らせが消え、入力欄の体重が戻る
+- **知らせから記録する。** `$S/ui-test.sh WeightNoticeAfterNoticeTimeUITests`。9:00 に開くとタイムラインに体重の知らせが出て、その中の「記録」で記録すると知らせが消え、入力欄の体重（`composer-weight`）はある
 - **直す。** `$S/ui-test.sh CorrectWeightFromWeightScreenUITests`。体重の画面で 70.0 にすると、体重の画面に 70.0 が出て、戻ったタイムラインに 70.0 kg が出て 72.4 kg が無い
 - **電波が無いとき。** `$S/ui-test.sh RecordWeightOfflineUITests`。記録した 72.4 kg の行が出て、その行の読み上げの最後に「送信待ち」が付き、届いている昨日の 72.6 kg の行には付かない
-- **受け付けなかったとき。** `$S/ui-test.sh RejectedWeightRecordUITests`。記録した位置に `rejected-weight-line` の1行が出て、72.6 kg は残る
+- **受け付けなかったとき。** `$S/ui-test.sh RejectedWeightRecordUITests`。`rejected-weight-line` の1行が出て、72.6 kg は残る
 - **ヘルスケアの取り込み。** `$S/ui-test.sh ImportedHealthWeightAfterPullUITests`。初回の取得のあとに 68.0 kg の行が「体重計アプリ」と一緒に出る
 
 ## Gotchas
