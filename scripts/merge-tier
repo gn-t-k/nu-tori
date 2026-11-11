@@ -53,7 +53,7 @@ const report = (changes) => {
 };
 
 // 1段目に入れないもの。ゲートを弱める変更や、用語・見た目・覆しにくい決定そのものは、開発者が merge を言う。
-// 末尾が / のものはフォルダの下の全部、ほかはそのファイルだけに当たる。足すときは、テストの「待つと返すとき」にも足す
+// 末尾が / のものはフォルダの下の全部、ほかはそのファイルだけに当たる
 const GATES = [
   {
     name: "検査を決めるもの",
@@ -94,7 +94,17 @@ const GATES = [
   },
   {
     name: "照合が照らす決まりを書いた文書",
-    paths: ["docs/agents/privacy.md", "docs/agents/coding-style.md", "docs/agents/languages/", "docs/agents/testing.md"],
+    paths: [
+      "docs/agents/privacy.md",
+      // 観測の道具に記録の中身を送らない決まりは、ルートの AGENTS.md にある。ほかのフォルダの AGENTS.md は当たらない
+      "AGENTS.md",
+      "docs/agents/coding-style.md",
+      "docs/agents/languages/",
+      "docs/agents/testing.md",
+      // 文書の照合が照らす
+      "docs/agents/decisions.md",
+      ".agents/skills/writing-for-agents/",
+    ],
   },
   {
     name: "merge を決めるもの",
@@ -103,6 +113,10 @@ const GATES = [
       "scripts/merge-tier.test.js",
       ".claude/settings.json",
       ".claude/hooks/",
+      ".codex/config.toml",
+      // Swift を上げる PR は、dependency-pr.yml が update-type を読まずに merge するので、何を上げるかがここで決まる
+      ".github/workflows/update-swift-packages.yml",
+      "scripts/update-swift-packages",
       "docs/agents/git.md",
       "docs/agents/issue-tracker.md",
       "docs/agents/dependencies.md",
@@ -119,6 +133,8 @@ const GATES = [
       "scripts/sentry",
     ],
   },
+  // 1段目はサーバーに出るコードを変えない前提で revert で戻すので、merge すると本番へ出すものは入れない
+  { name: "本番へ出すもの", paths: [".github/workflows/deploy-worker.yml", ".github/workflows/deploy-site.yml"] },
   { name: "用語・見た目・覆しにくい決定", paths: ["GLOSSARY.md", "DESIGN.md", "docs/adr/"] },
 ];
 
