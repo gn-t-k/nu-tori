@@ -14,8 +14,8 @@
   - `docs/agents/languages/<言語>.md`: 言語ごとの当てはめ。変わったファイルの言語のものだけを読む
 - テストのファイル（`*.test.ts`、`testing/` の下、Swift の `*Tests/` の下など）が変わったとき: `docs/agents/testing.md`（テストの好み）
 - エージェントが読む文書（`AGENTS.md`、`CODING_STANDARDS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/`）が変わったとき: `.agents/skills/writing-for-agents/SKILL.md`（その書き方）
-- 画面のファイル（`ios/NuTori/` の下で `import SwiftUI` のある `.swift`、`ios/NuTori/Assets.xcassets/` の下、`site/public/` の下、`site/src/` の下の `.tsx`。どれもテストを除く）が変わったとき: `DESIGN.md`（見た目のトークンとガードレール）
-- LP と掲載情報の文言のファイル（`site/src/pages/` の下、`site/src/` の下で名前に `landing` を含むもの、掲載情報の正本の `site/src/app-store-connect-listing.ts`・`site/src/app-store-screenshots.ts`。どれもテストを除く）が変わったとき: `docs/agents/marketing.md`（文言の決まり）
+- 画面のファイル（`ios/NuTori/` の下で `import SwiftUI` のある `.swift`（一覧の `.swift` を `grep -l '^import SwiftUI'` で見分ける）、`ios/NuTori/Assets.xcassets/` の下、`site/public/` の下、`site/src/` の下の `.tsx`。どれもテストを除く）が変わったとき: `DESIGN.md`（見た目のトークンとガードレール）
+- LP と掲載情報の文言のファイル（`site/src/pages/` の下、`site/src/` の下で名前に `landing` を含むもの、掲載情報の正本の `site/src/app-store-connect-listing.ts`・`site/src/app-store-screenshots.ts`、両方に載る医療の一文の `site/src/medical-disclaimer.ts`。どれもテストを除く）が変わったとき: `docs/agents/marketing.md`（文言の決まり）
 - コードのファイル（上の1つ目の条件の `.ts`・`.swift`。テストを除く）を新しく足したとき（範囲の差分の `--name-status` で `A`）: `.agents/skills/codebase-design/SKILL.md`（深さ、継ぎ目の置き場、消してみる試し、アダプタの数）
 
 どの条件にも当たらないファイルだけのときは、上の文書を読まずに、下の「指摘するもの」の一般論を当てる。
