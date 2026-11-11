@@ -13,6 +13,18 @@ only_rules:
 file_types_order:
   order: [[main_type], [extension], [supporting_type], [preview_provider]]
 custom_rules:
+  swiftlint_disable_with_reason:
+    name: "SwiftLint の抑止に理由を添える"
+    regex: "swiftlint:disable(?::(?:next|this|previous))?\\b(?![^\\n]* - \\S)"
+    match_kinds: [comment]
+    message: "swiftlint:disable の規則の名前のあとに「 - 」で理由を添える（// swiftlint:disable:next no_default_in_switch - サーバーの名前は文字列で、知らない値が来る）。抑止は規則の約束を外すので、なぜここだけ外してよいかを、抑止と同じ行で読めるようにする"
+    severity: error
+  swift_format_ignore_with_reason:
+    name: "swift-format の抑止に理由を添える"
+    # swift-format は同じ行の後ろを規則の名前として読み、「 - 」で理由を添えると抑止が効かなくなるので、1つ上の行のコメントで見る。中身の無いコメント、MARK:、ドキュメントコメント、別の抑止のコメントは理由とみなさない。行の頭のコメントだけを見るので、1行の文字列の中は当たらない
+    regex: "(?:\\A|^(?![ \\t]*//(?!/)(?![^\\n]*(?:swiftlint:|swift-format-ignore))[ \\t]*(?!MARK:)\\S)[^\\n]*\\n)[ \\t]*//[ \\t]*swift-format-ignore"
+    message: "swift-format-ignore の1つ上の行に、理由をコメントで書く。抑止は整形の約束を外すので、なぜここだけ外してよいかを抑止のそばで読めるようにする。swift-format は同じ行の後ろを規則の名前として読むので、同じ行には書けない"
+    severity: error
   no_force_cast:
     name: "as! を使わない"
     # 組み込みの force_cast は理由を書けないので、同じものを理由つきで落とす
@@ -41,14 +53,14 @@ custom_rules:
   no_parameterized_test:
     name: "@Test(arguments:) は理由があるときだけ"
     regex: "@Test\\([^)]*arguments:"
-    message: "既定では、条件を名前にした @Suite と個別の @Test で書く。要るときは理由を PR に書いて抑止する（docs/agents/testing.md「テストの構造」）"
+    message: "既定では、条件を名前にした @Suite と個別の @Test で書く。要るときは swiftlint:disable:next に「 - 」で理由を添えて抑止する（docs/agents/testing.md「テストの構造」）"
     severity: error
   no_default_in_switch:
     name: "自分たちの enum の switch に default を置かない"
     # 型を見られないので、どの switch の default も落とす。@unknown default と、辞書の [key, default:] は行の頭に来ないので当たらない
     regex: "^\\s*default\\s*:"
     match_kinds: [keyword]
-    message: "自分たちの enum の switch では、case を並べて default を置かない。case を足したときの漏れがコンパイルエラーになる。文字列・数・エラー・外の型の switch のように default が要るときは、swiftlint:disable:next に「 - 」で理由を添えて外し、PR にも書く（docs/agents/coding-style.md「関数は処理の流れで分ける」）"
+    message: "自分たちの enum の switch では、case を並べて default を置かない。case を足したときの漏れがコンパイルエラーになる。文字列・数・エラー・外の型の switch のように default が要るときは、swiftlint:disable:next に「 - 」で理由を添えて外す（docs/agents/coding-style.md「関数は処理の流れで分ける」）"
     severity: error
   no_nil_default_argument:
     name: "引数に = nil を付けない"

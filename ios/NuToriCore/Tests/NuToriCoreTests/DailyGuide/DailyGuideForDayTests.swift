@@ -4,7 +4,7 @@ import Testing
 
 @Suite("その日の1日の目安")
 struct DailyGuideForDayTests {
-    // swiftlint:disable:next no_parameterized_test
+    // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
     @Test(
         "その日を含む目標と、その目標の当てる始まりの日がその日以前で最も遅い1日の目安を返すこと",
         arguments: try SharedTestCases.decode(
