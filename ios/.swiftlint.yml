@@ -21,8 +21,8 @@ custom_rules:
     severity: error
   swift_format_ignore_with_reason:
     name: "swift-format の抑止に理由を添える"
-    # swift-format は同じ行の後ろを規則の名前として読み、「 - 」で理由を添えると抑止が効かなくなるので、1つ上の行のコメントで見る。ドキュメントコメントと、別の抑止のコメントは理由とみなさない。行の頭のコメントだけを見るので、1行の文字列の中は当たらない
-    regex: "(?:\\A|^(?![ \\t]*//(?!/)(?![^\\n]*(?:swiftlint:|swift-format-ignore)))[^\\n]*\\n)[ \\t]*//[ \\t]*swift-format-ignore"
+    # swift-format は同じ行の後ろを規則の名前として読み、「 - 」で理由を添えると抑止が効かなくなるので、1つ上の行のコメントで見る。中身の無いコメント、MARK:、ドキュメントコメント、別の抑止のコメントは理由とみなさない。行の頭のコメントだけを見るので、1行の文字列の中は当たらない
+    regex: "(?:\\A|^(?![ \\t]*//(?!/)(?![^\\n]*(?:swiftlint:|swift-format-ignore))[ \\t]*(?!MARK:)\\S)[^\\n]*\\n)[ \\t]*//[ \\t]*swift-format-ignore"
     message: "swift-format-ignore の1つ上の行に、理由をコメントで書く。抑止は整形の約束を外すので、なぜここだけ外してよいかを抑止のそばで読めるようにする。swift-format は同じ行の後ろを規則の名前として読むので、同じ行には書けない"
     severity: error
   no_force_cast:
