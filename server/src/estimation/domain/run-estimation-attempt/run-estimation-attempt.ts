@@ -425,12 +425,36 @@ const isPossibleInFood = (nutrient: NutrientName, amount: number, basisGrams: nu
   // 重さより多くは入らない（100 g）が、① は ml を g とみなすので、水あめのように重い液体の表示は 100 ml あたり 120 g 近くになる。それが通るよう、重さの倍に置く
   const maximumGramsPer100Grams = 200;
   const amountPer100Grams = (amount / basisGrams) * 100;
-  // mg・µg の項目には、ありえないと言える上限が無いので確かめない
-  return match(nutrientDefinitions[nutrient].unit)
-    .with("kcal", () => amountPer100Grams <= maximumEnergyKcalPer100Grams)
-    .with("g", () => amountPer100Grams <= maximumGramsPer100Grams)
-    .otherwise(() => true);
+  return (
+    match(nutrientUnit(nutrient))
+      .with("kcal", () => amountPer100Grams <= maximumEnergyKcalPer100Grams)
+      .with("g", () => amountPer100Grams <= maximumGramsPer100Grams)
+      // mg・µg の項目には、ありえないと言える上限が無いので確かめない
+      .with("mg", "µg", () => true)
+      .exhaustive()
+  );
 };
+
+// JSON の import では単位の型が string になるので、知っている単位に絞る
+const nutrientUnit = (nutrient: NutrientName): NutrientUnit => {
+  const { unit } = nutrientDefinitions[nutrient];
+  if (!isNutrientUnit(unit)) {
+    throw new Error(`shared/nutrients.json の ${nutrient} の単位「${unit}」を知らない`);
+  }
+  return unit;
+};
+
+const nutrientUnits = ["kcal", "g", "mg", "µg"] as const;
+
+type NutrientUnit = (typeof nutrientUnits)[number];
+
+const isNutrientUnit = (value: string): value is NutrientUnit =>
+  nutrientUnits.some((unit) => unit === value);
+
+// 知らない単位を、推定の答えに出たときでなく、読み込んだときに落とす。このモジュールを読み込むテストが落ちて気づける
+for (const nutrient of Object.keys(nutrientDefinitions).filter(isNutrientName)) {
+  nutrientUnit(nutrient);
+}
 
 const isPresentText = (text: string): boolean => text.trim().length > 0;
 
