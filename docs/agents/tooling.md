@@ -6,7 +6,7 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 
 - lock の外の skill は、`.agents/skills/<名前>/` に置いて `.claude/skills/` からリンクする。自動更新は lock にある名前だけを入れ直し、ほかは触らない。この決まりより前に置いた `model-based-ui-design` は `.claude/skills/` にだけあり、移すかは決めていない
 - `byethrow` は、`@praha/byethrow-docs` の `init claude` が書き出す skill を、`server/` の依存から docs を引く形に直したもの
-- `verify-server` は、pstack の `/pstack:create-verification-skill` で作ったサーバーの検証スキル。pstack の生成先（`.claude/skills/`）でなく、この決まりどおり `.agents/skills/` に置いた。nu-tori のファイルなので、直接直す。中の道具（`scripts/*.sh`）は `scripts/check scripts` が ShellCheck にかける
+- `verify-server` と `verify-ios` は、pstack の `/pstack:create-verification-skill` で作ったサーバーとアプリの検証スキル。pstack の生成先（`.claude/skills/`）でなく、この決まりどおり `.agents/skills/` に置いた。nu-tori のファイルなので、直接直す。中の道具（`scripts/*.sh`）は `scripts/check scripts` が ShellCheck にかける
 - `erd-design` は、開発者がほかのリポジトリでも使う自作の skill。どのリポジトリでも使える形に保ち、このリポジトリに固有の前提は `docs/agents/table-design.md` に書く
 
 pstack は Claude Code のプラグイン `pstack@cursor-plugins` で入れ、リポジトリで確かめた版を `pstack-lock.json` に書く。クラウドでは環境 `nu-tori` のセットアップスクリプトが新しいコンテナのたびに最新の版を入れ、手元（Mac）では手で上げるまで版が変わらない（#903）。版は、入っている版が lock より新しいと `check-pstack.sh` が知らせたときに、作業の PR とは別の PR（ブランチ `claude/update-pstack-<日付>`）で lock を上げる。手元の版が lock より古いと知らされたら、手元のプラグインを上げる

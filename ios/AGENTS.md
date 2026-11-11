@@ -78,7 +78,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ## 確かめる
 
-`scripts/check` を通したうえで、変えたものを動かして確かめる。Mac で作業するときは `docs/agents/ios-mac.md` を読む。
+`scripts/check` を通したうえで、変えたものを `verify-ios` スキルで動かして確かめる。Mac で作業するときは `docs/agents/ios-mac.md` を読む。
 
 - 書いたら、まず `scripts/check ios --lint --fix` で整形と Lint だけを回す（数秒〜20秒ほど。全部は4〜5分）。Swift の決まりのうち機械で見分けられるもの（`.swiftlint.yml` の `custom_rules`）はここで落ちるので、通してから全部を回す
 - Linux で `swift` が無いときは、`scripts/install-swift` で入れる
