@@ -10,22 +10,20 @@ PR を出す前と PR に push する前に、ブランチの変更に何がか�
 
 ## 何にかかるか
 
-1つのブランチが複数の行に当たるときは、当たった行のものをすべて通す。`/code-review` の Spec の軸は、どの行でも `/implement`・`/implement-spec` の中で1回だけ回す（下の「好みのレビュー」）ので、表には書かない。
+1つのブランチが複数の行に当たるときは、当たった行のものをすべて通す。照合の列の「Spec の軸」は、`/implement`・`/implement-spec` の中で1回だけ回す（下の「好みのレビュー」）。
 
 | 変更の種類 | 検査 | 照合 | 確かめ | ほかに PR の前にすること | merge の条件 |
 | --- | --- | --- | --- | --- | --- |
-| サーバーのコード・テスト | `scripts/check server`、CI の `server` | 好みのレビュー、ポリシーの照合 | 振る舞いを変えたら `verify-server` | 下の「サーバー」と「サーバーと iOS の両方」 | 開発者が言ったとき |
-| iOS のコード・テスト | `scripts/check ios`、CI の `ios`・`ios-app`・`ios-version`。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストの全件（PR の CI では走らない。`ios/AGENTS.md` の「確かめる」） | 好みのレビュー、ポリシーの照合 | 振る舞いを変えたら `verify-ios`（Mac のセッションだけ） | 下の「iOS」「サーバーと iOS の両方」「iOS と site」 | 開発者が言ったとき。UI テストの全件がかかる PR は、その結果が PR の本文にそろってから（`steward` が見る） |
-| `site/` | `scripts/check site`、CI の `site` | 好みのレビュー、ポリシーの照合 | 無い（下の「知られている漏れ」） | 下の「site」と「iOS と site」 | 開発者が言ったとき |
-| `scripts/` と hook | `scripts/check scripts`（ShellCheck を含む）、CI の `scripts` | 好みのレビュー、ポリシーの照合 | 無い | 下の「道具」 | 開発者が言ったとき |
-| CI のワークフローと設定（`.github/`、`.claude/settings.json`、`.codex/`、`.mcp.json`） | `check.yml` を変えたら全部の対象。ほかは選ばれる対象が無い | 好みのレビュー、ポリシーの照合 | 無い | 下の「道具」 | 開発者が言ったとき |
+| サーバーのコード・テスト | `scripts/check server`、CI の `server` | 好みのレビュー、ポリシーの照合、Spec の軸 | 振る舞いを変えたら `verify-server` | 下の「サーバー」と「サーバーと iOS の両方」 | 開発者が言ったとき |
+| iOS のコード・テスト | `scripts/check ios`、CI の `ios`・`ios-app`・`ios-version`。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストの全件（PR の CI では走らない。`ios/AGENTS.md` の「確かめる」） | 好みのレビュー、ポリシーの照合、Spec の軸 | 振る舞いを変えたら `verify-ios`（Mac のセッションだけ） | 下の「iOS」「サーバーと iOS の両方」「iOS と site」 | 開発者が言ったとき。UI テストの全件がかかる PR は、その結果が PR の本文にそろってから（`steward` が見る） |
+| `site/` | `scripts/check site`、CI の `site` | 好みのレビュー、ポリシーの照合、Spec の軸 | 無い（下の「知られている漏れ」） | 下の「site」と「iOS と site」 | 開発者が言ったとき |
+| `scripts/` と hook | `scripts/check scripts`（ShellCheck を含む）、CI の `scripts` | 好みのレビュー、ポリシーの照合、Spec の軸 | 無い | 下の「道具」 | 開発者が言ったとき |
+| CI のワークフローと設定（`.github/`、`.claude/settings.json`、`.codex/` の設定〈`agents/` を除く〉、`.mcp.json`） | `check.yml` を変えたら全部の対象。ほかは選ばれる対象が無い | 好みのレビュー、ポリシーの照合、Spec の軸 | 無い | 下の「道具」 | 開発者が言ったとき |
 | 依存（作業のブランチで変える） | 依存を置く対象の `scripts/check` と CI のジョブ | 好みのレビュー、ポリシーの照合 | 振る舞いを変えたら、その対象の確かめ | 下の「依存」 | 開発者が言ったとき |
-| エージェントが読む文書（`CODING_STANDARDS.md` の「文書」の置き場） | CI の `scripts` の文書の重なりの検査（`scripts/agent-docs-duplicates`） | 好みのレビュー | 回さない | 下の「文書」 | 開発者が言ったとき |
+| エージェントが読む文書（`CODING_STANDARDS.md` の「文書」の置き場と、`.claude/agents/` を指すだけの `.codex/agents/`） | CI の `scripts` の文書の重なりの検査（`scripts/agent-docs-duplicates`） | 好みのレビュー、Spec の軸 | 回さない | 下の「文書」 | 開発者が言ったとき |
 | そのほかの文書（`GLOSSARY.md`、`DESIGN.md`、`docs/adr/`、`docs/research/`） | `DESIGN.md` を変えたら `scripts/check site`（文字の大きさを比べる）。ほかは無い | 無い | 回さない | 無い | 開発者が言ったとき。`docs/research/` の PR は下の「判断なしに通す変更」 |
 
-照合と確かめの列は、次の条件を各行に当てたもの。好みのレビューは、コード・テスト・依存・エージェントが読む文書を変えたブランチで通す。ポリシーの照合は、コードか依存を変えたブランチで通し、エージェントが読む文書だけを変えたブランチでは通さない。確かめは、アプリかサーバーの振る舞いを変えたブランチで回し、文書だけの変更では回さない。
-
-merge は、どの行でも開発者が言ったとき（「CI が通ったら混ぜて」など）だけにする（`docs/agents/git.md`）。開発者を待たないのは、下の「判断なしに通す変更」の2つだけ。
+merge の決まりは `docs/agents/git.md` にあり、開発者を待たないのは下の「判断なしに通す変更」の2つだけ。
 
 ### ほかに PR の前にすること
 
@@ -39,7 +37,7 @@ merge は、どの行でも開発者が言ったとき（「CI が通ったら�
   - 最低対応版を変えるとき: `ios/AGENTS.md` の「対応する iOS」（2か所をそろえる）
   - 見本の場面を足す・変えるとき: `ios/AGENTS.md` の「見本の場面」（値を LP とそろえ、作り物だけにする）
   - 送り待ちの置き場の形を変えたとき: `docs/agents/ios-mac.md` の「置き場の移行を実機で確かめる」（merge の前に開発者が実機で確かめる）
-  - ヘルスケア・カメラ・通知・写真の読み込みに触れたとき: `docs/agents/ios-release.md` の「実機の確認」（merge のあとに人が確かめる）
+  - ヘルスケア・カメラ・通知・写真の読み込みに触れた PR を出すとき: `docs/agents/ios-release.md`
 - サーバーと iOS の両方
   - 端末とサーバーの両方に置く決めごとを変えるとき: `docs/agents/shared-rules.md`（`requiredPaceLimitPercent` を手で合わせる、「今は片側だけの決めごと」の一覧の抜けを見る、JSON を足したら生成器にも足す）
   - 記録の種類を足す、送り待ちのキーを足す・消すとき: `docs/agents/sync.md` の「記録の種類の足し方」と「置き場の約束」
@@ -53,7 +51,6 @@ merge は、どの行でも開発者が言ったとき（「CI が通ったら�
 - 依存
   - 版を上げるとき: `docs/agents/dependencies.md`
 - 文書
-  - 機能を足した、入口や見え方を変えたとき: 下の「確かめの回し方」の 3（同じ PR で地図を直す）
   - 節を移した・消したとき: `docs/agents/decisions.md` の移し先の表
 
 ### 判断なしに通す変更
