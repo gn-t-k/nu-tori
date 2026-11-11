@@ -1,6 +1,6 @@
 # コーディング規約
 
-コード・テスト・エージェントが読む文書を照らすレビュー役（`docs/agents/review.md` の好みのレビューと、開発者が自分で `/code-review` を呼んだときの Standards の軸）が読む入口。実装役は、書く前に読まなくてよい。
+コードとテストを照らすレビュー役（`docs/agents/review.md` の好みのレビューと、開発者が自分で `/code-review` を呼んだときの Standards の軸）が読む入口。実装役は、書く前に読まなくてよい。
 
 **Why:** 実装役は、調べる・書く・失敗を直すで文脈が埋まっている。差分だけを受け取るレビュー役のほうが、規約を当てる余裕がある（mattpocock/skills の `/retro` の考え）。
 
@@ -13,9 +13,8 @@
   - `.agents/skills/code-review/SKILL.md` の「3. Identify the standards sources」: 臭いの一覧（smell baseline）と、それを当てる決まり。その節だけを読む
   - `docs/agents/languages/<言語>.md`: 言語ごとの当てはめ。変わったファイルの言語のものだけを読む
 - テストのファイル（`*.test.ts`、`testing/` の下、Swift の `*Tests/` の下など）が変わったとき: `docs/agents/testing.md`（テストの好み）
-- エージェントが読む文書（`AGENTS.md`、`CODING_STANDARDS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/`）が変わったとき: `.agents/skills/writing-for-agents/SKILL.md`（その書き方）
 
-どの条件にも当たらないファイルだけのときは、上の文書を読まずに、下の「指摘するもの」の一般論を当てる。
+どの条件にも当たらないファイルだけのときは、上の文書を読まずに、下の「指摘するもの」の一般論を当てる。`docs/agents/review.md` の表で文書の照合がかかる文書は、文書の照合が全体で読んで照らすので、照らさない。
 
 **Why:** 条件は一部の文書の行末にしか無く、レビュー役の定義も差分を見る前に「ここから指す文書を読む」と言っていたので、レビュー役が周ごとに全部を読み直し、1行の差分や Markdown だけの差分にも1周で約4.7万〜11万トークンかかっていた（#929）。
 

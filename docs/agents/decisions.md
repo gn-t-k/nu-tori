@@ -25,6 +25,13 @@ flowchart LR
 - 書き換えない記録や、Issue・PR のコメントが指す `AGENTS.md` の節や、その中の記述が見つからないときは、移し先の表を見る。2026-09-26 に仕様の中身と技術の選択を決定チケットへ移したときの表は「[決定の置き場を Matt の流れに合わせる](https://github.com/gn-t-k/nu-tori/issues/51)」の解決コメント、2026-09-29 に一部の作業でだけ要る働き方を `docs/agents/` へ移したときの表は「[AGENTS.md を整理する](https://github.com/gn-t-k/nu-tori/issues/92)」の解決コメントにある。2026-10-28 に `server/AGENTS.md` の一部の作業でだけ要る節を `docs/agents/server-*.md` と `docs/agents/table-design.md` へ移したときの表は、「[server/AGENTS.md が約60KBあり、server を触るたびに読む出力が大きすぎて退避される](https://github.com/gn-t-k/nu-tori/issues/795#issuecomment-6459443001)」のコメントにある。2026-11-11 に `docs/agents/git.md` の「PR の前のレビュー」と「動かして確かめる」を `docs/agents/review.md` へ移したときの表は、「[レビューと検査の一覧を1つの文書に置き、何にかかるかの正本にする](https://github.com/gn-t-k/nu-tori/issues/988)」の解決コメントにある
 - 用語集は、2026-09-30 に mattpocock/skills に合わせて `CONTEXT.md` から `GLOSSARY.md` に改名した。それより前の記録が指す `CONTEXT.md` は `GLOSSARY.md` と読む
 
+## 置き場の観点
+
+文書の照合（`docs/agents/review.md`）と、工程のゲートでの新しい文脈のレビュー（`docs/agents/gate-review.md`）が、文書をこの観点で照らす。
+
+- どちらが正かを書かずに、1つの決定を2か所に書いている
+- 置き換わった決定を、今の決定として指している
+
 ## 試作の置き場
 
 - `/prototype` の試作は、試作だけのブランチのリポジトリ直下の `prototype/<Issue の番号>-<題>/` に置く。`<題>` は英小文字をハイフンでつなぐ。ブランチは PR にせず、main に入れない。main には確かめた決定だけを残し、試作は一次資料としてブランチに残すため
