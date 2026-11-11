@@ -722,6 +722,9 @@ lint_server() {
 lint_worker_package() {
     local directory="$1" dependencies_heading="$2"
 
+    step "依存の版を固定し、待ち時間の除外を残していないか"
+    check_dependency_versions "$directory"
+
     step "$dependencies_heading"
     (cd "$directory" && pnpm install --frozen-lockfile)
 
@@ -739,6 +742,31 @@ lint_worker_package() {
         (cd "$directory" && pnpm exec oxlint --fix)
     fi
     (cd "$directory" && pnpm exec oxlint)
+}
+
+# 引数: パッケージのディレクトリ（package.json と pnpm-workspace.yaml を置く）
+check_dependency_versions() {
+    local directory="$1" relative="${1#"$root"/}" ranges excluded
+    ranges="$(node -e '
+        const manifest = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+        for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
+            for (const [name, version] of Object.entries(manifest[field] ?? {})) {
+                if (/^[\^~]/u.test(version)) console.log("  " + field + "." + name + ": " + version);
+            }
+        }
+    ' "$directory/package.json")"
+    if [ -n "$ranges" ]; then
+        echo "${relative}/package.json:" >&2
+        echo "$ranges" >&2
+        echo "依存の版は ^・~ の範囲にせず、pnpm add <パッケージ>@<版> で固定する。範囲にすると、lockfile を作り直したときに確かめていない版が入る" >&2
+        return 1
+    fi
+    excluded="$(grep -n minimumReleaseAgeExclude "$directory/package.json" "$directory/pnpm-workspace.yaml" || [ $? -eq 1 ])"
+    if [ -n "$excluded" ]; then
+        echo "${excluded//"$root"\//}" >&2
+        echo "minimumReleaseAgeExclude を消し、公開から1日たった中で最新の版を入れる。除外を残すと、公開されたばかりの版を狙った乗っ取りを避ける待ち時間（minimumReleaseAge）を外すことになる" >&2
+        return 1
+    fi
 }
 
 check_site() {

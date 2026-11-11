@@ -30,6 +30,32 @@ export default {
         return { ClassDeclaration: check, ClassExpression: check };
       },
     },
+    "error-factory-requires-name": {
+      create: (context) => ({
+        CallExpression: (node) => {
+          if (node.callee.type !== "Identifier" || node.callee.name !== "ErrorFactory") {
+            return;
+          }
+          const [options] = node.arguments;
+          // 変数や広げた値から渡すと、name があるかはリントの時点では分からないので数えない
+          if (
+            options !== undefined &&
+            (options.type !== "ObjectExpression" ||
+              options.properties.some(
+                (property) =>
+                  property.type === "SpreadElement" || propertyName(property) === "name",
+              ))
+          ) {
+            return;
+          }
+          context.report({
+            node,
+            message:
+              'ErrorFactory には name を渡す。省くと name の型が string になり、match の { name: "..." } で絞れない',
+          });
+        },
+      }),
+    },
     "no-setup-in-describe": {
       create: (context) => ({
         CallExpression: (node) => {
@@ -325,6 +351,13 @@ const declaredNames = (declaration) =>
     : declaration.id?.type === "Identifier"
       ? [declaration.id.name]
       : [];
+
+const propertyName = (property) =>
+  property.computed
+    ? undefined
+    : property.key.type === "Identifier"
+      ? property.key.name
+      : property.key.value;
 
 const moduleExportName = (node) => (node.type === "Identifier" ? node.name : node.value);
 
