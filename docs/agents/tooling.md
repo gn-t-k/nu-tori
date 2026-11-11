@@ -193,6 +193,10 @@ flowchart LR
 ## CI
 
 - CI は変わったパスでジョブを分け、main のルールセットでは `check.yml` の `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行い、文書（`*.md`）だけの変更ではジョブを飛ばす。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る。どのパスがどの対象に当たるかの決まりは `scripts/check` に1か所だけ置き、`changes` のジョブは PR の差分を `scripts/check --pick-targets` に渡す。比べる範囲と、差分が取れないときにすべてを確かめることは、呼ぶ側が決める。必須にしないワークフロー（デプロイ、`ios-ui-test.yml`）は `paths` で飛ばしてよい
+- ワークフロー（`.github/workflows/` の下のどれでも）と `.github/dependabot.yml` と `.github/actionlint.yaml` と `ios/ci_scripts/` を変えたら、`scripts` のジョブを回す。ジョブの中の `scripts/check scripts` が、ワークフローを actionlint にかけ（`run` の中身は同じ版の ShellCheck に渡す）、`ios/ci_scripts/` のシェルを ShellCheck にかける。actionlint は `dependabot.yml` を読まないので、そこを変えた回は選ばれても検査にはかからない。独自のランナーのラベル（`xcode-27`）は `.github/actionlint.yaml` に書く
+- ワークフローは、先頭に `defaults: run: shell: bash` を置き、`shell:` に bash のほかを書かない。`scripts/workflow-pipefail` が見る
+
+  **Why:** `shell` を指定しない `run` は `bash -e` で動き、`pipefail` が効かない。パイプの前の `gh api` が落ちても、ステップは成功のまま進み、Issue を二重に立てうる不具合が2度出た（#828、#832）。actionlint の ShellCheck はこの抜けを見ない。ジョブの既定にだけ置くと、ジョブを足したときに漏れるので、ワークフローの既定に置く
 - エージェントが読む文書の変更では、文書だけの変更でも `scripts` のジョブを回し、文書のあいだで同じ段落か箇条書きの1項目が重なっていないかを `scripts/agent-docs-duplicates` で見る。どれをエージェントが読む文書とするかは、そのスクリプトにある（#930）
 - GitHub Actions の秘密の値は、main からだけ使える Environment に置く（ADR-0010）
 - ジョブと、そこから呼ぶスクリプトを足す・直すときは、pstack の `principle-make-operations-idempotent` を読む

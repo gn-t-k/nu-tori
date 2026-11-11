@@ -100,8 +100,9 @@ target_files() {
             if [ "$target" = site ]; then paths="$paths|DESIGN\.md\$"; fi
             ;;
         scripts)
-            # skills-lock.json は、文書の重なりを見ないスキルを決める
-            paths="scripts/|\.claude/hooks/|\.agents/skills/verify-[^/]+/scripts/|\.github/workflows/check\.yml\$|skills-lock\.json\$"
+            # skills-lock.json は、文書の重なりを見ないスキルを決める。ワークフローは actionlint（設定は .github/actionlint.yaml）に、ios/ci_scripts/ は ShellCheck にかける。
+            # dependabot.yml は actionlint が読まないが、CI の設定を変えた回にも scripts のジョブを回す（#997）
+            paths="scripts/|\.claude/hooks/|\.agents/skills/verify-[^/]+/scripts/|\.github/workflows/|\.github/dependabot\.yml\$|\.github/actionlint\.yaml\$|ios/ci_scripts/|skills-lock\.json\$"
             ;;
     esac
     # 文書（*.md）だけの変更では、確かめるものが無い。DESIGN.md は確かめに使い、エージェントが読む文書は重なりを見るので残す
@@ -223,7 +224,7 @@ check_ios() {
     missing="$(missing_ui_test_screenshots "$ios"/NuToriUITests/*UITests.swift)"
     if [ -n "$missing" ]; then
         echo "$missing" >&2
-        echo "上のテストの本体で attachScreenshot(of:named:) を呼ぶ（docs/agents/languages/swift.md「道具」）" >&2
+        echo "上のテストの本体で attachScreenshot(of:named:) を呼び、確かめた画面のスクリーンショットを残す。UI テストが落ちたときに、そのときの画面を見られるようにする" >&2
         return 1
     fi
 
@@ -231,14 +232,22 @@ check_ios() {
     missing="$(missing_screen_previews "$ios/NuTori")"
     if [ -n "$missing" ]; then
         echo "$missing" >&2
-        echo "上の画面と同じフォルダに、右のファイルを置く（docs/agents/languages/swift.md「状態ごとのプレビュー」）" >&2
+        echo "上の画面と同じフォルダに、右のファイルを置く。画面の状態ごとの見本を並べ、どの状態の画面もキャンバスで見られるようにする（見本の書き方は docs/agents/languages/swift.md「状態ごとのプレビュー」）" >&2
+        return 1
+    fi
+
+    step "プレビューと UI テストのためのファイルを、ファイルごと #if DEBUG で囲んでいるか"
+    missing="$(debug_only_files_not_wrapped "$ios")"
+    if [ -n "$missing" ]; then
+        echo "$missing" >&2
+        echo "上のファイルの中身全体を、1つの #if DEBUG と #endif で囲む（#else を置かない）。プレビューの見本と UI テストの差し替えを、App Store に出す Release のビルドに入れないため" >&2
         return 1
     fi
 
     step "Xcode のプロジェクトの依存が exactVersion か"
     if grep -A2 'requirement = {' "$ios/NuTori.xcodeproj/project.pbxproj" |
         grep 'kind = ' | grep -v 'kind = exactVersion'; then
-        echo "Swift Package の依存は Exact Version で固定する（docs/agents/languages/swift.md「依存パッケージ」）" >&2
+        echo "Swift Package の依存は Exact Version で固定する。Up to Next Major などの範囲で書くと、Package.resolved を作り直したときに版が黙って変わる（docs/agents/coding-style.md「依存パッケージ」）" >&2
         return 1
     fi
 
@@ -824,12 +833,20 @@ check_scripts() {
     install_shellcheck
     local files=() file
     # node のスクリプトも同じフォルダにあるので、シバンで選ぶ。.agents/skills/ は mattpocock/skills のファイルなので、nu-tori の検証スキル（verify-<アプリ>）の道具だけに当てる
-    for file in "$root"/scripts/* "$root"/.claude/hooks/* "$root"/.agents/skills/verify-*/scripts/*; do
+    for file in "$root"/scripts/* "$root"/.claude/hooks/* "$root"/.agents/skills/verify-*/scripts/* "$root"/ios/ci_scripts/*; do
         if [ -f "$file" ] && head -n 1 "$file" | grep -qE '^#!.*[/ ](ba)?sh$'; then
             files+=("${file#"$root"/}")
         fi
     done
     (cd "$root" && "$shellcheck" "${files[@]}")
+
+    # run の中身は actionlint が同じ版の ShellCheck にかける
+    step "ワークフローの Lint（actionlint ${actionlint_version}）"
+    install_actionlint
+    (cd "$root" && "$actionlint" -shellcheck "$shellcheck")
+    # actionlint の ShellCheck は、shell を指定しない run の pipefail の抜けを見ない（#828、#832）
+    step "ワークフローの run が pipefail の効く shell で動くか"
+    node "$root/scripts/workflow-pipefail" "$root"
 
     # node のスクリプトは依存を持たないので、Node に入っているテストの道具で回す
     step "node のスクリプトのテスト"
@@ -855,7 +872,8 @@ print_usage() {
                引数なしでは回さない。回し方は docs/agents/ios-release.md の「スクリーンショット」
   server       整形、Lint、サーバーを正本にする定数の値、型検査、OpenAPI の文書と byethrow の instruction の写しが最新か、テスト
   site         公開のページ（nu-tori.app）の整形、Lint、型検査、書き出しと、書き出したページを載せた Worker のテストと、合成のコマンドのテスト
-  scripts      scripts/ と .claude/hooks/ と検証スキルの道具のシェルの Lint（ShellCheck）と、node のスクリプトのテスト（scripts/*.test.js）と、
+  scripts      scripts/ と .claude/hooks/ と検証スキルの道具と ios/ci_scripts/ のシェルの Lint（ShellCheck）と、
+               ワークフローの Lint（actionlint と、run が pipefail の効く shell で動くか）と、node のスクリプトのテスト（scripts/*.test.js）と、
                エージェントが読む文書のあいだの同じ段落の重なり（scripts/agent-docs-duplicates）。--fix でも直さない
   --fix        直せるものを直してから確かめる
   --lint       ios と server と site の整形と Lint だけを回す（scripts は Lint とテストと文書の重なりを回す）。対象を省くと、引数なしと同じ選び方をする
@@ -955,6 +973,40 @@ install_shellcheck() {
     shellcheck="$dir/shellcheck"
 }
 
+# 版と SHA-256 を固定した actionlint を、無ければ .tools/ に落とし、パスを actionlint に入れる
+install_actionlint() {
+    local platform sha256
+    case "$(uname -s)-$(uname -m)" in
+        Linux-x86_64)
+            platform=linux_amd64
+            sha256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+            ;;
+        Linux-aarch64)
+            platform=linux_arm64
+            sha256=325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6
+            ;;
+        Darwin-x86_64)
+            platform=darwin_amd64
+            sha256=5b44c3bc2255115c9b69e30efc0fecdf498fdb63c5d58e17084fd5f16324c644
+            ;;
+        Darwin-arm64)
+            platform=darwin_arm64
+            sha256=aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f
+            ;;
+        *)
+            echo "actionlint の配布物が無い環境: $(uname -s)-$(uname -m)" >&2
+            return 1
+            ;;
+    esac
+    local dir="$root/.tools/actionlint-$actionlint_version" asset="actionlint_${actionlint_version}_$platform.tar.gz"
+    if [ ! -x "$dir/actionlint" ]; then
+        download_verified "https://github.com/rhysd/actionlint/releases/download/v$actionlint_version/$asset" "$sha256" "$dir/$asset"
+        tar -xzf "$dir/$asset" -C "$dir" actionlint
+        rm "$dir/$asset"
+    fi
+    actionlint="$dir/actionlint"
+}
+
 download_verified() {
     local url="$1" sha256="$2" file="$3"
     mkdir -p "$(dirname "$file")"
@@ -1003,6 +1055,30 @@ missing_screen_previews() {
         done |
         # <画面> と <画面>Container の両方が同じファイルを求めるので、1行にまとめる
         sort -u -t: -k2,2
+}
+
+# <View>+Previews.swift・<型>+PreviewSample.swift・UITesting/ の下の Swift のファイルのうち、中身全体を1つの #if DEBUG で囲んでいないものを出す。空行と // の行は数えず、最初の行が #if DEBUG で、それを閉じる #endif が最後の行で、そのあいだに同じ深さの #else・#elseif が無いものを囲んだとみなす
+debug_only_files_not_wrapped() {
+    find "$1" -name .build -prune -o -type f \( -name '*+Previews.swift' -o -name '*+PreviewSample.swift' -o -path '*/UITesting/*.swift' \) -print |
+        sort |
+        while IFS= read -r file; do
+            if ! awk '
+                /^[[:space:]]*(\/\/.*)?$/ { next }
+                closed { wrapped = 0; exit }
+                !seen {
+                    seen = 1
+                    wrapped = ($0 ~ /^[[:space:]]*#if[[:space:]]+DEBUG[[:space:]]*(\/\/.*)?$/)
+                    depth = 1
+                    next
+                }
+                /^[[:space:]]*#if[[:space:]]/ { depth++ }
+                depth == 1 && /^[[:space:]]*#(else|elseif)([[:space:]]|$)/ { wrapped = 0 }
+                /^[[:space:]]*#endif([[:space:]]|$)/ && --depth == 0 { closed = 1 }
+                END { exit !(seen && wrapped && closed) }
+            ' "$file"; then
+                echo "${file#"$root"/}"
+            fi
+        done
 }
 
 # いちばん新しい iOS のランタイムの、最初の iPhone のシミュレータの ID
@@ -1129,6 +1205,8 @@ swiftlint_version=0.65.1
 swiftlint=""
 shellcheck_version=v0.11.0
 shellcheck=""
+actionlint_version=1.7.12
+actionlint=""
 ui_test_simulator=""
 # 見本の場面を撮る UI テストのクラス。ふつうの UI テストの回から除き、ios-screenshots でだけ回す
 listing_screenshots_test=ListingScreenshots
