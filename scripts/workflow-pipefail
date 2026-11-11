@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ワークフローの run が pipefail の効く shell で動かないと落とす
-// shell を指定しない run は bash -e で動き、パイプの前の失敗が消える（#828、#832）。shell: bash なら -o pipefail が付くので、ワークフローの既定に置かせる
+// shell を指定しない run は bash -e で動き、パイプの前の失敗が消える（#828、#832）。shell: bash なら -o pipefail が付く
 // ジョブの既定にだけ置くと、ジョブを足したときに漏れるので、ワークフローの既定を求める
 // 依存を持たないため YAML を読まず、字下げからキーの道筋をたどる。ブロックの文字列（run: | の中身）は読み飛ばす
 // 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
@@ -29,7 +29,8 @@ const findProblems = (path, text) => {
   let defaultBash = false;
   for (const { key, value, keyPath, line } of keyLines(text)) {
     if (key === "run" && value !== "") hasRun = true;
-    if (key !== "shell") continue;
+    // run の shell は、既定（defaults.run.shell）かステップ（steps.shell）にだけ書ける。アクションの with: の shell は入力の値なので見ない
+    if (key !== "shell" || !/(^|\.)(run|steps)\.shell$/.test(keyPath)) continue;
     if (value !== "bash") problems.push(`${path}:${line}: shell が bash でない（${value}）。pipefail が効くよう bash にする`);
     if (keyPath === "defaults.run.shell" && value === "bash") defaultBash = true;
   }

@@ -113,6 +113,20 @@ describe("ワークフローの run が pipefail の効く shell で動くか", 
       });
     });
 
+    describe("アクションに shell という名前の入力を渡すとき", () => {
+      let root;
+      let result;
+      before(() => {
+        const withShell = FIND_ISSUE_STEP.replace("      - run: |\n", "      - uses: example/setup@v1\n        with:\n          shell: zsh\n      - run: |\n");
+        ({ root, result } = run({ "a.yml": `name: a\non: push\n${DEFAULT_BASH}${withShell}` }));
+      });
+      after(() => rmSync(root, { recursive: true, force: true }));
+
+      it("通ること", () => {
+        assert.equal(result.status, 0, result.stderr);
+      });
+    });
+
     describe("run の無いワークフローのとき", () => {
       let root;
       let result;

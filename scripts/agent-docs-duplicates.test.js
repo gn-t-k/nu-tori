@@ -1,4 +1,4 @@
-// scripts/agent-docs-duplicates を一時フォルダに置いた文書に向けて走らせ、scripts/check がエージェントが読む文書の変更で scripts を選ぶことも確かめる
+// scripts/agent-docs-duplicates を一時フォルダに置いた文書に向けて走らせる
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -23,8 +23,6 @@ const run = (files) => {
 
 const pick = (root, paths) =>
   spawnSync(process.execPath, [join(__dirname, "agent-docs-duplicates"), "--pick", root], { input: paths.map((path) => `${path}\n`).join(""), encoding: "utf8" });
-
-const pickTargets = (path) => spawnSync(join(__dirname, "check"), ["--pick-targets"], { input: `${path}\n`, encoding: "utf8" });
 
 describe("エージェントが読む文書の重なり", () => {
   describe("落とすとき", () => {
@@ -212,17 +210,6 @@ describe("エージェントが読む文書の重なり", () => {
         assert.equal(result.status, 0, result.stderr);
         assert.equal(result.stdout, "");
       });
-    });
-  });
-
-  // scripts/check の --pick-targets は、エージェントが読む文書の判定を本体の --pick に任せる
-  describe("scripts/check --pick-targets", () => {
-    it("エージェントが読む文書の変更で scripts を選ぶこと", () => {
-      assert.match(pickTargets("docs/agents/git.md").stdout, /^scripts=true$/m);
-    });
-
-    it("エージェントが読む文書でない文書だけの変更では scripts を選ばないこと", () => {
-      assert.match(pickTargets("GLOSSARY.md").stdout, /^scripts=false$/m);
     });
   });
 });

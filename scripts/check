@@ -100,7 +100,8 @@ target_files() {
             if [ "$target" = site ]; then paths="$paths|DESIGN\.md\$"; fi
             ;;
         scripts)
-            # skills-lock.json は、文書の重なりを見ないスキルを決める。ワークフローと dependabot.yml は actionlint（設定は .github/actionlint.yaml）に、ios/ci_scripts/ は ShellCheck にかける
+            # skills-lock.json は、文書の重なりを見ないスキルを決める。ワークフローは actionlint（設定は .github/actionlint.yaml）に、ios/ci_scripts/ は ShellCheck にかける。
+            # dependabot.yml は actionlint が読まないが、CI の設定を変えた回にも scripts のジョブを回す（#997）
             paths="scripts/|\.claude/hooks/|\.agents/skills/verify-[^/]+/scripts/|\.github/workflows/|\.github/dependabot\.yml\$|\.github/actionlint\.yaml\$|ios/ci_scripts/|skills-lock\.json\$"
             ;;
     esac
