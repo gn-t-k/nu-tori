@@ -12,6 +12,11 @@ concurrency:
 permissions:
   contents: read
 
+# shell を指定しない run は bash -e で動き、パイプの前の失敗が消える。bash を指すと -o pipefail が付く（scripts/workflow-pipefail が見る）
+defaults:
+  run:
+    shell: bash
+
 jobs:
   # 必須のチェックを保留のまま残さないよう、ワークフローの paths ではなくジョブの条件で飛ばす（docs/agents/tooling.md）
   changes:
@@ -32,10 +37,7 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
           if ! files="$(git diff --name-only --no-renames "$BASE" "$GITHUB_SHA")"; then
-            echo "ios=true" >> "$GITHUB_OUTPUT"
-            echo "server=true" >> "$GITHUB_OUTPUT"
-            echo "site=true" >> "$GITHUB_OUTPUT"
-            echo "scripts=true" >> "$GITHUB_OUTPUT"
+            printf '%s=true\n' ios server site scripts >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # どのパスがどの対象に当たるかは、手元と同じ決まりを scripts/check に置く

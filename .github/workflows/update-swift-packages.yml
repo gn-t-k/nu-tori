@@ -19,6 +19,11 @@ permissions:
 env:
   OUT: .scratch/swift-updates
 
+# shell を指定しない run は bash -e で動き、パイプの前の失敗が消える。bash を指すと -o pipefail が付く（scripts/workflow-pipefail が見る）
+defaults:
+  run:
+    shell: bash
+
 jobs:
   # 依存のコード（生成器とテスト）を動かすので、App のトークンを渡さない
   prepare:

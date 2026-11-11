@@ -1,0 +1,68 @@
+#!/usr/bin/env node
+// ワークフローの run が pipefail の効く shell で動かないと落とす
+// shell を指定しない run は bash -e で動き、パイプの前の失敗が消える（#828、#832）。shell: bash なら -o pipefail が付くので、ワークフローの既定に置かせる
+// ジョブの既定にだけ置くと、ジョブを足したときに漏れるので、ワークフローの既定を求める
+// 依存を持たないため YAML を読まず、字下げからキーの道筋をたどる。ブロックの文字列（run: | の中身）は読み飛ばす
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const { existsSync, readdirSync, readFileSync } = require("node:fs");
+const { join } = require("node:path");
+
+const main = () => {
+  const args = process.argv.slice(2);
+  if (args.length > 1) {
+    console.error("使い方: scripts/workflow-pipefail [<リポジトリのルート>]");
+    return 2;
+  }
+  const root = args[0] ?? join(__dirname, "..");
+  const dir = join(root, ".github/workflows");
+  const names = existsSync(dir) ? readdirSync(dir).filter((name) => /\.ya?ml$/.test(name)).sort() : [];
+  const problems = names.flatMap((name) => findProblems(`.github/workflows/${name}`, readFileSync(join(dir, name), "utf8")));
+  for (const problem of problems) console.error(problem);
+  return problems.length === 0 ? 0 : 1;
+};
+
+const findProblems = (path, text) => {
+  const problems = [];
+  let hasRun = false;
+  let defaultBash = false;
+  for (const { key, value, keyPath, line } of keyLines(text)) {
+    if (key === "run" && value !== "") hasRun = true;
+    if (key !== "shell") continue;
+    if (value !== "bash") problems.push(`${path}:${line}: shell が bash でない（${value}）。pipefail が効くよう bash にする`);
+    if (keyPath === "defaults.run.shell" && value === "bash") defaultBash = true;
+  }
+  if (hasRun && !defaultBash) {
+    problems.unshift(`${path}: ワークフローの既定の shell が bash でない。pipefail が効くよう、先頭に defaults: run: shell: bash を置く`);
+  }
+  return problems;
+};
+
+// キーのある行を、親からのキーの道筋（a.b.c）とともに出す。列の項目（- key: value）は、- の分だけ深く数える
+const keyLines = (text) => {
+  const result = [];
+  const stack = [];
+  let blockIndent = null;
+  text.split("\n").forEach((raw, index) => {
+    const indent = raw.length - raw.trimStart().length;
+    const content = raw.trim();
+    if (blockIndent !== null) {
+      if (content === "" || indent > blockIndent) return;
+      blockIndent = null;
+    }
+    if (content === "" || content.startsWith("#")) return;
+    const match = /^((?:- +)*)([A-Za-z0-9_-]+):(?:\s+(.*?))?\s*$/.exec(raw.slice(indent));
+    if (!match) return;
+    const keyIndent = indent + match[1].length;
+    const key = match[2];
+    const value = (match[3] ?? "").replace(/\s+#.*$/, "").replace(/^(["'])(.*)\1$/, "$2");
+    while (stack.length > 0 && stack[stack.length - 1].indent >= keyIndent) stack.pop();
+    stack.push({ indent: keyIndent, key });
+    result.push({ key, value, keyPath: stack.map((entry) => entry.key).join("."), line: index + 1 });
+    if (/^[|>][-+0-9]*$/.test(value)) blockIndent = keyIndent;
+  });
+  return result;
+};
+
+process.exitCode = main();

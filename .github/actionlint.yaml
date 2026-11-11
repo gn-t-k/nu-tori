@@ -1,0 +1,5 @@
+# scripts/check scripts が回す actionlint の設定
+self-hosted-runner:
+  # GitHub のプレビューの macOS ランナー（check.yml の ios-app と ios-ui-test.yml）。actionlint の知るラベルに無いので足す。プレビューを抜けてラベルが変わったら直す
+  labels:
+    - xcode-27
