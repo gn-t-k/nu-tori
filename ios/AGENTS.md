@@ -19,7 +19,6 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 - 食事の写真のファイル（`MealPhotos`。置き場は `AppRuntime` が渡す）: 元の写真と送る縮小版は Application Support（バックアップの対象）に、この端末に元の写真が無い食事（ほかの端末で記録した、機種変更のあと）のために取りに行った縮小版は Caches に置く。取りに行った縮小版は、食事かアカウントを消すまで持ち、それより前にシステムが空けたら、次に見るときに取りに行き直す
 - ファイルを足すとき、`project.pbxproj` は直さない（フォルダの同期で拾われる）
 - `ios` の下を探すときは、Grep の道具か `git grep` を使う。`NuToriCore/.build` などのビルドの置き場が数 GB ある。ビルドの置き場は worktree ごとにできるので、worktree を並べて作業するときは、使い終えたものから消す
-- 型検査の厳しさの設定は `NuToriCore/Package.swift`、`SharedRulesGenerator/Package.swift`、`project.pbxproj` の3か所にあるので、そろえる
 - Bundle ID は変えない。App Store Connect に上げたあとは変えられず、サーバーの Sign in with Apple の `aud` もこの値を見る
 
 ## 端末で行うもの
@@ -46,7 +45,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ## 対応する iOS
 
-- 最低対応版を変えるときは、`project.pbxproj` と `NuToriCore/Package.swift` の2か所をそろえる（今の版の理由は「[iOS の最低対応版を 26 に下げる](https://github.com/gn-t-k/nu-tori/issues/86)」の解決コメント）
+- 今の最低対応版の理由は「[iOS の最低対応版を 26 に下げる](https://github.com/gn-t-k/nu-tori/issues/86)」の解決コメント
 - SwiftData の保存は、メインのコンテキストでだけ行う。バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
 - iOS 27 からの API（`ResultsObserver`、`HistoryObserver` など）の代わりに書いたところには、置き換え先の API を1行のコメントで残す。最低対応版を上げたときに探して置き換えるため
 
@@ -83,8 +82,13 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 - 書いたら、まず `scripts/check ios --lint --fix` で整形と Lint だけを回す（数秒〜20秒ほど。全部は4〜5分）。Swift の決まりのうち機械で見分けられるもの（`.swiftlint.yml` の `custom_rules`）はここで落ちるので、通してから全部を回す
 - Linux で `swift` が無いときは、`scripts/install-swift` で入れる
 - Linux では、アプリのビルドを CI の `ios-app` に任せる
-- UI テストは、PR では CI で回さない。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストを回し、コミットと結果を PR の本文に書いてから merge する。Mac のセッションでは自分で `scripts/check ios-ui-test` を回す
-- Linux のセッションでは、PR の先頭のコミットで CI の `ios-app`（アプリのビルド）が通るのを待ってから、次の2つを同時に始め、先に出た結果で進める。そのランの URL か Mac の結果を PR の本文に書く
+- UI テストは、PR では CI で回さない。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストの全件を回し、そのコミットと結果を PR の本文の `## 確かめ` に書いてから merge する。Mac のセッションでは自分で `scripts/check ios-ui-test` を回す
+  - その PR で merge の条件になる UI テストの証拠は、この全件の回1つにする。`verify-ios` の UI テストのある入口も、この回の該当テストを指す
+  - 全件の回がかからない PR（`NuToriCore` のロジックだけを変えた PR など）では、`verify-ios` が該当テストだけを回す
+
+  **Why:** 全件の回と `verify-ios` の該当テストの回の2つを求め、結果を本文の3か所（Evidence、`## 確かめ`、UI テストの結果）に書いていて、同じテストを二度回し、どれが merge の証拠かを読み分ける必要があった（#990）
+
+- Linux のセッションでは、PR の先頭のコミットで CI の `ios-app`（アプリのビルド）が通るのを待ってから、次の2つを同時に始め、先に出た結果で進める。そのランの URL か Mac の結果を PR の本文の `## 確かめ` に書く
   - `gh workflow run ios-ui-test.yml --ref <ブランチ>` を回す。PR の無いブランチでも回せる
   - 開発者に、そのコミットの SHA を添えて、Mac で `scripts/check ios-ui-test` を回すよう頼む。Mac で落ちたら、落ちたテストの名前と失敗の要約を貼ってもらって読む
   - CI の回が落ちたら、`.github/workflows/ios-ui-test.yml` が上げる成果物（失敗の要約とスクリーンショット）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む

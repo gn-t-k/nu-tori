@@ -11,7 +11,7 @@ docs は `server/` の依存の `@praha/byethrow-docs` に入っている。版�
 - Markdown は `server/node_modules/@praha/byethrow-docs/docs/` の下にある（`guide/`: 使い方と良い書き方、`api/`: 関数と型、`examples/`: 例）。Read・Grep・Glob で読んでよい
 - 無ければ `scripts/check server` か `pnpm --dir server install` で依存を入れる
 
-このリポジトリでの書き方は `docs/agents/languages/typescript.md` の「失敗の扱い」と「関数は処理の流れで分ける」が正。docs の例と違うところ（名前空間は `Result` ではなく `R`、分岐は switch ではなく ts-pattern の `match(...).exhaustive()`、自分たちのエラーは `instanceof` ではなく `name` で見分ける）は、そちらに従う。
+このリポジトリでの書き方は `docs/agents/languages/typescript.md` の「失敗の扱い」と「関数は処理の流れで分ける」と、`server/.oxlintrc.json` の規則が正。docs の例と違うところ（名前空間は `Result` ではなく `R`（`byethrow/consistent-namespace`）、分岐は switch ではなく ts-pattern の `match(...).exhaustive()`、自分たちのエラーは `instanceof` ではなく `name` で見分ける）は、そちらに従う。
 
 ## CLI
 

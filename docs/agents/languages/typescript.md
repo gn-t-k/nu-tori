@@ -7,28 +7,13 @@
 ### 道具
 
 - 型検査は `tsc`（TypeScript 7）、Lint は oxlint（型の情報を使うルールを含む）、整形は oxfmt。どれも `scripts/check` から呼ぶ
-- 好みのうち機械で確かめられるものは、oxlint のルールにして `.oxlintrc.json` で有効にする。組み込みのルールに無いものは、oxlint の JS プラグインで独自のルールを書く
-
-### 型検査の前提
-
-- tsconfig は `@tsconfig/strictest` を継承し、`moduleResolution` は `Bundler` にする（拡張子なしの `./index` やディレクトリの import はこれを前提にする）。このファイルの型の話は、そこで有効になる `strict`、`exactOptionalPropertyTypes`、`noImplicitReturns` などを前提にする
-
-### コードを説明する情報
-
-- 文を途中で折り返したコメント（「、」や助詞で終わり、次の行のコメントへ続く）は、`.oxlintrc.json` の `nu-tori/no-wrapped-comment` が落とす
-
-### 関数はアロー関数で書く
-
-- 関数は `const functionName = () => {}` で書く
-- `function` キーワードは、それでしか書けないもの（ジェネレーター関数など）にだけ使う
+- 好みのうち機械で確かめられるものは、oxlint のルールにして `.oxlintrc.json` で有効にし、この文書には書かない。組み込みのルールに無いものは、oxlint の JS プラグインで独自のルールを書く。理由は、独自のルールならメッセージに、組み込みのルールなら `.oxlintrc.json` のコメントに書く
 
 ### ファイルと公開するもの
 
 - 公開するものは export で数える
-- ファイル名は export する名前のケバブケースにする（`compute-weight-trend.ts` → `export const computeWeightTrend`、`weight-record-store.ts` → `export type WeightRecordStore`）。export する名前のどれとも合わないファイルは、`.oxlintrc.json` の `nu-tori/filename-matches-export` が落とす
 - mock のファイル（`mockXxxOk` と `mockXxxError` を対で export する）と、再 export だけの `index.ts`・`testing/index.ts` は、「1つのファイルから1つ」を置き換える。関数と一緒に export するエラーのクラスは「失敗の扱い」
 - 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/` のディレクトリにし、入口の `foo/index.ts` から再 export する（`foo/foo.ts`、`foo/foo.test.ts`、`foo/foo.mock.ts` を並べる）
-- `foo/` の外からは入口を通して import する。`index.ts` が再 export しているファイルを外から直に import すると、`.oxlintrc.json` の `nu-tori/import-through-index` が落とす
 
 ### ファイルの中はトップダウン
 
@@ -51,15 +36,13 @@ type CreateState = "empty" | "duplicate" | "creatable";
 
 - タグ付きユニオンと失敗を1つの関数で受けるときは、ts-pattern の `match(...)` ですべての場合を書き、`.exhaustive()` で閉じる。場合を足したときの漏れが型エラーになる
 - 自分たちのユニオンには `.otherwise()` を使わない。外から来る値（Apple の通知の種類の文字列など）を分けるときだけ使ってよい
-- switch は使わない（`.oxlintrc.json` の `nu-tori/no-switch-statement`）
 
 ### 失敗の扱い
 
 - 呼び出し側が失敗の種類によって振る舞いを変えるもの（受け口で状態コードを変える、など）は、`@praha/byethrow` の Result で返す。基盤の障害と設定の誤りは throw し、受け止めずに Sentry に任せる
-- byethrow は `import { R } from "@praha/byethrow"` で読み込み、`R` で書く。使い方は skill の `byethrow` で docs を引く
+- byethrow の使い方は skill の `byethrow` で docs を引く
 - Result は `R.pipe` の中で byethrow の道具（`andThen`・`map`・`mapError`・`orElse`・`andThrough`・`do`／`bind`・`sequence`／`collect` など）でつなぐ。値と失敗を取り出すのは、受け口で応答に直すところだけにする
-- エラーのクラスは、Result の失敗にするものも throw するものも `@praha/error-factory` の `ErrorFactory` で作り、`Error` を直に継がない（`.oxlintrc.json` の `nu-tori/no-extends-error`）。独自のクラスを作るのは、呼び出し側かテストが見分けるときだけにし、見分けないものは `new Error(...)` にする
-- `ErrorFactory` の `name` は省かない。省くと `name` の型が `string` になり、`match` の `{ name: "..." }` で絞れない
+- エラーのクラスは、Result の失敗にするものも throw するものも `@praha/error-factory` の `ErrorFactory` で作る。独自のクラスを作るのは、呼び出し側かテストが見分けるときだけにし、見分けないものは `new Error(...)` にする
 - 自分たちのエラーは `name` で見分け、`instanceof` を使わない（Durable Object を越えると効かない。`server/AGENTS.md` の「層」）。テストで throw を確かめる `rejects.toThrow(クラス)` は除く
 - その関数だけが返す・投げるエラーは、関数と同じファイルの下に置き、関数と一緒に export する。「1つのファイルから1つ」を置き換える。2つ以上の関数が返すようになったら、`{エラー名のケバブケース}.ts` に切り出す
 - 関数の失敗のユニオンには名前を付けず、戻り値の型に直に書く。呼び出し側で型が要るときは `R.InferFailure<typeof 関数>` で取り出す
@@ -76,7 +59,7 @@ export class AppleAuthorizationCodeRejectedError extends ErrorFactory({
 }) {}
 ```
 
-- 外部のライブラリが投げるもののうち一部だけを Result の失敗にするときは、Promise の `.then` の2つ目の引数で分け、ほかは throw し直す。`R.try` の `catch` の中では throw できない（`byethrow/no-throw-in-callback`）。外部のライブラリのエラーは `instanceof` で見分けてよい
+- 外部のライブラリが投げるもののうち一部だけを Result の失敗にするときは、Promise の `.then` の2つ目の引数で分け、ほかは throw し直す（`R.try` の `catch` の中で throw し直すと、`byethrow/no-throw-in-callback` が落とす）。外部のライブラリのエラーは `instanceof` で見分けてよい
 
 ```ts
 authentication.api.signInSocial(...).then(
@@ -103,16 +86,11 @@ type Options = { formatProgress?: (progress: Progress) => string };
 type Options = { formatProgress: (progress: Progress) => string };
 ```
 
-### キャストのいらない形を探す
-
-- キャストは `as`（と同じ意味の `<T>x`）を指す。`as const` は型を狭めるだけなので含めない
-- 非 null の断言（`x!`）もキャストと同じく型の食い違いを隠すので使わない（`.oxlintrc.json` の `typescript/no-non-null-assertion`）。無いはずの値は、無ければ投げて型を絞る
-
 ### 依存パッケージ
 
-- パッケージは `pnpm add <パッケージ>@<版>`（開発用なら `pnpm add -D <パッケージ>@<版>`）で足し、`package.json` を直接書き換えない。`^` や `~` の範囲指定にしない
+- パッケージは `pnpm add <パッケージ>@<版>`（開発用なら `pnpm add -D <パッケージ>@<版>`）で足し、`package.json` を直接書き換えない
 - 最新の版は `npm view <パッケージ> version` で確かめる
-- 公開から1日たっていない版は、pnpm の既定の待ち時間（`minimumReleaseAge`）にかかる。その版は待ち、1日たった中で最新の版を入れる。pnpm が足す除外（`minimumReleaseAgeExclude`）は残さない（公開されたばかりの版を狙った乗っ取りを避ける守りを外すことになるため）
+- 公開から1日たっていない版は、pnpm の既定の待ち時間（`minimumReleaseAge`）にかかる。その版は待ち、1日たった中で最新の版を入れる
 
 ## テスト
 
