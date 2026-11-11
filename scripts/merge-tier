@@ -125,6 +125,7 @@ const GATES = [
   {
     name: "壊れたら気づく道具",
     paths: [
+      // deploy.yml は本番へも出すが、出したあとの /health と e2e を持つので、こちらに置く
       ".github/workflows/deploy.yml",
       ".github/workflows/ios-ui-test.yml",
       ".github/workflows/production-alerts.yml",
@@ -133,7 +134,7 @@ const GATES = [
       "scripts/sentry",
     ],
   },
-  // 1段目はサーバーに出るコードを変えない前提で revert で戻すので、merge すると本番へ出すものは入れない
+  // 1段目は本番へ出るもの（サーバーと site）を変えない前提で revert で戻すので、merge すると本番へ出す道具は入れない
   { name: "本番へ出すもの", paths: [".github/workflows/deploy-worker.yml", ".github/workflows/deploy-site.yml"] },
   { name: "用語・見た目・覆しにくい決定", paths: ["GLOSSARY.md", "DESIGN.md", "docs/adr/"] },
 ];
