@@ -1,0 +1,162 @@
+#!/usr/bin/env node
+// PR の差分のパスから、エージェントが merge してよい振る舞いを変えない変更（1段目）かを決める（#1000）
+// 実装役が自分で決めないよう、当たるかはここだけで決める。merge の条件は docs/agents/review.md の「判断なしに通す変更」
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const { execFileSync, spawnSync } = require("node:child_process");
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
+
+const root = join(__dirname, "..");
+
+const main = () => {
+  const args = process.argv.slice(2);
+  if (args.length > 1 || (args[0]?.startsWith("-") && !["--stdin", "--list"].includes(args[0]))) {
+    console.error("使い方: scripts/merge-tier [<マージ先のブランチ>]");
+    console.error("       scripts/merge-tier --stdin < <git diff --name-status --no-renames の出力>");
+    console.error("       scripts/merge-tier --list");
+    console.error("  引数なし  origin/main から分かれたあとの、このブランチのコミットの差分で決める。1行目が 1段目・待つ・調べもの のどれか");
+    console.error("  --list    1段目に入れないパスを、ゲートごとに PR の本文に貼れる形で出す");
+    return 2;
+  }
+  if (args[0] === "--list") {
+    for (const { name, paths } of GATES) console.log(`- ${name}: ${paths.map((path) => `\`${path}\``).join("、")}`);
+    return 0;
+  }
+  if (args[0] === "--stdin") return report(parseNameStatus(readFileSync(0, "utf8")));
+  // 移したファイルは、移す前のパスでもゲートに当たるかを見るので、消したと足したの2つで出す
+  const diff = execFileSync("git", ["diff", "--name-status", "--no-renames", `origin/${args[0] ?? "main"}...HEAD`], { encoding: "utf8" });
+  return report(parseNameStatus(diff));
+};
+
+const parseNameStatus = (text) =>
+  text
+    .split("\n")
+    .filter((line) => line.trim() !== "")
+    .map((line) => {
+      const [status, path] = line.split("\t");
+      return { status: status[0], path };
+    });
+
+const report = (changes) => {
+  const agentDocuments = pickAgentDocuments(changes.map(({ path }) => path));
+  const classified = changes.map((change) => ({ ...change, ...classify(change, agentDocuments) }));
+  const verdict = verdictOf(classified);
+  console.log(verdict);
+  if (verdict === "調べもの") {
+    console.log("  1段目の条件ではなく、docs/agents/issue-tracker.md の「調べもののチケットを終える」のとおり、CI が通ったら merge する");
+  }
+  if (classified.length === 0) console.log("  差分が無い");
+  for (const { status, path, reason } of classified) console.log(`  ${status}\t${path}\t${reason}`);
+  return 0;
+};
+
+// 1段目に入れないもの。ゲートを弱める変更や、用語・見た目・覆しにくい決定そのものは、開発者が merge を言う。
+// 末尾が / のものはフォルダの下の全部、ほかはそのファイルだけに当たる。足すときは、テストの「待つと返すとき」にも足す
+const GATES = [
+  {
+    name: "検査を決めるもの",
+    paths: [
+      "scripts/check",
+      "scripts/check.test.js",
+      "scripts/agent-docs-duplicates",
+      "scripts/agent-docs-duplicates.test.js",
+      "scripts/workflow-pipefail",
+      "scripts/workflow-pipefail.test.js",
+      "scripts/check-app-version",
+      "scripts/check-app-version.test.js",
+      ".github/actionlint.yaml",
+      ".github/workflows/check.yml",
+      ".github/workflows/dependency-pr.yml",
+      // ios/・server/・site/ の下の lint の設定と規則は、プロダクトのコードとしても待つ
+      "ios/.swift-format",
+      "ios/.swiftlint.yml",
+      "server/.oxfmtrc.json",
+      "server/.oxlintrc.json",
+      "server/oxlint-plugin.js",
+      "site/.oxfmtrc.json",
+      "site/.oxlintrc.json",
+    ],
+  },
+  {
+    name: "照合を決めるもの",
+    paths: [
+      ".claude/agents/",
+      ".codex/agents/",
+      "CODING_STANDARDS.md",
+      "docs/agents/review.md",
+      ".agents/skills/steward/",
+      // 仕様の照合は /code-review の Spec の軸で、skills-lock.json で入れる
+      ".agents/skills/code-review/",
+      "skills-lock.json",
+    ],
+  },
+  {
+    name: "照合が照らす決まりを書いた文書",
+    paths: ["docs/agents/privacy.md", "docs/agents/coding-style.md", "docs/agents/languages/", "docs/agents/testing.md"],
+  },
+  {
+    name: "merge を決めるもの",
+    paths: [
+      "scripts/merge-tier",
+      "scripts/merge-tier.test.js",
+      ".claude/settings.json",
+      ".claude/hooks/",
+      "docs/agents/git.md",
+      "docs/agents/issue-tracker.md",
+      "docs/agents/dependencies.md",
+    ],
+  },
+  {
+    name: "壊れたら気づく道具",
+    paths: [".github/workflows/deploy.yml", ".github/workflows/ios-ui-test.yml", ".github/workflows/production-alerts.yml", "scripts/production-alerts"],
+  },
+  { name: "用語・見た目・覆しにくい決定", paths: ["GLOSSARY.md", "DESIGN.md", "docs/adr/"] },
+];
+
+const verdictOf = (classified) => {
+  if (classified.length === 0) return "待つ";
+  if (classified.every(({ tier }) => tier === "調べもの")) return "調べもの";
+  return classified.every(({ tier }) => tier === "1段目") ? "1段目" : "待つ";
+};
+
+const matches = (path, gatePath) => (gatePath.endsWith("/") ? path.startsWith(gatePath) : path === gatePath);
+
+const classify = ({ status, path }, agentDocuments) => {
+  const gate = GATES.find(({ paths }) => paths.some((gatePath) => matches(path, gatePath)));
+  if (gate !== undefined) return { tier: "待つ", reason: `1段目に入れないもの（${gate.name}）` };
+  // 調べものの PR は今の決まりのままにする。ほかと一緒に変えたときは、1段目にも調べものにも当たらない
+  if (path.startsWith("docs/research/")) return { tier: "調べもの", reason: "調べもの" };
+  if (agentDocuments.has(path)) return { tier: "1段目", reason: "エージェントが読む文書" };
+  if (isTest(path)) {
+    // 既存のテストを書き換える・消すと、守っていた振る舞いが変わりうるので、足すだけを1段目にする
+    if (status === "A") return { tier: "1段目", reason: "テストを足すだけ" };
+    return { tier: "待つ", reason: "既存のテストを書き換える・消す" };
+  }
+  if (TOOL_ROOTS.some((toolRoot) => path === toolRoot || path.startsWith(`${toolRoot}/`))) {
+    return { tier: "1段目", reason: "scripts/・CI・道具" };
+  }
+  return { tier: "待つ", reason: "1段目に当たらない" };
+};
+
+// 道具の置き場。サーバーに出るコードもアプリも変えない
+const TOOL_ROOTS = ["scripts", ".github", ".claude", ".agents", ".codex", ".cursor", ".mobilebuildmcp", ".mcp.json", "pstack-lock.json"];
+
+// テストのファイルの置き場は CODING_STANDARDS.md の「文書」のテストの条件と同じ。scripts/ のテストは道具として見る
+const isTest = (path) =>
+  /^(server|site)\/.*\.test\.tsx?$/.test(path) ||
+  /^(server|site)\/(.+\/)?testing\//.test(path) ||
+  /^ios\/(NuToriCore\/Tests|NuToriTests|NuToriUITests)\//.test(path);
+
+// どれがエージェントが読む文書かは、scripts/agent-docs-duplicates が決める（scripts/check と同じ口を使う）
+const pickAgentDocuments = (paths) => {
+  const result = spawnSync(process.execPath, [join(root, "scripts/agent-docs-duplicates"), "--pick", root], {
+    input: paths.join("\n"),
+    encoding: "utf8",
+  });
+  if (result.status !== 0) throw new Error(`scripts/agent-docs-duplicates --pick が落ちた: ${result.stderr}`);
+  return new Set(result.stdout.split("\n").filter((line) => line !== ""));
+};
+
+process.exitCode = main();
