@@ -61,7 +61,7 @@ custom_rules:
     name: "@Test の表示名は「〜こと」"
     regex: "@Test(?!\\(\\s*\"[^\"]*こと\")"
     included: [".*Tests\\.swift"]
-    message: "@Test(\"〜こと\") の形で振る舞いを書く（docs/agents/testing.md「テストの構造」）"
+    message: "@Test(\"〜こと\") の形で、確かめる振る舞いを書く。条件は @Suite の名前に書くので、並べると振る舞いの一覧として読める"
     severity: error
   exact_package_version:
     name: "依存は exact: で固定する"

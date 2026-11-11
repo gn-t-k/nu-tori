@@ -751,14 +751,14 @@ check_dependency_versions() {
         const manifest = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
         for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
             for (const [name, version] of Object.entries(manifest[field] ?? {})) {
-                if (/^[\^~]/u.test(version)) console.log("  " + field + "." + name + ": " + version);
+                if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/u.test(version)) console.log("  " + field + "." + name + ": " + version);
             }
         }
     ' "$directory/package.json")"
     if [ -n "$ranges" ]; then
         echo "${relative}/package.json:" >&2
         echo "$ranges" >&2
-        echo "依存の版は ^・~ の範囲にせず、pnpm add <パッケージ>@<版> で固定する。範囲にすると、lockfile を作り直したときに確かめていない版が入る" >&2
+        echo "依存の版は ^・~ などの範囲にせず、pnpm add <パッケージ>@<版> で 1.2.3 の形に固定する。範囲にすると、lockfile を作り直したときに確かめていない版が入る" >&2
         return 1
     fi
     excluded="$(grep -n minimumReleaseAgeExclude "$directory/package.json" "$directory/pnpm-workspace.yaml" || [ $? -eq 1 ])"

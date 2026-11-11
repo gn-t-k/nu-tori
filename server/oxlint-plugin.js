@@ -1,4 +1,4 @@
-// 組み込みのルールで確かめられない好み（docs/agents/languages/typescript.md）を確かめる
+// 組み込みのルールで確かめられない好みを確かめる。決まりの理由は、文書でなく各ルールのメッセージに書く
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -11,7 +11,7 @@ export default {
           context.report({
             node,
             message:
-              "switch は使わず、ts-pattern の match(...).exhaustive() で分ける（docs/agents/languages/typescript.md「関数は処理の流れで分ける」）",
+              "switch は使わず、ts-pattern の match(...).exhaustive() で分ける。switch は場合を足したときの漏れが型エラーにならない",
           });
         },
       }),
@@ -134,7 +134,7 @@ export default {
             context.report({
               node: node.arguments[0],
               message:
-                "テストの名前は「〜こと」の形で振る舞いを書く。後ろに「（…）」の補足を付けてよい（docs/agents/testing.md「テストの構造」）",
+                "テストの名前は「〜こと」の形で、確かめる振る舞いを書く。条件は describe の名前に書くので、並べると振る舞いの一覧として読める。後ろに「（…）」の補足を付けてよい",
             });
           }
         },
@@ -170,7 +170,7 @@ export default {
           }
           context.report({
             node,
-            message: `ファイル名「${fileName}」を、export する名前（${names.join("、")}）のどれかのケバブケースにする（docs/agents/languages/typescript.md「ファイルと公開するもの」）`,
+            message: `ファイル名「${fileName}」を、export する名前（${names.join("、")}）のどれかのケバブケースにする（compute-weight-trend.ts → computeWeightTrend）。1つのファイルから出すものの決まりは docs/agents/languages/typescript.md「ファイルと公開するもの」`,
           });
         },
       }),
