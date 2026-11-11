@@ -20,7 +20,7 @@ PR を出す前と PR に push する前に、ブランチの変更に何がか�
 | `scripts/` と hook | `scripts/check scripts`（ShellCheck を含む）、CI の `scripts` | 好みのレビュー、ポリシーの照合、Spec の軸 | 無い | 下の「道具」 | 開発者が言ったとき |
 | CI のワークフローと設定（`.github/`、`.claude/settings.json`、`.codex/` の設定〈`agents/` を除く〉、`.mcp.json`） | `check.yml` を変えたら全部の対象。ほかは選ばれる対象が無い | 好みのレビュー、ポリシーの照合、Spec の軸 | 無い | 下の「道具」 | 開発者が言ったとき |
 | 依存（作業のブランチで変える） | 依存を置く対象の `scripts/check` と CI のジョブ | 好みのレビュー、ポリシーの照合、Spec の軸 | 振る舞いを変えたら、その対象の確かめ | 下の「依存」 | 開発者が言ったとき |
-| エージェントが読む文書（`AGENTS.md`〈ルートと各ディレクトリ〉、`CODING_STANDARDS.md`、`docs/agents/`、`.agents/skills/`、`.claude/skills/`、`.claude/agents/` と、`.claude/agents/` を指すだけの `.codex/agents/`。`skills-lock.json` にある skill は外から取り込んで直さないので除く） | CI の `scripts` の文書の重なりの検査（`scripts/agent-docs-duplicates`） | 文書の照合、Spec の軸 | 回さない | 下の「文書」 | 開発者が言ったとき |
+| エージェントが読む文書（`scripts/agent-docs-duplicates` がエージェントが読む文書とするものと、`.claude/agents/` を指すだけの `.codex/agents/`） | CI の `scripts` の文書の重なりの検査（`scripts/agent-docs-duplicates`） | 文書の照合、Spec の軸 | 回さない | 下の「文書」 | 開発者が言ったとき |
 | `GLOSSARY.md`、`DESIGN.md` | `DESIGN.md` を変えたら `scripts/check site`（文字の大きさを比べる）。ほかは無い | 文書の照合 | 回さない | 無い | 開発者が言ったとき |
 | 書き換えない記録（`docs/adr/`、`docs/research/`） | 無い | 無い | 回さない | 無い | 開発者が言ったとき。`docs/research/` の PR は下の「判断なしに通す変更」 |
 
@@ -96,9 +96,9 @@ PR を出す前と、PR に push する前に、上の表でブランチの変�
 
 ### 文書の照合
 
-サブエージェントは `docs-review` で、照らす範囲で変わった文書を全体で読み、`writing-for-agents` と `docs/agents/decisions.md` の「置き場の観点」に照らす。2周目で挙がった箇所のうち、言い回し・指す先・並び順のようにその場で閉じるものは直して、照らさずに push する。働き方や決定の置き場を変えるものは直さずに PR の本文に書き、開発者の判断を待つ。
+サブエージェントは `docs-review` で、照らす範囲で変わった文書を全体で読み、`writing-for-agents` と `docs/agents/decisions.md` の「置き場の観点」に照らす。照らす範囲の外の行への指摘は、1周目では挙げ、2周目では、直した分と重なるか食い違う行のものだけを挙げる。2周目で挙がった箇所のうち、言い回し・指す先・並び順のようにその場で閉じるものは直して、照らさずに push する。働き方や決定の置き場を変えるものは直さずに PR の本文に書き、開発者の判断を待つ。
 
-**Why:** 好みのレビューが差分を `writing-for-agents` に照らしたあとに、どの文書にも無い「writing-for-agents の観点のレビュー」が文書の全体を読み、毎回1〜11件を足していた。重複や食い違いは、差分だけを読むレビューでは見つからない。照らす役を1つにし、好みのレビューは文書を見ない（#991）。
+**Why:** 好みのレビューが差分を `writing-for-agents` に照らしたあとに、どの文書にも無い「writing-for-agents の観点のレビュー」が文書の全体を読み、毎回1〜11件を足していた。重複や食い違いは、差分だけを読むレビューでは見つからないので、範囲の外の行も挙げる。照らす役を1つにし、好みのレビューは文書を見ない（#991）。
 
 ## 確かめの回し方
 
