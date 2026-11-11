@@ -82,8 +82,13 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 - 書いたら、まず `scripts/check ios --lint --fix` で整形と Lint だけを回す（数秒〜20秒ほど。全部は4〜5分）。Swift の決まりのうち機械で見分けられるもの（`.swiftlint.yml` の `custom_rules`）はここで落ちるので、通してから全部を回す
 - Linux で `swift` が無いときは、`scripts/install-swift` で入れる
 - Linux では、アプリのビルドを CI の `ios-app` に任せる
-- UI テストは、PR では CI で回さない。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストを回し、コミットと結果を PR の本文に書いてから merge する。Mac のセッションでは自分で `scripts/check ios-ui-test` を回す
-- Linux のセッションでは、PR の先頭のコミットで CI の `ios-app`（アプリのビルド）が通るのを待ってから、次の2つを同時に始め、先に出た結果で進める。そのランの URL か Mac の結果を PR の本文に書く
+- UI テストは、PR では CI で回さない。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストの全件を回し、そのコミットと結果を PR の本文の `## 確かめ` に書いてから merge する。Mac のセッションでは自分で `scripts/check ios-ui-test` を回す
+  - その PR で merge の条件になる UI テストの証拠は、この全件の回1つにする。`verify-ios` の UI テストのある入口も、この回の該当テストを指す
+  - 全件の回がかからない PR（`NuToriCore` のロジックだけを変えた PR など）では、`verify-ios` が該当テストだけを回す
+
+  **Why:** 全件の回と `verify-ios` の該当テストの回の2つを求め、結果を本文の3か所（Evidence、`## 確かめ`、UI テストの結果）に書いていて、同じテストを二度回し、どれが merge の証拠かを読み分ける必要があった（#990）
+
+- Linux のセッションでは、PR の先頭のコミットで CI の `ios-app`（アプリのビルド）が通るのを待ってから、次の2つを同時に始め、先に出た結果で進める。そのランの URL か Mac の結果を PR の本文の `## 確かめ` に書く
   - `gh workflow run ios-ui-test.yml --ref <ブランチ>` を回す。PR の無いブランチでも回せる
   - 開発者に、そのコミットの SHA を添えて、Mac で `scripts/check ios-ui-test` を回すよう頼む。Mac で落ちたら、落ちたテストの名前と失敗の要約を貼ってもらって読む
   - CI の回が落ちたら、`.github/workflows/ios-ui-test.yml` が上げる成果物（失敗の要約とスクリーンショット）を `gh api repos/gn-t-k/nu-tori/actions/artifacts/<ID>/zip` で落として読む

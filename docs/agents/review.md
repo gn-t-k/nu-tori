@@ -16,7 +16,7 @@ PR を出す前と PR に push する前に、ブランチの変更に何がか�
 | 変更の種類 | 検査 | 照合 | 確かめ | ほかに PR の前にすること | merge の条件 |
 | --- | --- | --- | --- | --- | --- |
 | サーバーのコード・テスト | `scripts/check server`、CI の `server` | 好みのレビュー、ポリシーの照合、仕様の照合 | 振る舞いを変えたら `verify-server` | 下の「サーバー」と「サーバーと iOS の両方」 | 開発者が言ったとき |
-| iOS のコード・テスト | `scripts/check ios`、CI の `ios`・`ios-app`・`ios-version`。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストの全件（PR の CI では走らない。`ios/AGENTS.md` の「確かめる」） | 好みのレビュー、ポリシーの照合、仕様の照合 | 振る舞いを変えたら `verify-ios`（Mac のセッションだけ） | 下の「iOS」「サーバーと iOS の両方」「iOS と site」 | 開発者が言ったとき。UI テストの全件がかかる PR は、その結果が PR の本文にそろってから（`steward` が見る） |
+| iOS のコード・テスト | `scripts/check ios`、CI の `ios`・`ios-app`・`ios-version`。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストの全件（PR の CI では走らない。`ios/AGENTS.md` の「確かめる」） | 好みのレビュー、ポリシーの照合、仕様の照合 | 振る舞いを変えたら `verify-ios`（Mac のセッションだけ） | 下の「iOS」「サーバーと iOS の両方」「iOS と site」 | 開発者が言ったとき。UI テストの全件がかかる PR は、その結果が PR の本文の `## 確かめ` にそろってから（`steward` が見る） |
 | `site/` | `scripts/check site`、CI の `site` | 好みのレビュー、ポリシーの照合、仕様の照合 | 無い（下の「知られている漏れ」） | 下の「site」と「iOS と site」 | 開発者が言ったとき |
 | `scripts/` と hook | `scripts/check scripts`（ShellCheck を含む）、CI の `scripts` | 好みのレビュー、ポリシーの照合、仕様の照合 | 無い | 下の「道具」 | 開発者が言ったとき |
 | CI のワークフローと設定（`.github/`、`.claude/settings.json`、`.codex/` の設定〈`agents/` を除く〉、`.mcp.json`） | `check.yml` を変えたら全部の対象。ほかは選ばれる対象が無い | 好みのレビュー、ポリシーの照合、仕様の照合 | 無い | 下の「道具」 | 開発者が言ったとき |
@@ -117,7 +117,7 @@ PR を出す前と、PR に push する前に、上の表でブランチの変�
 1. 差分から、触れた機能を地図の索引（`.agents/skills/verify-<アプリ>/features/README.md`）で引く
 2. その機能のファイルにある入口をすべて通す
 3. 機能を足した、入口や見え方を変えたときは、同じ PR で地図を直す（機能のファイルの形は `.agents/skills/verify-<アプリ>/MAP-FORMAT.md`）
-4. PR の本文の `## 確かめ` に、機能と入口ごとに、した操作と見えた結果と、確かめたコミットを書く
+4. PR の本文の `## 確かめ` に、機能と入口ごとに、した操作と見えた結果と、確かめたコミットを書く。UI テストの全件の回がかかる PR で書くものは `ios/AGENTS.md` の「確かめる」
 5. 動かせない入口は「確かめていない」と書き、どこで確かめるかを書く。確かめる場所は、各 `verify-<アプリ>` スキルの「確かめられないとき」にある
 
 main や前のブランチを取り込んだだけの push と、`/implement-spec` の draft PR にチケットを取り込む push では回さない（下の「`/implement-spec` の draft PR」）。
