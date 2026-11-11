@@ -59,7 +59,7 @@ export class AppleAuthorizationCodeRejectedError extends ErrorFactory({
 }) {}
 ```
 
-- 外部のライブラリが投げるもののうち一部だけを Result の失敗にするときは、Promise の `.then` の2つ目の引数で分け、ほかは throw し直す（`R.try` の `catch` の中では throw し直せない）。外部のライブラリのエラーは `instanceof` で見分けてよい
+- 外部のライブラリが投げるもののうち一部だけを Result の失敗にするときは、Promise の `.then` の2つ目の引数で分け、ほかは throw し直す（`R.try` の `catch` の中で throw し直すと、`byethrow/no-throw-in-callback` が落とす）。外部のライブラリのエラーは `instanceof` で見分けてよい
 
 ```ts
 authentication.api.signInSocial(...).then(

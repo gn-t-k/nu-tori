@@ -170,7 +170,7 @@ export default {
           }
           context.report({
             node,
-            message: `ファイル名「${fileName}」を、export する名前（${names.join("、")}）のどれかのケバブケースにする（compute-weight-trend.ts → computeWeightTrend）。1つのファイルから出すものの決まりは docs/agents/languages/typescript.md「ファイルと公開するもの」`,
+            message: `ファイル名「${fileName}」を、export する名前（${names.join("、")}）のどれかのケバブケースにする（compute-weight-trend.ts → computeWeightTrend）。ファイル名から、中で公開するものを引けるようにするため。1つのファイルから出すものの決まりは docs/agents/languages/typescript.md「ファイルと公開するもの」`,
           });
         },
       }),
