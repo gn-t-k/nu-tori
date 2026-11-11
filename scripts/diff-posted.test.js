@@ -31,7 +31,7 @@ describe("書いた本文を元の本文と比べること", () => {
     });
     after(() => rmSync(dir, { recursive: true, force: true }));
 
-    it("同じと出して 0 で終わること", () => {
+    it("0 で終わること", () => {
       assert.equal(result.status, 0, result.stdout);
     });
 
