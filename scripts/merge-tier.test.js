@@ -37,8 +37,8 @@ describe("差分のパスから merge の段を決めること", () => {
 
     it("scripts/ と CI と道具だけなら1段目と返すこと", () => {
       const { verdict } = judge(
-        "M\tscripts/sentry",
-        "A\tscripts/sentry.test.js",
+        "M\tscripts/finance",
+        "A\tscripts/posthog-query.test.js",
         "M\t.github/workflows/update-swift-packages.yml",
         "M\t.agents/skills/verify-server/scripts/start",
         "M\t.mcp.json",
@@ -126,7 +126,7 @@ describe("差分のパスから merge の段を決めること", () => {
     });
 
     it("壊れたら気づく道具に触るなら待つと返すこと", () => {
-      const paths = [".github/workflows/deploy.yml", ".github/workflows/ios-ui-test.yml", ".github/workflows/production-alerts.yml", "scripts/production-alerts"];
+      const paths = [".github/workflows/deploy.yml", ".github/workflows/ios-ui-test.yml", ".github/workflows/production-alerts.yml", "scripts/production-alerts", "scripts/sentry"];
       assert.deepEqual(verdictsOf(...paths), paths.map(() => "待つ"));
     });
 

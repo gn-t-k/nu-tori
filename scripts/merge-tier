@@ -110,7 +110,14 @@ const GATES = [
   },
   {
     name: "壊れたら気づく道具",
-    paths: [".github/workflows/deploy.yml", ".github/workflows/ios-ui-test.yml", ".github/workflows/production-alerts.yml", "scripts/production-alerts"],
+    paths: [
+      ".github/workflows/deploy.yml",
+      ".github/workflows/ios-ui-test.yml",
+      ".github/workflows/production-alerts.yml",
+      "scripts/production-alerts",
+      // scripts/production-alerts が Sentry の課題を読むのに使う
+      "scripts/sentry",
+    ],
   },
   { name: "用語・見た目・覆しにくい決定", paths: ["GLOSSARY.md", "DESIGN.md", "docs/adr/"] },
 ];
