@@ -435,14 +435,26 @@ const isPossibleInFood = (nutrient: NutrientName, amount: number, basisGrams: nu
   );
 };
 
-// JSON の import では単位の型が string になるので、知っている単位に絞る。単位を足したら、上の match に場合を足す
-const nutrientUnit = (nutrient: NutrientName): "kcal" | "g" | "mg" | "µg" => {
+// JSON の import では単位の型が string になるので、知っている単位に絞る
+const nutrientUnit = (nutrient: NutrientName): NutrientUnit => {
   const { unit } = nutrientDefinitions[nutrient];
-  if (unit !== "kcal" && unit !== "g" && unit !== "mg" && unit !== "µg") {
+  if (!isNutrientUnit(unit)) {
     throw new Error(`shared/nutrients.json の ${nutrient} の単位「${unit}」を知らない`);
   }
   return unit;
 };
+
+const nutrientUnits = ["kcal", "g", "mg", "µg"] as const;
+
+type NutrientUnit = (typeof nutrientUnits)[number];
+
+const isNutrientUnit = (value: string): value is NutrientUnit =>
+  nutrientUnits.some((unit) => unit === value);
+
+// 知らない単位を、推定の答えに出たときでなく、読み込んだときに落とす。このモジュールを読み込むテストが落ちて気づける
+for (const nutrient of Object.keys(nutrientDefinitions).filter(isNutrientName)) {
+  nutrientUnit(nutrient);
+}
 
 const isPresentText = (text: string): boolean => text.trim().length > 0;
 
