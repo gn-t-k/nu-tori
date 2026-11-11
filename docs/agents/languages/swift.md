@@ -116,7 +116,7 @@ XCTestCase はまとまりを入れ子にできず、クラス名が識別子に
 
 - 差し替え用の型は `{依存の名前}Mock`（`WeightRecordStore` → `WeightRecordStoreMock`）にし、テストターゲットの `{依存の名前}Mock.swift` に置く
 - 呼び出しを記録する差し替えは class にする。struct は渡した先で写されるので、テスト対象が記録してもテストの手元に残らない
-- 成功の作り方は static 関数 `.ok(...)`、失敗の作り方は `.error(_:)` にする
+- 成功と失敗の作り方は、その型の static 関数にし、成功は `.ok(...)`、失敗は `.error(_:)` にする
 - 引数を確かめるテストは、差し替え用の型を Suite のプロパティに持って `@Test` で参照する
 - 複数のテストターゲットが使う差し替えは、`NuToriCore/Sources/NuToriTestSupport/`（テスト用のターゲット。アプリのターゲットは依存しない）に1つずつ置く。今は API のトランスポートの差し替え（`ClientTransportMock`）、送り待ちの箱の差し替え（`SyncBoxMock`。キャッシュは `RecordCacheMock`。記録の種類の Mock は持たず、NuToriCore の当て方（`CacheApplying`）を、`RecordCacheMock` が種類ごとに持つメモリの adapter に当てる。登録簿は `RecordKindRegistry.ok(extra:)`）。同じ差し替えを、テストターゲットごとに作らない
 - 端末が送り待ちを送った本文は、`NuToriAPI` の `#if DEBUG` の読み口（`SentSyncWrites`）1つで読む。生成した型で読んで `SyncWrite` と `SyncClientState` に戻すので、線上の名前は生成した型だけが持ち、テストには書かない。書き込みの case を足したら、`docs/agents/sync.md` の「記録の種類の足し方」のとおり、種類の適合の `sentWrite` と、`SentSyncWritesTests` の送る書き込みに足す。偽の同期サーバーと `ClientTransportMock.pushBodies` がこれを使い、同期の働きのテストは `SyncWrite` で比べる

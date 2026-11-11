@@ -12,7 +12,7 @@
 ### ファイルと公開するもの
 
 - 公開するものは export で数える
-- mock のファイル（成功の差し替えと失敗の差し替えを export する）と、再 export だけの `index.ts`・`testing/index.ts` は、「1つのファイルから1つ」を置き換える。関数と一緒に export するエラーのクラスは「失敗の扱い」
+- mock のファイル（`mockXxxOk`・`mockXxxError` を export する）と、再 export だけの `index.ts`・`testing/index.ts` は、「1つのファイルから1つ」を置き換える。関数と一緒に export するエラーのクラスは「失敗の扱い」
 - 関数は、単体なら1つのファイル（`foo.ts`）にする。純関数やテストのように並べるファイルが要るときだけ、`foo/` のディレクトリにし、入口の `foo/index.ts` から再 export する（`foo/foo.ts`、`foo/foo.test.ts`、`foo/foo.mock.ts` を並べる）
 
 ### ファイルの中はトップダウン
@@ -127,7 +127,7 @@ describe("トークン発行に失敗したとき", () => {
 - mock のファイルでは、使う側が読み込む入口（`./index`）を `import * as module` で読み込み、`vi.spyOn(module, "関数名")` で差し替える
 - `mockXxxOk`・`mockXxxError` の `Xxx` は、差し替える関数の名前に対応させる（`createDatabase` → `mockCreateDatabaseOk`）
 - `mockXxxOk` の上書きの引数は `overrides`（`Partial<…>`）にする
-- どちらもスパイを return する
+- `mockXxxOk`・`mockXxxError` はスパイを return する
 
 ```ts
 import { R } from "@praha/byethrow";
