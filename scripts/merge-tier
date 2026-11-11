@@ -10,6 +10,9 @@ const { join } = require("node:path");
 
 const root = join(__dirname, "..");
 
+// 判定の値。出力の1行目にそのまま出る
+const TIER = { phase1: "フェーズ1", wait: "待つ", research: "調べもの" };
+
 const main = () => {
   const args = process.argv.slice(2);
   if (args.length > 1 || (args[0]?.startsWith("-") && !["--stdin", "--list"].includes(args[0]))) {
@@ -44,7 +47,7 @@ const report = (changes) => {
   const classified = changes.map((change) => ({ ...change, ...classify(change, agentDocuments) }));
   const verdict = verdictOf(classified);
   console.log(verdict);
-  if (verdict === "調べもの") {
+  if (verdict === TIER.research) {
     console.log("  フェーズ1の条件ではなく、docs/agents/issue-tracker.md の「調べもののチケットを終える」のとおり、CI が通ったら merge する");
   }
   if (classified.length === 0) console.log("  差分が無い");
@@ -142,28 +145,28 @@ const GATES = [
 ];
 
 const verdictOf = (classified) => {
-  if (classified.length === 0) return "待つ";
-  if (classified.every(({ tier }) => tier === "調べもの")) return "調べもの";
-  return classified.every(({ tier }) => tier === "フェーズ1") ? "フェーズ1" : "待つ";
+  if (classified.length === 0) return TIER.wait;
+  if (classified.every(({ tier }) => tier === TIER.research)) return TIER.research;
+  return classified.every(({ tier }) => tier === TIER.phase1) ? TIER.phase1 : TIER.wait;
 };
 
 const matches = (path, gatePath) => (gatePath.endsWith("/") ? path.startsWith(gatePath) : path === gatePath);
 
 const classify = ({ status, path }, agentDocuments) => {
   const gate = GATES.find(({ paths }) => paths.some((gatePath) => matches(path, gatePath)));
-  if (gate !== undefined) return { tier: "待つ", reason: `フェーズ1に入れないもの（${gate.name}）` };
+  if (gate !== undefined) return { tier: TIER.wait, reason: `フェーズ1に入れないもの（${gate.name}）` };
   // 調べものの PR は今の決まりのままにする。ほかと一緒に変えたときは、フェーズ1にも調べものにも当たらない
-  if (path.startsWith("docs/research/")) return { tier: "調べもの", reason: "調べもの" };
-  if (agentDocuments.has(path)) return { tier: "フェーズ1", reason: "エージェントが読む文書" };
+  if (path.startsWith("docs/research/")) return { tier: TIER.research, reason: "調べもの" };
+  if (agentDocuments.has(path)) return { tier: TIER.phase1, reason: "エージェントが読む文書" };
   if (isTest(path)) {
     // 既存のテストを書き換える・消すと、守っていた振る舞いが変わりうるので、足すだけをフェーズ1にする
-    if (status === "A") return { tier: "フェーズ1", reason: "テストを足すだけ" };
-    return { tier: "待つ", reason: "既存のテストを書き換える・消す" };
+    if (status === "A") return { tier: TIER.phase1, reason: "テストを足すだけ" };
+    return { tier: TIER.wait, reason: "既存のテストを書き換える・消す" };
   }
   if (TOOL_ROOTS.some((toolRoot) => path === toolRoot || path.startsWith(`${toolRoot}/`))) {
-    return { tier: "フェーズ1", reason: "scripts/・CI・道具" };
+    return { tier: TIER.phase1, reason: "scripts/・CI・道具" };
   }
-  return { tier: "待つ", reason: "フェーズ1に当たらない" };
+  return { tier: TIER.wait, reason: "フェーズ1に当たらない" };
 };
 
 // 道具の置き場。サーバーに出るコードもアプリも変えない

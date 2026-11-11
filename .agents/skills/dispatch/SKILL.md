@@ -35,7 +35,7 @@ PR と Issue が名指し合っているもの（依存の PR の落ちた Issue
    - CI が動いている、または `mergeable_state` が決まっていない → 「止まっている」（CI を待つ）
    - CI が赤か衝突がある → その PR の先頭のブランチで「立ち上げる」。Issue に結びつかない PR のプロンプトは `PR #<番号> を merge できる状態にする`
    - `.agents/skills/steward/SKILL.md` の「UI テストの結果」がそろっていない → steward の形のプロンプトで「Mac に渡す」
-   - PR の本文の `## merge の条件` のフェーズが `フェーズ1` で、`.agents/skills/steward/SKILL.md` の「merge の条件の節」がそろっていない → その PR の先頭のブランチで「立ち上げる」。プロンプトは `PR #<番号> を merge できる状態にする`
+   - PR の本文の `## merge の条件` のフェーズが `フェーズ1` で、`.agents/skills/steward/SKILL.md` の「merge の条件の節」がそろっていない → その PR の先頭のブランチで「立ち上げる」。プロンプトは `PR #<番号> を merge できる状態にする`。欠けているのが、開発者の判断を待つ指摘が残っていることだけなら、立ち上げずに「止まっている」（開発者の判断を待つ）にする
    - 残り → 「merge できる」として報告する
 4. **人の作業**：`ready-for-human`・`needs-info`・`wontfix` のどれかが付いた Issue と、triage のラベルも `wayfinder:*` のラベルも付いていない Issue
 5. **Mac に渡す**：`mac` ラベルがある、または立ち上げるセッション自身がシミュレーター・Xcode で作業する（本文の受け入れ条件が Mac で回すことを求めているなど）。`/triage` のように決めるだけのセッションは、題材が iOS の画面でもクラウドで立ち上げる
