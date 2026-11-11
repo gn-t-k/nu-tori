@@ -20,7 +20,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 
 ### コーディングの好み
 
-好みの入口は `CODING_STANDARDS.md` で、レビュー役が読む。PR を出す前と PR に push する前と、`/implement` と `/implement-spec` の中で `/code-review` を呼ぶときは、`docs/agents/review.md`（変更に何がかかるかと、照合と確かめの回し方）を読む。好みのほうが違うと思ったら、ユーザーに聞いてから `CODING_STANDARDS.md` とそこから指す文書を直す。
+好みの入口は `CODING_STANDARDS.md` で、レビュー役が読む。PR を出す前と PR に push する前と、`/implement` と `/implement-spec` の中で `/code-review` を呼ぶときは、`docs/agents/review.md`（変更に何がかかるかと、照合と確かめの回し方）を読む。好みのほうが違うと思ったら、ユーザーに聞いてから `CODING_STANDARDS.md` とそこから指す文書を直す。`/to-spec` と `/tdd` で、新しいモジュールやインターフェースの継ぎ目を開発者に確かめる前は、`docs/agents/review.md` の「設計の照合」を読む。
 
 ### 進め方
 
