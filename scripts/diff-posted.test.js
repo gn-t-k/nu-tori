@@ -1,24 +1,17 @@
-// scripts/diff-posted を、gh を書いた本文を返すだけの偽物に差し替えて走らせる
+// scripts/diff-posted を、gh を書いた本文を返すだけの偽物（scripts/testing/gh-ok）に差し替えて走らせる
 "use strict";
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { describe, it, before, after } = require("node:test");
 
-// 偽の gh は、FAKE_BODY を本文として返し、読んだ API のパスを FAKE_LOG に書く
-const FAKE_GH = `#!/usr/bin/env bash
-echo "$2" > "$FAKE_LOG"
-printf '%s\\n' "$FAKE_BODY"
-`;
-
 // 元の本文をファイルに置き、偽の gh で diff-posted を走らせて、結果と読んだパスと後で消すフォルダを返す
 const run = ({ original, posted, apiPath }) => {
   const dir = mkdtempSync(join(tmpdir(), "diff-posted-"));
-  writeFileSync(join(dir, "gh"), FAKE_GH);
-  chmodSync(join(dir, "gh"), 0o755);
+  copyFileSync(join(__dirname, "testing/gh-ok"), join(dir, "gh"));
   writeFileSync(join(dir, "original.md"), original);
   const log = join(dir, "log");
   writeFileSync(log, "");
@@ -39,7 +32,11 @@ describe("書いた本文を元の本文と比べること", () => {
     after(() => rmSync(dir, { recursive: true, force: true }));
 
     it("同じと出して 0 で終わること", () => {
-      assert.deepEqual([result.status, result.stdout], [0, "同じ\n"]);
+      assert.equal(result.status, 0, result.stdout);
+    });
+
+    it("同じと出すこと", () => {
+      assert.equal(result.stdout, "同じ\n");
     });
   });
 
@@ -53,7 +50,7 @@ describe("書いた本文を元の本文と比べること", () => {
     after(() => rmSync(dir, { recursive: true, force: true }));
 
     it("同じとみなすこと", () => {
-      assert.equal(result.status, 0);
+      assert.equal(result.status, 0, result.stdout);
     });
   });
 
@@ -67,7 +64,7 @@ describe("書いた本文を元の本文と比べること", () => {
     after(() => rmSync(dir, { recursive: true, force: true }));
 
     it("同じとみなすこと", () => {
-      assert.equal(result.status, 0);
+      assert.equal(result.status, 0, result.stdout);
     });
   });
 
@@ -81,7 +78,7 @@ describe("書いた本文を元の本文と比べること", () => {
     after(() => rmSync(dir, { recursive: true, force: true }));
 
     it("1 で終わること", () => {
-      assert.equal(result.status, 1);
+      assert.equal(result.status, 1, result.stdout);
     });
 
     it("崩れた行を差分に出すこと", () => {
@@ -124,8 +121,12 @@ describe("書いた本文を元の本文と比べること", () => {
     });
     after(() => rmSync(dir, { recursive: true, force: true }));
 
-    it("使い方を出して 2 で終わること", () => {
-      assert.deepEqual([result.status, /^使い方: /.test(result.stderr)], [2, true]);
+    it("2 で終わること", () => {
+      assert.equal(result.status, 2, result.stderr);
+    });
+
+    it("使い方を出すこと", () => {
+      assert.match(result.stderr, /^使い方: /);
     });
 
     it("GitHub を読まないこと", () => {
