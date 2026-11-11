@@ -6,13 +6,12 @@
 
 ### 型検査の前提
 
-- 型検査はいちばん厳しくする。Swift 6 の言語モードに、まだ既定でない upcoming features をすべて足し、警告（非推奨を含む）はエラーにする。このファイルの話はそれを前提にする
+- 型検査はいちばん厳しくする。Swift 6 の言語モードに、まだ既定でない upcoming features をすべて足す。このファイルの話はそれを前提にする
 - 抑止（`@diagnose`、`// swiftlint:disable`、`// swift-format-ignore`）を足すときは、PR に理由を書く。非推奨の警告を抑えてよいのは、SDK を上げてすぐ直せないときだけ
 
 ### コードを説明する情報
 
 - `///` のドキュメントコメントも、`docs/agents/coding-style.md` の「コードを説明する情報」のコメントの決まりに入る
-- 文を途中で折り返したコメント（「、」や助詞で終わり、次の行のコメントへ続く）は、`.swiftlint.yml` の `no_wrapped_comment` が落とす
 
 ### ファイルと公開するもの
 
@@ -40,25 +39,20 @@ enum WeightRecordsState {
 }
 ```
 
-### 関数は処理の流れで分ける
-
-- 自分たちの enum の switch には `default` を置かない。case を足したときの漏れがコンパイルエラーになる
-
 ### 値が無いことを許すのは、必要な事情があるときだけ
 
-- 常にある枠で、中身が空になり得るものは `let caption: String?` にして、呼び出し側に nil を明示させる。`var` の optional は memberwise init に `= nil` が付き、渡し忘れが型で見えなくなる。引数の `= nil` も同じ
+- 常にある枠で、中身が空になり得るものは `let caption: String?` にして、呼び出し側に nil を明示させる。`var` の optional は memberwise init に `= nil` が付き、渡し忘れが型で見えなくなる
 
 ### キャストのいらない形を探す
 
-- キャストは、確かめて変換する `as?` と `as!` を指す。`as!` は使わない。`as?` も、キャストの要らない形を探す対象に入る。見直す候補に protocol と enum を加える
+- 確かめて変換する `as?` も、キャストの要らない形を探す対象に入る。見直す候補に protocol と enum を加える
 
 ### 新しい技術を選ぶ
 
-- 例: `ObservableObject` に対する `@Observable`、XCTest に対する Swift Testing（Swift Testing で書けない UI テストは XCUITest のまま）、完了ハンドラに対する async/await
+- 例: 完了ハンドラに対する async/await
 
 ### 依存パッケージ
 
-- Swift Package の依存は `exact:`（Xcode では「Exact Version」）で固定する。`from:` や「Up to Next Major」の範囲指定にしない
 - 最新の版は `git ls-remote --tags <パッケージのリポジトリの URL>` で確かめる
 
 ## 画面の状態とプレビュー
@@ -73,9 +67,8 @@ enum WeightRecordsState {
 
 ### 状態ごとのプレビュー
 
-- 画面ごとに `<View>+Previews.swift` を置き、ファイルごと `#if DEBUG` で囲む
-- 状態の見本（ある状態の画面を描くのに渡す値一式）を、同じファイルの `extension <View>` の中の `fileprivate enum Sample: CaseIterable` にし、`#Preview("状態ごと", arguments: <View>.Sample.allCases)` で並べる。描く View が受け取る状態の型の場合を、すべて見本に入れる。状態を持たない画面は `#Preview` を1つ置く
-- 見本の日は `CalendarDay.sampleToday` に固定する。複数の画面の見本で使う値は、`<型>+PreviewSample.swift`（`#if DEBUG`）に置く
+- 状態の見本（ある状態の画面を描くのに渡す値一式）を、`<View>+Previews.swift` の `extension <View>` の中の `fileprivate enum Sample: CaseIterable` にし、`#Preview("状態ごと", arguments: <View>.Sample.allCases)` で並べる。描く View が受け取る状態の型の場合を、すべて見本に入れる。状態を持たない画面は `#Preview` を1つ置く
+- 見本の日は `CalendarDay.sampleToday` に固定する。複数の画面の見本で使う値は、`<型>+PreviewSample.swift` に置く
 - ダーク・大きい文字・向きはコードに書かず、キャンバスの Variants（RenderPreview の `previewVariantOverrides`）で見る
 - シートで出す画面は、シートに載せず中身を直接描く。載せると、出てくる途中の動きが描かれる
 - 見本は画面に渡す値で、`UITestLaunch` はアプリ全体の場面なので、まとめない
@@ -84,13 +77,11 @@ enum WeightRecordsState {
 
 ### 道具
 
-- UI テスト以外（単体テストと統合テスト）は Swift Testing で書く
-- UI テストは XCUITest（XCTestCase）で書き、失敗したときに画面を見られるよう、確かめた画面のスクリーンショットを `XCTAttachment` で残す
+- UI テストは XCUITest（XCTestCase）で書く
 - List や ScrollView の中の要素は、画面の外にあると作られず `exists` が false になる。送って画面に出してから確かめる（`XCUIApplication+ScrollUntilExists.swift` の `scrollUntilExists`）
 
 ### Swift Testing の構造
 
-- まとまりは `@Suite`、テストは `@Test` で書き、名前は表示名の文字列に書く
 - 「各テストの前の準備」は、条件の `@Suite` の `init()` で行う。Swift Testing は `@Test` ごとに Suite を作り直すので、`init()` が各テストの前に走る
 - パラメータ化テストは `@Test(arguments:)` のこと
 - 前提にする値は `#require` で取り出してから使う
@@ -120,7 +111,6 @@ XCTestCase はまとまりを入れ子にできず、クラス名が識別子に
 
 - 条件ごとに1つのクラスを1つのファイルに置き、クラス名とファイル名に経路と条件を書く（`RecordWeightWithoutGoalUITests.swift`）
 - 準備（アプリの起動と、条件の状態にするまでの操作）は `setUp` で行う
-- メソッドは `test_〜こと` の日本語の名前にする
 
 ### 依存の差し替え
 
@@ -131,7 +121,7 @@ XCTestCase はまとまりを入れ子にできず、クラス名が識別子に
 - 複数のテストターゲットが使う差し替えは、`NuToriCore/Sources/NuToriTestSupport/`（テスト用のターゲット。アプリのターゲットは依存しない）に1つずつ置く。今は API のトランスポートの差し替え（`ClientTransportMock`）、送り待ちの箱の差し替え（`SyncBoxMock`。キャッシュは `RecordCacheMock`。記録の種類の Mock は持たず、NuToriCore の当て方（`CacheApplying`）を、`RecordCacheMock` が種類ごとに持つメモリの adapter に当てる。登録簿は `RecordKindRegistry.ok(extra:)`）。同じ差し替えを、テストターゲットごとに作らない
 - 端末が送り待ちを送った本文は、`NuToriAPI` の `#if DEBUG` の読み口（`SentSyncWrites`）1つで読む。生成した型で読んで `SyncWrite` と `SyncClientState` に戻すので、線上の名前は生成した型だけが持ち、テストには書かない。書き込みの case を足したら、`docs/agents/sync.md` の「記録の種類の足し方」のとおり、種類の適合の `sentWrite` と、`SentSyncWritesTests` の送る書き込みに足す。偽の同期サーバーと `ClientTransportMock.pushBodies` がこれを使い、同期の働きのテストは `SyncWrite` で比べる
 - `NuToriAPI` のエンコードのテストは、読み口を通さず、生成した型（`@testable` で見える）で読んで線上の値（ミリ秒の整数など）を比べる。送ると読むが同じ取り違えをしたとき、往復させると通ってしまうため
-- UI テストのための差し替え（API、サインイン済みの状態など）は、UI テストがアプリと別のプロセスで動くので、テストターゲットではなくアプリのターゲットに `#if DEBUG` で囲んで置き（API は次の項目の例外）、Release のビルドに入れない。UI テストは起動の値（`launchEnvironment`）で切り替える
+- UI テストのための差し替え（API、サインイン済みの状態など）は、UI テストがアプリと別のプロセスで動くので、テストターゲットではなくアプリのターゲットの `UITesting/` に置き（API は次の項目の例外）、Release のビルドに入れない。UI テストは起動の値（`launchEnvironment`）で切り替える
 - API の差し替えは、メモリ上の偽の同期サーバー（`FakeSyncServer`。呼び出しを記録する差し替えではないので `Mock` を付けない）1つにする。書き込みを生成した型で読むため、`NuToriAPI` の中に `#if DEBUG` で囲んで置き、振る舞いを `NuToriAPITests` で確かめる。場面は「初めに置く記録と方針」のデータ（`UITestLaunch.syncScenario()`）で書き、場面を足すときは偽のサーバーに分岐を足さない
 
 ### ファイルの置き場所

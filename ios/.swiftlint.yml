@@ -17,13 +17,13 @@ custom_rules:
   no_observable_object:
     name: "ObservableObject を使わない"
     regex: "(\\bObservableObject\\b|@(Published|StateObject|ObservedObject|EnvironmentObject)\\b)"
-    message: "@Observable を使う（docs/agents/languages/swift.md「新しい技術を選ぶ」）"
+    message: "@Observable を使う。ObservableObject は、読んでいないプロパティが変わっても View を描き直し、@Published を1つずつ付ける手間が要る旧世代の仕組み（docs/agents/coding-style.md「新しい技術を選ぶ」）"
     severity: error
   xctest_only_in_ui_tests:
     name: "XCTest は UI テストだけ"
     regex: "^\\s*import\\s+XCTest\\b"
     excluded: [".*UITests/.*"]
-    message: "UI テスト以外は Swift Testing で書く（docs/agents/languages/swift.md「道具」）"
+    message: "UI テスト以外は Swift Testing で書く。XCTest は、Swift Testing で書けない UI テスト（XCUITest）にだけ残す旧世代の道具（docs/agents/coding-style.md「新しい技術を選ぶ」）"
     severity: error
   no_wrapped_comment:
     name: "コメントの文を途中で折り返さない"
@@ -42,7 +42,7 @@ custom_rules:
     # 型を見られないので、どの switch の default も落とす。@unknown default と、辞書の [key, default:] は行の頭に来ないので当たらない
     regex: "^\\s*default\\s*:"
     match_kinds: [keyword]
-    message: "自分たちの enum の switch では、case を並べて default を置かない。文字列・数・エラー・外の型の switch のように default が要るときは、swiftlint:disable:next に「 - 」で理由を添えて外し、PR にも書く（docs/agents/languages/swift.md「関数は処理の流れで分ける」）"
+    message: "自分たちの enum の switch では、case を並べて default を置かない。case を足したときの漏れがコンパイルエラーになる。文字列・数・エラー・外の型の switch のように default が要るときは、swiftlint:disable:next に「 - 」で理由を添えて外し、PR にも書く（docs/agents/coding-style.md「関数は処理の流れで分ける」）"
     severity: error
   no_nil_default_argument:
     name: "引数に = nil を付けない"
@@ -55,7 +55,7 @@ custom_rules:
       - ".*/NuToriTestSupport/.*"
       - ".*/UITesting/.*"
       - ".*/FakeSyncServer[^/]*\\.swift"
-    message: "引数の = nil は、渡し忘れが型で見えなくなる。既定値を外して呼ぶ側で nil を渡す（docs/agents/languages/swift.md「値が無いことを許すのは、必要な事情があるときだけ」）"
+    message: "引数の = nil は、渡し忘れが型で見えなくなる。既定値を外して呼ぶ側で nil を渡す（docs/agents/coding-style.md「値が無いことを許すのは、必要な事情があるときだけ」）"
     severity: error
   test_display_name_koto:
     name: "@Test の表示名は「〜こと」"
@@ -63,11 +63,25 @@ custom_rules:
     included: [".*Tests\\.swift"]
     message: "@Test(\"〜こと\") の形で振る舞いを書く（docs/agents/testing.md「テストの構造」）"
     severity: error
+  suite_display_name_japanese:
+    name: "@Suite の表示名は日本語"
+    regex: "@Suite(?!\\(\\s*\"[^\"\\n]*[ぁ-んァ-ヶ一-龠々])"
+    excluded_match_kinds: [comment, doccomment, string]
+    message: "@Suite(\"…\") の最初の引数に、まとまりの名前を日本語で書く。条件はまとまりの名前に書き、テストの結果の一覧で、機能 → 条件 → 振る舞いの文として読めるようにする（docs/agents/testing.md「テストの構造」）"
+    severity: error
+  ui_test_method_name_koto:
+    name: "XCUITest のメソッド名は test_〜こと"
+    # XCTestCase は表示名を持てないので、メソッド名を @Test の表示名の代わりにする。XCTest は test で始まるメソッドだけを走らせる
+    regex: "\\bfunc\\s+test(?!_[^\\s(]*こと\\s*\\()"
+    included: [".*/NuToriUITests/.*"]
+    excluded_match_kinds: [comment, doccomment, string]
+    message: "XCUITest のメソッドは、test_ のあとに振る舞いを「〜こと」の日本語で書く（func test_体重を記録できること()）。XCTestCase は表示名を持てないので、名前を @Test の表示名の代わりにする（docs/agents/testing.md「テストの構造」）"
+    severity: error
   exact_package_version:
     name: "依存は exact: で固定する"
     included: ["(^|.*/)Package\\.swift$"]
     regex: "\\.package\\(\\s*url:[^)]*\\b(from:|branch:|revision:|\\.upToNext)"
-    message: "Swift Package の依存は exact: で固定する（docs/agents/languages/swift.md「依存パッケージ」）"
+    message: "Swift Package の依存は exact: で固定する。from: や branch: で書くと、Package.resolved を作り直したときに版が黙って変わる（docs/agents/coding-style.md「依存パッケージ」）"
     severity: error
   no_context_without_container:
     name: "ModelContext だけを返さない"
