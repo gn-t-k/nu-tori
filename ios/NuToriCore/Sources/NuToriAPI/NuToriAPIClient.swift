@@ -12,7 +12,18 @@ public struct NuToriAPIClient: Sendable {
         sessionToken: @escaping @Sendable () async -> String?
     ) {
         self.init(
-            serverURL: environment.serverURL,
+            serverURL: environment.serverURL, appBuildGate: appBuildGate,
+            sessionToken: sessionToken)
+    }
+
+    /// 環境の代わりに URL でつなぐ。デバッグビルドを手元のサーバー（`wrangler dev`）につなぐため
+    public init(
+        serverURL: URL,
+        appBuildGate: AppBuildGate,
+        sessionToken: @escaping @Sendable () async -> String?
+    ) {
+        self.init(
+            serverURL: serverURL,
             transport: URLSessionTransport(),
             appBuildGate: appBuildGate,
             sessionToken: sessionToken

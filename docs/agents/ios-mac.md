@@ -63,3 +63,38 @@ Xcode は開いたときに、`project.pbxproj` を自分の書き方に直す�
 
 PR の本文の「確かめる項目」に結果を書く。記録の値は開発者の健康データなので書かない。
 
+## 時の経過で起きる知らせを確かめる
+
+目標の期限の結果、期限後の維持、週の見直し、無料体験の終わりは、日がたたないと届かない。Mac で過去に始めたことにした使い捨てのアカウント（場面のアカウント）を作り、デバッグビルドをそのアカウントでサインインした状態で開いて、待たずに見る（決めたことは #812 の解決コメント）。
+
+```
+Mac: device.sh scenario（確かめの口でサインインし、体重と目標を過去の時刻で送る。取りに行かない）
+  └→ SCENARIO_* の3行（サーバーの URL、セッションのトークン、accountId）
+デバッグビルド: 起動の値で受け取り、Apple を通さずに開く
+  └→ 最初の取りに行く要求（今の時刻）でサーバーが判定し、知らせが届く
+```
+
+場面は3つ。中身は `server/e2e/create-scenario.ts`。
+
+- `goal-deadline-passed`: 7週前に30日後を期限とする減量の目標を決め、目標体重に届かない体重を毎日量った。期限の結果の知らせと、期限後の維持の知らせが届く
+- `unreviewed-week`: 7日前に使い始めて目標を決めた。今週の月曜の週の振り返りが届く
+- `free-trial-expired`: 60日前に使い始めた。無料体験が終わった知らせが出て、撮る口がサブスクリプションを求める
+
+手順（リポジトリの直下から。`S=.agents/skills/verify-server/scripts`）:
+
+1. つなぐサーバーの回のフォルダを用意する
+   - 手元のサーバー: `run=$($S/start.sh)`。シミュレーターは Mac の `127.0.0.1` に届く
+   - 開発用の Worker: 回のフォルダを作り、`run.env` に `BASE_URL=https://api-dev.nu-tori.app`、`E2E_SIGN_IN_SECRET=<開発用の Worker の値>`、`DEVICE_ID=<$S/device.sh uuid の値>` の3行を書く。秘密の値はこの `run.env` にだけ置き、アプリにもコミットにも入れない。`.scratch/` の下に作れば gitignore 済み
+2. `$S/device.sh scenario "$run" <名前> <場面>` で場面のアカウントを作る。セッションは `"$run/sessions/<名前>.json"` に残り、標準出力に `SCENARIO_SERVER_URL`・`SCENARIO_SESSION_TOKEN`・`SCENARIO_ACCOUNT_ID` の3行が出る。判定は次に取りに行く要求で起きるので、アプリで開く前に `device.sh pull` を呼ばない
+3. デバッグビルドをシミュレーターに入れ、3行を起動の値にして開く。`xcrun simctl launch` では、名前の頭に `SIMCTL_CHILD_` を付ける。MobileBuildMCP の `launch_app_sim` なら `env` にそのまま渡す（頭は道具が付ける）
+
+   ```bash
+   $S/device.sh scenario "$run" deadline goal-deadline-passed | sed 's/^/SIMCTL_CHILD_/' > "$run/launch.env"
+   env $(cat "$run/launch.env") xcrun simctl launch --terminate-running-process booted app.nu-tori
+   ```
+
+4. 確かめの口のアカウントは規約に同意していないので、開くと規約の同意のシートが出る。「同意して続ける」を押してタイムラインを見る
+
+- 場面のアカウントで開いたアプリは、記録の置き場・セッション・端末の記憶をメモリに置き、ふだんのデバッグビルドのサインインとキャッシュに触れない。ヘルスケア・記録忘れの通知・観測にもつながない（開発者のヘルスケアの体重が入ると、場面の判定が変わる）。起動の値を渡さずに開き直せば、ふだんの状態に戻る。仕組みは `ios/NuTori/App/ScenarioAccountLaunch.swift`（`#if DEBUG` で、リリースビルドには入らない）
+- 場面は Asia/Tokyo の日付で作る。シミュレーターのタイムゾーンが違うと、知らせの日付がずれる
+- 請求の猶予は App Store の知らせで決まるので、この道では作れない

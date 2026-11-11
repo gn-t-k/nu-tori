@@ -10,4 +10,5 @@
 - ジョブは、推定が `failed` で終わった理由を `GET /v1/e2e/meals/{mealId}/last-estimation-attempt`（`src/http/e2e-estimation-attempt-routes/`）で読む
 - `E2E_SIGN_IN_SECRET` は開発用の Worker にだけ置き、本番の `wrangler.jsonc` と本番の Worker に書かない。置かなくても動き、口が閉じるだけなので、`secrets.required` には書かない（書くと、置くまで開発用のデプロイが失敗し、本番のデプロイも止まる）。型は `src/e2e-sign-in-secret.d.ts` で足す。本番の設定に名前を書いていないことは、`e2e-session-routes.test.ts` が `wrangler.jsonc` の文字列で確かめる
 - 確かめる流れは `e2e/run-main-flow.ts`（Workers の実行環境のテストで、偽の提供元を差して通る）、実行の入口は `e2e/cli/run-main-flow.ts`（Node で `pnpm exec tsx` で動かし、`E2E_BASE_URL` の Worker に向ける。待つ上限は環境変数で渡す）、送る写真と出典は `e2e/photos/`
-- 端末と同じ形の要求（確かめのサインイン、書き込みを送る、変更を取りに行く、確かめの口のヘッダー）は `e2e/device-client.ts` の1か所で組む。主な流れと、手元で確かめる道具の CLI（`e2e/cli/drive-device.ts`、`.agents/skills/verify-server/` の `device.sh` が呼ぶ）が使う。端末の状態や確かめの口のヘッダーを変えたら、ここだけを直す
+- 端末と同じ形の要求（確かめのサインイン、書き込みを送る、変更を取りに行く、目標の設定の要求、確かめの口のヘッダー）は `e2e/device-client.ts` の1か所で組む。主な流れと、手元で確かめる道具の CLI（`e2e/cli/drive-device.ts`、`.agents/skills/verify-server/` の `device.sh` が呼ぶ）と、場面を作る道が使う。端末の状態や確かめの口のヘッダーを変えたら、ここだけを直す。減量の標準の目標を決める順は `e2e/decide-standard-lose-goal.ts`、無料体験の読み方は `e2e/read-free-trial-last-day.ts` で、主な流れと場面を作る道が分け合う
+- 時の経過で起きる知らせをアプリで見るための場面のアカウントは、`drive-device.ts scenario`（中身は `e2e/create-scenario.ts`）が同じ時刻の差し替えで作る。手順は `docs/agents/ios-mac.md` の「時の経過で起きる知らせを確かめる」
