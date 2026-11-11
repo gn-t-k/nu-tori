@@ -15,13 +15,13 @@ PR を出す前と PR に push する前に、ブランチの変更に何がか�
 
 | 変更の種類 | 検査 | 照合 | 確かめ | ほかに PR の前にすること | merge の条件 |
 | --- | --- | --- | --- | --- | --- |
-| サーバーのコード・テスト | `scripts/check server`、CI の `server` | 好みのレビュー、ポリシーの照合、仕様の照合 | 振る舞いを変えたら `verify-server` | 下の「サーバー」と「サーバーと iOS の両方」 | 開発者が言ったとき。`scripts/merge-tier` が `1段目` と返す差分は下の「1段目」 |
-| iOS のコード・テスト | `scripts/check ios`、CI の `ios`・`ios-app`・`ios-version`。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストの全件（PR の CI では走らない。`ios/AGENTS.md` の「確かめる」） | 好みのレビュー、ポリシーの照合、仕様の照合 | 振る舞いを変えたら `verify-ios`（Mac のセッションだけ） | 下の「iOS」「サーバーと iOS の両方」「iOS と site」 | 開発者が言ったとき。`scripts/merge-tier` が `1段目` と返す差分は下の「1段目」。UI テストの全件がかかる PR は、その結果が PR の本文の `## 確かめ` にそろってから（`steward` が見る） |
-| `site/` | `scripts/check site`、CI の `site` | 好みのレビュー、ポリシーの照合、仕様の照合 | 無い（下の「知られている漏れ」） | 下の「site」と「iOS と site」 | 開発者が言ったとき。`scripts/merge-tier` が `1段目` と返す差分は下の「1段目」 |
-| `scripts/` と hook | `scripts/check scripts`（ShellCheck を含む）、CI の `scripts` | 好みのレビュー、ポリシーの照合、仕様の照合 | 無い | 下の「道具」 | 開発者が言ったとき。`scripts/merge-tier` が `1段目` と返す差分は下の「1段目」 |
-| CI のワークフローと設定（`.github/`、`.claude/settings.json`、`.codex/` の設定〈`agents/` を除く〉、`.mcp.json`） | `check.yml` を変えたら全部の対象。ほかは選ばれる対象が無い | 好みのレビュー、ポリシーの照合、仕様の照合 | 無い | 下の「道具」 | 開発者が言ったとき。`scripts/merge-tier` が `1段目` と返す差分は下の「1段目」 |
+| サーバーのコード・テスト | `scripts/check server`、CI の `server` | 好みのレビュー、ポリシーの照合、仕様の照合 | 振る舞いを変えたら `verify-server` | 下の「サーバー」と「サーバーと iOS の両方」 | 開発者が言ったとき。`scripts/merge-tier` が `フェーズ1` と返す差分は下の「フェーズ1」 |
+| iOS のコード・テスト | `scripts/check ios`、CI の `ios`・`ios-app`・`ios-version`。UI テストか画面の経路を変える PR は、PR の先頭のコミットで UI テストの全件（PR の CI では走らない。`ios/AGENTS.md` の「確かめる」） | 好みのレビュー、ポリシーの照合、仕様の照合 | 振る舞いを変えたら `verify-ios`（Mac のセッションだけ） | 下の「iOS」「サーバーと iOS の両方」「iOS と site」 | 開発者が言ったとき。`scripts/merge-tier` が `フェーズ1` と返す差分は下の「フェーズ1」。UI テストの全件がかかる PR は、その結果が PR の本文の `## 確かめ` にそろってから（`steward` が見る） |
+| `site/` | `scripts/check site`、CI の `site` | 好みのレビュー、ポリシーの照合、仕様の照合 | 無い（下の「知られている漏れ」） | 下の「site」と「iOS と site」 | 開発者が言ったとき。`scripts/merge-tier` が `フェーズ1` と返す差分は下の「フェーズ1」 |
+| `scripts/` と hook | `scripts/check scripts`（ShellCheck を含む）、CI の `scripts` | 好みのレビュー、ポリシーの照合、仕様の照合 | 無い | 下の「道具」 | 開発者が言ったとき。`scripts/merge-tier` が `フェーズ1` と返す差分は下の「フェーズ1」 |
+| CI のワークフローと設定（`.github/`、`.claude/settings.json`、`.codex/` の設定〈`agents/` を除く〉、`.mcp.json`） | `check.yml` を変えたら全部の対象。ほかは選ばれる対象が無い | 好みのレビュー、ポリシーの照合、仕様の照合 | 無い | 下の「道具」 | 開発者が言ったとき。`scripts/merge-tier` が `フェーズ1` と返す差分は下の「フェーズ1」 |
 | 依存（作業のブランチで変える） | 依存を置く対象の `scripts/check` と CI のジョブ | 好みのレビュー、ポリシーの照合、仕様の照合 | 振る舞いを変えたら、その対象の確かめ | 下の「依存」 | 開発者が言ったとき |
-| エージェントが読む文書（`scripts/agent-docs-duplicates` がエージェントが読む文書とするものと、`.claude/agents/` を指すだけの `.codex/agents/`） | CI の `scripts` の文書の重なりの検査（`scripts/agent-docs-duplicates`） | 文書の照合、仕様の照合 | 回さない | 下の「文書」 | 開発者が言ったとき。`scripts/merge-tier` が `1段目` と返す差分は下の「1段目」 |
+| エージェントが読む文書（`scripts/agent-docs-duplicates` がエージェントが読む文書とするものと、`.claude/agents/` を指すだけの `.codex/agents/`） | CI の `scripts` の文書の重なりの検査（`scripts/agent-docs-duplicates`） | 文書の照合、仕様の照合 | 回さない | 下の「文書」 | 開発者が言ったとき。`scripts/merge-tier` が `フェーズ1` と返す差分は下の「フェーズ1」 |
 | `GLOSSARY.md`、`DESIGN.md` | `DESIGN.md` を変えたら `scripts/check site`（文字の大きさを比べる）。ほかは無い | 文書の照合 | 回さない | 無い | 開発者が言ったとき |
 | 書き換えない記録（`docs/adr/`、`docs/research/`） | 無い | 無い | 回さない | 無い | 開発者が言ったとき。`docs/research/` の PR は下の「判断なしに通す変更」 |
 
@@ -59,15 +59,15 @@ merge の決まりは `docs/agents/git.md` にあり、開発者を待たない�
 
 - 依存の PR（Dependabot と `update-swift-packages.yml` が出す、依存の版だけを上げる PR）: patch と minor は、`check.yml` のジョブが全部通ると（必須でない `ios-app` を含む）`dependency-pr.yml` がマージし、壊れたら知らせで気づいて戻す。major は人が変更履歴を読んでマージする。照合と確かめはかけず、SDK の更新にもポリシーの照合はかけない。条件と戻し方は `docs/agents/dependencies.md`
 - 調べもののチケットの PR（`docs/research/`）: CI が通ったらエージェントが merge する（`docs/agents/issue-tracker.md` の「調べもののチケットを終える」）
-- 振る舞いを変えない PR のうち、パスで決まるもの: 下の「1段目」
+- 振る舞いを変えない PR のうち、パスで決まるもの: 下の「フェーズ1」
 
-#### 1段目
+#### フェーズ1
 
-当たるかは `scripts/merge-tier`（引数はマージ先のブランチ。既定は `main`）が、マージ先から分かれたあとの差分のパスで決める。実装役は自分で決めない。当たるのは、エージェントが読む文書だけ、テストを足すだけ（既存のテストを書き換えない・消さない）、`scripts/`・CI・道具だけの差分。その置き場にあっても、ゲートを弱めうるものと、用語・見た目・覆しにくい決定に触る差分は当たらない。1段目に入れないパスの正本は `scripts/merge-tier --list` の一覧にする。
+当たるかは `scripts/merge-tier`（引数はマージ先のブランチ。既定は `main`）が、マージ先から分かれたあとの差分のパスで決める。実装役は自分で決めない。当たるのは、エージェントが読む文書だけ、テストを足すだけ（既存のテストを書き換えない・消さない）、`scripts/`・CI・道具だけの差分。その置き場にあっても、ゲートを弱めうるものと、用語・見た目・覆しにくい決定に触る差分は当たらない。フェーズ1に入れないパスの正本は `scripts/merge-tier --list` の一覧にする。
 
 出力の1行目で分ける。
 
-- `1段目`: PR を出したセッションが、下の条件をそろえて merge する
+- `フェーズ1`: PR を出したセッションが、下の条件をそろえて merge する
 - `待つ`: 開発者が merge を言う。2行目からに、差分のパスごとの理由がある
 - `調べもの`: `docs/research/` だけの差分。`docs/agents/issue-tracker.md` の「調べもののチケットを終える」のとおりにする
 
@@ -79,12 +79,12 @@ merge の条件:
 4. どの節にも、開発者の判断を待つ指摘が残っていない
 5. 上の表の、当たった行の「ほかに PR の前にすること」と merge の条件の列の求めること（UI テストの全件など）が済んでいる
 
-push で差分が変わるので、merge する直前に PR の先頭のコミットで `scripts/merge-tier` を回し直す。PR の本文の最後に次の節を置き、push のたびに更新する。`待つ` と `調べもの` の PR は、段の1行だけを書く。
+push で差分が変わるので、merge する直前に PR の先頭のコミットで `scripts/merge-tier` を回し直す。PR の本文の最後に次の節を置き、push のたびに更新する。`待つ` と `調べもの` の PR は、フェーズの1行だけを書く。
 
 ```markdown
 ## merge の条件
 
-- 段: 1段目（`scripts/merge-tier` を <コミット> で回した）
+- フェーズ: フェーズ1（`scripts/merge-tier` を <コミット> で回した）
 - [x] `check.yml` のジョブが全部通った（`ios-app` を含む）
 - [x] 照合と確かめの節が先頭のコミットを照らしている
 - [x] `## 仕様の照合` の節がある
@@ -92,7 +92,7 @@ push で差分が変わるので、merge する直前に PR の先頭のコミ�
 - [x] ほかの文書が merge の前に求めること: <無い、または済ませたこと>
 ```
 
-壊れたとき: 下の「merge のあとに気づくもの」で、エージェントが merge した1段目の PR が壊したと分かったら、その PR を revert する PR を出す。1段目はサーバーに出るコードを変えないので、`server/AGENTS.md` の「デプロイ」の、前の版のコードに戻さない決まりには当たらない。revert の PR の merge も、`scripts/merge-tier` の段で決める。
+壊れたとき: 下の「merge のあとに気づくもの」で、エージェントが merge したフェーズ1の PR が壊したと分かったら、その PR を revert する PR を出す。フェーズ1はサーバーに出るコードを変えないので、`server/AGENTS.md` の「デプロイ」の、前の版のコードに戻さない決まりには当たらない。revert の PR の merge も、`scripts/merge-tier` のフェーズで決める。
 
 **Why:** merge が開発者に言われたときだけで、文書だけの PR も返事を待って止まっていた。#939 で範囲を言葉で書いて実装役に任せ、#949 で決まりにはしないと戻した。自己申告をやめ、確かめられる条件にした。ゲートを弱める変更が開発者を通らずに入らないよう、ゲートそのものは外した（#1000）。
 

@@ -1,4 +1,4 @@
-// scripts/merge-tier に差分のパスを渡し、1段目か待つかの判定を見る
+// scripts/merge-tier に差分のパスを渡し、フェーズ1か待つかの判定を見る
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -20,17 +20,17 @@ const judge = (lines) => {
   return { verdict: result.stdout.split("\n")[0], stdout: result.stdout };
 };
 
-describe("差分のパスから merge の段を決めること", () => {
+describe("差分のパスから merge のフェーズを決めること", () => {
   let lines;
 
-  describe("1段目と返すとき", () => {
+  describe("フェーズ1と返すとき", () => {
     describe("エージェントが読む文書だけのとき", () => {
       beforeEach(() => {
         lines = ["M\tdocs/agents/sync.md", "M\tserver/AGENTS.md"];
       });
 
-      it("1段目と返すこと", () => {
-        assert.equal(judge(lines).verdict, "1段目");
+      it("フェーズ1と返すこと", () => {
+        assert.equal(judge(lines).verdict, "フェーズ1");
       });
     });
 
@@ -45,8 +45,8 @@ describe("差分のパスから merge の段を決めること", () => {
         ];
       });
 
-      it("1段目と返すこと", () => {
-        assert.equal(judge(lines).verdict, "1段目");
+      it("フェーズ1と返すこと", () => {
+        assert.equal(judge(lines).verdict, "フェーズ1");
       });
     });
 
@@ -61,8 +61,8 @@ describe("差分のパスから merge の段を決めること", () => {
         ];
       });
 
-      it("1段目と返すこと", () => {
-        assert.equal(judge(lines).verdict, "1段目");
+      it("フェーズ1と返すこと", () => {
+        assert.equal(judge(lines).verdict, "フェーズ1");
       });
     });
   });
@@ -87,12 +87,12 @@ describe("差分のパスから merge の段を決めること", () => {
 
     it("origin のマージ先から分かれたあとの差分で決めること", () => {
       const result = spawnSync(process.execPath, [MERGE_TIER, "main"], { cwd: repo, encoding: "utf8" });
-      assert.equal(result.stdout, "待つ\n  A\tserver/src/a.ts\t1段目に当たらない\n");
+      assert.equal(result.stdout, "待つ\n  A\tserver/src/a.ts\tフェーズ1に当たらない\n");
     });
   });
 
   describe("一覧を求めたとき", () => {
-    it("1段目に入れないパスを、ゲートごとに出すこと", () => {
+    it("フェーズ1に入れないパスを、ゲートごとに出すこと", () => {
       const result = spawnSync(process.execPath, [MERGE_TIER, "--list"], { encoding: "utf8" });
       assert.match(result.stdout, /^- 検査を決めるもの: .*`scripts\/check`/m);
     });
@@ -123,7 +123,7 @@ describe("差分のパスから merge の段を決めること", () => {
       });
 
       it("待つ理由になったパスに理由を添えること", () => {
-        assert.match(judge(lines).stdout, /^ {2}M\tserver\/src\/meal\/meal-total\.ts\t1段目に当たらない$/m);
+        assert.match(judge(lines).stdout, /^ {2}M\tserver\/src\/meal\/meal-total\.ts\tフェーズ1に当たらない$/m);
       });
     });
 
@@ -147,14 +147,14 @@ describe("差分のパスから merge の段を決めること", () => {
       });
     });
 
-    // 1段目に当たる置き場（scripts/・CI・エージェントが読む文書）の中にあっても、ゲートを弱める変更は開発者を通す。ゲートごとに代表のパスで見る
+    // フェーズ1に当たる置き場（scripts/・CI・エージェントが読む文書）の中にあっても、ゲートを弱める変更は開発者を通す。ゲートごとに代表のパスで見る
     describe("検査を決めるものに触るとき", () => {
       beforeEach(() => {
         lines = ["M\tscripts/check"];
       });
 
       it("どのゲートかを理由に添えて待つと返すこと", () => {
-        assert.equal(judge(lines).stdout, "待つ\n  M\tscripts/check\t1段目に入れないもの（検査を決めるもの）\n");
+        assert.equal(judge(lines).stdout, "待つ\n  M\tscripts/check\tフェーズ1に入れないもの（検査を決めるもの）\n");
       });
     });
 

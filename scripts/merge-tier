@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// PR の差分のパスから、エージェントが merge してよい振る舞いを変えない変更（1段目）かを決める（#1000）
+// PR の差分のパスから、エージェントが merge してよい振る舞いを変えない変更（フェーズ1）かを決める（#1000）
 // 実装役が自分で決めないよう、当たるかはここだけで決める。merge の条件は docs/agents/review.md の「判断なしに通す変更」
 // 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
 "use strict";
@@ -16,8 +16,8 @@ const main = () => {
     console.error("使い方: scripts/merge-tier [<マージ先のブランチ>]");
     console.error("       scripts/merge-tier --stdin < <git diff --name-status --no-renames の出力>");
     console.error("       scripts/merge-tier --list");
-    console.error("  引数なし  origin/main から分かれたあとの、このブランチのコミットの差分で決める。1行目が 1段目・待つ・調べもの のどれか");
-    console.error("  --list    1段目に入れないパスを、ゲートごとに PR の本文に貼れる形で出す");
+    console.error("  引数なし  origin/main から分かれたあとの、このブランチのコミットの差分で決める。1行目が フェーズ1・待つ・調べもの のどれか");
+    console.error("  --list    フェーズ1に入れないパスを、ゲートごとに PR の本文に貼れる形で出す");
     return 2;
   }
   if (args[0] === "--list") {
@@ -45,14 +45,14 @@ const report = (changes) => {
   const verdict = verdictOf(classified);
   console.log(verdict);
   if (verdict === "調べもの") {
-    console.log("  1段目の条件ではなく、docs/agents/issue-tracker.md の「調べもののチケットを終える」のとおり、CI が通ったら merge する");
+    console.log("  フェーズ1の条件ではなく、docs/agents/issue-tracker.md の「調べもののチケットを終える」のとおり、CI が通ったら merge する");
   }
   if (classified.length === 0) console.log("  差分が無い");
   for (const { status, path, reason } of classified) console.log(`  ${status}\t${path}\t${reason}`);
   return 0;
 };
 
-// 1段目に入れないもの。ゲートを弱める変更や、用語・見た目・覆しにくい決定そのものは、開発者が merge を言う。
+// フェーズ1に入れないもの。ゲートを弱める変更や、用語・見た目・覆しにくい決定そのものは、開発者が merge を言う。
 // 末尾が / のものはフォルダの下の全部、ほかはそのファイルだけに当たる
 const GATES = [
   {
@@ -114,6 +114,8 @@ const GATES = [
       ".claude/settings.json",
       ".claude/hooks/",
       ".codex/config.toml",
+      // 依存の PR のまとめ方を決め、patch と minor は dependency-pr.yml が merge する
+      ".github/dependabot.yml",
       // Swift を上げる PR は、dependency-pr.yml が update-type を読まずに merge するので、何を上げるかがここで決まる
       ".github/workflows/update-swift-packages.yml",
       "scripts/update-swift-packages",
@@ -134,7 +136,7 @@ const GATES = [
       "scripts/sentry",
     ],
   },
-  // 1段目は本番へ出るもの（サーバーと site）を変えない前提で revert で戻すので、merge すると本番へ出す道具は入れない
+  // フェーズ1は本番へ出るもの（サーバーと site）を変えない前提で revert で戻すので、merge すると本番へ出す道具は入れない
   { name: "本番へ出すもの", paths: [".github/workflows/deploy-worker.yml", ".github/workflows/deploy-site.yml"] },
   { name: "用語・見た目・覆しにくい決定", paths: ["GLOSSARY.md", "DESIGN.md", "docs/adr/"] },
 ];
@@ -142,26 +144,26 @@ const GATES = [
 const verdictOf = (classified) => {
   if (classified.length === 0) return "待つ";
   if (classified.every(({ tier }) => tier === "調べもの")) return "調べもの";
-  return classified.every(({ tier }) => tier === "1段目") ? "1段目" : "待つ";
+  return classified.every(({ tier }) => tier === "フェーズ1") ? "フェーズ1" : "待つ";
 };
 
 const matches = (path, gatePath) => (gatePath.endsWith("/") ? path.startsWith(gatePath) : path === gatePath);
 
 const classify = ({ status, path }, agentDocuments) => {
   const gate = GATES.find(({ paths }) => paths.some((gatePath) => matches(path, gatePath)));
-  if (gate !== undefined) return { tier: "待つ", reason: `1段目に入れないもの（${gate.name}）` };
-  // 調べものの PR は今の決まりのままにする。ほかと一緒に変えたときは、1段目にも調べものにも当たらない
+  if (gate !== undefined) return { tier: "待つ", reason: `フェーズ1に入れないもの（${gate.name}）` };
+  // 調べものの PR は今の決まりのままにする。ほかと一緒に変えたときは、フェーズ1にも調べものにも当たらない
   if (path.startsWith("docs/research/")) return { tier: "調べもの", reason: "調べもの" };
-  if (agentDocuments.has(path)) return { tier: "1段目", reason: "エージェントが読む文書" };
+  if (agentDocuments.has(path)) return { tier: "フェーズ1", reason: "エージェントが読む文書" };
   if (isTest(path)) {
-    // 既存のテストを書き換える・消すと、守っていた振る舞いが変わりうるので、足すだけを1段目にする
-    if (status === "A") return { tier: "1段目", reason: "テストを足すだけ" };
+    // 既存のテストを書き換える・消すと、守っていた振る舞いが変わりうるので、足すだけをフェーズ1にする
+    if (status === "A") return { tier: "フェーズ1", reason: "テストを足すだけ" };
     return { tier: "待つ", reason: "既存のテストを書き換える・消す" };
   }
   if (TOOL_ROOTS.some((toolRoot) => path === toolRoot || path.startsWith(`${toolRoot}/`))) {
-    return { tier: "1段目", reason: "scripts/・CI・道具" };
+    return { tier: "フェーズ1", reason: "scripts/・CI・道具" };
   }
-  return { tier: "待つ", reason: "1段目に当たらない" };
+  return { tier: "待つ", reason: "フェーズ1に当たらない" };
 };
 
 // 道具の置き場。サーバーに出るコードもアプリも変えない
