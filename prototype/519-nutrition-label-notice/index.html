@@ -3,7 +3,8 @@
 <!--
   試作（捨てる前提）。Issue #519「栄養成分表示が写った食事を、表示の値で記録する」の
   「知らせと印をどこにどう出すか」を見比べる。
-  知らせ 4 案（A〜D）と印 3 案（1〜3）を、下のバーで別々に切り替える。URL の # に残る（例: #tell-b-mark-2）。
+  2周目: 知らせは C（アプリの中では言わない）に決まった。印 3 案（0〜2）を下のバーで切り替える。URL の # に残る（例: #mark-1）。
+  欄が分かれた表示は、欄ごとに別々の料理にする（開発者の判断、2026-11-11）。1周目の 4×3 案はこのブランチの最初のコミットにある。
   画面の中の見た目は DESIGN.md のトークン（iOS の標準）に合わせ、外枠だけ試作の地にする。
   守る線: ADR-0015「裏の表示を撮るようユーザーに頼まない」。表示を撮るよう促す案内と、表示を撮る専用のボタンは入れない。
 -->
@@ -116,6 +117,12 @@ button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .photo.curry { background: linear-gradient(135deg, #F2E6CC 45%, #B4741F 46%); }
 .photo.cup { background: radial-gradient(circle at 40% 55%, #E9C27B 22%, #C0392B 23% 33%, #F4F1E6 34% 40%, #6B5A48 41%); }
 .notice-x { justify-self: end; }
+.thumb.box { background: #EDE6D3; }
+.photo.box { background: #EDE6D3; }
+.plus { position: absolute; right: 2px; bottom: 2px; background: rgba(0,0,0,.55); color: #fff; font-size: 10px; border-radius: 4px; padding: 0 3px; }
+.dots { position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: center; gap: 6px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.5); }
+.dots i.on { background: #fff; }
 .hl { outline: 2px dashed var(--bar-on); outline-offset: 2px; border-radius: 6px; }
 
 /* カメラ */
@@ -142,32 +149,30 @@ button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 <div class="wrap">
   <header class="intro">
-    <div class="eyebrow">試作 · Issue #519 · 捨てる前提</div>
-    <h1>栄養成分表示の知らせと印を、どこにどう出すか</h1>
-    <p>表示が写った市販品は、表示の値で記録するようになる（推定のしかたはユーザーが選ばず自動で切り替わる）。そのとき、(1) 表示でも撮れることを<b>知らせる</b>場所と出し方、(2) 表示の値を使った材料にそうと分かる<b>印</b>の見た目と置き場所を決めたい。下のバーで、知らせ（A〜D）と印（1〜3）を別々に切り替えられる。</p>
-    <p class="guard">守る線（ADR-0015）: 裏の表示を撮るようユーザーに頼まない。「表示も撮ってください」と促す案内と、表示を撮る専用のボタンは、どの案にも入れていない。点線で囲んだところが、案ごとに変わる場所。</p>
-    <p class="muted" style="font-size:13px">語: <b>知らせる</b> = ここでは「表示でも撮れる」と伝える文のこと。GLOSSARY の「知らせ」（タイムラインに出すカード）と区別するため、カードの形をとる案だけを「知らせのカード」と書く。<b>材料の出どころ</b> = GLOSSARY の「栄養の出どころ」（栄養成分表示・成分表・推定）。</p>
+    <div class="eyebrow">試作 · Issue #519 · 捨てる前提 · 2周目</div>
+    <h1>栄養成分表示の値を使ったと、どこで分かるようにするか</h1>
+    <p>表示が写った市販品は、表示の値で記録するようになる。知らせは「アプリの中では言わない」に決まった（下の (1)）。表示でも撮れるのかと思った人は、実際に撮って試して気づく。そのとき、試した結果として<b>表示の値が使われた</b>ことがどこで分かるかを決めたい。下のバーで印の案（0〜2）を切り替えられる。</p>
+    <p class="guard">写真に表示が写っていることと、アプリがその値を使ったことは別。#519 の発端は、表示が写っていたのに値が成分表から引かれたことだった。写真を見ても、使われたかは分からない。点線で囲んだところが、案ごとに変わる場所。</p>
+    <p class="muted" style="font-size:13px">語: <b>栄養の出どころ</b> = 材料の栄養の値の根拠（栄養成分表示・成分表・推定。GLOSSARY）。<b>印</b> = ここでは、表示の値を使ったと分かるように画面に足すもの。</p>
   </header>
 
-  <section class="field" id="tell-field" aria-labelledby="tell-h">
+  <section class="field" aria-labelledby="tell-h">
     <div class="variant-head">
-      <div class="eyebrow">決めること (1)</div>
-      <h2 id="tell-h"></h2>
-      <p id="tell-sum"></p>
-      <ul class="flow" id="tell-flow"></ul>
+      <div class="eyebrow">決めたこと (1) · 知らせ</div>
+      <h2 id="tell-h">C. アプリの中では言わない</h2>
+      <p>アプリの画面には「表示でも撮れます」の文を足さない。LP と App Store の掲載情報の手順の絵で見せ、アプリの中では、撮って試した人が結果で気づく。ほかに比べた案（カメラの中に1行、最初の知らせのカード、市販品のときだけ食事の画面に1行）は、1周目の試作（このブランチの最初のコミット）にある。</p>
     </div>
-    <div class="phones" id="tell-phones"></div>
-    <div class="tradeoffs" id="tell-trade"></div>
   </section>
 
   <section class="field" id="mark-field" aria-labelledby="mark-h">
     <div class="variant-head">
-      <div class="eyebrow">決めること (2)</div>
+      <div class="eyebrow">決めること (2) · 印</div>
       <h2 id="mark-h"></h2>
       <p id="mark-sum"></p>
       <ul class="flow" id="mark-flow"></ul>
     </div>
     <div class="tabs" id="case-tabs" role="group" aria-label="場面"></div>
+    <p class="muted" id="case-note" style="font-size:14px"></p>
     <div class="phones" id="mark-phones"></div>
     <div class="tradeoffs" id="mark-trade"></div>
   </section>
@@ -176,146 +181,102 @@ button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
     <div class="eyebrow">開発者に選んでもらうこと</div>
     <h2>選ぶこと</h2>
     <ol>
-      <li>知らせ: A〜D のどれにするか（組み合わせも可。例: C を土台に B を足す）</li>
-      <li>印: 1〜3 のどれにするか。どの画面まで印を上げるか（料理の画面だけ／食事の画面まで／タイムラインまで）</li>
-      <li>印の文言: 「表示」でよいか（GLOSSARY は「栄養成分表示」。短くした「表示」を印の語として足すか）</li>
-      <li>表示の材料の量（1 食・1 袋）は推定したままなので「推定」の印も付く。「表示」と「推定」が並ぶのをそのままにするか、表示の材料では「推定」の印を出さないか</li>
+      <li>印: 0〜2 のどれにするか</li>
+      <li>1 か 2 なら、印の語を「表示」にするか（GLOSSARY の語は「栄養成分表示」）</li>
+      <li>表示の材料の量（1 食・1 袋）は推定したままなので「推定」の印も並ぶ。そのままにするか、表示の材料では「推定」の印を出さないか</li>
     </ol>
   </section>
 </div>
 
 <nav class="switcher" aria-label="試作の切り替え">
-  <div class="grp" role="group" aria-label="知らせの案"><span class="lbl">知らせ</span>
-    <button data-tell="a">A</button><button data-tell="b">B</button><button data-tell="c">C</button><button data-tell="d">D</button>
-  </div>
   <div class="grp" role="group" aria-label="印の案"><span class="lbl">印</span>
-    <button data-mark="1">1</button><button data-mark="2">2</button><button data-mark="3">3</button>
+    <button data-mark="0">0</button><button data-mark="1">1</button><button data-mark="2">2</button>
   </div>
 </nav>
 
 <script>
-const S = { tell: 'a', mark: '1', kase: 'ramen' };
+const S = { mark: '0', kase: 'ramen' };
 
 /* ---------- 部品 ---------- */
 const phone = (cap, inner, cls = '') => `<div class="phone-col"><div class="phone ${cls}"><div class="status"></div>${inner}</div><div class="phone-cap">${cap}</div></div>`;
-const composer = (extra = '') => `<div class="composer">${extra}<div class="composer-row"><div class="cbtn cam">◉</div><div class="cbtn">▣</div><div class="cbtn">⚖</div><div class="cfield">書く</div></div><div class="ai-note">AI が読んで返事をします</div></div>`;
-const ownMeal = (thumb, names, kcal, time, mark = '') => `<div class="own"><div class="thumb ${thumb}"></div><div style="display:grid;gap:3px;min-width:0"><div class="dish-names">${names}${mark}</div><div class="pfc"><span>${kcal} kcal</span></div></div></div><div class="time-out">${time}</div>`;
+const composer = () => `<div class="composer"><div class="composer-row"><div class="cbtn cam">◉</div><div class="cbtn">▣</div><div class="cbtn">⚖</div><div class="cfield">書く</div></div><div class="ai-note">AI が読んで返事をします</div></div>`;
 const badge = (t, hl = true) => `<span class="badge ${hl ? 'hl' : ''}">${t}</span>`;
 
-/* ---------- 場面のデータ（値は架空の見本） ---------- */
+/* ---------- 場面（値は架空の見本） ---------- */
+const ramen = { name: '〇〇ラーメン', qty: '1 食', kcal: 512, salt: '6.1 g', ings: [{ name: '〇〇ラーメン', qty: '1', unit: '食', src: 'label' }] };
+const curry = { name: 'カレーライス', qty: '1 皿', kcal: 480, salt: '2.4 g 以上', ings: [
+  { name: 'ご飯', qty: '200', unit: 'g', src: 'table' },
+  { name: '〇〇カレー', qty: '1', unit: '袋', src: 'label' } ] };
 const CASES = {
   ramen: {
-    tab: 'まるごとの表示（ラーメン）', thumb: 'pkg', photo: 'pkg',
-    dishes: [{ name: '〇〇ラーメン', qty: '1 食', est: true, kcal: 512, ings: [
-      { name: '〇〇ラーメン', qty: '1', unit: '食', est: true, src: 'label', kcal: 512 } ] }],
-    totals: { kcal: 512, p: '18.2', f: '16.4', c: '72.1' },
+    tab: 'まるごとの表示（ラーメン）', thumbs: ['pkg'], photos: ['pkg'],
+    note: 'ラーメンとパッケージを1枚に撮った。材料は商品そのもの1つで、名前は商品名。',
+    dishes: [ramen], totals: { kcal: 512, p: '18.2', f: '16.4', c: '72.1' },
     srcLine: '栄養の出どころ: 栄養成分表示', citation: false,
   },
-  curry: {
-    tab: '一部の表示（カレーライス）', thumb: 'curry', photo: 'curry',
-    dishes: [{ name: 'カレーライス', qty: '1 皿', est: true, kcal: 480, ings: [
-      { name: 'ご飯', qty: '200', unit: 'g', est: true, src: 'table', kcal: 312 },
-      { name: '〇〇カレー', qty: '1', unit: '袋', est: true, src: 'label', kcal: 168 } ] }],
-    totals: { kcal: 480, p: '9.3', f: '10.4', c: '89.8' },
+  curry1: {
+    tab: '一部の表示（カレーライスと箱を1枚）', thumbs: ['curry'], photos: ['curry'],
+    note: 'カレーライスとレトルトカレーの箱を1枚に撮った。ご飯は成分表から引き、カレーだけ表示の値。',
+    dishes: [curry], totals: { kcal: 480, p: '9.3', f: '10.4', c: '89.8' },
+    srcLine: '栄養の出どころ: 栄養成分表示 1・成分表 1', citation: true,
+  },
+  curry2: {
+    tab: '一部の表示（箱とカレーライスを別の写真）', thumbs: ['curry', 'box'], photos: ['curry', 'box'],
+    note: '箱の写真とカレーライスの写真を別々に撮り、1つの食事として上げた。1枚のときと同じ形になる。',
+    dishes: [curry], totals: { kcal: 480, p: '9.3', f: '10.4', c: '89.8' },
     srcLine: '栄養の出どころ: 栄養成分表示 1・成分表 1', citation: true,
   },
   cup: {
-    tab: '欄が分かれた表示（カップめん）', thumb: 'cup', photo: 'cup',
-    dishes: [{ name: '〇〇カップめん', qty: '1 食', est: true, kcal: 416, ings: [
-      { name: 'めん・かやく', qty: '1', unit: '食', est: true, src: 'label', kcal: 365 },
-      { name: 'スープ', qty: '1', unit: '食', est: true, src: 'label', kcal: 51 } ] }],
+    tab: '欄が分かれた表示（カップめん）', thumbs: ['cup'], photos: ['cup'],
+    note: '表示が「めん・かやく」と「スープ」の欄に分かれていた。欄ごとに別々の料理にする（材料は1つずつ）。名前は商品名を付けず欄の名前にして、タイムラインが長くならないようにした。スープを残したら、食事の画面でスープの料理の量を直す。',
+    dishes: [
+      { name: 'めん・かやく', qty: '1 食', kcal: 365, salt: '2.6 g', ings: [{ name: 'めん・かやく', qty: '1', unit: '食', src: 'label' }] },
+      { name: 'スープ', qty: '1 食', kcal: 51, salt: '3.0 g', ings: [{ name: 'スープ', qty: '1', unit: '食', src: 'label' }] } ],
     totals: { kcal: 416, p: '10.5', f: '17.3', c: '54.0' },
     srcLine: '栄養の出どころ: 栄養成分表示', citation: false,
-  },
-};
-const SRC_NAME = { label: '表示', table: '成分表', est: '推定' };
-
-/* ---------- 知らせの案 ---------- */
-const NOTE = '料理でも、パッケージの栄養成分表示でも撮れます';
-const TELL = {
-  a: {
-    title: 'A. カメラの中に1行',
-    sum: '撮るときに、カメラの上に1行だけ重ねる。撮る直前の、いちばん効く場所。',
-    flow: [['操作', '入力欄の「撮る」を押す'], ['起きること', '標準のカメラの上に「' + NOTE + '」の1行が重なる'], ['いつまで', '写真の食事が 3 件になるまで（いつも出すかは選べる）']],
-    phones: () => [
-      phone('撮るを押したあと（標準のカメラに1行を重ねる）', `<div class="viewfinder"><div class="vf-food"></div><div class="vf-pkg"></div><div class="cam-hint hl">${NOTE}</div></div><div class="cam-bottom"><span class="cancel">キャンセル</span><div class="shutter"></div></div>`, 'camera'),
-    ],
-    pros: ['撮る直前に目に入るので、気づかれやすい', 'タイムラインに何も増えない'],
-    cons: ['標準のカメラ（UIImagePickerController）に cameraOverlayView で手を入れる。DESIGN.md の「標準に従う」から外れるので、コードに理由を書くことになる', '「写真」（撮っておいた写真を選ぶ）の入口では出ない', '回数で消す仕組みが要る（端末に持つ数）'],
-  },
-  b: {
-    title: 'B. 最初の写真の食事のあとに、知らせのカードを1回',
-    sum: '初めて写真で記録した食事の推定が終わったら、タイムラインに知らせのカードを1回だけ出す。',
-    flow: [['操作', '初めて写真で食事を記録し、推定が終わる'], ['起きること', '食事のカードの下に知らせのカード「' + NOTE + '。写っていれば、表示の値で記録します。」'], ['いつまで', '「閉じる」を押すまで。二度と出さない']],
-    phones: () => [
-      phone('初めての写真の食事の推定が終わったあと', `<div class="nav">11月9日（月）</div><div class="scroll"><div class="day">今日</div>${ownMeal('', '親子丼・味噌汁', 742, '12:10')}<div class="card hl"><div style="font-weight:600">${NOTE}</div><div class="small" style="font-size:12px">パッケージの栄養成分表示が写っていれば、その料理は表示の値で記録します。</div><div class="notice-x link" style="font-size:13px">閉じる</div></div></div>${composer()}`),
-    ],
-    pros: ['標準のカメラに手を入れない', '一度だけなので、繰り返しうるさくない', '今ある知らせのカードの形を使える'],
-    cons: ['GLOSSARY の「知らせ」の種類が1つ増える（端末で作り、閉じたことを同期する）', '撮る場面から離れているので、次に市販品を食べるときには忘れているかもしれない', '「求められていないことは言わない」（ADR-0001）に触れるか、の判断が要る'],
-  },
-  c: {
-    title: 'C. アプリの中では言わない（LP・掲載情報と、印で伝える）',
-    sum: 'アプリの画面には文を足さない。LP と App Store の掲載情報の手順の絵で「表示でも撮れる」と見せ、アプリの中では、たまたま表示が写ったときの印（下の決めること (2)）で気づいてもらう。',
-    flow: [['操作', '（アプリの中で特別な操作はない）'], ['起きること', '表示が写っていた料理だけ、材料に印が付く。食事の画面の出どころの1行にも「栄養成分表示」と出る'], ['どこで知る', 'LP・掲載情報の手順の絵、印']],
-    phones: () => [
-      phone('タイムライン（今のまま）', `<div class="nav">11月9日（月）</div><div class="scroll"><div class="day">今日</div>${ownMeal('pkg', '〇〇ラーメン', 512, '12:10')}</div>${composer()}`),
-      phone('食事の画面（今ある出どころの1行が伝える）', `<div class="nav"><span class="back">‹ 戻る</span>食事</div><div class="photo pkg"></div><div class="scroll"><div class="list"><div class="row"><span class="small">12:10</span><span class="big-kcal">512 kcal</span><div class="pfc"><span>P 18.2 g</span><span>F 16.4 g</span><span>C 72.1 g</span></div><span class="small hl">栄養の出どころ: 栄養成分表示</span></div></div></div>`),
-    ],
-    pros: ['画面も仕組みも増えない。いちばん「求められていないことは言わない」に沿う', '頼む・促すと読まれるおそれがない'],
-    cons: ['掲載情報や LP を見ない人は、表示でも撮れることに気づかない', '印は、表示が写ったあとでしか出ないので、最初のきっかけにならない'],
-  },
-  d: {
-    title: 'D. 市販品と分かったときだけ、食事の画面に1行',
-    sum: '推定で市販品と分かったのに表示が写っていなかった料理だけ、食事の画面の出どころの1行の下に、表示でも撮れることを1行添える。',
-    flow: [['操作', '市販品（表示なし）を撮る → 食事のカードから潜る'], ['起きること', '出どころの1行の下に「パッケージの栄養成分表示が写っていると、その値で記録します。」'], ['いつまで', '市販品と分かった食事にいつも（または最初の数回）']],
-    phones: () => [
-      phone('市販品と分かった食事の画面（表示は写っていない）', `<div class="nav"><span class="back">‹ 戻る</span>食事</div><div class="photo"></div><div class="scroll"><div class="list"><div class="row"><span class="small">12:10</span><span class="big-kcal">488 kcal</span><div class="pfc"><span>P 17.0 g</span><span>F 14.8 g</span><span>C 70.2 g</span></div><span class="small">栄養の出どころ: 成分表 4・推定 1</span><span class="small hl">パッケージの栄養成分表示が写っていると、その値で記録します。</span></div></div><div class="list-h">料理</div><div class="list"><div class="row"><div class="row-line"><span class="name">ラーメン</span><span class="qty">1 杯</span>${badge('推定', false)}<span class="kcal">488 kcal</span><span class="chev">›</span></div></div></div></div>`),
-    ],
-    pros: ['必要な人に、必要な場面でだけ出る', '標準のカメラに手を入れない'],
-    cons: ['撮ったあとに出るので、「撮り直して」と読まれやすい。ADR-0015 の線にいちばん近い', 'サーバーが「市販品だった」を返す形が要る（今は無い）', 'その食事には間に合わない（推定し直しの入口は名前を直すことだけ）'],
   },
 };
 
 /* ---------- 印の案 ---------- */
 const MARK = {
+  '0': {
+    title: '0. 今のまま（印を足さない）',
+    sum: '新しい印は足さない。食事の画面の合計の下に今もある「栄養の出どころ: 栄養成分表示」の1行が、表示の値を使ったことを伝える。',
+    flow: [['操作', 'タイムライン → 食事のカード'], ['分かる場所', '食事の画面の「栄養の出どころ: 栄養成分表示」（成分表と混じれば「栄養成分表示 1・成分表 1」）']],
+    pros: ['何も作らない。今の画面のまま', '料理が表示だけの値なら、料理の画面の名前と材料が同じになる（ラーメン）ので、材料に印が無くても迷いにくい'],
+    cons: ['混じった料理（カレーライス）では、どの材料が表示の値かが分からない', '1行の小さな文字で、試した人が見つけられるかは分からない'],
+  },
   '1': {
-    title: '1. 材料の行に「表示」の印（料理の画面だけ）',
-    sum: '料理の画面の材料の行に、推定の印と同じ形（枠線だけの小さな印）で「表示」を添える。食事の画面とタイムラインは今のまま（食事の画面は出どころの1行が伝える）。',
-    flow: [['操作', 'タイムライン → 食事のカード → 料理の行'], ['起きること', '料理の画面の材料「〇〇ラーメン 1 食 [表示]」。成分表・推定の材料には何も付けない']],
-    pros: ['今の印（推定の印）と同じ部品で、足すものが小さい', '画面の上の階層は変わらない'],
+    title: '1. 料理の画面の材料の行に「表示」の印',
+    sum: '0 に加えて、料理の画面の材料の行に、推定の印と同じ形（枠線だけの小さな印）で「表示」を添える。食事の画面とタイムラインは今のまま。',
+    flow: [['操作', 'タイムライン → 食事のカード → 料理の行'], ['分かる場所', '食事の画面の出どころの1行と、料理の画面の「〇〇カレー 1 袋 [表示]」']],
+    pros: ['混じった料理で、どの材料が表示の値かが分かる', '今の推定の印と同じ部品で、足すものが小さい'],
     cons: ['料理の画面まで潜らないと見えない', '「推定」と「表示」の印が同じ形で並ぶ（量は推定、栄養は表示）'],
   },
   '2': {
-    title: '2. 料理の単位で見せる（タイムライン・食事の画面にも印）',
-    sum: '表示の値を使った料理は、タイムラインのカードと食事の画面の料理の行にも「表示」の印を付ける。料理の画面では、材料の行の下に「栄養成分表示の値」と1行添える。',
-    flow: [['操作', 'タイムラインを見るだけ'], ['起きること', '食事のカードの料理名に [表示]、食事の画面の料理の行に [表示]、料理の画面の材料の下に「栄養成分表示の値」']],
-    pros: ['タイムラインで、表示どおりに記録できたことがすぐ分かる', '一部の表示（カレーライス）でも、料理に印が付く'],
-    cons: ['タイムラインのカードに初めて印が載る。カードの情報が増える', '一部だけ表示の料理でも、料理まるごと表示に見えるおそれ'],
-  },
-  '3': {
-    title: '3. すべての材料に出どころを書く（料理の画面）',
-    sum: '料理の画面の材料の行の右に、どの材料にも出どころを文字で書く（表示／成分表／推定）。Issue の図と同じ見え方。表示の材料だけを特別扱いしない。',
-    flow: [['操作', 'タイムライン → 食事のカード → 料理の行'], ['起きること', '「ご飯 200 g 成分表」「〇〇カレー 1 袋 表示」のように、行ごとに出どころが並ぶ']],
-    pros: ['表示・成分表・推定の違いが一目で分かる（なぜこの値かが分かる）', '#521（栄養を直す）で「直した」を足すときも同じ場所に置ける'],
-    cons: ['行の文字が増える。大きな文字では折り返す', '成分表・推定まで見せるのは、今回の問いより広い変更'],
+    title: '2. タイムラインと食事の画面の料理にも印',
+    sum: '1 に加えて、表示の値を使った料理は、タイムラインのカードの料理名と、食事の画面の料理の行にも「表示」の印を付ける。',
+    flow: [['操作', 'タイムラインを見るだけ'], ['分かる場所', '食事のカードの料理名の [表示]、食事の画面の料理の行の [表示]、料理の画面の材料の [表示]']],
+    pros: ['撮って試した直後に、タイムラインで結果が分かる', 'C（アプリの中では言わない）でも、気づくきっかけが目に入りやすい'],
+    cons: ['タイムラインのカードに初めて印が載る。カードの情報が増える', '一部だけ表示の料理（カレーライス）でも、料理まるごと表示に見えるおそれ'],
   },
 };
 
-function markScreens() {
-  const k = CASES[S.kase], d = k.dishes[0], m = S.mark;
-  const hasLabel = d.ings.some(i => i.src === 'label');
-  const cardMark = (m === '2' && hasLabel) ? ' ' + badge('表示') : '';
-  const timeline = phone('タイムライン', `<div class="nav">11月9日（月）</div><div class="scroll"><div class="day">今日</div>${ownMeal(k.thumb, d.name, d.kcal, '12:10', cardMark)}</div>${composer()}`);
-  const dishRowMark = (m === '2' && hasLabel) ? badge('表示') : '';
-  const meal = phone('食事の画面（食事のカードから潜る）', `<div class="nav"><span class="back">‹ 戻る</span>食事</div><div class="photo ${k.photo}"></div><div class="scroll"><div class="list"><div class="row"><span class="small">12:10</span><span class="big-kcal">${k.totals.kcal} kcal</span><div class="pfc"><span>P ${k.totals.p} g</span><span>F ${k.totals.f} g</span><span>C ${k.totals.c} g</span></div><span class="small">${k.srcLine}</span></div></div><div class="list-h">料理</div><div class="list"><div class="row"><div class="row-line"><span class="name">${d.name}</span>${dishRowMark}<span class="qty">${d.qty}</span>${d.est ? badge('推定', false) : ''}<span class="kcal">${d.kcal} kcal</span><span class="chev">›</span></div></div></div>${k.citation ? '<div class="list"><div class="row"><div class="row-line"><span class="name">栄養の出典</span><span class="chev">›</span></div></div></div>' : ''}</div>`);
-  const ingRows = d.ings.map(i => {
-    let after = '', below = '';
-    if (m === '1' && i.src === 'label') after = badge('表示');
-    if (m === '3') after = `<span class="src hl">${SRC_NAME[i.src]}</span>`;
-    if (m === '2' && i.src === 'label') below = `<span class="small hl">栄養成分表示の値</span>`;
-    return `<div class="row"><div class="row-line"><span class="name">${i.name}</span><span class="qty">${i.qty}</span><span class="small">${i.unit}</span>${i.est ? badge('推定', false) : ''}${after}</div>${below}</div>`;
-  }).join('');
-  const dish = phone('料理の画面（料理の行から潜る）', `<div class="nav"><span class="back">‹ 食事</span>${d.name}</div><div class="scroll"><div class="list"><div class="row"><div class="row-line"><span class="name">名前</span><span class="qty">${d.name}</span></div></div><div class="row"><div class="row-line"><span class="name">量</span><span class="qty">${d.qty}</span>${badge('推定', false)}</div></div></div><div class="list-h">材料</div><div class="list">${ingRows}</div><div class="list-h">主な栄養</div><div class="list"><div class="row"><div class="row-line"><span class="name">エネルギー</span><span class="kcal">${d.kcal} kcal</span></div></div><div class="row"><div class="row-line"><span class="name">食塩相当量</span><span class="kcal">${S.kase === 'curry' ? '2.4 g 以上' : S.kase === 'cup' ? '5.6 g' : '6.1 g'}</span></div></div></div></div>`);
+/* ---------- 画面 ---------- */
+function screens() {
+  const k = CASES[S.kase], m = S.mark;
+  const lbl = d => d.ings.some(i => i.src === 'label');
+  const names = k.dishes.map(d => d.name + ((m === '2' && lbl(d)) ? ' ' + badge('表示') : '')).join('・');
+  const more = k.thumbs.length > 1 ? `<span class="plus">+${k.thumbs.length - 1}</span>` : '';
+  const timeline = phone('タイムライン', `<div class="nav">11月11日（水）</div><div class="scroll"><div class="day">今日</div><div class="own"><div class="thumb ${k.thumbs[0]}">${more}</div><div style="display:grid;gap:3px;min-width:0"><div class="dish-names">${names}</div><div class="pfc"><span>${k.totals.kcal} kcal</span></div></div></div><div class="time-out">12:10</div></div>${composer()}`);
+
+  const dots = k.photos.length > 1 ? `<div class="dots">${k.photos.map((_, i) => `<i class="${i === 0 ? 'on' : ''}"></i>`).join('')}</div>` : '';
+  const dishRows = k.dishes.map(d => `<div class="row"><div class="row-line"><span class="name">${d.name}</span>${(m === '2' && lbl(d)) ? badge('表示') : ''}<span class="qty">${d.qty}</span>${badge('推定', false)}<span class="kcal">${d.kcal} kcal</span><span class="chev">›</span></div></div>`).join('');
+  const meal = phone('食事の画面（食事のカードから潜る）', `<div class="nav"><span class="back">‹ 戻る</span>食事</div><div class="photo ${k.photos[0]}">${dots}</div><div class="scroll"><div class="list"><div class="row"><span class="small">12:10</span><span class="big-kcal">${k.totals.kcal} kcal</span><div class="pfc"><span>P ${k.totals.p} g</span><span>F ${k.totals.f} g</span><span>C ${k.totals.c} g</span></div><span class="small ${m === '0' ? 'hl' : ''}">${k.srcLine}</span></div></div><div class="list-h">料理</div><div class="list">${dishRows}</div>${k.citation ? '<div class="list"><div class="row"><div class="row-line"><span class="name">栄養の出典</span><span class="chev">›</span></div></div></div>' : ''}</div>`);
+
+  const d = k.dishes[0];
+  const ingRows = d.ings.map(i => `<div class="row"><div class="row-line"><span class="name">${i.name}</span><span class="qty">${i.qty}</span><span class="small">${i.unit}</span>${badge('推定', false)}${(m !== '0' && i.src === 'label') ? badge('表示') : ''}</div></div>`).join('');
+  const dish = phone(`料理の画面（「${d.name}」の行から潜る）`, `<div class="nav"><span class="back">‹ 食事</span>${d.name}</div><div class="scroll"><div class="list"><div class="row"><div class="row-line"><span class="name">名前</span><span class="qty">${d.name}</span></div></div><div class="row"><div class="row-line"><span class="name">量</span><span class="qty">${d.qty}</span>${badge('推定', false)}</div></div></div><div class="list-h">材料</div><div class="list">${ingRows}</div><div class="list-h">主な栄養</div><div class="list"><div class="row"><div class="row-line"><span class="name">エネルギー</span><span class="kcal">${d.kcal} kcal</span></div></div><div class="row"><div class="row-line"><span class="name">食塩相当量</span><span class="kcal">${d.salt}</span></div></div></div></div>`);
   return timeline + meal + dish;
 }
 
@@ -325,36 +286,28 @@ const trade = v => `<div><h3>良いところ</h3><ul>${v.pros.map(x => `<li>${x}
 const flow = v => v.flow.map(([a, b]) => `<li><b>${a}</b><span>${b}</span></li>`).join('');
 
 function render() {
-  const t = TELL[S.tell], m = MARK[S.mark];
-  $('tell-h').textContent = t.title; $('tell-sum').textContent = t.sum; $('tell-flow').innerHTML = flow(t);
-  $('tell-phones').innerHTML = t.phones().join(''); $('tell-trade').innerHTML = trade(t);
+  const m = MARK[S.mark];
   $('mark-h').textContent = m.title; $('mark-sum').textContent = m.sum; $('mark-flow').innerHTML = flow(m);
   $('case-tabs').innerHTML = Object.entries(CASES).map(([key, c]) => `<button data-case="${key}" aria-pressed="${key === S.kase}">${c.tab}</button>`).join('');
-  $('mark-phones').innerHTML = markScreens(); $('mark-trade').innerHTML = trade(m);
-  document.querySelectorAll('[data-tell]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tell === S.tell));
+  $('case-note').textContent = CASES[S.kase].note;
+  $('mark-phones').innerHTML = screens(); $('mark-trade').innerHTML = trade(m);
   document.querySelectorAll('[data-mark]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mark === S.mark));
-  const h = `#tell-${S.tell}-mark-${S.mark}`;
+  const h = `#mark-${S.mark}`;
   if (location.hash !== h) history.replaceState(null, '', h);
 }
-function readHash() {
-  const r = /^#tell-([a-d])-mark-([1-3])$/.exec(location.hash);
-  if (r) { S.tell = r[1]; S.mark = r[2]; }
-}
+function readHash() { const r = /^#mark-([0-2])$/.exec(location.hash); if (r) S.mark = r[1]; }
 document.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.tell) S.tell = b.dataset.tell;
   if (b.dataset.mark) S.mark = b.dataset.mark;
   if (b.dataset.case) S.kase = b.dataset.case;
   render();
 });
 document.addEventListener('keydown', e => {
   if (e.target.closest('input,textarea,[contenteditable]')) return;
-  const marks = ['1', '2', '3'], tells = ['a', 'b', 'c', 'd'];
-  const step = (arr, cur, d) => arr[(arr.indexOf(cur) + d + arr.length) % arr.length];
-  if (e.key === 'ArrowRight') S.mark = step(marks, S.mark, 1);
-  else if (e.key === 'ArrowLeft') S.mark = step(marks, S.mark, -1);
-  else if (e.key === ']') S.tell = step(tells, S.tell, 1);
-  else if (e.key === '[') S.tell = step(tells, S.tell, -1);
+  const marks = ['0', '1', '2'];
+  const step = d => marks[(marks.indexOf(S.mark) + d + marks.length) % marks.length];
+  if (e.key === 'ArrowRight') S.mark = step(1);
+  else if (e.key === 'ArrowLeft') S.mark = step(-1);
   else return;
   e.preventDefault(); render();
 });
