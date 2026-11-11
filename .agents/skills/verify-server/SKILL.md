@@ -1,6 +1,6 @@
 ---
 name: verify-server
-description: "nu-tori のサーバー（server/）を手元で wrangler dev で立て、端末と同じ API を叩いて、触れた機能が動くことを証拠つきで確かめる。PR を出す前と PR に push する前の確かめ（docs/agents/git.md の「動かして確かめる」）で使う。"
+description: "nu-tori のサーバー（server/）を手元で wrangler dev で立て、端末と同じ API を叩いて、触れた機能が動くことを証拠つきで確かめる。PR を出す前と PR に push する前の確かめ（docs/agents/review.md の「確かめの回し方」。かかるかは同じ文書の表）で使う。"
 ---
 
 # サーバーを動かして確かめる
@@ -63,11 +63,11 @@ $D                                              # オプション（時刻の差
 - 証拠は `"$run/evidence/"` に残る。`requests.log` に、送った要求と、返った状態コードと本文が並ぶ
 - 動いたと言えるのは、ユーザーの経路（端末が呼ぶ API）で操作し、その結果を別の見方（取りに行く要求に届いた記録、続く要求の状態コード）で読めたとき。書き込みが `applied` を返しただけでは足りない
 - 確かめの口（`/v1/e2e/*`）は、本物の経路で見えないもの（推定の失敗の理由）を読むときと、Apple を通せないサインインの代わりにだけ使う
-- PR の本文の「確かめ」（`docs/agents/git.md` の「動かして確かめる」）に書く見えた結果は、状態コードと、届いた記録の種類と値
+- PR の本文の「確かめ」（`docs/agents/review.md` の「確かめの回し方」）に書く見えた結果は、状態コードと、届いた記録の種類と値
 
 ## 確かめられないとき
 
-次の入口は手元で通せない。`docs/agents/git.md` の「動かして確かめる」で「確かめていない」と書くときに、確かめる場所をここから引く。ほかの入口を通せなかったときは、試したコマンドと、揃わなかった前提を書く。
+次の入口は手元で通せない。`docs/agents/review.md` の「確かめの回し方」で「確かめていない」と書くときに、確かめる場所をここから引く。ほかの入口を通せなかったときは、試したコマンドと、揃わなかった前提を書く。
 
 - Anthropic の鍵が無い回では、推定・読み分け・返事の結果まで進まない。推定が始まる（`estimating`）ことと、Anthropic まで届いた（確かめの口で `authentication_error`）ことまでが確かめられる。結果は、merge のあとに `deploy.yml` の `main-flow-on-development`（開発用の環境で本物の提供元を通す）が確かめる
 - 返事が作れなかった（`failed`）文章を送り直して返事が作られるところは、鍵があっても通せない（`features/reply.md` の Gotchas）。`main-flow-on-development` も通らない。`server/src/sent-text/http/resend.test.ts` が確かめていて、本物の経路では TestFlight の版で確かめる

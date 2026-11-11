@@ -15,8 +15,8 @@ pstack は Claude Code のプラグイン `pstack@cursor-plugins` で入れ、�
 
 決まった頼みで繰り返し立てるサブエージェントは、定義にしてリポジトリに置く。中身の正本は Claude Code の `.claude/agents/<名前>.md` に書き、Codex の `.codex/agents/<名前>.toml` には、その本文を読むよう指す1行だけを置く。Cursor は両方を読む。
 
-- `preferences-review`: 好みのレビューを1周回す（`docs/agents/git.md` の「PR の前のレビュー」）。レビュー役はコードを直さないので、書く道具を外す。入れ子のサブエージェントに頼むと結果を待たずに返したことがある（#544）ので、`Agent` も外す。Bash は git の差分を読むために残す
-- `policy-review`: ポリシーの照合を1周回す（`docs/agents/git.md` の「PR の前のレビュー」）。道具を外す理由は `preferences-review` と同じ
+- `preferences-review`: 好みのレビューを1周回す（`docs/agents/review.md` の「照合の回し方」）。レビュー役はコードを直さないので、書く道具を外す。入れ子のサブエージェントに頼むと結果を待たずに返したことがある（#544）ので、`Agent` も外す。Bash は git の差分を読むために残す
+- `policy-review`: ポリシーの照合を1周回す（`docs/agents/review.md` の「照合の回し方」）。道具を外す理由は `preferences-review` と同じ
 
 `isolation: "worktree"` で立てるサブエージェント（`/implement-spec` の実装役など）には、次の書き方を指示に入れる。worktree の見張りは、git が worktree の外で動かないと確かめられない Bash を拒む。#613 では実装役のコマンドが84回拒まれ、そのたびに打ち直した
 
@@ -171,6 +171,15 @@ flowchart LR
 - 秘密の値は Sentry の読むだけのトークン `NU_TORI_SENTRY_READ_TOKEN` だけで、main からだけ使える Environment `production-alerts` に置く。Issue は `GITHUB_TOKEN` で書く
 - Mac で確かめるときは `scripts/production-alerts sentry --dry-run`。GitHub に書かず、作る Issue の題とコメントする先だけを出す
 - 公開のリポジトリでは、60 日動きが無いと定期実行が止まる。止まったら Actions の画面で入れ直す
+
+## 検証スキルの地図の見回り
+
+定期のタスク「検証スキルの地図の見直し（server・ios）」（`trig_016f9v8n4RY8tAvnDHdjqYdj`、毎週水曜 5:00〈日本時間〉、毎回新しいセッション）が、pstack の `maintain-verification-skill` で `verify-server` と `verify-ios` の地図（`features/`）を見直す。手順はタスクの指示にある。
+
+- `verify-server` は、クラウドのセッションで実際に立てて入口を通す
+- `verify-ios` は、クラウドにシミュレーターが無いので、main の最新の `ios-ui-test.yml` の回の結果と、地図の行とテスト・実装の読み合わせで見る。手で動かす行は回せず、報告に場面の名前を挙げ、Mac のセッションで回す
+- 地図を直すとき（結果が changed）は、新しいブランチで PR を1つ出し、`docs/agents/review.md` で変更にかかるものを通す。見張らず、merge もしない。製品の不具合は直さず Issue にする
+- タスクの指示を変えたら、ここも直す
 
 ## `nu-tori.app` からメールを送る
 
