@@ -31,7 +31,8 @@ public struct DailyGuide: Hashable, Sendable {
             }
         return rate * 100
     }
-    // 必要な速さの上限の、1週間に体重に対して変わる割合。サーバーと同じ割合で持ち、% は上で出す
+
+    // scripts/check がサーバーの値と比べられるよう、% でなくサーバーと同じ割合で持つ
     /// 正本はサーバーの `weeklyPaceRates.lose.hard`
     private static let loseRequiredPaceLimitRate = 0.0075
     /// 正本はサーバーの `weeklyPaceRates.gain.hard`
