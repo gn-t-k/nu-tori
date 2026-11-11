@@ -224,7 +224,7 @@ check_ios() {
     missing="$(missing_ui_test_screenshots "$ios"/NuToriUITests/*UITests.swift)"
     if [ -n "$missing" ]; then
         echo "$missing" >&2
-        echo "上のテストの本体で attachScreenshot(of:named:) を呼ぶ（docs/agents/languages/swift.md「道具」）" >&2
+        echo "上のテストの本体で attachScreenshot(of:named:) を呼び、確かめた画面のスクリーンショットを残す。UI テストが落ちたときに、そのときの画面を見られるようにする" >&2
         return 1
     fi
 
@@ -232,14 +232,22 @@ check_ios() {
     missing="$(missing_screen_previews "$ios/NuTori")"
     if [ -n "$missing" ]; then
         echo "$missing" >&2
-        echo "上の画面と同じフォルダに、右のファイルを置く（docs/agents/languages/swift.md「状態ごとのプレビュー」）" >&2
+        echo "上の画面と同じフォルダに、右のファイルを置く。画面の状態ごとの見本を並べ、どの状態の画面もキャンバスで見られるようにする（見本の書き方は docs/agents/languages/swift.md「状態ごとのプレビュー」）" >&2
+        return 1
+    fi
+
+    step "プレビューと UI テストのためのファイルを、ファイルごと #if DEBUG で囲んでいるか"
+    missing="$(debug_only_files_not_wrapped "$ios")"
+    if [ -n "$missing" ]; then
+        echo "$missing" >&2
+        echo "上のファイルの中身全体を、1つの #if DEBUG と #endif で囲む（#else を置かない）。プレビューの見本と UI テストの差し替えを、App Store に出す Release のビルドに入れないため" >&2
         return 1
     fi
 
     step "Xcode のプロジェクトの依存が exactVersion か"
     if grep -A2 'requirement = {' "$ios/NuTori.xcodeproj/project.pbxproj" |
         grep 'kind = ' | grep -v 'kind = exactVersion'; then
-        echo "Swift Package の依存は Exact Version で固定する（docs/agents/languages/swift.md「依存パッケージ」）" >&2
+        echo "Swift Package の依存は Exact Version で固定する。Up to Next Major などの範囲で書くと、Package.resolved を作り直したときに版が黙って変わる（docs/agents/coding-style.md「依存パッケージ」）" >&2
         return 1
     fi
 
@@ -1047,6 +1055,30 @@ missing_screen_previews() {
         done |
         # <画面> と <画面>Container の両方が同じファイルを求めるので、1行にまとめる
         sort -u -t: -k2,2
+}
+
+# <View>+Previews.swift・<型>+PreviewSample.swift・UITesting/ の下の Swift のファイルのうち、中身全体を1つの #if DEBUG で囲んでいないものを出す。空行と // の行は数えず、最初の行が #if DEBUG で、それを閉じる #endif が最後の行で、そのあいだに同じ深さの #else・#elseif が無いものを囲んだとみなす
+debug_only_files_not_wrapped() {
+    find "$1" -name .build -prune -o -type f \( -name '*+Previews.swift' -o -name '*+PreviewSample.swift' -o -path '*/UITesting/*.swift' \) -print |
+        sort |
+        while IFS= read -r file; do
+            if ! awk '
+                /^[[:space:]]*(\/\/.*)?$/ { next }
+                closed { wrapped = 0; exit }
+                !seen {
+                    seen = 1
+                    wrapped = ($0 ~ /^[[:space:]]*#if[[:space:]]+DEBUG[[:space:]]*(\/\/.*)?$/)
+                    depth = 1
+                    next
+                }
+                /^[[:space:]]*#if[[:space:]]/ { depth++ }
+                depth == 1 && /^[[:space:]]*#(else|elseif)([[:space:]]|$)/ { wrapped = 0 }
+                /^[[:space:]]*#endif([[:space:]]|$)/ && --depth == 0 { closed = 1 }
+                END { exit !(seen && wrapped && closed) }
+            ' "$file"; then
+                echo "${file#"$root"/}"
+            fi
+        done
 }
 
 # いちばん新しい iOS のランタイムの、最初の iPhone のシミュレータの ID
