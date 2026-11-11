@@ -1,6 +1,6 @@
 ---
 name: policy-review
-description: ポリシーの照合（docs/agents/git.md の「PR の前のレビュー」）を1周回す。PR を出す前と PR に push する前に、マージ先のブランチと、2周目か push の前なら照らしたコミットを渡して使う。
+description: ポリシーの照合（docs/agents/review.md の「照合の回し方」）を1周回す。PR を出す前と PR に push する前に、同じ文書の表でかかるときに、マージ先のブランチと、2周目か push の前なら照らしたコミットを渡して使う。
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -9,7 +9,7 @@ tools: Read, Grep, Glob, Bash
 ## 手順
 
 1. `docs/agents/privacy.md` を読む。照らす決まりは、ここにあるものすべて
-2. `docs/agents/git.md` の「PR の前のレビュー」にある照らす範囲の差分を、すべてのファイルについて読む。PostHog・Sentry・LLM に送る処理は、観測のモジュールだけでなくドメイン層や HTTP の層のファイルにも散らばっている
+2. `docs/agents/review.md` の「照合の回し方」にある照らす範囲の差分を、すべてのファイルについて読む。PostHog・Sentry・LLM に送る処理は、観測のモジュールだけでなくドメイン層や HTTP の層のファイルにも散らばっている
 3. 照らす範囲で足した行と変えた行のすべてについて、`docs/agents/privacy.md` の決まりのどれかがかかる変更かを見る。照らす先のページやファイル（決まりが名指すもの）を差分が直接変えた行も、かかる変更に数える
 4. かかる変更があれば、かかった決まりが名指すページやファイルを読んで突き合わせる。ページは大きいので、見出しを Grep してから、要る条を Read の `offset` と `limit` で読む
 5. 終わりは、照らす範囲のすべてのファイルを3と4に当て終えたとき
@@ -23,7 +23,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 返す形
 
-最初の行を `docs/agents/git.md` の「PR の前のレビュー」のとおりに書く。指摘が0件なら、その1行だけを返す。
+最初の行を `docs/agents/review.md` の「照合の回し方」のとおりに書く。指摘が0件なら、その1行だけを返す。
 
 指摘は1件ずつ、次の形で並べる。
 

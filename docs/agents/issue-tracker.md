@@ -88,7 +88,7 @@ GitHub Issueを作る。
   - 見える結果：その記録の ID で `source_deleted_weight_record` を送ると `applied`。取りに行くと、その記録の変更が `weight_record_deletion`（`record` は空）になり、`weight_record` としては出ない
 ```
 
-実装の PR で、この条件を地図に移す（`docs/agents/git.md` の「動かして確かめる」の 3）。サーバーにもアプリにもかかる条件は、両方の地図に移す。地図の無いアプリ（`site/`）では条件が Issue に残る。
+実装の PR で、この条件を地図に移す（`docs/agents/review.md` の「確かめの回し方」の 3）。サーバーにもアプリにもかかる条件は、両方の地図に移す。地図の無いアプリ（`site/`）では条件が Issue に残る。
 
 実装の前の置き場は Issue の受け入れ条件だけにし、地図には載せない（`/pstack:maintain-verification-skill` が、アプリと食い違う地図をずれとして扱うため。`MAP-FORMAT.md` の、予定の機能を書かない理由）。
 
