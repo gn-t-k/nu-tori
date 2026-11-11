@@ -531,16 +531,20 @@ check_strict_settings() {
         fi
     done
 
-    local configuration seen=""
+    local configuration seen="" configurations
+    if ! configurations="$(xcode_strict_settings "$ios/NuTori.xcodeproj/project.pbxproj")"; then
+        return 1
+    fi
     while IFS=$'\t' read -r configuration actual; do
+        [ -n "$configuration" ] || continue
         seen="$seen $configuration"
-        actual="$(tr ' ' '\n' <<< "$actual" | sed '/^$/d' | sort)"
+        actual="$(tr ' ' '\n' <<< "$actual" | sed '/^$/d' | sort -u)"
         if [ "$actual" != "$expected" ]; then
             echo "ios/NuTori.xcodeproj/project.pbxproj の ${configuration} の厳しさの設定が、ios/NuToriCore/Package.swift の strictSettings と違う（< が Package.swift、> が project.pbxproj）:" >&2
             diff <(echo "$expected") <(echo "$actual") >&2 || true
             failed=true
         fi
-    done < <(xcode_strict_settings "$ios/NuTori.xcodeproj/project.pbxproj")
+    done <<< "$configurations"
     for configuration in Debug Release; do
         if [[ "$seen " != *" $configuration "* ]]; then
             echo "ios/NuTori.xcodeproj/project.pbxproj に、厳しさの設定を持つ ${configuration} の構成が無い" >&2
@@ -557,6 +561,13 @@ check_strict_settings() {
 # strictSettings の設定を、1行に1つの名前にして並べて出す。読み方を知らない設定があれば落ちる
 package_strict_settings() {
     awk -v file="${1#"$root"/}" '
+        # SWIFT_APPROACHABLE_CONCURRENCY の読み替えは言語モードで変わるので、言語モードも比べる
+        /^[[:space:]]*swiftLanguageModes: \[\.v[0-9]+\]/ {
+            mode = $0
+            sub(/.*\.v/, "", mode)
+            sub(/\].*/, "", mode)
+            print "SwiftLanguageMode" mode
+        }
         /^var strictSettings/ { inside = 1; next }
         inside && /^}/ { inside = 0 }
         !inside { next }
@@ -574,14 +585,15 @@ package_strict_settings() {
             failed = 1
         }
         END { exit failed }
-    ' "$1" | sort
+    ' "$1" | sort -u
     return "${PIPESTATUS[0]}"
 }
 
 # 厳しさの設定を1つでも持つ構成ごとに「構成の名前<TAB>空白で区切った名前」を出す
-# SWIFT_APPROACHABLE_CONCURRENCY は、Swift 6 の言語モードで既定でない2つの機能に読み替える
+# SWIFT_APPROACHABLE_CONCURRENCY は、Swift 6 の言語モードで既定でない2つの機能に読み替える（言語モードも比べるので、6 でなくなれば落ちる）
+# 読み方を知らない厳しさの設定（SWIFT_STRICT_CONCURRENCY、OTHER_SWIFT_FLAGS の知らないフラグ）があれば落ちる
 xcode_strict_settings() {
-    awk '
+    awk -v file="${1#"$root"/}" '
         function camel(key,    parts, count, i, word, result) {
             count = split(tolower(key), parts, "_")
             for (i = 1; i <= count; i++) result = result toupper(substr(parts[i], 1, 1)) substr(parts[i], 2)
@@ -590,7 +602,18 @@ xcode_strict_settings() {
         function add(name) { settings = settings " " name; touched = 1 }
         /isa = XCBuildConfiguration;/ { inside = 1; settings = ""; touched = 0; next }
         !inside { next }
+        function unknown(what) {
+            printf "%s:%d: 厳しさの設定の読み方を知らない（scripts/check の xcode_strict_settings に足す）: %s\n", file, FNR, what > "/dev/stderr"
+            failed = 1
+        }
         /^[[:space:]]*SWIFT_TREAT_WARNINGS_AS_ERRORS = / { touched = 1; if (/= YES;/) add("TreatWarningsAsErrors") }
+        /^[[:space:]]*SWIFT_VERSION = / {
+            mode = $3
+            sub(/;$/, "", mode)
+            sub(/\.0$/, "", mode)
+            add("SwiftLanguageMode" mode)
+        }
+        /^[[:space:]]*SWIFT_STRICT_CONCURRENCY = / { unknown($0) }
         /^[[:space:]]*SWIFT_APPROACHABLE_CONCURRENCY = / {
             touched = 1
             if (/= YES;/) { add("InferIsolatedConformances"); add("NonisolatedNonsendingByDefault") }
@@ -605,9 +628,13 @@ xcode_strict_settings() {
         }
         /^[[:space:]]*OTHER_SWIFT_FLAGS = / {
             count = split($0, words, /[[:space:]"]+/)
-            for (i = 1; i < count; i++) {
-                if (words[i] == "-enable-upcoming-feature") add(words[i + 1])
-                if (words[i] == "-enable-experimental-feature") add("experimental:" words[i + 1])
+            # 頭と終わりの " で、split の結果の最初と最後が空になる
+            for (i = 4; i <= count; i++) {
+                if (words[i] == "" || words[i] == ";" || words[i] == "$(inherited)") continue
+                if (words[i] == "-enable-upcoming-feature") { add(words[++i]); continue }
+                if (words[i] == "-enable-experimental-feature") { add("experimental:" words[++i]); continue }
+                if (words[i] == "-warnings-as-errors") { add("TreatWarningsAsErrors"); continue }
+                unknown("OTHER_SWIFT_FLAGS の " words[i])
             }
         }
         /^[[:space:]]*name = / {
@@ -616,6 +643,7 @@ xcode_strict_settings() {
             if (touched) printf "%s\t%s\n", name, settings
             inside = 0
         }
+        END { exit failed }
     ' "$1"
 }
 
@@ -643,26 +671,28 @@ check_ios_deployment_target() {
 # 係数の JSON（*.test-cases.json でないもの）は、端末の書き出しの生成器とサーバーの server/src が、入力と期待値の JSON（*.test-cases.json）は、サーバーのテストと端末のテストが読む
 # CI の ios のジョブは git を使えないので、grep で探す
 check_shared_json_readers() {
-    local file name compared=0 failed=false
+    local file name pattern compared=0 failed=false
     for file in "$root"/shared/*.json; do
         [ -e "$file" ] || continue
         name="${file##*/}"
+        # ranges.json が accepted-ranges.json への参照で通らないよう、名前の前に区切りを求める
+        pattern="(^|[^A-Za-z0-9_.-])${name//./\\.}"
         compared=$((compared + 1))
         if [[ "$name" == *.test-cases.json ]]; then
-            if ! grep -rqF --include='*.test.ts' "$name" "$server/src"; then
+            if ! grep -rqE --include='*.test.ts' "$pattern" "$server/src"; then
                 echo "shared/${name}: server/src のテスト（*.test.ts）が読んでいない" >&2
                 failed=true
             fi
-            if ! grep -rqF --include='*.swift' "$name" "$ios/NuToriCore/Tests"; then
+            if ! grep -rqE --include='*.swift' "$pattern" "$ios/NuToriCore/Tests"; then
                 echo "shared/${name}: ios/NuToriCore/Tests のテストが読んでいない" >&2
                 failed=true
             fi
         else
-            if ! grep -rqF --include='*.swift' "$name" "$ios/SharedRulesGenerator/Sources"; then
+            if ! grep -rqE --include='*.swift' "$pattern" "$ios/SharedRulesGenerator/Sources"; then
                 echo "shared/${name}: 書き出しの生成器（ios/SharedRulesGenerator/Sources）が読んでいない" >&2
                 failed=true
             fi
-            if ! grep -rqF --include='*.ts' --exclude='*.test.ts' "$name" "$server/src"; then
+            if ! grep -rqE --include='*.ts' --exclude='*.test.ts' "$pattern" "$server/src"; then
                 echo "shared/${name}: server/src（テストでないファイル）が読んでいない" >&2
                 failed=true
             fi
