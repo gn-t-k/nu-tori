@@ -40,6 +40,9 @@
     "nu-tori/filename-matches-export": "error",
     "nu-tori/import-through-index": "error",
     "nu-tori/no-wrapped-comment": "error",
+    "nu-tori/no-parameterized-test": "error",
+    "nu-tori/no-otherwise": "error",
+    "nu-tori/no-instanceof-own-class": "error",
     "vitest/require-top-level-describe": "error",
     "vitest/no-duplicate-hooks": "error",
     "no-restricted-imports": [
@@ -62,7 +65,7 @@
     },
     {
       "files": ["**/*.mock.ts"],
-      "rules": { "nu-tori/filename-matches-export": "off" }
+      "rules": { "nu-tori/filename-matches-export": "off", "nu-tori/mock-export-name": "error" }
     },
     {
       "files": ["src/domain/record-id/record-id.ts"],
