@@ -126,7 +126,7 @@ describe("トークン発行に失敗したとき", () => {
 - モジュールから export された関数を差し替えるときは、mock のファイルを作る。テスト対象に渡すコールバックは、その場で `vi.fn()` を書く
 - mock のファイルでは、使う側が読み込む入口（`./index`）を `import * as module` で読み込み、`vi.spyOn(module, "関数名")` で差し替える
 - `mockXxxOk`・`mockXxxError` の `Xxx` は、差し替える関数の名前に対応させる（`createDatabase` → `mockCreateDatabaseOk`）
-- `mockXxxOk` は `overrides` の引数で既定のデータの一部を上書きでき、`mockXxxError` は具体的なエラーの型を受け取る
+- `mockXxxOk` の上書きの引数は `overrides`（`Partial<…>`）にする
 - どちらもスパイを return する
 
 ```ts
