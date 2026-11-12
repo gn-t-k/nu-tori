@@ -66,7 +66,7 @@ Sentry の課題・イベント・スタック・端末・版・件数は、`scr
 - 読んだイベントの中身（端末の ID、利用者、要求のヘッダー）は、公開の Issue・PR・コメントに貼らない。貼るのはスタックの関数名と、版・OS・件数まで
 - 認証は読むだけにする
   - Mac: 開発者が `scripts/sentry auth login --read-only` を一度走らせる
-  - Claude Code on the web と Cursor の Cloud Agents: 読むだけの個人のトークン（スコープ `org:read`・`project:read`・`team:read`・`event:read`・`member:read`）を、環境変数 `NU_TORI_SENTRY_READ_TOKEN` に置く。Claude Code on the web は個人の環境に置き、ネットを Custom にして `sentry.io` と `*.sentry.io` を足す（既定の一覧も残す）。Cursor は Cloud Agents の Secrets に置く
+  - Claude Code on the web と Cursor の Cloud Agents: 読むだけの個人のトークン（スコープ `org:read`・`project:read`・`team:read`・`event:read`・`member:read`）を、環境変数 `NU_TORI_SENTRY_READ_TOKEN` に置く。Claude Code on the web は環境 `nu-tori` に置く。Cursor は Cloud Agents の Secrets に置く
   - dSYM を上げる組織のトークン（Xcode Cloud の `SENTRY_AUTH_TOKEN`）は課題を読めないので、使い回さない
 - 認証の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどれかを頼む
 
@@ -116,9 +116,10 @@ App Store Connect の画面は英語で出るので、文書・Issue・開発者
 - 読んだ中身のうち、`distinct_id`（アカウント ID）、`person_id`、`$session_id`・`$device_id`・`$anon_distinct_id` などの ID、人の属性、1人ごとの行は、公開の Issue・PR・コメントに貼らない。貼るのは集計（件数・率・差・中央値の秒、版・週ごとの内訳）までで、1〜2人の内訳は「数人」とまとめる
 - 鍵は読むだけにする。個人の API キーで、スコープは `query:read` だけ（preset「Performing analytics queries」）、届く範囲は nu-tori のプロジェクトだけにする（この鍵で `HogQLQuery` と `RetentionQuery` が通ることを 2026-10-09 に確かめた）。`query:read` でも `persons` の表は読めるので、ID を外に出さないことは上の決まりで守る。Worker が人を消す `POSTHOG_PERSONAL_API_KEY` は使わない
   - Mac: シェルの設定に `NU_TORI_POSTHOG_PROJECT_ID`（プロジェクトの URL の数字）と `NU_TORI_POSTHOG_READ_KEY` を書く
-  - Claude Code on the web と Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置く。Cursor の `NU_TORI_POSTHOG_READ_KEY` は Runtime Secret にする。Claude Code on the web のネットを Custom にしているなら、`eu.posthog.com` を足す
+  - Claude Code on the web: 同じ2つを、環境 `nu-tori` と `nu-tori-discovery` に置く
+  - Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置き、`NU_TORI_POSTHOG_READ_KEY` は Runtime Secret にする
 - Query API はいまは無料だが、PostHog はいずれ課金すると書いている。上限はプロジェクトごとに 1 時間 2,400 回・1 分 240 回・同時 3 本・実行 10 秒で、ほかに個人の API キーで読む分には、プロジェクトごとに 1 時間に読む量の予算がある（量は公開されていない）。どれかを超えると `429` が返り、読む量の予算なら `api_queries_budget_exceeded` が付く
-- プロジェクトの ID か鍵の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどちらかの置き場に2つとも置くよう頼む
+- プロジェクトの ID か鍵の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどれかの置き場に2つとも置くよう頼む
 
 ## お金の数字を読む
 
@@ -142,7 +143,7 @@ flowchart LR
 
 ## 流入の数を読む
 
-見つけてもらう役（#738）が読む、検索・App Store・LP の流入の数。3つの鍵は、クラウドの環境 `nu-tori-discovery` にだけ置く。`nu-tori`・`nu-tori-finance`・Mac には置かないので、ほかの場所で呼ぶと `Not authenticated` で止まる。鍵を作り直すとき、申し込みが止まったときは、開発者に `scripts/discovery-analytics-wizard` を Mac で回すよう頼む。調べた経緯は `docs/research/search-console-agent-access.md`・`docs/research/app-store-connect-analytics.md`・`docs/research/cloudflare-web-analytics.md`。
+見つけてもらう役（#738）が読む、検索・App Store・LP の流入の数。3つの鍵は、クラウドの環境 `nu-tori-discovery` にだけ置く。`nu-tori`・`nu-tori-finance`・Mac には置かないので、ほかの場所で呼ぶと `Not authenticated` で止まる。流入のあと入れた人が使い始めたかは、同じ環境で「PostHog を読む」のとおりに読む。鍵を作り直すとき、申し込みが止まったときは、開発者に `scripts/discovery-analytics-wizard` を Mac で回すよう頼む。調べた経緯は `docs/research/search-console-agent-access.md`・`docs/research/app-store-connect-analytics.md`・`docs/research/cloudflare-web-analytics.md`。
 
 - **数字は公開のリポジトリに書かない**。読んだ件数・率・順位・検索語は、ファイル・Issue・PR・コミット・コメントに書かず、週の報告は `nu-tori-ops` に置く。リポジトリに書くのは、読めたか、何行返ったか、断られた理由まで
 - 数の増減を読んで判断する前に、pstack の `principle-explain-the-number` を読む
@@ -159,7 +160,6 @@ flowchart LR
   - 鍵: `NU_TORI_ASC_SALES_KEY_ID`・`NU_TORI_ASC_SALES_ISSUER_ID`・`NU_TORI_ASC_SALES_PRIVATE_KEY`（チームのキーで役割 Sales and Reports。`.p8` を base64 の1行に）。この役割は販売レポート（お金の数字）も読めるので、スクリプトは Analytics Reports の口のほかへは送らない
 - Cloudflare: `scripts/cloudflare web-analytics [何日前から]`（既定 7、93 まで）。`nu-tori.app` のボットでない読み込みを、日・ページのパス・参照元のホストとパスごとに、ページビュー（`count`）と、ほかのサイトか直接来た訪問（`sum.visits`）で返す。クエリ文字列（UTM）は取れない。データセットは Beta なので、名前や次元が変わったら問い合わせを直す
   - 鍵: `NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN`（アカウントのトークンで `Account Analytics Read` だけ）。アカウントの ID はトークンから引く。Workers Logs を読めるサーバーの `NU_TORI_CLOUDFLARE_READ_TOKEN` は、この環境に置かない
-- 環境のネットを Limited にするなら、`oauth2.googleapis.com`・`searchconsole.googleapis.com`・`api.appstoreconnect.apple.com`・`api.cloudflare.com` と、segment を落とす S3 のホスト（最初に読んだときに分かる）を許す
 
 ## 本番の知らせを Issue にする
 
