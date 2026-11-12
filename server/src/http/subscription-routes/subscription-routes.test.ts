@@ -103,28 +103,6 @@ describe("取引を知らせる", () => {
       });
   });
 
-  describe("購入者のトークンのある取引を知らせたとき", () => {
-    let logSpy: ReturnType<typeof vi.spyOn>;
-    beforeEach(async () => {
-      logSpy = vi.spyOn(console, "log");
-      await postSubscriptionTransaction(sessionToken, {
-        requestId: generateRecordId(),
-        signedTransaction: await signTransaction(),
-        trigger: "purchase",
-      });
-    });
-
-    test("要求ごとのログに、トークンがあったことを出し、トークンの値は出さないこと", () => {
-      expect({
-        calls: logSpy.mock.calls,
-        serialized: JSON.stringify(logSpy.mock.calls),
-      }).toEqual({
-        calls: [[expect.objectContaining({ accountId, hasAppAccountToken: true })]],
-        serialized: expect.not.stringContaining(appAccountToken),
-      });
-    });
-  });
-
   describe("購入者のトークンの無い取引を知らせたとき", () => {
     let logSpy: ReturnType<typeof vi.spyOn>;
     beforeEach(async () => {
@@ -146,12 +124,24 @@ describe("取引を知らせる", () => {
   describe("買った直後に知らせたとき", () => {
     let requestId: string;
     let response: Response;
+    let logSpy: ReturnType<typeof vi.spyOn>;
     beforeEach(async () => {
+      logSpy = vi.spyOn(console, "log");
       requestId = generateRecordId();
       response = await postSubscriptionTransaction(sessionToken, {
         requestId,
         signedTransaction: await signTransaction(),
         trigger: "purchase",
+      });
+    });
+
+    test("要求ごとのログに、購入者のトークンがあったことを出し、トークンの値は出さないこと", () => {
+      expect({
+        calls: logSpy.mock.calls,
+        serialized: JSON.stringify(logSpy.mock.calls),
+      }).toEqual({
+        calls: [[expect.objectContaining({ accountId, hasAppAccountToken: true })]],
+        serialized: expect.not.stringContaining(appAccountToken),
       });
     });
 
