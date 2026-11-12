@@ -72,7 +72,7 @@
                 Operations.AssessCustomTargetWeight.id, Operations.DecideGoal.id:
                 return try await respondToGoalSetup(operationID: operationID, body: body)
             case Operations.IssueAppAccountToken.id:
-                return try issueAppAccountToken()
+                return try await issueAppAccountToken()
             case Operations.ReportSubscriptionTransaction.id:
                 return try linkSubscriptionTransaction()
             // swiftlint:disable:next no_default_in_switch - 操作の ID は文字列で、偽のサーバーが持たない操作が来る
@@ -106,6 +106,8 @@
             public let goalSetup: GoalSetupAnswers?
             /// 取引の知らせへの答え方。nil なら 404 を返す
             public let subscription: SubscriptionAnswers?
+            /// 購入者のトークンを求める要求への答え方
+            public let appAccountToken: AppAccountToken
 
             public init(
                 records: [SyncChange],
@@ -123,7 +125,8 @@
                 },
                 sentTextAnswerPulls: Int = 1,
                 goalSetup: GoalSetupAnswers? = nil,
-                subscription: SubscriptionAnswers? = nil
+                subscription: SubscriptionAnswers? = nil,
+                appAccountToken: AppAccountToken = .issues
             ) {
                 if case .afterPulls(let pulls) = mealEstimation {
                     precondition(pulls >= 1, "推定を終えるまでの取得は1回以上")
@@ -142,6 +145,7 @@
                 self.sentTextAnswerPulls = sentTextAnswerPulls
                 self.goalSetup = goalSetup
                 self.subscription = subscription
+                self.appAccountToken = appAccountToken
             }
         }
 
@@ -181,6 +185,12 @@
             case offline
             /// どの要求にも 426 を返す（最低バージョンより古いビルド）
             case appBuildUnsupported
+        }
+
+        public enum AppAccountToken: Sendable {
+            case issues
+            /// 購入者のトークンを返さない（受け取るまでの課金画面を見るため）
+            case hangs
         }
 
         public enum Pull: Sendable {

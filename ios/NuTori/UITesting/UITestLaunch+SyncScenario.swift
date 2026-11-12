@@ -77,7 +77,9 @@
             case .goalAchieved:
                 return weeklyReview(.achieved)
             case .subscriptionExpired:
-                return subscriptionExpired()
+                return subscriptionExpired(appAccountToken: .issues)
+            case .subscriptionExpiredTokenPending:
+                return subscriptionExpired(appAccountToken: .hangs)
             case .listingSample:
                 return listingSampleScenario(.waitsForCorrection)
             case .listingSamplePhotoEstimated:
@@ -92,7 +94,9 @@
         }
 
         /// 無料体験の最後の日を昨日にし、サブスクリプションは無い。取引を知らせると、今日から30日の月額に結びつく
-        private func subscriptionExpired() -> FakeSyncServer.Scenario {
+        private func subscriptionExpired(
+            appAccountToken: FakeSyncServer.AppAccountToken
+        ) -> FakeSyncServer.Scenario {
             // 結びついた月額の期限までの長さ。月の長さは問わないので、30日にする
             let monthlyPeriodSeconds: TimeInterval = 30 * 24 * 60 * 60
             let freeTrial = SyncedSubscriptionStatus.FreeTrial.available(
@@ -106,7 +110,8 @@
                         subscription: .subscribed(
                             plan: .monthly,
                             periodEndsAt: clock.now().addingTimeInterval(monthlyPeriodSeconds),
-                            billingGrace: .none))))
+                            billingGrace: .none))),
+                appAccountToken: appAccountToken)
         }
 
         private static let manualId = fixedId("11111111-1111-4111-8111-111111111111")

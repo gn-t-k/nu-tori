@@ -51,18 +51,31 @@ struct PaywallScreen: View {
 
     @State private var isRestoring = false
 
+    // `SubscriptionStoreView` は、最初に作ったときの購入の選択肢の閉包を持ち続けることがあり、トークンを受け取る前に作ると、トークンの無い購入になる（#1025）。
+    // 受け取ってから買うところを作る
     @ViewBuilder private var storefrontView: some View {
-        switch storefront {
-        case .storeKit:
-            store
-        #if DEBUG
-            case .fixed(let purchase):
-                fixedStore(purchase: purchase)
-        #endif
+        switch purchaseToken {
+        case .requesting:
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("paywall-loading")
+        case .issued(let token):
+            switch storefront {
+            case .storeKit:
+                store(appAccountToken: token)
+            #if DEBUG
+                case .fixed(let purchase):
+                    fixedStore(appAccountToken: token, purchase: purchase)
+            #endif
+            }
+        // 購入者のトークンを渡せないと、買ったサブスクリプションがどのアカウントのものか決まらないので、買うところを出さない。
+        // 買えない理由は上の1行で伝える
+        case .unavailable:
+            ScrollView { marketing }
         }
     }
 
-    private var store: some View {
+    private func store(appAccountToken: UUID) -> some View {
         SubscriptionStoreView(productIDs: SubscriptionProduct.ids.keys.sorted()) {
             marketing
         }
@@ -72,10 +85,7 @@ struct PaywallScreen: View {
         .subscriptionStorePolicyDestination(url: PublicPages.privacyPolicy, for: .privacyPolicy)
         // 「購入を復元」と閉じるはツールバーに自前で置く。復元の結果（ほかのアカウントのもの、復元するものが無い）を1行で出すため
         .storeButton(.hidden, for: .restorePurchases, .cancellation)
-        .inAppPurchaseOptions { _ in
-            guard case .issued(let token) = purchaseToken else { return [] }
-            return [.appAccountToken(token)]
-        }
+        .inAppPurchaseOptions { _ in [.appAccountToken(appAccountToken)] }
         .onInAppPurchaseCompletion { _, result in
             switch result {
             case .success(let purchaseResult):
@@ -84,35 +94,24 @@ struct PaywallScreen: View {
                 purchaseFailed()
             }
         }
-        // 購入者のトークンを渡せないと、買ったサブスクリプションがどのアカウントのものか決まらないので、買わせない。
-        // 選ぶところと購入ボタンだけを止める口は StoreKit に無いので、規約のリンクも一緒に押せなくなる
-        .disabled(!canPurchase)
     }
 
     #if DEBUG
         /// UI テストの買うところ。宣伝の部分の下に、月額を買うボタンだけを置く
         private func fixedStore(
+            appAccountToken: UUID,
             purchase: @escaping (_ appAccountToken: UUID) async -> AppStorePurchaseAttempt
         ) -> some View {
             ScrollView {
                 marketing
                 Button("月額で始める") {
-                    guard case .issued(let token) = purchaseToken else { return }
-                    Task { await purchaseCompleted(await purchase(token)) }
+                    Task { await purchaseCompleted(await purchase(appAccountToken)) }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!canPurchase)
                 .accessibilityIdentifier("paywall-purchase")
             }
         }
     #endif
-
-    private var canPurchase: Bool {
-        switch purchaseToken {
-        case .issued: true
-        case .requesting, .unavailable: false
-        }
-    }
 
     /// 宣伝の部分。まとめをいちばん下（選ぶところと購入ボタンのすぐ上）に置く
     private var marketing: some View {
