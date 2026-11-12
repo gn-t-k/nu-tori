@@ -30,7 +30,7 @@ struct PaywallScreen: View {
                             .accessibilityIdentifier("paywall-message")
                     }
                 }
-                // 押せなくした課金の部分の外に置き、「購入を復元」と「閉じる」はいつも押せるようにする
+                // 買うところの外に置き、「購入を復元」と「閉じる」はいつも押せるようにする
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("購入を復元") {
@@ -55,10 +55,13 @@ struct PaywallScreen: View {
     // 受け取ってから買うところを作る
     @ViewBuilder private var storefrontView: some View {
         switch purchaseToken {
+        // 待っているのは買うところだけなので、宣伝の部分は先に出し、買うところの位置で待つ
         case .requesting:
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityIdentifier("paywall-loading")
+            ScrollView {
+                marketing
+                ProgressView()
+                    .accessibilityIdentifier("paywall-loading")
+            }
         case .issued(let token):
             switch storefront {
             case .storeKit:
