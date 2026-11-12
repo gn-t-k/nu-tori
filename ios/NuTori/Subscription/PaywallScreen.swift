@@ -55,7 +55,7 @@ struct PaywallScreen: View {
     // 受け取ってから買うところを作る
     @ViewBuilder private var storefrontView: some View {
         switch purchaseToken {
-        // 待っているのは買うところだけなので、宣伝の部分は先に出し、買うところの位置で待つ
+        // 待っているのは買うところだけなので、宣伝の部分は先に出し、その下で待つ
         case .requesting:
             ScrollView {
                 marketing
