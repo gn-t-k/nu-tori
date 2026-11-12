@@ -6,7 +6,7 @@ PR を出す前と PR に push する前に通すもの（検査・照合・確�
 - まとめ直し（`git reset`・`git commit --amend`）と push は、`&&` でつながず、別の Bash の呼び出しで送る
 
   **Why:** `git reset --soft origin/main && git commit ... && git push --force-with-lease ...` を1つのコマンドで送ると、auto mode に Git Destructive として拒まれた。分けて送ると通った（#905）
-- 作業を終えたら、`docs/agents/review.md` で変更にかかるものを通して PR を出す（聞かずに出すことは `AGENTS.md` の「git」）。`/implement` などのスキルがコミットで終わっていても、PR まで進める。PR を出すことと merge することは別で、merge は下の「PR を merge するのは」の行のとおりにする
+- 作業を終えたら、`docs/agents/review.md` で変更にかかるものを通して PR を出す（聞かずに出すことは `AGENTS.md` の「git」）。試作のブランチは PR にしない（`docs/agents/decisions.md` の「試作の置き場」）。`/implement` などのスキルがコミットで終わっていても、PR まで進める。PR を出すことと merge することは別で、merge は下の「PR を merge するのは」の行のとおりにする
 
   **Why:** PR を出してよいか聞いて止まったセッションが、開発者の返事まで約18時間待った。受け入れ条件に PR の本文の証拠があったセッションは PR まで出していて、どちらが正しいかが文書に無かった（#934）。この決まりが「実装を終えたら」と書かれ、`AGENTS.md` からは PR を作るときにだけ指していたあいだは、文書だけの変更のセッションが Claude Code の既定に従って、PR の前に聞いて止まった（#1028）
 - 同じファイルを触る PR は、並んで実装してよい。いくつものセッションが衝突の解消で渋滞したら、開発者が交通整理のセッションを1つ立て、そこが順に解いて merge する。開発者に交通整理がいると言われたセッションは、自分では衝突を解かない
