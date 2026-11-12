@@ -176,8 +176,7 @@
                             suiteName: lockoutDefaultsName
                                 ?? "app.nu-tori.ui-test.lockout.\(UUID().uuidString)")!),
                     keychain: InMemorySessionKeychain(
-                        token: account.hasSession
-                            ? localServer?.sessionToken ?? FakeSyncServer.sessionToken : nil),
+                        token: account.hasSession ? seededSession.token : nil),
                     deviceStore: UserDefaultsSignInDeviceStore(defaults: seededIsolatedDefaults()),
                     healthStore: UITestHealthStore(
                         authorization: healthAuthorization,
@@ -350,14 +349,21 @@
             case listingSampleBeforeWeighing = "listing-sample-before-weighing"
         }
 
+        /// サインイン済みで始めるときのセッション。手元のサーバーにつなぐならそのセッション、でなければ偽の同期サーバーのもの
+        private var seededSession: (token: String, accountId: String) {
+            guard let localServer else {
+                return (FakeSyncServer.sessionToken, FakeSyncServer.accountId)
+            }
+            return (localServer.sessionToken, localServer.accountId)
+        }
+
         /// アプリを消すと消える場所と同じ形で、起動のたびに空から始める
         private func seededIsolatedDefaults() -> UserDefaults {
             let defaults = UserDefaults(suiteName: "app.nu-tori.ui-test.\(UUID().uuidString)")!
             defaults.set(true, forKey: UserDefaultsSignInDeviceStore.Key.hasOpened)
             if account.hasSession {
                 defaults.set(
-                    localServer?.accountId ?? FakeSyncServer.accountId,
-                    forKey: UserDefaultsSignInDeviceStore.Key.accountId)
+                    seededSession.accountId, forKey: UserDefaultsSignInDeviceStore.Key.accountId)
                 defaults.set(
                     "stub-apple-user", forKey: UserDefaultsSignInDeviceStore.Key.appleUserId)
             }

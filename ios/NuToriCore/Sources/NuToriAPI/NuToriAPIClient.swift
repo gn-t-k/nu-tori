@@ -13,7 +13,6 @@ public struct NuToriAPIClient: Sendable {
     ) {
         self.init(
             serverURL: environment.serverURL,
-            transport: URLSessionTransport(),
             appBuildGate: appBuildGate,
             sessionToken: sessionToken
         )
