@@ -11,13 +11,17 @@ import { routeSubscriptionTransactionReport } from "../../subscription/d1/route-
 import { readAppStoreSubscriptionTransaction } from "../../subscription/domain/read-app-store-subscription-transaction";
 import { subscriptionTransactionReportTriggers } from "../../subscription/domain/subscription-transaction-fact";
 import { authenticateAccount } from "../authenticate-account";
+import type { SubscriptionTransactionLogVariables } from "../observe-request";
 import { SubscriptionTransactionReportFailedError } from "./subscription-transaction-report-failed-error";
 import { subscriptionTransactionRejectionCodes } from "./subscription-transaction-rejection-codes";
 import { toChangeBody } from "../sync-routes/to-change-body";
 import { subscriptionTransactionReportSchema } from "./subscription-transaction-report-schema";
 
 // サブスクリプションを買う端末とのやりとり（#647 の「サーバーとのやりとり」）
-export const subscriptionRoutes = new OpenAPIHono<{ Bindings: Env }>()
+export const subscriptionRoutes = new OpenAPIHono<{
+  Bindings: Env;
+  Variables: SubscriptionTransactionLogVariables;
+}>()
   .openapi(
     createRoute({
       method: "post",
@@ -138,6 +142,9 @@ export const subscriptionRoutes = new OpenAPIHono<{ Bindings: Env }>()
         return c.json({ code }, 422);
       }
       const transaction = read.value;
+      c.set("subscriptionTransaction", {
+        hasAppAccountToken: transaction.appAccountToken !== undefined,
+      });
       const routed = await routeSubscriptionTransactionReport(
         c.env.DB,
         c.var.accountId,

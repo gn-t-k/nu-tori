@@ -1,6 +1,6 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { mockReadAppStoreRootCertificateOk } from "../../app-store/app-store-root-certificate/read-app-store-root-certificate.mock";
 import {
   type AppStoreTransactionPayload,
@@ -476,7 +476,9 @@ describe("App Store のサーバー通知を受ける", () => {
 
   describe("案内も購入者のトークンの持ち主も無い通知が届いたとき", () => {
     let response: Response;
+    let logSpy: ReturnType<typeof vi.spyOn>;
     beforeEach(async () => {
+      logSpy = vi.spyOn(console, "log");
       response = await postNotification({
         notificationType: "SUBSCRIBED",
         subtype: "INITIAL_BUY",
@@ -494,6 +496,41 @@ describe("App Store のサーバー通知を受ける", () => {
         status: 200,
         routes: 0,
       });
+    });
+
+    test("要求ごとのログに、取引に購入者のトークンがあったことを出し、トークンの値は出さないこと", () => {
+      expect(logSpy.mock.calls).toEqual([
+        [
+          expect.objectContaining({
+            notificationType: "SUBSCRIBED",
+            notificationResult: "unrouted",
+            hasAppAccountToken: true,
+          }),
+        ],
+      ]);
+    });
+  });
+
+  describe("案内が無く、購入者のトークンの無い最初の購入の通知が届いたとき", () => {
+    let logSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(async () => {
+      logSpy = vi.spyOn(console, "log");
+      await postNotification({
+        notificationType: "SUBSCRIBED",
+        subtype: "INITIAL_BUY",
+        signedTransactionInfo: await signTransaction({ appAccountToken: undefined }),
+      });
+    });
+
+    test("要求ごとのログに、取引に購入者のトークンが無かったことを出すこと", () => {
+      expect(logSpy.mock.calls).toEqual([
+        [
+          expect.objectContaining({
+            notificationResult: "unrouted",
+            hasAppAccountToken: false,
+          }),
+        ],
+      ]);
     });
   });
 

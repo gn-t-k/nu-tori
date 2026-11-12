@@ -1,6 +1,6 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { mockReadAppStoreRootCertificateOk } from "../../app-store/app-store-root-certificate/read-app-store-root-certificate.mock";
 import {
   type AppStoreTransactionPayload,
@@ -101,6 +101,39 @@ describe("取引を知らせる", () => {
         expiresDate: Date.parse("2030-02-10T09:00:00Z"),
         ...overrides,
       });
+  });
+
+  describe("要求ごとのログ", () => {
+    let logSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      logSpy = vi.spyOn(console, "log");
+    });
+
+    test("購入者のトークンのある取引を知らせたら、トークンがあったことを出し、トークンの値は出さないこと", async () => {
+      await postSubscriptionTransaction(sessionToken, {
+        requestId: generateRecordId(),
+        signedTransaction: await signTransaction(),
+        trigger: "purchase",
+      });
+      expect({
+        calls: logSpy.mock.calls,
+        serialized: JSON.stringify(logSpy.mock.calls),
+      }).toEqual({
+        calls: [[expect.objectContaining({ accountId, hasAppAccountToken: true })]],
+        serialized: expect.not.stringContaining(appAccountToken),
+      });
+    });
+
+    test("購入者のトークンの無い取引を知らせたら、トークンが無かったことを出すこと", async () => {
+      await postSubscriptionTransaction(sessionToken, {
+        requestId: generateRecordId(),
+        signedTransaction: await signTransaction({ appAccountToken: undefined }),
+        trigger: "purchase",
+      });
+      expect(logSpy.mock.calls).toEqual([
+        [expect.objectContaining({ accountId, hasAppAccountToken: false })],
+      ]);
+    });
   });
 
   describe("買った直後に知らせたとき", () => {
