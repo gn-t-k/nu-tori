@@ -304,6 +304,8 @@
             case goalAchieved = "goal-achieved"
             /// 昨日で無料体験が終わり、サブスクリプション切れ。買うと月額のサブスクリプション中に結びつく
             case subscriptionExpired = "subscription-expired"
+            /// `subscriptionExpired` から、購入者のトークンを返さないようにした。課金画面はトークンを待ったままになる
+            case subscriptionExpiredTokenPending = "subscription-expired-token-pending"
             /// 掲載情報と LP の手順の絵を撮る見本の人。記録と出どころは `listingSampleScenario()`
             case listingSample = "listing-sample"
             /// `listingSample` に加えて、選んだ写真の食事の推定を次の取得で終え、カレーライスにする

@@ -18,8 +18,16 @@
             }
         }
 
-        func issueAppAccountToken() throws -> (HTTPResponse, HTTPBody?) {
-            try json(
+        func issueAppAccountToken() async throws -> (HTTPResponse, HTTPBody?) {
+            switch scenario.appAccountToken {
+            case .hangs:
+                // テストが見ているあいだ、返さない
+                try await Task.sleep(for: .seconds(60))
+                throw URLError(.timedOut)
+            case .issues:
+                break
+            }
+            return try json(
                 .ok,
                 Components.Schemas.AppAccountToken(
                     appAccountToken: Self.appAccountToken.canonicalString))
