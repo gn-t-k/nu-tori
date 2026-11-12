@@ -349,7 +349,7 @@
             case listingSampleBeforeWeighing = "listing-sample-before-weighing"
         }
 
-        /// サインイン済みで始めるときのセッション。手元のサーバーにつなぐならそのセッション、でなければ偽の同期サーバーのもの
+        /// サインイン済みで始めるときのセッション。トークンとアカウントの ID は、同じつなぎ先のものをそろえて渡す
         private var seededSession: (token: String, accountId: String) {
             guard let localServer else {
                 return (FakeSyncServer.sessionToken, FakeSyncServer.accountId)

@@ -21,8 +21,10 @@ shift 3
 base_url="$(sed -n 's/^BASE_URL=//p' "$server_run/run.env")"
 [ -n "$base_url" ] || { echo "$server_run/run.env に BASE_URL が無い" >&2; exit 2; }
 # 値が無いまま開くと、偽の同期サーバーにも手元のサーバーにもつながらない。-e で null も失敗にする
-session_token="$(jq -er .sessionToken "$session")"
-account_id="$(jq -er .accountId "$session")"
+session_token="$(jq -er .sessionToken "$session")" ||
+    { echo "$session に sessionToken が無い（verify-server の device.sh sign-in で作り直す）" >&2; exit 2; }
+account_id="$(jq -er .accountId "$session")" ||
+    { echo "$session に accountId が無い（verify-server の device.sh sign-in で作り直す）" >&2; exit 2; }
 
 # 記録は取りに行って始めるので、初回の取得を終えていないサインイン済みにする。
 # 時計は今にする。launch.sh の既定の日のままだと、サーバーの今と食い違う
