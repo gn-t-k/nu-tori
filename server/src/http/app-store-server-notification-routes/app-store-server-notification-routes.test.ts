@@ -477,12 +477,14 @@ describe("App Store のサーバー通知を受ける", () => {
   describe("案内も購入者のトークンの持ち主も無い通知が届いたとき", () => {
     let response: Response;
     let logSpy: ReturnType<typeof vi.spyOn>;
+    let unownedAppAccountToken: string;
     beforeEach(async () => {
       logSpy = vi.spyOn(console, "log");
+      unownedAppAccountToken = generateRecordId();
       response = await postNotification({
         notificationType: "SUBSCRIBED",
         subtype: "INITIAL_BUY",
-        signedTransactionInfo: await signTransaction({ appAccountToken: generateRecordId() }),
+        signedTransactionInfo: await signTransaction({ appAccountToken: unownedAppAccountToken }),
       });
     });
 
@@ -499,15 +501,21 @@ describe("App Store のサーバー通知を受ける", () => {
     });
 
     test("要求ごとのログに、取引に購入者のトークンがあったことを出し、トークンの値は出さないこと", () => {
-      expect(logSpy.mock.calls).toEqual([
-        [
-          expect.objectContaining({
-            notificationType: "SUBSCRIBED",
-            notificationResult: "unrouted",
-            hasAppAccountToken: true,
-          }),
+      expect({
+        calls: logSpy.mock.calls,
+        serialized: JSON.stringify(logSpy.mock.calls),
+      }).toEqual({
+        calls: [
+          [
+            expect.objectContaining({
+              notificationType: "SUBSCRIBED",
+              notificationResult: "unrouted",
+              hasAppAccountToken: true,
+            }),
+          ],
         ],
-      ]);
+        serialized: expect.not.stringContaining(unownedAppAccountToken),
+      });
     });
   });
 
