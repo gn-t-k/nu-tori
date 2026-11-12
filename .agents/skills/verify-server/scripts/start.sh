@@ -38,11 +38,14 @@ pnpm exec wrangler d1 migrations apply DB --local --persist-to "$run_dir/state" 
 
 # wrangler は secrets.required の名前しか env ファイルから読まないので、確かめのサインインの秘密の値は --var で渡す
 echo "wrangler dev を立てる（ログ: $run_dir/wrangler.log）" >&2
-setsid pnpm exec wrangler dev --local --ip 127.0.0.1 --port "$port" \
+# stop.sh が組ごと止められるよう、自分のプロセスグループで立てる。macOS には setsid が無いので、ジョブ制御で分ける
+set -m
+pnpm exec wrangler dev --local --ip 127.0.0.1 --port "$port" \
     --persist-to "$run_dir/state" --env-file "$run_dir/dev.vars" \
     --var "E2E_SIGN_IN_SECRET:$e2e_secret" --show-interactive-dev-session=false \
     > "$run_dir/wrangler.log" 2>&1 < /dev/null &
 pgid=$!
+set +m
 
 server_tree="$(server_content_hash)"
 cat > "$run_dir/run.env" << ENV

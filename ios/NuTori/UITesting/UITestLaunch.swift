@@ -24,6 +24,31 @@
         let cacheHoldsRecords: Bool
         /// 見本の人（`listingSampleScenario(_:)`）の昨日の夜の返事の行の数（`ListingSample.feedback(on:lineCount:)`）。撮る UI テストの場面（`ListingScene`）が渡す
         let listingReplyLineCount: Int
+        /// 偽の同期サーバーの代わりにつなぐ、手元で立てたサーバー。nil なら偽の同期サーバーにつなぐ。
+        /// 替わるのは API だけで、ヘルスケア・写真・StoreKit・Apple の資格の確かめは偽物のまま。UI テストは渡さず、`verify-ios` で手で開くときだけ渡す
+        let localServer: LocalServer?
+
+        /// 手元で立てたサーバー（`wrangler dev`）と、その確かめのサインインの口（`/v1/e2e/sessions`）で作ったセッション
+        struct LocalServer {
+            let url: URL
+            let sessionToken: String
+            let accountId: String
+
+            /// どれも無ければ nil。一部だけのときは、偽の同期サーバーにつないだまま本物を確かめたと読み違えないよう、その場で止める
+            init?(environment: [String: String]) {
+                let names = ["UI_TEST_SERVER_URL", "UI_TEST_SESSION_TOKEN", "UI_TEST_ACCOUNT_ID"]
+                guard names.contains(where: { environment[$0] != nil }) else { return nil }
+                guard let url = environment["UI_TEST_SERVER_URL"].flatMap(URL.init(string:)),
+                    let sessionToken = environment["UI_TEST_SESSION_TOKEN"],
+                    let accountId = environment["UI_TEST_ACCOUNT_ID"]
+                else {
+                    preconditionFailure("\(names.joined(separator: "・")) は3つとも渡す")
+                }
+                self.url = url
+                self.sessionToken = sessionToken
+                self.accountId = accountId
+            }
+        }
 
         static var current: UITestLaunch? {
             let environment = ProcessInfo.processInfo.environment
@@ -52,7 +77,8 @@
                 dayPassesOnReturn: environment["UI_TEST_DAY_PASSES_ON_RETURN"] != nil,
                 cacheHoldsRecords: environment["UI_TEST_CACHE_HOLDS_RECORDS"] != nil,
                 listingReplyLineCount: environment["UI_TEST_LISTING_REPLY_LINE_COUNT"].flatMap(
-                    Int.init) ?? 0
+                    Int.init) ?? 0,
+                localServer: LocalServer(environment: environment)
             )
         }
 
@@ -130,8 +156,15 @@
             return AppRuntime.assemble(
                 AppRuntime.Parts(
                     store: store,
-                    makeClient: { appBuildGate, sessionToken in
-                        NuToriAPIClient(
+                    makeClient: { [localServer] appBuildGate, sessionToken in
+                        if let localServer {
+                            return NuToriAPIClient(
+                                serverURL: localServer.url,
+                                appBuildGate: appBuildGate,
+                                sessionToken: sessionToken
+                            )
+                        }
+                        return NuToriAPIClient(
                             serverURL: APIEnvironment.development.serverURL,
                             transport: server,
                             appBuildGate: appBuildGate,
@@ -143,7 +176,8 @@
                             suiteName: lockoutDefaultsName
                                 ?? "app.nu-tori.ui-test.lockout.\(UUID().uuidString)")!),
                     keychain: InMemorySessionKeychain(
-                        token: account.hasSession ? FakeSyncServer.sessionToken : nil),
+                        token: account.hasSession
+                            ? localServer?.sessionToken ?? FakeSyncServer.sessionToken : nil),
                     deviceStore: UserDefaultsSignInDeviceStore(defaults: seededIsolatedDefaults()),
                     healthStore: UITestHealthStore(
                         authorization: healthAuthorization,
@@ -322,7 +356,8 @@
             defaults.set(true, forKey: UserDefaultsSignInDeviceStore.Key.hasOpened)
             if account.hasSession {
                 defaults.set(
-                    FakeSyncServer.accountId, forKey: UserDefaultsSignInDeviceStore.Key.accountId)
+                    localServer?.accountId ?? FakeSyncServer.accountId,
+                    forKey: UserDefaultsSignInDeviceStore.Key.accountId)
                 defaults.set(
                     "stub-apple-user", forKey: UserDefaultsSignInDeviceStore.Key.appleUserId)
             }
