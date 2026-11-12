@@ -21,10 +21,10 @@ Preconditions:
 
 - **トークンを待つ。** `$S/ui-test.sh PaywallWaitsForAppAccountTokenUITests`。トークンを返さない場面で、読み込み中（`paywall-loading`）が出て、買うボタン（`paywall-purchase`）が無い
 - **買う。** `$S/ui-test.sh SubscribeFromComposerChipAfterFreeTrialUITests`。買うボタンを押すと課金画面が閉じ、カメラ（`composer-capture`）が押せて、チップと「無料体験が終わりました」が消える
-- **購入を復元。** `$S/ui-test.sh RestoreFromPaywallWithoutPurchaseUITests`。結果の1行（`paywall-message`）が押せる位置に出る
+- **購入を復元。** `$S/ui-test.sh RestoreFromPaywallWithoutPurchaseUITests`。結果の1行（`paywall-message`）が、開いた直後の位置で見える
 - **手で見るとき。** `$S/launch.sh "$run" signed-in subscription-expired` で `composer-subscription-chip` を押す。`subscription-expired-token-pending` にすると、トークンを待つ画面のままになる
 
 ## Gotchas
 
-- UI テストと手で開く場面では、StoreKit の `SubscriptionStoreView` を出さず、月額を買うボタンだけの買うところ（`PaywallStorefront.fixed`）を出す。`SubscriptionStoreView` での本物の購入と、取引に購入者のトークンが付くかは、実機のデバッグビルド（開発用のサーバー）と Sandbox のテスト用アカウントで買い、開発用のサーバーのログの `POST /v1/subscription-transactions` の `hasAppAccountToken` で見る（`docs/agents/tooling.md` の「Cloudflare を読む」）
-- Sandbox の App Store の通知は本番のサーバーに届く。開発用のサーバーが出したトークンの購入は、本番ではどのアカウントにも結びつかない（unrouted）ので、通知だけで結びつくことは実機では見られない
+- UI テストと手で開く場面では、StoreKit の `SubscriptionStoreView` を出さず、月額を買うボタン（`paywall-purchase`）だけの買うところを出す。`SubscriptionStoreView` での本物の購入と、取引に購入者のトークンが付くかは、実機のデバッグビルド（開発用のサーバー）と Sandbox のテスト用アカウントで買い、開発用のサーバーのログの `POST /v1/subscription-transactions` の `hasAppAccountToken` で見る（`docs/agents/tooling.md` の「Cloudflare を読む」）
+- Sandbox の App Store の通知は本番のサーバーに届く。開発用のサーバーが出したトークンの購入は、本番ではどのアカウントにも結びつかない（本番のサーバーの通知のログの `notificationResult` が `unrouted` になる）ので、通知だけで結びつくことは実機では見られない
