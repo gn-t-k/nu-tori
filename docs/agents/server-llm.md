@@ -6,6 +6,7 @@
 
 - 推定の提供元（Anthropic）の API キーは、秘密の値 `ANTHROPIC_API_KEY` に置く。環境ごとの Anthropic のワークスペース（開発用は `nu-tori-development`、本番は `nu-tori-production`）のキーを、それぞれの環境に置く。`wrangler.jsonc` の `secrets.required` には両方の環境に書き、テストの値は `vitest.config.ts` にある（テストは提供元を偽物に差し替えるので、この値は本物に届かない）
 - 読み分け（Claude Haiku 5.5。#423 で決めた）も、推定と同じワークスペースの `ANTHROPIC_API_KEY` で呼ぶ。費用の上限はワークスペースの月の上限で、前払いのクレジットは自動で補充する（額と知らせは `docs/agents/production-incidents.md` の「費用の知らせ」）。上限に届くか補充が失敗してクレジットが尽きるとすべての文章が会話になるので、読み分けの呼び出しの失敗を Sentry に送り、急増で知らせる
+- 評価（`server/evals`）も開発用のワークスペース `nu-tori-development` のキーで回し、開発用の Worker と月の上限を分け合う。評価は頻繁には回さないので、ワークスペースは分けない（#711）。評価を回した月に上限に届くと、開発用の推定・読み分け・返事が止まり、推定は `identify_dishes` の `bad_request` で失敗し、deploy のワークフローの `main-flow-on-development` が落ちる。Sentry の `environment: development` に「You have reached your specified workspace API usage limits」が出ていたらこれなので、開発者に Console で開発用のワークスペースの上限を上げてもらう
 - Workers AI のつなぎ（`ai` の binding）と、環境ごとの AI Gateway は置いていない（#422 で作ったゲートウェイは、読み分けを Haiku 5.5 にしたので消す。#446）。Workers AI を呼ぶようになったら、両方の環境に `ai` のつなぎを書き、ルートの `AGENTS.md` のとおり環境ごとのゲートウェイを作って通し、そのときゲートウェイの設定（支出の上限、ログ、認証）をここに書く。ゲートウェイを名指さずに呼ぶと、ログがオンの `default` のゲートウェイができる
 
 ## 推定
