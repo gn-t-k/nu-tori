@@ -1,13 +1,13 @@
 ---
 name: verify-ios
-description: "nu-tori の iPhone アプリ（ios/）を Mac のシミュレーターで動かし、UI テストと、偽の同期サーバーの場面で開いたアプリを触って、触れた機能が動くことを証拠つきで確かめる。PR を出す前と PR に push する前の確かめ（docs/agents/review.md の「確かめの回し方」。かかるかは同じ文書の表）で使う。動かすのは Mac のセッションだけで、クラウドのセッションでは、確かめられないときの書き方を引くのに使う。"
+description: "nu-tori の iPhone アプリ（ios/）を Mac のシミュレーターで動かし、UI テストと、偽の同期サーバーの場面か手元のサーバーにつないで開いたアプリを触って、触れた機能が動くことを証拠つきで確かめる。PR を出す前と PR に push する前の確かめ（docs/agents/review.md の「確かめの回し方」。かかるかは同じ文書の表）で使う。動かすのは Mac のセッションだけで、クラウドのセッションでは、確かめられないときの書き方を引くのに使う。"
 ---
 
 # アプリを動かして確かめる
 
 アプリのデバッグビルドをシミュレーターで開き、ユーザーと同じ画面の操作で機能を通し、操作のあとの画面で動いたことを示す。テストが通ることとは別に、組んだアプリの画面で、操作から記録の見え方までがつながったかを見る。
 
-アプリはサーバーにつながず、UI テストと同じ場面の仕組み（起動の値）で、サインインの状態と API を差し替えた場面で開く（`ios/NuTori/UITesting/UITestLaunch.swift`）。差し替えるのは本番でも端末とサーバーを分けている境目（API、Sign in with Apple、ヘルスケア、写真を選ぶ画面、StoreKit）だけで、画面・送り待ち・キャッシュ・同期の段取りは本物が動く。サーバーの側は `verify-server` で確かめる。
+アプリは既定でサーバーにつながず、UI テストと同じ場面の仕組み（起動の値）で、サインインの状態と API を差し替えた場面で開く（`ios/NuTori/UITesting/UITestLaunch.swift`）。差し替えるのは本番でも端末とサーバーを分けている境目（API、Sign in with Apple、ヘルスケア、写真を選ぶ画面、StoreKit）だけで、画面・送り待ち・キャッシュ・同期の段取りは本物が動く。サーバーの側は `verify-server` で確かめる。API の境目にかかる変更では、API だけを `verify-server` で立てた手元のサーバーにつなぐ（下の「手元のサーバーにつないで動かす」）。
 
 道具はこのフォルダの `scripts/` にある。回のフォルダを取る道具は、引数なしで呼ぶと使い方を言って止まる。下では `S=.agents/skills/verify-ios/scripts` とする（リポジトリの直下から呼ぶ）。macOS でだけ動く。
 
@@ -69,6 +69,29 @@ $S/shot.sh "$run" weight-recorded     # 名前は英数字とハイフン
 
 `"$run/evidence/<番号>-<名前>.png"` に画面を残し、`evidence/actions.log` に、開いた場面と撮った画面を時刻つきで足す。操作の前と後の両方を撮る。
 
+## 手元のサーバーにつないで動かす
+
+API の境目にかかる変更で、アプリの API だけを `verify-server` で立てた手元のサーバーにつないで入口を通す。かける条件と通す入口と PR に書くものは `docs/agents/review.md` の「端末とサーバーをつなぐ確かめ」にあり、下は回し方と体重の例。ヘルスケア・写真・StoreKit・Apple の資格の確かめは、場面と同じ偽物のまま。
+
+```bash
+V=.agents/skills/verify-server/scripts
+server=$($V/start.sh)                     # 手元のサーバー（約30秒）。$S/start.sh（アプリを組む）と並べて回せる
+$V/device.sh sign-in "$server" app        # Apple を通さずにアカウントとセッションを作る
+run=$($S/start.sh)                        # 端末とアプリ（組むのに約3分）
+$S/launch-local-server.sh "$run" "$server" app
+```
+
+- `launch-local-server.sh` は、`launch.sh` に、サインイン済みで初回の取得を終えていない場面（`signed-in-fetching`）と、手元のサーバーの URL と、`sign-in` で作ったセッション（`UI_TEST_SERVER_URL`・`UI_TEST_SESSION_TOKEN`・`UI_TEST_ACCOUNT_ID`）と、今の時刻（`UI_TEST_NOW`）を渡して開く。この起動の値はデバッグビルドでだけ読む（`UITestLaunch.swift` はファイルごと `#if DEBUG` で、`scripts/check ios` が見る）
+- 開いたら、上の「起動」のとおりプロファイルを選ぶ。新しいアカウントなので、最初に規約への同意のシートが出る。「同意して続ける」（`agreeToTerms`）を押すと `timeline` に入る。このシートは偽の同期サーバーでは出ないので、本物につながった印になる
+- 体重の例（触れた記録の種類の入口に置き換える）
+  1. 入力欄の「体重」（`composer-weight`）で値を記録し、`weight-row` に出るのを撮る
+  2. `$V/device.sh pull "$server" app` で、帳簿に `weight_record` が `version: 1` で入り、ID が端末と同じ書き方（小文字）なのを見る
+  3. `launch-local-server.sh` をもう一度回す。置き場はメモリだけなので空から始まり、`wait_for_ui` で `weight-row` がサーバーから戻るのを待って撮る
+  4. 戻った記録を直し（`weight-row` → 「直す」→ 値 → 「完了」）、もう一度 `pull` して、同じ ID で `version: 2` になったのを見る。取りに行った記録を送り返す道は、端末の書き方の食い違い（#362 の大文字の ID）が出る道
+- 証拠: 撮った画面（`shot.sh`）と、`"$server/evidence/requests.log"` の帳簿の記録
+- 推定・読み分け・返事の結果まで見るなら、`verify-server` の「起動」の Anthropic の鍵を渡して立てる
+- 片付けは、下の「片付け」に加えて `$V/stop.sh "$server"`
+
 ## 地図
 
 索引は `features/README.md`、確かめる手順は機能ごとのファイルにある。
@@ -84,7 +107,7 @@ $S/shot.sh "$run" weight-recorded     # 名前は英数字とハイフン
 次は、このスキルで通せない。`docs/agents/review.md` の「確かめの回し方」で「確かめていない」と書くときに、確かめる場所をここから引く。ほかの入口を通せなかったときは、試したコマンドと、揃わなかった前提を書く。
 
 - クラウドのセッション（Linux）ではシミュレーターが無い。アプリの画面は「確かめていない」と書き、Mac のセッションで確かめると書く。UI テストは `ios/AGENTS.md` の「確かめる」のとおり、CI の `ios-ui-test.yml` を手で回せる（全件の回）。その回が通れば、UI テストのある入口の証拠にしてよい（ランの URL と、成果物 `ios-ui-test-report` の画面）
-- 本物のサーバーとのつなぎ（送った記録がサーバーに届く、サーバーの推定や返事が届く）は、アプリが偽の同期サーバーにつながるので確かめられない。サーバーの側を `verify-server` で確かめ、つないだ全体は merge のあとの TestFlight の版で確かめる
+- クラウドのセッションでは、上の「手元のサーバーにつないで動かす」も回せない。API の境目にかかる変更の書き方は `docs/agents/review.md` の「端末とサーバーをつなぐ確かめ」の3。つないだ全体は Mac のセッションか、merge のあとの TestFlight の版で確かめる
 - Sign in with Apple、本物のヘルスケア、カメラ、写真を選ぶ標準の画面、通知、App Store の購入は、起動の値で差し替えるので、本物の振る舞いは実機の TestFlight の版で確かめる（`docs/agents/ios-release.md`）
 - 送り待ちの置き場の移行は、前の版が書いたファイルが要る。`docs/agents/ios-mac.md` の「置き場の移行を実機で確かめる」を開発者に頼む
 
