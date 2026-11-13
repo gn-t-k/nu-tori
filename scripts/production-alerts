@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // 本番の知らせ（いまは Sentry の新しい・急に増えた・再発した課題）を、GitHub の Issue（needs-triage、ロック）にする。.github/workflows/production-alerts.yml が毎時呼ぶ
+// その Issue が完了で閉じたら、Sentry の課題を解決にする。ワークフローが閉じたときに呼び、取りこぼしは毎時の回で拾う
 // Issue に載せる欄は、ここで決めた欄だけを Sentry から取る。全部を取ってから消す形にしない（欄が増えたときに漏れないため）
 // 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
 "use strict";
 
 const { execFileSync } = require("node:child_process");
 const { join } = require("node:path");
+const { ExpectedFailure } = require("./expected-failure.js");
 
 const repository = process.env.GITHUB_REPOSITORY ?? "gn-t-k/nu-tori";
 // 1回に書く数（作る・コメントする）。Issue を速く作りすぎると GitHub が二次の上限で止めるため。残りは次の回で拾う
@@ -18,15 +20,30 @@ const issueMark = (shortId) => `${issueMarkPrefix}${shortId} -->`;
 const stateMark = (substatus) => `<!-- sentry-state: ${substatus} -->`;
 const issueMarkPattern = /<!-- sentry-issue: ([A-Z0-9-]+) -->/;
 const stateMarkPattern = /<!-- sentry-state: ([a-z_]+) -->/g;
+// 解決にしたことを覚える状態。Sentry の substatus と別の名前にし、解決のあとの再発（regressed）を、前と違う状態として知らせる
+const resolvedState = "resolved";
+// 閉じた Issue の Sentry の課題を、毎時の回で拾い直す期間。仕組みより前に閉じた Issue を、まとめて解決にしないため
+const resolveWithinDays = 7;
+// プロジェクトごとの解決の種類。iOS は直した版が App Store に届くまで古い版から起き続けるので、次の版で解決にする（古い版からは再発にしない）。
+// サーバーはデプロイで全員が新しい版になり、イベントに版を付けていないので、すぐ解決にする
+const resolutions = { "nu-tori-ios": { in: "@next", label: "次の版で解決" }, "nu-tori-server": { label: "すぐ解決" } };
+
+const usage =
+  "使い方: scripts/production-alerts sentry [--dry-run] | scripts/production-alerts resolve <Issue の番号> [--dry-run]（--dry-run は GitHub と Sentry に書かず、することだけを出す）";
 
 const main = () => {
-  const [source, ...flags] = process.argv.slice(2);
-  if (source !== "sentry" || flags.some((flag) => flag !== "--dry-run")) {
-    throw new ExpectedFailure(
-      "使い方: scripts/production-alerts sentry [--dry-run]（--dry-run は GitHub に書かず、することだけを出す）",
-    );
+  const [command, ...rest] = process.argv.slice(2);
+  const dryRun = rest.includes("--dry-run");
+  const operands = rest.filter((arg) => arg !== "--dry-run");
+  if (command === "sentry" && operands.length === 0) return alertAndResolve(dryRun);
+  if (command === "resolve" && operands.length === 1 && /^[1-9][0-9]*$/.test(operands[0])) {
+    resolveClosedIssue(readIssue(operands[0]), { dryRun, strict: true });
+    return;
   }
-  const dryRun = flags.includes("--dry-run");
+  throw new ExpectedFailure(usage);
+};
+
+const alertAndResolve = (dryRun) => {
   const known = listKnownIssues();
   // 作ったあとのロックが一時の失敗で抜けても、次の回で拾ってロックする。開発者が外したロックと、人が立てた Issue には触れない
   const unlocked = [...known.values()]
@@ -37,15 +54,32 @@ const main = () => {
     if (!dryRun) github(["--method", "PUT", `repos/${repository}/issues/${issue.number}/lock`]);
   }
   let writes = 0;
+  const writeLimitReached = () => {
+    if (writes < maxWrites) return false;
+    console.log(`1回に書く上限の ${maxWrites} 件に達したので、残りは次の回で拾う`);
+    return true;
+  };
+  // 閉じたときの回が落ちたり、concurrency で捨てられたりした Issue を拾う。解決したことを先に印にしておくと、下の知らせが解決のあとの再発を見分けられる
+  if (resolveTokenGiven()) {
+    const now = new Date();
+    const closed = [...known.values()].flat().filter((issue) => isResolvable(issue, now));
+    for (const issue of closed) {
+      // 解決の印がある Issue は、毎時のログに出さずに飛ばす
+      if (readLatestState(issue) === resolvedState) continue;
+      if (writeLimitReached()) return;
+      // 解決の種類が決まっていないプロジェクトの課題は、飛ばして下の知らせを続ける
+      if (resolveClosedIssue(issue, { dryRun, strict: false })) writes += 1;
+    }
+  } else {
+    // 解決のトークンを置く前も、知らせは止めない
+    console.log("NU_TORI_SENTRY_RESOLVE_TOKEN が無いので、閉じた Issue の課題の解決を飛ばす");
+  }
   for (const alert of listSentryAlerts()) {
     const previous = (known.get(alert.shortId) ?? []).sort((a, b) => b.number - a.number)[0];
     // 最後に知らせた状態と同じなら何もしない。閉じた Issue も立て直さない（直す前の版の端末から起き続けても、毎時立て直さないため）。
-    // そのため、Sentry で解決したあとの2度目の再発のように、同じ状態に戻ったときは Issue にせず、Sentry のメールの知らせに任せる
+    // 解決にしたら resolved の印を付けるので、解決のあとの再発は、前と違う状態として知らせる
     if (previous && readLatestState(previous) === alert.substatus) continue;
-    if (writes === maxWrites) {
-      console.log(`1回に書く上限の ${maxWrites} 件に達したので、残りは次の回で拾う`);
-      return;
-    }
+    if (writeLimitReached()) return;
     writes += 1;
     if (previous?.state === "open") {
       console.log(`コメントする: #${previous.number}（${alert.shortId} が ${alert.substatus}）`);
@@ -70,6 +104,63 @@ const main = () => {
     // GITHUB_TOKEN で作った Issue は lock-conversations.yml を起こさないので、ここでロックする
     github(["--method", "PUT", `repos/${repository}/issues/${created.number}/lock`]);
   }
+};
+
+// 完了で閉じた、印を信じてよい Issue の Sentry の課題を解決にして、Issue に resolved の印を付ける。何度呼んでも、解決と印は1回ずつになる。
+// 書いたら（印のコメントを足したら）true を返す。strict のときは、解決の種類が決まっていないプロジェクトの課題で止まる
+const resolveClosedIssue = (issue, { dryRun, strict }) => {
+  const shortId = trusted(issue) && issue.body?.match(issueMarkPattern)?.[1];
+  if (!shortId) {
+    console.log(`何もしない: #${issue.number} に信じてよい Sentry の印が無い`);
+    return false;
+  }
+  if (issue.state !== "closed" || issue.state_reason !== "completed") {
+    console.log(`何もしない: #${issue.number} は完了で閉じていない`);
+    return false;
+  }
+  if (readLatestState(issue) === resolvedState) {
+    console.log(`何もしない: #${issue.number} は解決の印が付いている`);
+    return false;
+  }
+  if (!dryRun && !resolveTokenGiven()) throw new ExpectedFailure("NU_TORI_SENTRY_RESOLVE_TOKEN が無い");
+  const plan = planResolution(readSentryIssue(shortId));
+  if (plan.action === "undecided" && strict) throw new ExpectedFailure(`${shortId} は${plan.reason}`);
+  if (plan.action === "skip" || plan.action === "undecided") {
+    console.log(`何もしない: ${shortId} は${plan.reason}（#${issue.number}）`);
+    return false;
+  }
+  if (plan.action === "resolve") {
+    console.log(`解決にする: ${shortId}（${plan.label}、#${issue.number}）`);
+    if (!dryRun) {
+      sentry(["issue", "resolve", shortId, ...(plan.in ? ["--in", plan.in] : []), "--json", "--fields", "status"], {
+        resolve: true,
+      });
+    }
+  }
+  console.log(`コメントする: #${issue.number}（${shortId} が ${resolvedState}）`);
+  if (!dryRun) {
+    github(["--method", "POST", `repos/${repository}/issues/${issue.number}/comments`], {
+      body: resolvedCommentBody(shortId, plan),
+    });
+  }
+  return true;
+};
+
+// 毎時の回で拾い直す Issue。閉じた理由が予定なし（wontfix・重複）なら Sentry に触らない
+const isResolvable = (issue, now) =>
+  issue.state === "closed" &&
+  issue.state_reason === "completed" &&
+  now.getTime() - new Date(issue.closed_at).getTime() <= resolveWithinDays * 24 * 60 * 60 * 1000;
+
+// 課題の状態で、解決にするか、印だけを付けるか、何もしないかを決める。開発者が手でアーカイブした課題は、その判断を上書きしない
+const planResolution = (sentryIssue) => {
+  if (!sentryIssue) return { action: "skip", reason: "Sentry に無い（消えたか統合された）" };
+  if (sentryIssue.status === "resolved") return { action: "mark", label: "すでに解決済み" };
+  if (sentryIssue.status !== "unresolved") return { action: "skip", reason: `${sentryIssue.status} になっている` };
+  const resolution = resolutions[sentryIssue.project?.slug];
+  // 新しいプロジェクトは、解決の種類を決めるまで解決にしない。黙ってすぐ解決にすると、古い版からの再発を知らせ続けるため
+  if (!resolution) return { action: "undecided", reason: `プロジェクト ${sentryIssue.project?.slug} の解決の種類が決まっていない` };
+  return { action: "resolve", ...resolution };
 };
 
 const listSentryAlerts = () => {
@@ -109,13 +200,30 @@ const readReleaseAndOs = (shortId) => {
   return { release: tag("release"), os: tag("os") };
 };
 
+// 解決の種類を決める、課題の状態とプロジェクトだけを読む。課題が無いとき（消えた・統合された）は undefined を返す
+const readSentryIssue = (shortId) => {
+  const response = parseJson(
+    sentry(
+      ["api", `organizations/nu-tori-fv/shortids/${shortId}/`, "--json", "--fields", "group.status,group.project.slug"],
+      { allowFailure: true },
+    ),
+    "scripts/sentry api",
+  );
+  if (response.status === 404) return undefined;
+  if (response.status !== 200) throw new ExpectedFailure(`scripts/sentry api が ${response.status} で失敗した`);
+  return response.body.group;
+};
+
+const readIssue = (number) =>
+  parseJson(github([`repos/${repository}/issues/${number}`, "--jq", issueFields]), "gh api");
+
 // 印を書いた Issue を、閉じたものも含めて読む。検索 API は、作った直後の Issue がすぐ出る約束が無いので使わない
 const listKnownIssues = () => {
   const lines = github([
     "--paginate",
     `repos/${repository}/issues?state=all&per_page=100`,
     "--jq",
-    `.[] | select(.pull_request == null and ((.body // "") | contains(${JSON.stringify(issueMarkPrefix)}))) | {number, state, locked, body, user: .user.login, author_association}`,
+    `.[] | select(.pull_request == null and ((.body // "") | contains(${JSON.stringify(issueMarkPrefix)}))) | ${issueFields}`,
   ]);
   const known = new Map();
   for (const line of lines.split("\n").filter(Boolean)) {
@@ -125,6 +233,9 @@ const listKnownIssues = () => {
   }
   return known;
 };
+
+// 読む Issue の欄。解決にするかを、閉じた理由と時刻で決める
+const issueFields = "{number, state, state_reason, closed_at, locked, body, user: .user.login, author_association}";
 
 // 本文の印のあと、コメントに書いた印があれば、最後のものが今の状態
 const readLatestState = (issue) => {
@@ -180,6 +291,15 @@ const commentBody = (alert) =>
     stateMark(alert.substatus),
   ].join("\n");
 
+const resolvedCommentBody = (shortId, plan) =>
+  [
+    plan.action === "resolve"
+      ? `Issue が完了で閉じたので、Sentry の ${shortId} を解決にした（${plan.label}）。また起きたら、新しい Issue で知らせる。`
+      : `Issue が完了で閉じた。Sentry の ${shortId} はすでに解決済みだった。また起きたら、新しい Issue で知らせる。`,
+    "",
+    stateMark(resolvedState),
+  ].join("\n");
+
 // 型と関数の名前はコードが決めるが、Markdown とメンションに化けないよう、記号を落として長さを切る
 const plain = (value) => (value ? String(value).replace(/[`@\r\n<>]/g, "").slice(0, 200) : "");
 // コードの囲みの中はメンションにならないので、版の @ は残す
@@ -194,31 +314,45 @@ const parseJson = (text, source) => {
   }
 };
 
-const sentry = (args) => run(join(__dirname, "sentry"), args);
+const resolveTokenGiven = () => Boolean(process.env.NU_TORI_SENTRY_RESOLVE_TOKEN);
+
+// 解決のトークンは、解決する呼び出しにだけ渡す。読む呼び出しは、読むだけのトークンで呼ぶ
+const sentry = (args, { resolve = false, allowFailure = false } = {}) => {
+  const { NU_TORI_SENTRY_RESOLVE_TOKEN, ...env } = process.env;
+  return run(join(__dirname, "sentry"), args, {
+    env: resolve ? { ...env, NU_TORI_SENTRY_RESOLVE_TOKEN } : env,
+    allowFailure,
+  });
+};
 
 // 本文は標準入力の JSON で渡す。-f で渡すと、@ で始まる値をファイルとして読むため
 const github = (args, body) =>
-  run("gh", ["api", ...args, ...(body ? ["--input", "-"] : [])], body && JSON.stringify(body));
+  run("gh", ["api", ...args, ...(body ? ["--input", "-"] : [])], { input: body && JSON.stringify(body) });
 
-const run = (command, args, input) => {
+// allowFailure は、失敗でも出力に HTTP の状態を書くコマンド（scripts/sentry api --json）のために、出力を返す
+const run = (command, args, { input, env, allowFailure = false } = {}) => {
   try {
     return execFileSync(command, args, {
       input,
+      env,
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,
       stdio: ["pipe", "pipe", "inherit"],
     });
   } catch (error) {
+    if (allowFailure && typeof error.stdout === "string" && error.stdout) return error.stdout;
     throw new ExpectedFailure(`${command} ${args.join(" ")} が ${error.status ?? error.code} で失敗した`);
   }
 };
 
-// 自分で出す文（使い方、呼んだコマンドの失敗）は文だけを、想定外の失敗はスタックと cause まで出す
-class ExpectedFailure extends Error {}
+module.exports = { isResolvable, planResolution };
 
-try {
-  main();
-} catch (error) {
-  console.error(error instanceof ExpectedFailure ? error.message : error);
-  process.exitCode = 1;
+// テストが require したときは、コマンドとしては動かない
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error instanceof ExpectedFailure ? error.message : error);
+    process.exitCode = 1;
+  }
 }

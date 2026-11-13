@@ -62,7 +62,7 @@ worktree やセッションを並べるときは、pstack の `principle-separat
 Sentry の課題・イベント・スタック・端末・版・件数は、`scripts/sentry`（Sentry の公式の CLI、npm の `sentry`）で読む。版・テレメトリの停止・組織は、このスクリプトの1か所に書く。MCP の設定には Sentry を置かない。調べた経緯は `docs/research/sentry-agent-access.md`。
 
 - 読む: `scripts/sentry issue list <project> --json`、`scripts/sentry issue view <短い ID> --json`（課題と最新のイベント）、`scripts/sentry issue events <短い ID> --full`（イベントごとのスタック）。`issue events` の CLI の既定の期間は7日で、それより前の課題は空で返るので、期間を渡さないときはスクリプトが `--period 90d` を足す
-- 書き込みのコマンド（`resolve`、`archive`、`merge` など）と、Seer を使うコマンド（`explain`、`plan`）は使わない
+- 書き込みのコマンド（`resolve`、`archive`、`merge` など）と、Seer を使うコマンド（`explain`、`plan`）は使わない。直した課題を解決にするのは、下の「本番の知らせを Issue にする」のワークフローで、エージェントはその Issue を完了で閉じれば足りる（直した PR の `Closes #<番号>`）
 - 読んだイベントの中身（端末の ID、利用者、要求のヘッダー）は、公開の Issue・PR・コメントに貼らない。貼るのはスタックの関数名と、版・OS・件数まで
 - 認証は読むだけにする
   - Mac: 開発者が `scripts/sentry auth login --read-only` を一度走らせる
@@ -166,11 +166,16 @@ flowchart LR
 `.github/workflows/production-alerts.yml` が毎時 17 分に `scripts/production-alerts sentry` を回し、本番（`environment:production`）の Sentry の、新しい・急に増えた・再発した課題を、`needs-triage` の Issue にしてロックする。エージェントは `/triage` で拾い、中身は `scripts/sentry` で読む。調べた経緯は `docs/research/alerts-to-issues.md`。
 
 - Issue の題は `Sentry <短い ID>: <例外の型> in <関数>`。本文に載せるのは、短い ID・状態・型・関数・版・OS・件数と利用者の数・最初と最後の発生・Sentry の URL だけで、スクリプトはこれらの欄だけを Sentry から取る。例外のメッセージ（Sentry の課題の題）は取らない
-- 本文の印 `<!-- sentry-issue: <短い ID> -->` で同じ課題の Issue を探し、`<!-- sentry-state: <状態> -->` で最後に知らせた状態を覚える。状態が変わったら、開いた Issue にはコメントを足し、閉じた Issue しか無ければ前の Issue を指して新しく作る。状態が同じなら何もしないので、Sentry で解決せずに Issue だけを閉じても立て直さない。そのかわり、Sentry で解決したあとの2度目の再発のように同じ状態に戻ったときは Issue にならず、Sentry のメールの知らせで気づく。ワークフローが作った開いた Issue のロックが抜けていたら、次の回でロックする。印は、ワークフローと、リポジトリの持ち主・メンバー・コラボレーターが書いたものだけを信じる
-- 1回に書くのは5件まで（作る・コメントする）。残りは次の回で拾う
+- 本文の印 `<!-- sentry-issue: <短い ID> -->` で同じ課題の Issue を探し、`<!-- sentry-state: <状態> -->` で最後に知らせた状態を覚える。状態が変わったら、開いた Issue にはコメントを足し、閉じた Issue しか無ければ前の Issue を指して新しく作る。状態が同じなら何もしないので、Issue を閉じたあとに直す前の版から起き続けても立て直さない。ワークフローが作った開いた Issue のロックが抜けていたら、次の回でロックする。印は、ワークフローと、リポジトリの持ち主・メンバー・コラボレーターが書いたものだけを信じる
+- Issue が完了（completed）で閉じたら、ワークフローが `scripts/production-alerts resolve <Issue の番号>` を回し、Sentry の課題を解決にして、閉じた Issue に `<!-- sentry-state: resolved -->` の印を付けたコメントを足す。印があるので、解決のあとの再発（regressed）は前と違う状態になり、前の Issue を指す新しい Issue になる。閉じたときの回が落ちたり捨てられたりした分は、毎時の回が、閉じてから7日以内で最後の状態の印が `resolved` でない Issue から拾う
+  - 解決の種類はプロジェクトで分ける。`nu-tori-ios` は次の版で解決（古い版からの発生は再発にしない。直した版が App Store に届くまで古い版で起き続けるため）。`nu-tori-server` はすぐ解決（デプロイで全員が新しい版になり、イベントに版を付けていないため）。ほかのプロジェクトの課題は、種類を決めるまで解決にしない（閉じたときの回は止まり、毎時の回は飛ばして知らせを続ける）
+  - 予定なし・重複で閉じた Issue と、印を信じられない Issue では Sentry に触らない。Sentry ですでに解決済みの課題は印だけを付け、アーカイブ済みの課題と、消えた・統合された課題には何もしない。Issue を開き直しても、解決は取り消さない
+- 1回に書くのは5件まで（作る・コメントする・閉じた Issue の課題を解決にして印を付ける。何もしなかった Issue は数えない）。残りは次の回で拾う
 - スクリプトとワークフローを直すときは、pstack の `principle-make-operations-idempotent` を読む。上の印と状態は、途中で止まった回や回し直しがあっても、同じ課題を同じ Issue に収めるための仕組み
-- 秘密の値は Sentry の読むだけのトークン `NU_TORI_SENTRY_READ_TOKEN` だけで、main からだけ使える Environment `production-alerts` に置く。Issue は `GITHUB_TOKEN` で書く
-- Mac で確かめるときは `scripts/production-alerts sentry --dry-run`。GitHub に書かず、作る Issue の題とコメントする先だけを出す
+- 秘密の値は Sentry の読むだけのトークン `NU_TORI_SENTRY_READ_TOKEN` と、課題を解決にするトークン `NU_TORI_SENTRY_RESOLVE_TOKEN` で、main からだけ使える Environment `production-alerts` に置く。Issue は `GITHUB_TOKEN` で書く
+  - 解決のトークンは、個人のトークンでスコープ `event:read`・`event:write`・`org:read`・`project:read`。スクリプトは解決する呼び出しにだけ渡し、読む呼び出しは読むだけのトークンで呼ぶ。エージェントの環境と Mac には置かない（エージェントが Sentry に書かないため）
+  - 解決のトークンが無いと、毎時の回は解決を飛ばして知らせだけを続け、閉じたときの回は止まる
+- Mac で確かめるときは `scripts/production-alerts sentry --dry-run` か `scripts/production-alerts resolve <Issue の番号> --dry-run`。GitHub と Sentry に書かず、作る Issue の題とコメントする先と、解決にする課題だけを出す
 - 公開のリポジトリでは、60 日動きが無いと定期実行が止まる。止まったら Actions の画面で入れ直す
 
 ## 検証スキルの地図の見回り
