@@ -1,14 +1,12 @@
 import { R } from "@praha/byethrow";
-import nutrientDefinitions from "../../../../../shared/nutrients.json";
 import { ErrorFactory } from "@praha/error-factory";
 import { match } from "ts-pattern";
 import type { RecordId } from "../../../domain/record-id";
 import { loadFoodComposition } from "../../../domain/food-composition/load-food-composition";
 import { isNutrientName } from "../../../domain/food-composition/nutrient-name";
-import type { NutrientName } from "../../../domain/food-composition/nutrient-name";
-import type { IngredientNutrientSource } from "../../../ingredient/domain/ingredient";
 import type { MealPhotoArchive } from "../../../meal/domain/meal-photo-archive";
 import type { BegunEstimationAttempt, WrittenMealTarget } from "../begin-estimation-attempts";
+import { composeLabeledIngredient } from "../compose-labeled-ingredient";
 import type { EstimatedDish } from "../estimated-dish";
 import type { EstimationAttemptOutcome } from "../estimation-attempt-outcome";
 import { estimationAttemptTimeLimitMs } from "../estimation-attempt-time-limit-ms";
@@ -25,6 +23,8 @@ import type {
 } from "../estimation-provider";
 import type { TokenUsage } from "../../../domain/token-usage";
 import { computeWrittenMealEatenAt } from "../compute-written-meal-eaten-at";
+import { isPossibleInFood } from "../is-possible-in-food";
+import { isValidIdentifiedDishes } from "../is-valid-identified-dishes";
 import { toWrittenMealsRequest } from "../to-written-meals-request";
 
 // 試み1回分。写真を R2 から読み、①（写真から料理と材料。推定し直しでは写真と料理の今の値から、その料理1つ。
@@ -258,31 +258,18 @@ const composeDishes = (
     name,
     quantity,
     unit,
-    ingredients: ingredients.map((ingredient) => {
-      const { nutrientSource, nutrients } =
-        ingredient.nutritionLabel === undefined
-          ? toMatchedNutrients(remainingMatches.shift())
-          : {
-              nutrientSource: {
-                type: "nutrition_label",
-                labelBasisGrams: ingredient.nutritionLabel.basisGrams,
-              } satisfies IngredientNutrientSource,
-              nutrients: Object.fromEntries(
-                Object.entries(ingredient.nutritionLabel.nutrients).filter(([nutrient]) =>
-                  isNutrientName(nutrient),
-                ),
-              ),
-            };
-      return {
-        name: ingredient.name,
-        quantity: ingredient.quantity,
-        unit: ingredient.unit,
-        // 栄養に使う g は ① が直接見積もった合計で、量と掛け合わせて作らない（量と1単位あたりを別々に答えさせると、重ねて答えたときに桁が跳ねる）
-        edibleGramsPerUnit: ingredient.edibleGrams / ingredient.quantity,
-        nutrientSource,
-        nutrients,
-      };
-    }),
+    ingredients: ingredients.map((ingredient) =>
+      ingredient.nutritionLabel === undefined
+        ? {
+            name: ingredient.name,
+            quantity: ingredient.quantity,
+            unit: ingredient.unit,
+            // 栄養に使う g は ① が直接見積もった合計で、量と掛け合わせて作らない（量と1単位あたりを別々に答えさせると、重ねて答えたときに桁が跳ねる）
+            edibleGramsPerUnit: ingredient.edibleGrams / ingredient.quantity,
+            ...toMatchedNutrients(remainingMatches.shift()),
+          }
+        : composeLabeledIngredient(ingredient, ingredient.nutritionLabel),
+    ),
   }));
 };
 
@@ -356,42 +343,6 @@ const usageOf = (error: ProviderFailure): TokenUsage | undefined =>
       }
     : undefined;
 
-// Claude の構造化出力は数値の範囲を使えないので、量が 0 より大きいことなどをここで確かめる。
-// 推定し直しは、その料理1つか、材料を出せない（0 件）の答えだけを通す
-const isValidIdentifiedDishes = (
-  { dishes }: IdentifiedDishes,
-  target: IdentificationTarget,
-): boolean =>
-  (target.type === "meal" || dishes.length <= 1) &&
-  dishes.every(
-    (dish) =>
-      isPresentText(dish.name) &&
-      isPositive(dish.quantity) &&
-      isPresentText(dish.unit) &&
-      dish.ingredients.length > 0 &&
-      dish.ingredients.every(
-        (ingredient) =>
-          isPresentText(ingredient.name) &&
-          isPositive(ingredient.quantity) &&
-          isPresentText(ingredient.unit) &&
-          isPositive(ingredient.edibleGrams) &&
-          (ingredient.nutritionLabel === undefined ||
-            isValidNutritionLabel(ingredient.nutritionLabel)),
-      ),
-  );
-
-const isValidNutritionLabel = ({
-  basisGrams,
-  nutrients,
-}: NonNullable<IdentifiedIngredient["nutritionLabel"]>): boolean =>
-  isPositive(basisGrams) &&
-  Object.entries(nutrients).every(
-    ([nutrient, amount]) =>
-      isNutrientName(nutrient) &&
-      isNonNegative(amount) &&
-      isPossibleInFood(nutrient, amount, basisGrams),
-  );
-
 // 答えは要求と同じ数で、食品番号は候補から選んでいること
 const isValidMatchedIngredients = (
   request: IngredientMatchRequest,
@@ -417,47 +368,5 @@ const isValidMatchedIngredients = (
       })
       .exhaustive(),
   );
-
-// 基準の読み違い（1袋あたりの値を 1 g あたりと読む、1食分の値を 100 g あたりとして答える）で桁が跳ねた答えを落とす
-const isPossibleInFood = (nutrient: NutrientName, amount: number, basisGrams: number): boolean => {
-  // 正しい記録をはじかない高さに置く。純粋な脂質で 100 g あたり約 900 kcal で、栄養成分表示の許容差（±20%）を見込む
-  const maximumEnergyKcalPer100Grams = 1200;
-  // 重さより多くは入らない（100 g）が、① は ml を g とみなすので、水あめのように重い液体の表示は 100 ml あたり 120 g 近くになる。それが通るよう、重さの倍に置く
-  const maximumGramsPer100Grams = 200;
-  const amountPer100Grams = (amount / basisGrams) * 100;
-  return (
-    match(nutrientUnit(nutrient))
-      .with("kcal", () => amountPer100Grams <= maximumEnergyKcalPer100Grams)
-      .with("g", () => amountPer100Grams <= maximumGramsPer100Grams)
-      // mg・µg の項目には、ありえないと言える上限が無いので確かめない
-      .with("mg", "µg", () => true)
-      .exhaustive()
-  );
-};
-
-// JSON の import では単位の型が string になるので、知っている単位に絞る
-const nutrientUnit = (nutrient: NutrientName): NutrientUnit => {
-  const { unit } = nutrientDefinitions[nutrient];
-  if (!isNutrientUnit(unit)) {
-    throw new Error(`shared/nutrients.json の ${nutrient} の単位「${unit}」を知らない`);
-  }
-  return unit;
-};
-
-const nutrientUnits = ["kcal", "g", "mg", "µg"] as const;
-
-type NutrientUnit = (typeof nutrientUnits)[number];
-
-const isNutrientUnit = (value: string): value is NutrientUnit =>
-  nutrientUnits.some((unit) => unit === value);
-
-// 知らない単位を、推定の答えに出たときでなく、読み込んだときに落とす。このモジュールを読み込むテストが落ちて気づける
-for (const nutrient of Object.keys(nutrientDefinitions).filter(isNutrientName)) {
-  nutrientUnit(nutrient);
-}
-
-const isPresentText = (text: string): boolean => text.trim().length > 0;
-
-const isPositive = (value: number): boolean => Number.isFinite(value) && value > 0;
 
 const isNonNegative = (value: number): boolean => Number.isFinite(value) && value >= 0;
