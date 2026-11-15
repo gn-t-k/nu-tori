@@ -71,13 +71,13 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         _ body: @Sendable (Syncing.Cache) throws -> Value
     ) async throws -> Value {
         let kinds = kinds
-        return try await readingCache { cache in
+        return try await reading(in: container) { cache in
             try body(try kinds.port(Syncing.self, in: cache))
         }
     }
 
     func dishVersionsWrittenToHealth() async throws -> [UUID: Int] {
-        try await readingCache { cache in
+        try await reading(in: container) { cache in
             let rows = try cache.fetch(FetchDescriptor<CachedHealthDishWrite>())
             return Dictionary(
                 rows.map { ($0.dishId, $0.version) }, uniquingKeysWith: { first, _ in first })
@@ -99,7 +99,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
     }
 
     func pendingEntries() async throws -> [PendingEntry] {
-        try await readingPending { pending in
+        try await reading(in: pendingContainer) { pending in
             let descriptor = FetchDescriptor<PendingWriteRow>(
                 sortBy: [SortDescriptor(\.enqueuedAt)])
             return try pending.fetch(descriptor).compactMap(\.entry)
@@ -114,13 +114,13 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
     }
 
     func syncState() async throws -> SyncState? {
-        try await readingCache { cache in
+        try await reading(in: container) { cache in
             try Self.cachedSyncState(in: cache)?.syncState()
         }
     }
 
     func healthSyncState() async throws -> HealthSyncState {
-        try await readingPending { pending in
+        try await reading(in: pendingContainer) { pending in
             try Self.healthSyncStateRow(in: pending)?.healthSyncState() ?? .initial
         }
     }
@@ -175,18 +175,12 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
 
     /// 保存しない読み方の道。読み取り用のコンテキストをメインの外で作り、読み終えたら捨てる。
     /// `@ModelActor` は使わない。ModelActor に仕事を積みながら裏で保存すると、iOS 26 では `@Query` がデッドロックすることがある。
-    /// 既定の MainActor の隔離では、`nonisolated` の async 関数は呼んだ側の actor で動くので、`@concurrent` でメインから外す
-    @concurrent private func readingCache<T: Sendable>(
+    /// approachable concurrency では `nonisolated` の async 関数は呼んだ側の actor（メイン）で動くので、`@concurrent` でメインから外す
+    @concurrent private func reading<T: Sendable>(
+        in container: ModelContainer,
         _ body: @Sendable (ModelContext) throws -> T
     ) async throws -> T {
         try body(ModelContext(container))
-    }
-
-    /// 送り待ちの置き場の、保存しない読み方の道（`readingCache` と同じ）
-    @concurrent private func readingPending<T: Sendable>(
-        _ body: @Sendable (ModelContext) throws -> T
-    ) async throws -> T {
-        try body(ModelContext(pendingContainer))
     }
 
     @MainActor private func contexts() -> Contexts {
