@@ -2,7 +2,7 @@ import Foundation
 import NuToriAPI
 import OpenAPIRuntime
 
-public enum HandledFailure: Sendable, Equatable {
+public enum HandledFailure: Sendable, Equatable, CaseIterable {
     case sync
     case healthRead
     case healthWrite
@@ -23,6 +23,24 @@ public enum HandledFailure: Sendable, Equatable {
     case goalSetupRequest
     /// 「購入を復元」で App Store と取引を突き合わせられなかった（`AppStore.sync()`）
     case appStoreSync
+
+    /// 送るときの名前。Sentry の課題の題と fingerprint に使い、過去の報告と突き合わせるので変えない
+    public var reportName: String {
+        switch self {
+        case .sync: "sync"
+        case .healthRead: "health_read"
+        case .healthWrite: "health_write"
+        case .healthNutritionWrite: "health_nutrition_write"
+        case .cacheSave: "cache_save"
+        case .storeRecovery: "store_recovery"
+        case .photoUpload: "photo_upload"
+        case .reminderSchedule: "reminder_schedule"
+        case .cacheRead: "cache_read"
+        case .notificationPermissionRequest: "notification_permission_request"
+        case .goalSetupRequest: "goal_setup_request"
+        case .appStoreSync: "app_store_sync"
+        }
+    }
 
     /// 取り消し（タスクの取り消しと通信の取り消し）、つながらない・時間切れ、締め出し（426）、ロック中のヘルスケア（想定した結果）は送らない
     public static func reported(_ error: any Error, as area: HandledFailure) -> HandledFailure? {
