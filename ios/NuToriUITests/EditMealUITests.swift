@@ -2,7 +2,8 @@ import XCTest
 
 /// 食事を直す主な流れ。「写真」で写真を選び、推定中の食事の画面を開く（「料理を足す」を押せない）→ 時刻を直す → 推定が届く（親子丼 1杯）→
 /// 料理の画面で量と名前（カツ丼）を直す → 推定し直しが届く → 料理（味噌汁）を足す → 左へ送って消す →
-/// 最後の1品を消して食事が消える。API は起動の値で差し替え、時刻を直すまで推定を返さず、料理を足す・名前を直すと、次に取りに行ったときに推定し直しを返す
+/// 最後の1品を消して食事が消える。API は起動の値で差し替え、時刻を直すまで推定を返さず、料理を足す・名前を直すと、次に取りに行ったときに推定し直しを返す。
+/// 料理の画面の材料の行の「表示」の印は、栄養成分表示の材料を持つ料理が届く別の場面で見る
 @MainActor
 final class EditMealUITests: XCTestCase {
     private var app = XCUIApplication()
@@ -10,8 +11,12 @@ final class EditMealUITests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         continueAfterFailure = false
+    }
+
+    /// 写真を1枚選べる状態で、`api` の場面につないで開く
+    private func launch(api: String) {
         app = .launched(
-            account: "signed-in", api: "meal-edit", healthLatestKilograms: nil,
+            account: "signed-in", api: api, healthLatestKilograms: nil,
             pickedPhotos: UITestPickedPhotos(source: .solidColors(count: 1)),
             now: .morningBeforeNotice,
             timeZone: "Asia/Tokyo")
@@ -19,6 +24,7 @@ final class EditMealUITests: XCTestCase {
     }
 
     func test_食事の画面から時刻と料理を直し料理を足して消すと最後の1品で食事が消えること() {
+        launch(api: "meal-edit")
         app.buttons["composer-photos"].tap()
         let card = app.buttons["meal-card"]
         XCTAssertTrue(card.waitForExistence(timeout: 10))
@@ -107,6 +113,39 @@ final class EditMealUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["食事"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(card.waitForNonExistence(timeout: 5))
         attachScreenshot(of: app, named: "食事を消したタイムライン")
+    }
+
+    func test_料理の画面で栄養成分表示の材料の行にだけ表示の印が出ること() {
+        // 推定は次に取りに行ったときに届く。カレーライス（ご飯は成分表、レトルトカレーは栄養成分表示）
+        launch(api: "meal-nutrition-label")
+        app.buttons["composer-photos"].tap()
+        let card = app.buttons["meal-card"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        XCTAssertTrue(waitUntil(card, matches: "label CONTAINS %@", "カレーライス"))
+        // タイムラインのカードには、印が増えない。食事の画面から戻ると書く欄のキーボードがカードを覆うことがあるので、潜る前に見る
+        XCTAssertFalse(app.staticTexts["nutrition-label-badge"].exists)
+        card.tap()
+        XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
+        let curry = dish(named: "カレーライス")
+        XCTAssertTrue(curry.waitForExistence(timeout: 5))
+        // 食事の画面の料理の行には、印が増えない
+        XCTAssertFalse(app.staticTexts["nutrition-label-badge"].exists)
+        attachScreenshot(of: app, named: "栄養成分表示の材料を持つ料理の食事の画面")
+
+        curry.tap()
+        XCTAssertTrue(app.navigationBars["カレーライス"].waitForExistence(timeout: 5))
+        let retortCurry = app.staticTexts["レトルトカレー"]
+        let rice = app.staticTexts["ご飯"]
+        XCTAssertTrue(retortCurry.waitForExistence(timeout: 5))
+        XCTAssertTrue(rice.exists)
+        // 印は1つだけで、レトルトカレーの行（名前と同じ高さ）に出る
+        let badges = app.staticTexts.matching(identifier: "nutrition-label-badge")
+        XCTAssertEqual(badges.count, 1)
+        let badge = badges.firstMatch
+        XCTAssertEqual(badge.label, "表示")
+        XCTAssertEqual(badge.frame.midY, retortCurry.frame.midY, accuracy: 4)
+        XCTAssertGreaterThan(abs(badge.frame.midY - rice.frame.midY), 4)
+        attachScreenshot(of: app, named: "表示の印のある料理の画面")
     }
 
     /// 止めた時計は 6:30 で、選んだ写真の時刻も 6:30。時刻のボタンから時の輪を 5 に回し、5:30 に直す
