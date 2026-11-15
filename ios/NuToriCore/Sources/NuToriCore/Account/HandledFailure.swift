@@ -24,9 +24,9 @@ public enum HandledFailure: Sendable, Equatable {
     /// 「購入を復元」で App Store と取引を突き合わせられなかった（`AppStore.sync()`）
     case appStoreSync
 
-    /// 取り消し、つながらない・時間切れ、締め出し（426）、ロック中のヘルスケア（想定した結果）は送らない
+    /// 取り消し（タスクの取り消しと通信の取り消し）、つながらない・時間切れ、締め出し（426）、ロック中のヘルスケア（想定した結果）は送らない
     public static func reported(_ error: any Error, as area: HandledFailure) -> HandledFailure? {
-        if error is CancellationError || error.isUnreachableOrTimedOut
+        if error is CancellationError || error.isCancelledTransfer || error.isUnreachableOrTimedOut
             || error.isAppBuildUnsupported || error.isHealthDataLocked
         {
             return nil
@@ -36,9 +36,11 @@ public enum HandledFailure: Sendable, Equatable {
 }
 
 extension Error {
-    /// 取り消した送信。アプリが取り消したときと、App スイッチャーで閉じてシステムが取り消したとき
+    /// 取り消した通信。アプリが取り消したときと、App スイッチャーで閉じたときや裏にいるあいだにシステムが取り消したとき
     var isCancelledTransfer: Bool {
         switch self {
+        case let error as ClientError:
+            return error.underlyingError.isCancelledTransfer
         case let error as URLError:
             return error.code == .cancelled
         // swiftlint:disable:next no_default_in_switch - エラーは型が開いていて、見分けないものが来る
