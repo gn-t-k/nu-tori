@@ -254,6 +254,28 @@ describe("アカウントの Durable Object", () => {
         });
       });
 
+      // アカウントの削除は、記録を消したあとに PostHog に人の削除を頼むので、それより前に送り終えている必要がある
+      describe("PostHog が答えを返す前に、記録を消す呼び出しをしたとき", () => {
+        let order: string[];
+        beforeEach(async () => {
+          const posthogResponse = Promise.withResolvers<Response>();
+          fetchSpy.mockReturnValue(posthogResponse.promise);
+          await callPushSyncWrites(accountId);
+          order = [];
+          const deleting = getAccountDurableObject(env, accountId)
+            .deleteRecords(accountId)
+            .then(() => order.push("deleteRecords が返った"));
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          order.push("PostHog が答えた");
+          posthogResponse.resolve(Response.json({ status: 1 }));
+          await deleting;
+        });
+
+        test("送りかけの出来事を送り終えてから返ること", () => {
+          expect(order).toEqual(["PostHog が答えた", "deleteRecords が返った"]);
+        });
+      });
+
       describe("取りに行く要求", () => {
         beforeEach(async () => {
           await callPullSyncChanges(accountId);

@@ -6,6 +6,7 @@ import { updateAccountSettingsWrite } from "../../account-settings/http/testing/
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import {
   mockPostHogCaptureEndpointError,
+  mockPostHogCaptureEndpointNoResponseError,
   mockPostHogCaptureEndpointOk,
   readPostHogCapturedEvents,
 } from "../../observability/testing";
@@ -224,11 +225,11 @@ describe("同期", () => {
   });
 
   describe("本番のサーバーで、PostHog が答えを返さないとき", () => {
-    let fetchSpy: ReturnType<typeof mockPostHogCaptureEndpointError>;
+    let fetchSpy: ReturnType<typeof mockPostHogCaptureEndpointNoResponseError>;
     let response: Response;
     beforeEach(async () => {
       await enableUsageEventSending(accountId);
-      fetchSpy = mockPostHogCaptureEndpointError("no_response");
+      fetchSpy = mockPostHogCaptureEndpointNoResponseError();
       response = await pushSyncWrites(sessionToken, {
         writes: [createWeightRecordWrite({ weightRecord: { weightKg: 5000 } })],
       });
