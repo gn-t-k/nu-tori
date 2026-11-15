@@ -382,6 +382,7 @@ const isValidIdentifiedDishes = (
 
 const isValidNutritionLabel = ({
   basisGrams,
+  basisGramsEstimated,
   nutrients,
 }: NonNullable<IdentifiedIngredient["nutritionLabel"]>): boolean =>
   isPositive(basisGrams) &&
@@ -389,7 +390,8 @@ const isValidNutritionLabel = ({
     ([nutrient, amount]) =>
       isNutrientName(nutrient) &&
       isNonNegative(amount) &&
-      isPossibleInFood(nutrient, amount, basisGrams),
+      // 見積もりの g は濃さの根拠にならない（軽く見積もると、正しい表示でも上限を超えて試み全体が落ちる）ので、濃さは書かれた g の表示だけで確かめる
+      (basisGramsEstimated || isPossibleInFood(nutrient, amount, basisGrams)),
   );
 
 // 答えは要求と同じ数で、食品番号は候補から選んでいること
