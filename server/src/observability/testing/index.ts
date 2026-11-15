@@ -6,5 +6,6 @@ export {
   mockPostHogCaptureEndpointError,
   mockPostHogCaptureEndpointNoResponseError,
   mockPostHogCaptureEndpointOk,
+  mockPostHogCaptureEndpointPendingOk,
 } from "./posthog-capture-endpoint.mock";
 export { readPostHogCapturedEvents } from "./read-posthog-captured-events";

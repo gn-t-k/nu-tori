@@ -6,6 +6,11 @@ export const mockPostHogCaptureEndpointOk = (overrides?: Partial<{ status: numbe
     .mockResolvedValue(Response.json({ status: 1, ...overrides }));
 };
 
+// 答えるときをテストが決める PostHog。渡した promise が片づいたときに答える
+export const mockPostHogCaptureEndpointPendingOk = (response: Promise<Response>) => {
+  return vi.spyOn(globalThis, "fetch").mockReturnValue(response);
+};
+
 export const mockPostHogCaptureEndpointError = (error: TypeError | number) => {
   const spy = vi.spyOn(globalThis, "fetch");
   return typeof error === "number"

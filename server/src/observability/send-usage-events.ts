@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 import type { CachedTokenUsage, TokenUsage } from "../domain/token-usage";
 import type { UsageEvent } from "../domain/usage-event";
 
-// 呼び出し側は待たずに応答を返し、Durable Object の waitUntil で送り終えるまで退去を防ぐ。それでも上限を付けるのは、答えない PostHog に退去を最大15分止めさせないため。
+// 呼び出し側は送り終えるのを待たずに応答を返し（記録を消す呼び出しだけは待つ）、Durable Object の waitUntil で送り終えるまで退去を防ぐ。それでも上限を付けるのは、答えない PostHog に退去を最大15分止めさせないため。
 // 失敗は捨て、失敗した promise を waitUntil に残さない
 export const sendUsageEvents = async (
   env: { POSTHOG_PROJECT_TOKEN?: string },

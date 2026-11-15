@@ -8,7 +8,11 @@ import { useFakeClock } from "../estimation/http/testing/use-fake-clock";
 import type { SyncClientState } from "../domain/sync-client-state";
 import { enableUsageEventSending } from "../http/sync-routes/testing/enable-usage-event-sending";
 import { mockSetUserOk } from "../observability/set-user.mock";
-import { mockPostHogCaptureEndpointOk, readPostHogCapturedEvents } from "../observability/testing";
+import {
+  mockPostHogCaptureEndpointOk,
+  mockPostHogCaptureEndpointPendingOk,
+  readPostHogCapturedEvents,
+} from "../observability/testing";
 import { durableObjectTables } from "./durable-object-tables";
 import type { AccountDurableObject } from "./account-durable-object";
 import { getAccountDurableObject } from "./get-account-durable-object";
@@ -259,7 +263,7 @@ describe("アカウントの Durable Object", () => {
         let order: string[];
         beforeEach(async () => {
           const posthogResponse = Promise.withResolvers<Response>();
-          fetchSpy.mockReturnValue(posthogResponse.promise);
+          mockPostHogCaptureEndpointPendingOk(posthogResponse.promise);
           await callPushSyncWrites(accountId);
           order = [];
           const deleting = getAccountDurableObject(env, accountId)
