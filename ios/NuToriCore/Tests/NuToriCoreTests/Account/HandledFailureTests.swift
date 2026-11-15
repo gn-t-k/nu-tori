@@ -1,5 +1,6 @@
 import Foundation
 import NuToriCore
+import OpenAPIRuntime
 import Testing
 
 @Suite("対処した失敗を送るか")
@@ -59,6 +60,53 @@ struct HandledFailureTests {
         @Test("送らないこと")
         func skips() {
             #expect(HandledFailure.reported(error, as: .cacheSave) == nil)
+        }
+    }
+
+    @Suite("通信が取り消されたとき")
+    struct CancelledTransfer {
+        let error: URLError
+
+        init() {
+            error = URLError(.cancelled)
+        }
+
+        @Test("送らないこと")
+        func skips() {
+            #expect(HandledFailure.reported(error, as: .sync) == nil)
+        }
+    }
+
+    @Suite("生成したクライアントが取り消した通信を包んで投げたとき")
+    struct WrappedCancelledTransfer {
+        let error: ClientError
+
+        init() {
+            error = ClientError(
+                operationID: "pullSyncChanges",
+                operationInput: "",
+                causeDescription: "Transport threw an error.",
+                underlyingError: URLError(.cancelled)
+            )
+        }
+
+        @Test("送らないこと")
+        func skips() {
+            #expect(HandledFailure.reported(error, as: .sync) == nil)
+        }
+    }
+
+    @Suite("取り消し以外の通信の失敗のとき")
+    struct OtherTransferFailure {
+        let error: URLError
+
+        init() {
+            error = URLError(.badServerResponse)
+        }
+
+        @Test("同期の場所を送ること")
+        func reportsSync() {
+            #expect(HandledFailure.reported(error, as: .sync) == .sync)
         }
     }
 
