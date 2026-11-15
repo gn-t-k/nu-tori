@@ -18,6 +18,7 @@ export const identifiedDishSchema = z.object({
       nutritionLabel: z
         .object({
           basisGrams: z.number(),
+          basisGramsEstimated: z.boolean(),
           // 栄養の名前をキーにした表は構造化出力で書けないので、名前と値の組の並びにする
           nutrients: z.array(z.object({ nutrient: z.enum(nutrientNames), amount: z.number() })),
         })

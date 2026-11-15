@@ -411,7 +411,7 @@ struct MealScreen: View {
                     name.fixedSize()
                     quantity.fixedSize()
                     if row.showsEstimateBadge {
-                        EstimateBadge().fixedSize()
+                        OutlinedBadge.estimate.fixedSize()
                     }
                     Spacer(minLength: 0)
                     dishKilocalories.fixedSize()
@@ -420,7 +420,7 @@ struct MealScreen: View {
                     name
                     quantity
                     if row.showsEstimateBadge {
-                        EstimateBadge()
+                        OutlinedBadge.estimate
                     }
                     dishKilocalories
                 }

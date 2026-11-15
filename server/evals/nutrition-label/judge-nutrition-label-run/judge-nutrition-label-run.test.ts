@@ -13,6 +13,7 @@ describe("表示の読み取りの1回分の答えを正解と比べる", () => 
   beforeEach(() => {
     ramenLabel = {
       basisGrams: 420,
+      basisGramsEstimated: false,
       nutrients: {
         energy_kcal: 500,
         protein_g: 20.5,
@@ -95,6 +96,7 @@ describe("表示の読み取りの1回分の答えを正解と比べる", () => 
                   edibleGrams: 400,
                   nutritionLabel: {
                     basisGrams: 100,
+                    basisGramsEstimated: false,
                     nutrients: {
                       energy_kcal: 125,
                       protein_g: 5,
@@ -172,7 +174,7 @@ describe("表示の読み取りの1回分の答えを正解と比べる", () => 
       });
     });
 
-    describe("表示の基準の g を取り違え、本番の検証で落ちる答えのとき", () => {
+    describe("書かれた表示の基準の g を取り違え、本番の検証で落ちる答えのとき", () => {
       let answer: IdentifiedDishes;
       beforeEach(() => {
         answer = {
@@ -253,13 +255,21 @@ describe("表示の読み取りの1回分の答えを正解と比べる", () => 
         ...ramen,
         name: "めん・かやく",
         edibleGrams: 80,
-        nutritionLabel: { basisGrams: 80, nutrients: { energy_kcal: 300 } },
+        nutritionLabel: {
+          basisGrams: 80,
+          basisGramsEstimated: false,
+          nutrients: { energy_kcal: 300 },
+        },
       };
       soup = {
         ...ramen,
         name: "スープ",
         edibleGrams: 300,
-        nutritionLabel: { basisGrams: 300, nutrients: { energy_kcal: 100 } },
+        nutritionLabel: {
+          basisGrams: 300,
+          basisGramsEstimated: false,
+          nutrients: { energy_kcal: 100 },
+        },
       };
     });
 

@@ -29,6 +29,7 @@ const greenTea = {
   foodCompositionQuery: "せん茶 浸出液",
   nutritionLabel: {
     basisGrams: 100,
+    basisGramsEstimated: false,
     nutrients: [
       { nutrient: "energy_kcal", amount: 0 },
       { nutrient: "salt_equivalent_g", amount: 0.02 },
@@ -115,6 +116,7 @@ describe("Anthropic の推定の提供元", () => {
                     foodCompositionQuery: "せん茶 浸出液",
                     nutritionLabel: {
                       basisGrams: 100,
+                      basisGramsEstimated: false,
                       nutrients: { energy_kcal: 0, salt_equivalent_g: 0.02 },
                     },
                   },
@@ -255,6 +257,7 @@ describe("Anthropic の推定の提供元", () => {
                       ...greenTea,
                       nutritionLabel: {
                         basisGrams: 100,
+                        basisGramsEstimated: false,
                         nutrients: [{ nutrient: "vitamin_x", amount: 1 }],
                       },
                     },
@@ -496,6 +499,7 @@ describe("Anthropic の推定の提供元", () => {
                       name: "緑茶",
                       nutritionLabel: {
                         basisGrams: 100,
+                        basisGramsEstimated: false,
                         nutrients: { energy_kcal: 0, salt_equivalent_g: 0.02 },
                       },
                     },
