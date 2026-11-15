@@ -2,7 +2,8 @@ import { match } from "ts-pattern";
 import type { CachedTokenUsage, TokenUsage } from "../domain/token-usage";
 import type { UsageEvent } from "../domain/usage-event";
 
-// Durable Object では応答のあとに続ける仕組みが効かないので、数秒の上限を付けて待つ。throw すると、書き込みを当てたあとの応答が失敗する
+// 呼び出し側は待たずに応答を返し、Durable Object の waitUntil で送り終えるまで退去を防ぐ。それでも上限を付けるのは、答えない PostHog に退去を最大15分止めさせないため。
+// 失敗は捨て、失敗した promise を waitUntil に残さない
 export const sendUsageEvents = async (
   env: { POSTHOG_PROJECT_TOKEN?: string },
   accountId: string,

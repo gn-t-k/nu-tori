@@ -392,7 +392,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     }
 
     // 出来事はどの入口のものもここを通ってアカウントから出るので、送るかどうか（利用状況の設定）はここで1度だけ決める。
-    // 設定は、口が答えを出し終えた直後（同じ要求で切り替えた書き込みを当てたあと）に、何も待たずに読む
+    // 設定は、口が答えを出し終えた直後（同じ要求で切り替えた書き込みを当てたあと）に、何も待たずに読む。
+    // 送るのは応答を返したあとにし、PostHog が遅くても応答を遅らせない
     private async armAlarmAndSendUsageEvents<Result>(
       accountId: string,
       { result, usageEvents }: AccountResponse<Result>,
@@ -403,7 +404,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         usageEvents,
       );
       await armAlarm();
-      await sendUsageEvents(this.env, accountId, sendableUsageEvents);
+      this.ctx.waitUntil(sendUsageEvents(this.env, accountId, sendableUsageEvents));
       return result;
     }
   },

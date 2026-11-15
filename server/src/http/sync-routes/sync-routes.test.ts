@@ -223,6 +223,30 @@ describe("同期", () => {
     });
   });
 
+  describe("本番のサーバーで、PostHog が答えを返さないとき", () => {
+    let fetchSpy: ReturnType<typeof mockPostHogCaptureEndpointError>;
+    let response: Response;
+    beforeEach(async () => {
+      await enableUsageEventSending(accountId);
+      fetchSpy = mockPostHogCaptureEndpointError("no_response");
+      response = await pushSyncWrites(sessionToken, {
+        writes: [createWeightRecordWrite({ weightRecord: { weightKg: 5000 } })],
+      });
+    });
+
+    test("送り終えるのを待たずに応答を返すこと", async () => {
+      expect((await response.json<PushResults>()).results.map(({ result }) => result)).toEqual([
+        "rejected",
+      ]);
+    });
+
+    test("出来事を PostHog に送ること", () => {
+      expect(readPostHogCapturedEvents(fetchSpy).map(({ event }) => event)).toEqual([
+        "sync_write_rejected",
+      ]);
+    });
+  });
+
   describe("本番のサーバーで、PostHog がエラーを返すとき", () => {
     let response: Response;
     beforeEach(async () => {
