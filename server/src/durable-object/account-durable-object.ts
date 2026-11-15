@@ -38,6 +38,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
   class extends DurableObject<Env> {
     // 見守る要求と、試みが流している途中の文。実体のメモリにだけ持ち、受け口の要求とアラームが同じものを使う
     private readonly replyWatchers = createReplyWatchers();
+    // 送り終えていない利用状況の出来事の送信。記録を消す呼び出しが、返る前に待つ
+    private readonly pendingUsageEventSends = new Set<Promise<void>>();
 
     constructor(ctx: DurableObjectState, env: Env) {
       super(ctx, env);
@@ -284,7 +286,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     async deleteRecords(accountId: string): Promise<void> {
       setUser({ id: accountId });
       // 消したあとは表も無く、張り直す仕事も無い。アラームは、下の eraseRecords が表と一緒に外す
-      return this.armAlarmAndSendUsageEvents(
+      await this.armAlarmAndSendUsageEvents(
         accountId,
         await accountRequests.deleteRecords({
           eraseRecords: async () => {
@@ -294,6 +296,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         }),
         async () => {},
       );
+      // アカウントの削除は、これが返ったあとに PostHog に人の削除を頼む。それより前に届かせるため、送りかけの出来事を送り終えてから返す
+      await Promise.all(this.pendingUsageEventSends);
     }
 
     // アラームには受け口が無いので、アカウント ID は idFromName で付けた名前から得る。
@@ -392,7 +396,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     }
 
     // 出来事はどの入口のものもここを通ってアカウントから出るので、送るかどうか（利用状況の設定）はここで1度だけ決める。
-    // 設定は、口が答えを出し終えた直後（同じ要求で切り替えた書き込みを当てたあと）に、何も待たずに読む
+    // 設定は、口が答えを出し終えた直後（同じ要求で切り替えた書き込みを当てたあと）に、何も待たずに読む。
+    // 送り終えるのを待たずに応答を返し（送信は waitUntil で続ける）、PostHog が遅くても応答を遅らせない
     private async armAlarmAndSendUsageEvents<Result>(
       accountId: string,
       { result, usageEvents }: AccountResponse<Result>,
@@ -403,7 +408,11 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
         usageEvents,
       );
       await armAlarm();
-      await sendUsageEvents(this.env, accountId, sendableUsageEvents);
+      const sending = sendUsageEvents(this.env, accountId, sendableUsageEvents).finally(() => {
+        this.pendingUsageEventSends.delete(sending);
+      });
+      this.pendingUsageEventSends.add(sending);
+      this.ctx.waitUntil(sending);
       return result;
     }
   },
