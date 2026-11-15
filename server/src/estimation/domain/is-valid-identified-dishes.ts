@@ -4,6 +4,7 @@ import type {
   IdentifiedDishes,
   IdentifiedIngredient,
 } from "./estimation-provider";
+import { isNonNegative } from "./is-non-negative";
 import { isPossibleInFood } from "./is-possible-in-food";
 
 // ① の答えを確かめる。推定の試みと、表示の読み取りの評価（evals/nutrition-label）が同じ判定を使い、評価で通って本番で落ちることを防ぐ。
@@ -48,5 +49,3 @@ const isValidNutritionLabel = ({
 const isPresentText = (text: string): boolean => text.trim().length > 0;
 
 const isPositive = (value: number): boolean => Number.isFinite(value) && value > 0;
-
-const isNonNegative = (value: number): boolean => Number.isFinite(value) && value >= 0;

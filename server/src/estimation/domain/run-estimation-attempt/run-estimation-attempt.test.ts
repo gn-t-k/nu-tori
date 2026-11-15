@@ -438,9 +438,10 @@ describe("推定の試み", () => {
 
       test("通った試みにし、材料の栄養を表示どおりの 500 kcal にすること", async () => {
         const attempt = await runEstimationAttempt({ archive, provider }, photographedMeal);
-        expect(attempt).toMatchObject({ result: "succeeded" });
-        const ingredients =
-          attempt.result === "succeeded" ? attempt.dishes.flatMap((dish) => dish.ingredients) : [];
+        if (attempt.result !== "succeeded") {
+          throw new Error(`通った試みでない: ${attempt.result}`);
+        }
+        const ingredients = attempt.dishes.flatMap((dish) => dish.ingredients);
         expect(computeNutrientTotal(ingredients, "energy_kcal")).toEqual({
           type: "exactly",
           value: 500,
@@ -449,12 +450,13 @@ describe("推定の試み", () => {
 
       test("見積もりの旗を記録に残さず、材料の出どころを表示の基準の g だけにすること", async () => {
         const attempt = await runEstimationAttempt({ archive, provider }, photographedMeal);
+        if (attempt.result !== "succeeded") {
+          throw new Error(`通った試みでない: ${attempt.result}`);
+        }
         expect(
-          attempt.result === "succeeded"
-            ? attempt.dishes.flatMap((dish) =>
-                dish.ingredients.map(({ nutrientSource }) => nutrientSource),
-              )
-            : [],
+          attempt.dishes.flatMap((dish) =>
+            dish.ingredients.map(({ nutrientSource }) => nutrientSource),
+          ),
         ).toEqual([{ type: "nutrition_label", labelBasisGrams: 30 }]);
       });
     });

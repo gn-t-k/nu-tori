@@ -6,6 +6,7 @@ import { loadFoodComposition } from "../../../domain/food-composition/load-food-
 import { isNutrientName } from "../../../domain/food-composition/nutrient-name";
 import type { MealPhotoArchive } from "../../../meal/domain/meal-photo-archive";
 import type { BegunEstimationAttempt, WrittenMealTarget } from "../begin-estimation-attempts";
+import { composeIngredientAmount } from "../compose-ingredient-amount";
 import { composeLabeledIngredient } from "../compose-labeled-ingredient";
 import type { EstimatedDish } from "../estimated-dish";
 import type { EstimationAttemptOutcome } from "../estimation-attempt-outcome";
@@ -23,6 +24,7 @@ import type {
 } from "../estimation-provider";
 import type { TokenUsage } from "../../../domain/token-usage";
 import { computeWrittenMealEatenAt } from "../compute-written-meal-eaten-at";
+import { isNonNegative } from "../is-non-negative";
 import { isPossibleInFood } from "../is-possible-in-food";
 import { isValidIdentifiedDishes } from "../is-valid-identified-dishes";
 import { toWrittenMealsRequest } from "../to-written-meals-request";
@@ -261,11 +263,7 @@ const composeDishes = (
     ingredients: ingredients.map((ingredient) =>
       ingredient.nutritionLabel === undefined
         ? {
-            name: ingredient.name,
-            quantity: ingredient.quantity,
-            unit: ingredient.unit,
-            // 栄養に使う g は ① が直接見積もった合計で、量と掛け合わせて作らない（量と1単位あたりを別々に答えさせると、重ねて答えたときに桁が跳ねる）
-            edibleGramsPerUnit: ingredient.edibleGrams / ingredient.quantity,
+            ...composeIngredientAmount(ingredient),
             ...toMatchedNutrients(remainingMatches.shift()),
           }
         : composeLabeledIngredient(ingredient, ingredient.nutritionLabel),
@@ -368,5 +366,3 @@ const isValidMatchedIngredients = (
       })
       .exhaustive(),
   );
-
-const isNonNegative = (value: number): boolean => Number.isFinite(value) && value >= 0;
