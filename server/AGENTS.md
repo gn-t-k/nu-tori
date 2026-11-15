@@ -30,7 +30,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - 開発用と本番で出たログと、呼び出しの数・誤り・CPU 時間を読むときは、`docs/agents/tooling.md` の「Cloudflare を読む」を読む
 - Durable Object の RPC を越えたエラーには、`name`・独自のフィールド・`cause` が届き、`instanceof` は効かない（互換フラグ `enhanced_error_serialization`。`compatibility_date` が 2026-04-21 以降なら既定で有効）。`legacy_error_serialization` は足さない。足すと `name` が `"Error"` になり、独自のフィールドも消える
 
-**Why:** ドメイン層を基盤から切り離しておくと、基盤を移るとき（出口は ADR-0012）、移り先が同じプロセスで同期に読み書きできる SQLite なら、書き直すのが基盤に固有の層だけで済む。移り先がネットワーク越しの DB なら、ドメイン層も書き直す。ドメイン層が定める置き場の口は同期の関数で（`LedgerStore` の `transaction` の実装は `transactionSync`）、今の値を読むたびに数本のクエリで組み立てる読み方も、SQLite が同じプロセスにあることに頼っているため（#1049）。
+**Why:** ドメイン層を基盤から切り離しておくと、基盤を移るとき（出口は ADR-0012）に書き直すのが基盤に固有の層だけで済む。ただしそれは、移り先が同じプロセスで同期に読み書きできる SQLite のときだけで、ネットワーク越しの DB なら、ドメイン層も書き直す。置き場の口が同期の関数で、今の値を読むたびに数本のクエリで組み立てる読み方も、SQLite が同じプロセスにあることに頼っているため（#1049）。
 
 ## API
 
