@@ -47,6 +47,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 - 今の最低対応版の理由は「[iOS の最低対応版を 26 に下げる](https://github.com/gn-t-k/nu-tori/issues/86)」の解決コメント
 - SwiftData の保存は、メインのコンテキストでだけ行う。バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
+- 保存しない読み方（箱の `read`・`syncState`・`pendingEntries` など）は、読むたびにメインの外で作って捨てる読み取り用のコンテキスト（`ModelContext(container)`）で行う。メインで読むと、ディスクを待つあいだ画面が止まる（#1027）。`@ModelActor` は使わない。アプリのターゲットは既定で MainActor に隔離するので、メインから外す関数には `@concurrent` を付ける
 - iOS 27 からの API（`ResultsObserver`、`HistoryObserver` など）の代わりに書いたところには、置き換え先の API を1行のコメントで残す。最低対応版を上げたときに探して置き換えるため
 
 ## 身体データ

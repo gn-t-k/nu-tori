@@ -8,7 +8,8 @@ import Synchronization
 /// キャッシュ（記録、アカウントの設定、通し番号）はサーバーの写しで、移行を持たない。
 /// 送り待ちとヘルスケアの同期の進み具合は失えないので、版つきのスキーマで移行する。
 /// 記録を作る・直すときは、送り待ちを先に保存し、キャッシュをそのあとに保存する。
-/// 保存はメインのコンテキストでだけ行う。バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある
+/// 保存はメインのコンテキストでだけ行う。バックグラウンドの ModelActor で保存すると、iOS 26 では `@Query` がデッドロックすることがある。
+/// 保存しない読み方は、読むたびにメインの外で作って捨てる読み取り用のコンテキストで読む。ディスクを待つあいだ画面を止めないため（#1027）
 nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthSyncStoring,
     HealthDishWriteStoring, HealthAnchorStore, @unchecked Sendable
 {
@@ -64,20 +65,20 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         }
     }
 
-    /// 登録簿の種類の SwiftData の adapter を、メインのコンテキストで読む
+    /// 登録簿の種類の SwiftData の adapter を、メインの外の読み取り用のコンテキストで読む
     func read<Syncing: CacheApplying, Value: Sendable>(
         _ kind: Syncing.Type,
         _ body: @Sendable (Syncing.Cache) throws -> Value
     ) async throws -> Value {
         let kinds = kinds
-        return try await onMain { stores in
-            try body(try kinds.port(Syncing.self, in: stores.cache))
+        return try await readingCache { cache in
+            try body(try kinds.port(Syncing.self, in: cache))
         }
     }
 
     func dishVersionsWrittenToHealth() async throws -> [UUID: Int] {
-        try await onMain { stores in
-            let rows = try stores.cache.fetch(FetchDescriptor<CachedHealthDishWrite>())
+        try await readingCache { cache in
+            let rows = try cache.fetch(FetchDescriptor<CachedHealthDishWrite>())
             return Dictionary(
                 rows.map { ($0.dishId, $0.version) }, uniquingKeysWith: { first, _ in first })
         }
@@ -98,10 +99,10 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
     }
 
     func pendingEntries() async throws -> [PendingEntry] {
-        try await onMain { stores in
+        try await readingPending { pending in
             let descriptor = FetchDescriptor<PendingWriteRow>(
                 sortBy: [SortDescriptor(\.enqueuedAt)])
-            return try stores.pending.fetch(descriptor).compactMap(\.entry)
+            return try pending.fetch(descriptor).compactMap(\.entry)
         }
     }
 
@@ -113,14 +114,14 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
     }
 
     func syncState() async throws -> SyncState? {
-        try await onMain { stores in
-            try Self.cachedSyncState(in: stores.cache)?.syncState()
+        try await readingCache { cache in
+            try Self.cachedSyncState(in: cache)?.syncState()
         }
     }
 
     func healthSyncState() async throws -> HealthSyncState {
-        try await onMain { stores in
-            try Self.healthSyncStateRow(in: stores.pending)?.healthSyncState() ?? .initial
+        try await readingPending { pending in
+            try Self.healthSyncStateRow(in: pending)?.healthSyncState() ?? .initial
         }
     }
 
@@ -172,6 +173,22 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         }
     }
 
+    /// 保存しない読み方の道。読み取り用のコンテキストをメインの外で作り、読み終えたら捨てる。
+    /// `@ModelActor` は使わない。ModelActor に仕事を積みながら裏で保存すると、iOS 26 では `@Query` がデッドロックすることがある。
+    /// 既定の MainActor の隔離では、`nonisolated` の async 関数は呼んだ側の actor で動くので、`@concurrent` でメインから外す
+    @concurrent private func readingCache<T: Sendable>(
+        _ body: @Sendable (ModelContext) throws -> T
+    ) async throws -> T {
+        try body(ModelContext(container))
+    }
+
+    /// 送り待ちの置き場の、保存しない読み方の道（`readingCache` と同じ）
+    @concurrent private func readingPending<T: Sendable>(
+        _ body: @Sendable (ModelContext) throws -> T
+    ) async throws -> T {
+        try body(ModelContext(pendingContainer))
+    }
+
     @MainActor private func contexts() -> Contexts {
         // 呼び出しのあいだに自動で保存すると、1つの操作が別の保存に分かれる
         let cache = container.mainContext
@@ -213,7 +230,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
             })
     }
 
-    @MainActor private static func cachedSyncState(in context: ModelContext) throws
+    private static func cachedSyncState(in context: ModelContext) throws
         -> CachedSyncState?
     {
         let key = CachedSyncState.onlyKey
@@ -231,7 +248,7 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
         }
     }
 
-    @MainActor private static func healthSyncStateRow(in context: ModelContext) throws
+    private static func healthSyncStateRow(in context: ModelContext) throws
         -> HealthSyncStateRow?
     {
         let key = HealthSyncStateRow.onlyKey
