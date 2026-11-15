@@ -38,11 +38,11 @@ final class EditMealUITests: XCTestCase {
 
         correctTimeToFiveThirty()
         // 推定が終わると、開き直さなくても料理が届き、押せない理由が消える
-        XCTAssertTrue(dish(named: "親子丼").waitForExistence(timeout: 30))
+        XCTAssertTrue(app.mealDish(named: "親子丼").waitForExistence(timeout: 30))
         XCTAssertTrue(addDishWait.waitForNonExistence(timeout: 5))
         attachScreenshot(of: app, named: "時刻を直した食事の画面")
 
-        dish(named: "親子丼").tap()
+        app.mealDish(named: "親子丼").tap()
         XCTAssertTrue(app.navigationBars["親子丼"].waitForExistence(timeout: 5))
         let quantity = app.textFields["dish-quantity"]
         // 量の欄は、右端を押しても文字の前に入ることがある（iOS 26.5）ので、2度押して数を選んでから打つ
@@ -55,8 +55,8 @@ final class EditMealUITests: XCTestCase {
         replaceText(of: name, with: "カツ丼", length: 3)
         app.tapBack(from: "親子丼")
         XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
-        XCTAssertTrue(dish(named: "カツ丼").waitForExistence(timeout: 5))
-        dish(named: "カツ丼").tap()
+        XCTAssertTrue(app.mealDish(named: "カツ丼").waitForExistence(timeout: 5))
+        app.mealDish(named: "カツ丼").tap()
         XCTAssertTrue(app.navigationBars["カツ丼"].waitForExistence(timeout: 5))
         // 推定し直しは、取りに行く間隔（数秒おき）で届く。直した量は残り、材料だけが入れ替わる
         XCTAssertTrue(app.staticTexts["豚ロース"].waitForExistence(timeout: 30))
@@ -73,7 +73,7 @@ final class EditMealUITests: XCTestCase {
         XCTAssertTrue(newName.waitForExistence(timeout: 5))
         newName.tap()
         newName.typeText("味噌汁\n")
-        let misoSoup = dish(named: "味噌汁")
+        let misoSoup = app.mealDish(named: "味噌汁")
         XCTAssertTrue(misoSoup.waitForExistence(timeout: 5))
         XCTAssertTrue(waitUntil(misoSoup, matches: "label CONTAINS %@", "1杯"))
         attachScreenshot(of: app, named: "料理を足した食事の画面")
@@ -85,7 +85,7 @@ final class EditMealUITests: XCTestCase {
         XCTAssertEqual(app.buttons.matching(identifier: "meal-dish").count, 1)
 
         // 最後の1品は、食事ごと消すかを確かめる。「キャンセル」なら料理も残る
-        let katsudon = dish(named: "カツ丼")
+        let katsudon = app.mealDish(named: "カツ丼")
         katsudon.swipeLeft()
         app.buttons["削除"].firstMatch.tap()
         XCTAssertTrue(app.mealDeletionConfirm.waitForExistence(timeout: 5))
@@ -139,12 +139,6 @@ final class EditMealUITests: XCTestCase {
             app.otherElements["PopoverDismissRegion"]
                 .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
         }
-    }
-
-    private func dish(named name: String) -> XCUIElement {
-        app.buttons.matching(
-            NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "meal-dish", name)
-        ).firstMatch
     }
 
     /// 欄の右端を押して文字の後ろに入り、今の文字を消してから打つ。名前と量の欄は右に寄せてある

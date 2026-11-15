@@ -26,7 +26,7 @@ final class DishNutritionLabelBadgeUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["nutrition-label-badge"].exists)
         card.tap()
         XCTAssertTrue(app.navigationBars["食事"].waitForExistence(timeout: 5))
-        let curry = dish(named: "カレーライス")
+        let curry = app.mealDish(named: "カレーライス")
         XCTAssertTrue(curry.waitForExistence(timeout: 5))
         // 食事の画面の料理の行には、印が増えない
         XCTAssertFalse(app.staticTexts["nutrition-label-badge"].exists)
@@ -46,11 +46,5 @@ final class DishNutritionLabelBadgeUITests: XCTestCase {
         XCTAssertEqual(badge.frame.midY, retortCurry.frame.midY, accuracy: 4)
         XCTAssertGreaterThan(abs(badge.frame.midY - rice.frame.midY), 4)
         attachScreenshot(of: app, named: "表示の印のある料理の画面")
-    }
-
-    private func dish(named name: String) -> XCUIElement {
-        app.buttons.matching(
-            NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "meal-dish", name)
-        ).firstMatch
     }
 }

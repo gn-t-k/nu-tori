@@ -69,9 +69,7 @@ enum ListingScene: String, CaseIterable {
             guard Self.pickPhoto(app, until: "カレーライス") else { return false }
             Self.todaysPhotoMealCard(app).tap()
             guard app.navigationBars["食事"].waitForExistence(timeout: 5) else { return false }
-            let curry = app.buttons.matching(
-                NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "meal-dish", "カレーライス")
-            ).firstMatch
+            let curry = app.mealDish(named: "カレーライス")
             guard curry.waitForExistence(timeout: 5) else { return false }
             curry.tap()
             guard app.navigationBars["カレーライス"].waitForExistence(timeout: 5) else { return false }

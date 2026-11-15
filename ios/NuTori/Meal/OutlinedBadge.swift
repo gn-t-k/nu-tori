@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 値に添える、枠線だけの小さな印（DESIGN.md の estimate-badge）。出す文字だけを替えて、推定の印と「表示」の印に使う
+/// 文字を囲む、枠線だけの小さな印（DESIGN.md の estimate-badge）。出す文字だけを替えて、推定の印と「表示」の印に使う
 struct OutlinedBadge: View {
     let text: String
 
