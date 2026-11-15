@@ -177,10 +177,10 @@ nonisolated final class SwiftDataSyncStore: SyncBox, RecordCacheReading, HealthS
     /// `@ModelActor` は使わない。ModelActor に仕事を積みながら裏で保存すると、iOS 26 では `@Query` がデッドロックすることがある。
     /// approachable concurrency では `nonisolated` の async 関数は呼んだ側の actor（メイン）で動くので、`@concurrent` でメインから外す
     @concurrent private func reading<T: Sendable>(
-        in container: ModelContainer,
+        in store: ModelContainer,
         _ body: @Sendable (ModelContext) throws -> T
     ) async throws -> T {
-        try body(ModelContext(container))
+        try body(ModelContext(store))
     }
 
     @MainActor private func contexts() -> Contexts {

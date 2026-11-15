@@ -8,10 +8,14 @@ import Testing
 @Suite("箱の保存しない読み方")
 @MainActor
 struct SwiftDataSyncStoreReadingTests {
+    let store: SwiftDataSyncStore
+
+    init() throws {
+        store = try SwiftDataSyncStore(inMemory: true)
+    }
+
     @Test("キャッシュの種類を読む本文が、メインスレッドの外で動くこと")
     func readsKindOffMain() async throws {
-        let store = try SwiftDataSyncStore(inMemory: true)
-
         let ranOnMain = try await store.read(WeightRecordSyncing.self) { _ in
             Thread.isMainThread
         }
