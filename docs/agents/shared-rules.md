@@ -29,8 +29,8 @@
 - 範囲は `shared/accepted-ranges.json`、入力と期待値は `shared/accepted-ranges.test-cases.json`。サーバーは `isWithinAcceptedRange`（`server/src/domain/is-within-accepted-range/`）、端末は書き出した `AcceptedRange` の `bounds.contains`
 - 範囲ごとに、下限は `minimum`（含む）か `exclusiveMinimum`（含まない）、上限は `maximum`（含む）で書く。書いていない側は限りが無い（料理と材料の量は「0 より大きい」なので `exclusiveMinimum` だけ）
 - 身長（`heightCentimeters`）と年齢（`ageYears`）は、初めて目標を立てるときの身体データの範囲。打ち間違い（m で入れた身長など）を止めるだけの広い幅にする（体重と同じ考え）。サーバーは、推定消費カロリーを式で出すとき（`computeInitialExpenditureEstimate`。`server/src/expenditure-estimate/domain/`）に当てる。年齢は、生年月日か生まれた年から端末が出した歳
-- 料理の名前（上限 100）と送った文章の本文（上限 500）は、前後の空白を除き、Unicode のコードポイントの数を `dishNameTrimmedLength`・`sentTextBodyTrimmedLength` に当てる。前後の空白を除くのは、サーバーは `String.prototype.trim`、端末は `trimmingCharacters(in: .whitespacesAndNewlines)`。数えるのは、サーバーは `Array.from(text).length`、端末は `unicodeScalars.count`。端末とサーバーで同じ数になるようにコードポイントで数える（絵文字や結合文字は、見た目の1字が2つ以上に数えられることがある）
-- 料理の名前の長さは、足す書き込みと、名前を変える書き込みで確かめる。量を直す書き込みは今の名前を運ぶだけなので確かめない（推定が付けた名前が上限より長くても、量は直せる）。端末は、名前の欄に上限より先の字を入れない（`Dish.nameFieldText`）。サーバーは届いた名前をそのまま保存するので、前後の空白を含めた長さも同じ上限に当て、対になっていないサロゲートを含む名前は受け付けない（端末は前後の空白を除いて送り、Swift の文字列はそういうサロゲートを持てないので、端末の答えは変わらない）
+- 料理の名前と送った文章の本文は、前後の空白を除き、Unicode のコードポイントの数を `dishNameTrimmedLength`・`sentTextBodyTrimmedLength` に当てる。前後の空白を除くのは、サーバーは `String.prototype.trim`、端末は `trimmingCharacters(in: .whitespacesAndNewlines)`。数えるのは、サーバーは `Array.from(text).length`、端末は `unicodeScalars.count`。端末とサーバーで同じ数になるようにコードポイントで数える（絵文字や結合文字は、見た目の1字が2つ以上に数えられることがある）
+- 料理の名前の長さは、足す書き込みと、名前を変える書き込みで確かめる。量を直す書き込みは今の名前を運ぶだけなので確かめない。サーバーだけが余分に断る名前は `isAcceptableName`（`server/src/dish/domain/create-dish-kind.ts`）にある
 
 ## 受け付ける期限
 

@@ -177,29 +177,29 @@ struct DishEditTests {
         }
     }
 
-    // 絵文字は、見た目の1字がコードポイント1つでも、UTF-16 では2つに数えられる。サーバーと同じくコードポイントで数える
-    @Suite("料理の名前を、前後の空白を除いて上限の 100 字の名前に直したとき")
+    // 家族の絵文字は、見た目の1字が 7 つのコードポイント。サーバーと同じくコードポイントで数える
+    @Suite("料理の名前を、前後の空白を除いてコードポイントで上限の 100 字の名前に直したとき")
     struct RenamingToLongestName {
         let edited: DishEdit?
 
         init() {
             edited = DishEdit.renaming(
-                Dish.fixture(name: "親子丼"), to: " " + String(repeating: "🍚", count: 100))
+                Dish.fixture(name: "親子丼"), to: " " + String(repeating: "あ", count: 93) + "👨‍👩‍👧‍👦")
         }
 
         @Test("直すこと")
         func renames() {
-            #expect(edited?.dish.name == String(repeating: "🍚", count: 100))
+            #expect(edited?.dish.name == String(repeating: "あ", count: 93) + "👨‍👩‍👧‍👦")
         }
     }
 
-    @Suite("料理の名前を、上限より 1 字多い 101 字の名前に直したとき")
+    @Suite("料理の名前を、見た目は 95 字で、コードポイントでは上限より 1 字多い 101 字の名前に直したとき")
     struct RenamingToTooLongName {
         let edited: DishEdit?
 
         init() {
             edited = DishEdit.renaming(
-                Dish.fixture(name: "親子丼"), to: String(repeating: "あ", count: 101))
+                Dish.fixture(name: "親子丼"), to: String(repeating: "あ", count: 94) + "👨‍👩‍👧‍👦")
         }
 
         @Test("直さないこと")
@@ -219,49 +219,6 @@ struct DishEditTests {
         @Test("直さないこと")
         func ignores() {
             #expect(edited == nil)
-        }
-    }
-
-    @Suite("名前の欄に、上限の 100 字までの文字を打ったとき")
-    struct TypingNameWithinLimit {
-        let text: String
-
-        init() {
-            text = Dish.nameFieldText(typed: String(repeating: "あ", count: 100))
-        }
-
-        @Test("打ったとおりに入れること")
-        func keeps() {
-            #expect(text == String(repeating: "あ", count: 100))
-        }
-    }
-
-    @Suite("名前の欄に、上限より長い文字を貼ったとき")
-    struct PastingTooLongName {
-        let text: String
-
-        init() {
-            text = Dish.nameFieldText(typed: String(repeating: "あ", count: 99) + "いう")
-        }
-
-        @Test("先頭の 100 字までを入れること")
-        func clips() {
-            #expect(text == String(repeating: "あ", count: 99) + "い")
-        }
-    }
-
-    // 家族の絵文字は、7 つのコードポイントでできた1字
-    @Suite("名前の欄に、上限をまたぐ絵文字を打ったとき")
-    struct TypingEmojiAcrossLimit {
-        let text: String
-
-        init() {
-            text = Dish.nameFieldText(typed: String(repeating: "あ", count: 95) + "👨‍👩‍👧‍👦")
-        }
-
-        @Test("絵文字の途中で切らず、絵文字ごと入れないこと")
-        func dropsWholeCharacter() {
-            #expect(text == String(repeating: "あ", count: 95))
         }
     }
 }
