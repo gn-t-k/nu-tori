@@ -91,7 +91,7 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    // 失敗は受け口に返す。受け口は 500 にし、要求ごとのログに失敗した段を出す
+    // 失敗は受け口に返す。受け口は、数の上限なら 429、受け取れなかったなら 500 にし、要求ごとのログに失敗した段を出す
     async receiveMealPhoto(accountId: string, request: { photoId: RecordId; photo: ArrayBuffer }) {
       setUser({ id: accountId });
       const records = await this.createRecordKindStores(accountId);

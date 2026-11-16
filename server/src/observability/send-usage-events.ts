@@ -85,6 +85,10 @@ const toCapturedEvent = (accountId: string, event: UsageEvent) => {
         provider_error_type: classified.providerErrorType,
       },
     }))
+    .with({ name: "sent_text_classification_skipped" }, (skipped) => ({
+      name: skipped.name,
+      properties: { reason: skipped.reason },
+    }))
     .with({ name: "reply_attempt_ended" }, (ended) => ({
       name: ended.name,
       properties: {

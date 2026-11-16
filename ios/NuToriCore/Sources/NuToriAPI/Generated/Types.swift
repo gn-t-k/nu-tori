@@ -31,7 +31,7 @@ internal protocol APIProtocol: Sendable {
     func getMealPhoto(_ input: Operations.GetMealPhoto.Input) async throws -> Operations.GetMealPhoto.Output
     /// 食事の写真の縮小版を送る
     ///
-    /// 食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える
+    /// 食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える。受け取る写真の数には上限があり、超えたら 429 で応える。食事より先に届いたまま、長いあいだ食事が届かない写真は、受け取らなかったことにする
     ///
     /// - Remark: HTTP `PUT /v1/meal-photos/{photoId}`.
     /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)`.
@@ -164,7 +164,7 @@ extension APIProtocol {
     }
     /// 食事の写真の縮小版を送る
     ///
-    /// 食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える
+    /// 食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える。受け取る写真の数には上限があり、超えたら 429 で応える。食事より先に届いたまま、長いあいだ食事が届かない写真は、受け取らなかったことにする
     ///
     /// - Remark: HTTP `PUT /v1/meal-photos/{photoId}`.
     /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)`.
