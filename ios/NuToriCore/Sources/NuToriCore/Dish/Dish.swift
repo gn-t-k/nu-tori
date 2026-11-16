@@ -41,9 +41,23 @@ public struct Dish: Hashable, Sendable {
         }
     }
 
-    /// 足す・直す名前。前後の空白を除いた名前にし、受け付ける範囲の外（空）なら nil
+    /// 足す・直す名前。前後の空白を除いた名前にし、受け付ける範囲の外（空、長すぎる）なら nil。
+    /// 字は、サーバーと同じ数になるよう Unicode のコードポイントで数える
     static func acceptedName(typed: String) -> String? {
         let name = typed.trimmingCharacters(in: .whitespacesAndNewlines)
-        return AcceptedRange.dishNameTrimmedLength.bounds.contains(Double(name.count)) ? name : nil
+        return AcceptedRange.dishNameTrimmedLength.bounds.contains(
+            Double(name.unicodeScalars.count)) ? name : nil
+    }
+
+    /// 名前の欄に入れる文字。打った・貼った文字のうち、上限のコードポイントに収まる先頭の字までにする。
+    /// 絵文字のような、いくつかのコードポイントでできた1字の途中では切らない
+    public static func nameFieldText(typed: String) -> String {
+        let upperBound = Int(AcceptedRange.dishNameTrimmedLength.bounds.upperBound)
+        var length = 0
+        return String(
+            typed.prefix { character in
+                length += character.unicodeScalars.count
+                return length <= upperBound
+            })
     }
 }

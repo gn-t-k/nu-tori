@@ -363,6 +363,13 @@ struct MealScreen: View {
                     .onAppear {
                         focusesNewDishName = true
                     }
+                    // 上限より先の字は入れない。いったん受けてから戻すと、欄の表示も戻る
+                    .onChange(of: newDishName) { _, typed in
+                        let limited = Dish.nameFieldText(typed: typed)
+                        if limited != typed {
+                            newDishName = limited
+                        }
+                    }
                     .onChange(of: focusesNewDishName) { _, focused in
                         if !focused {
                             finishAddingDish()

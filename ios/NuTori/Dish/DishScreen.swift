@@ -99,7 +99,15 @@ struct DishScreen: View {
                     valueField(
                         TextField("料理の名前", text: draft(.name, shown: contents.dish.name))
                             .submitLabel(.done)
-                            .focused($focusedField, equals: .name),
+                            .focused($focusedField, equals: .name)
+                            // 上限より先の字は入れない。いったん受けてから戻すと、欄の表示も戻る
+                            .onChange(of: drafts[.name]) { _, typed in
+                                if let typed, case let limited = Dish.nameFieldText(typed: typed),
+                                    limited != typed
+                                {
+                                    drafts[.name] = limited
+                                }
+                            },
                         editable: offer.editsNameAndQuantity, identifier: "dish-name")
                 }
                 if let note = offer.progressNote {

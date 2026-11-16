@@ -3236,16 +3236,19 @@
                       "timeZone": {
                         "type": "string",
                         "minLength": 1,
+                        "maxLength": 64,
                         "description": "読めない名前でも、届いたまま控える",
                         "example": "Asia/Tokyo"
                       },
                       "appVersion": {
                         "type": "string",
-                        "minLength": 1
+                        "minLength": 1,
+                        "maxLength": 32
                       },
                       "osVersion": {
                         "type": "string",
-                        "minLength": 1
+                        "minLength": 1,
+                        "maxLength": 32
                       },
                       "pendingWriteCount": {
                         "type": "integer",
@@ -3347,6 +3350,7 @@
             "schema": {
               "type": "string",
               "minLength": 1,
+              "maxLength": 64,
               "description": "読めない名前でも、届いたまま控える",
               "example": "Asia/Tokyo"
             },
@@ -3358,7 +3362,8 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "maxLength": 32
             },
             "required": true,
             "name": "appVersion",
@@ -3367,7 +3372,8 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "maxLength": 32
             },
             "required": true,
             "name": "osVersion",
