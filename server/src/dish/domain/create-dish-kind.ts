@@ -244,9 +244,14 @@ const scheduleReestimation = (
   );
 };
 
-// 端末と同じ数になるよう、前後の空白を除いたコードポイントで数える（docs/agents/shared-rules.md）
+// 端末と同じ数になるよう、前後の空白を除いたコードポイントで数える（docs/agents/shared-rules.md）。
+// 名前は届いたまま保存するので、前後の空白を含めた長さも同じ範囲に当てる（端末は前後の空白を除いて送る）。
+// 対になっていないサロゲートは、保存すると別の字に置き換わって数が変わるので受け付けない
 const isAcceptableName = (name: string): boolean =>
-  isWithinAcceptedRange("dishNameTrimmedLength", Array.from(name.trim()).length);
+  name.isWellFormed() &&
+  [name.trim(), name].every((counted) =>
+    isWithinAcceptedRange("dishNameTrimmedLength", Array.from(counted).length),
+  );
 
 // 量を持つ当てた推定が無い料理（単位が一度も無い料理）は、量を直せない
 const isAcceptableQuantity = (current: Dish, quantity: DishQuantityCorrection): boolean =>

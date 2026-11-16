@@ -91,8 +91,9 @@ const clipSource = (imported: WeightRecord["imported"]): WeightRecord["imported"
         sourceBundleId: clipText(imported.sourceBundleId),
       };
 
+// 対になっていないサロゲートは、保存すると別の字に置き換わって数が変わるので、先に置き換えてから切る
 const clipText = (text: string): string =>
-  Array.from(text).slice(0, maximumSourceTextLength).join("");
+  Array.from(text.toWellFormed()).slice(0, maximumSourceTextLength).join("");
 
 const decideUpdate = (
   dependencies: Dependencies,

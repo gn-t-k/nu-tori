@@ -394,7 +394,8 @@ describe("体重記録の同期", () => {
           imported: {
             // 絵文字は UTF-16 では2つに数えられる。コードポイントで切り、字の途中で切らない
             sourceAppName: "🍚".repeat(256),
-            sourceBundleId: "a".repeat(256),
+            // 対になっていないサロゲートは、置き換えの字（U+FFFD）にしてから切る
+            sourceBundleId: "\ud83c".repeat(256),
             healthkitSampleUuid: generateRecordId(),
           },
         },
@@ -412,7 +413,7 @@ describe("体重記録の同期", () => {
       const pulled = await pullWeightRecordChanges(sessionToken);
       expect(pulled.changes[0]?.record["imported"]).toMatchObject({
         sourceAppName: "🍚".repeat(255),
-        sourceBundleId: "a".repeat(255),
+        sourceBundleId: "\ufffd".repeat(255),
       });
     });
   });

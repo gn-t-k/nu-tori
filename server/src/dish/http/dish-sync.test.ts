@@ -273,12 +273,12 @@ describe("料理の同期", () => {
     });
 
     // 絵文字は UTF-16 では2つに数えられる。コードポイントで数えて、端末と同じ答えにする
-    describe("前後の空白を除いて上限の 100 字の、絵文字の名前の料理を足す書き込みを送ったとき", () => {
+    describe("上限の 100 字の、絵文字の名前の料理を足す書き込みを送ったとき", () => {
       let results: PushResults["results"];
       beforeEach(async () => {
         ({ results } = await (
           await pushSyncWrites(sessionToken, {
-            writes: [createDishWrite(mealId, { name: ` ${"🍚".repeat(100)} ` })],
+            writes: [createDishWrite(mealId, { name: "🍚".repeat(100) })],
           })
         ).json<PushResults>());
       });
@@ -308,6 +308,31 @@ describe("料理の同期", () => {
         expect(
           await readRows(accountId, `SELECT id FROM dishes WHERE id = '${write.dishId}'`),
         ).toEqual([]);
+      });
+    });
+    describe("前後の空白を含めると上限より長い名前の料理を足す書き込みを送ったとき", () => {
+      let rejection: Rejection;
+      beforeEach(async () => {
+        rejection = await pushRejection(sessionToken, [
+          createDishWrite(mealId, { name: `${" ".repeat(100)}味噌汁` }),
+        ]);
+      });
+
+      test("範囲の外とすること", () => {
+        expect(rejection.rejectionReason).toBe("out_of_range");
+      });
+    });
+
+    describe("対になっていないサロゲートを含む名前の料理を足す書き込みを送ったとき", () => {
+      let rejection: Rejection;
+      beforeEach(async () => {
+        rejection = await pushRejection(sessionToken, [
+          createDishWrite(mealId, { name: "味噌汁\ud83c" }),
+        ]);
+      });
+
+      test("範囲の外とすること", () => {
+        expect(rejection.rejectionReason).toBe("out_of_range");
       });
     });
   });
