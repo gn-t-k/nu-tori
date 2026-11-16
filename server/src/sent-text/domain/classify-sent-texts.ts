@@ -27,7 +27,7 @@ import type { SentTextClassification } from "./sent-text-classification";
 // 食事なら文章の食事を1つ作って推定の予定に入れ、会話・決めかねる・呼び出しの失敗なら会話にして返事の依頼を作る（#419 の「読み分け」）。
 // 読み分けは推定の回数にも返事の回数にも数えず、読み分けの回数（1日 maximumDailyClassifications）に数える。
 // 数える日でサブスクリプション切れか、その日の読み分けが上限に達していれば、提供元を呼ばずに会話にし、返事の依頼を同じ理由で止める。
-// 呼んでいるあいだに止まったら、行が無いまま残り、次のアラームで読み直す
+// 提供元を呼ぶことは呼ぶ前に数える。呼んでいるあいだに止まったら、読み分けの行が無いまま残り、次のアラームで読み直す（その呼び出しも数える）
 export const classifySentTexts = async (
   writeRecordChanges: RecordChangeWriter,
   stores: ClassificationStores,
@@ -65,6 +65,12 @@ export const classifySentTexts = async (
       }
       continue;
     }
+    // 呼ぶ前に数える。結果を書けずに読み直す文章も、呼んだ数だけ回数に数えるため
+    stores.sentText.insertClassificationCall({
+      id: generateRecordId(),
+      sentTextId: sentText.id,
+      countedOn,
+    });
     // 送った順に書くため、1つずつ呼ぶ
     const { providerResult, usage, providerError } = await askClassification(
       deps.provider,
@@ -72,12 +78,7 @@ export const classifySentTexts = async (
     );
     const result = providerResult === "meal" ? "meal" : "conversation";
     const classifiedAt = new Date();
-    if (
-      recordClassification(writeRecordChanges, stores, sentText, result, {
-        classifiedAt,
-        countedOn,
-      })
-    ) {
+    if (recordClassification(writeRecordChanges, stores, sentText, result, classifiedAt)) {
       const providerErrorType = providerError?.errorType;
       if (providerError !== undefined) {
         providerErrors.push(providerError.cause ?? providerError);
@@ -184,20 +185,19 @@ const recordSkippedClassification = (
     return true;
   });
 
-// 読み分けの結果と、提供元を呼んだことと、文章の食事か返事の依頼を書く。呼んでいるあいだにほかで読み分けていたら、何も書かずに false を返す
+// 読み分けの結果と、文章の食事か返事の依頼を書く。呼んでいるあいだにほかで読み分けていたら、何も書かずに false を返す
 const recordClassification = (
   writeRecordChanges: RecordChangeWriter,
   stores: ClassificationStores,
   sentText: SentText,
   result: SentTextClassification,
-  { classifiedAt, countedOn }: { classifiedAt: Date; countedOn: string },
+  classifiedAt: Date,
 ): boolean =>
   writeRecordChanges(({ addChange, estimation, reply }) => {
     if (stores.sentTextStatus.findClassification(sentText.id) !== undefined) {
       return false;
     }
     stores.sentText.insertClassification({ sentTextId: sentText.id, classifiedAt, result });
-    stores.sentText.insertClassificationCall({ sentTextId: sentText.id, countedOn });
     addChange({ recordType: "sent_text_status", recordId: sentText.id });
     if (result === "conversation") {
       // 応答待ちになった状態の変更は、入口が足す（取りに行く応答では、同じ文章の変更は1つにまとまる）

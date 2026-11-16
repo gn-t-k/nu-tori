@@ -27,7 +27,8 @@ export const insertCountedClassificationCalls = (
         "conversation",
       );
       state.storage.sql.exec(
-        "INSERT INTO sent_text_classification_calls (sent_text_id, counted_on) VALUES (?, ?)",
+        "INSERT INTO sent_text_classification_calls (id, sent_text_id, counted_on) VALUES (?, ?, ?)",
+        generateRecordId(),
         sentTextId,
         countedOn,
       );

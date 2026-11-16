@@ -27,13 +27,15 @@ const sentTextClassifications = sqliteTable("sent_text_classifications", {
   result: text("result", { enum: ["meal", "conversation"] }).notNull(),
 });
 
-// 読み分けで提供元を呼んだ文章と、その数える日。提供元を呼ばずに会話にした文章には行が無い
+// 読み分けで提供元を呼んだことと、その数える日。呼ぶ前に書くので、読み直した文章には呼んだ数だけ行がある。
+// 提供元を呼ばずに会話にした文章には行が無い
 const sentTextClassificationCalls = sqliteTable(
   "sent_text_classification_calls",
   {
+    id: text("id").$type<RecordId>().primaryKey(),
     sentTextId: text("sent_text_id")
       .$type<RecordId>()
-      .primaryKey()
+      .notNull()
       .references(() => sentTexts.id),
     countedOn: text("counted_on").notNull(),
   },

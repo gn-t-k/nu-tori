@@ -57,8 +57,8 @@ export const createSentTextStore = (db: DrizzleSqliteDODatabase): SentTextStore 
   insertClassification: ({ sentTextId, classifiedAt, result }) => {
     db.insert(sentTextClassifications).values({ sentTextId, classifiedAt, result }).run();
   },
-  insertClassificationCall: ({ sentTextId, countedOn }) => {
-    db.insert(sentTextClassificationCalls).values({ sentTextId, countedOn }).run();
+  insertClassificationCall: ({ id, sentTextId, countedOn }) => {
+    db.insert(sentTextClassificationCalls).values({ id, sentTextId, countedOn }).run();
   },
   countClassificationCallsCountedOn: (countedOn) =>
     db

@@ -30,12 +30,11 @@ import { insertCountedClassificationCalls } from "./testing/insert-counted-class
 const todayInTokyo = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(Date.now());
 
-// 偽の提供元の読み分けが呼ばれた回数
-const countClassifyCalls = (spy: ReturnType<typeof mockCreateConversationProviderOk>) =>
-  spy.mock.results.reduce(
-    (calls, { value }) => calls + vi.mocked(value.classifySentText).mock.calls.length,
-    0,
-  );
+// 偽の提供元の読み分けが呼ばれた回数。作る口は毎回同じ偽物を返すので、1つ目の結果で数える
+const countClassifyCalls = (spy: ReturnType<typeof mockCreateConversationProviderOk>) => {
+  const provider = spy.mock.results[0]?.value;
+  return provider === undefined ? 0 : vi.mocked(provider.classifySentText).mock.calls.length;
+};
 
 describe("読み分け", () => {
   let accountId: string;
@@ -388,6 +387,22 @@ describe("読み分け", () => {
     });
 
     test("読み分けの回数を、ユーザーの最新のタイムゾーンでの今日の分として数えること", async () => {
+      expect(await readCountedCalls(sentTextId)).toEqual([{ counted_on: todayInTokyo() }]);
+    });
+  });
+
+  describe("読み分けの呼び出しが失敗したとき", () => {
+    let sentTextId: string;
+    beforeEach(async () => {
+      mockCreateConversationProviderError({
+        failingCall: "classify_sent_text",
+        error: new LlmCallError({ errorType: "overloaded_error" }),
+      });
+      sentTextId = await sendText();
+      await runEstimationAlarm(accountId);
+    });
+
+    test("読み分けの回数に数えること", async () => {
       expect(await readCountedCalls(sentTextId)).toEqual([{ counted_on: todayInTokyo() }]);
     });
   });
