@@ -33,8 +33,8 @@ Preconditions:
 - **推定が進む。** 写真の控えが届くと `estimating` になる。5 秒おきに `$D pull "$run" meal | jq -c --arg m "$m" '[.[] | select(.kind=="meal_estimation_status" and .record.mealId==$m) | .record.status] | last'` を読む。`estimating` を経て `estimated` になり、`dish` と `ingredient` の記録が `$m` に届く。鍵の無い回では `estimating` のまま
 - **推定の失敗の理由を読む。** `$D call "$run" meal GET /v1/e2e/meals/$m/last-estimation-attempt --e2e` を送る。鍵の無い回では `{"lastEndedAttempt":{"result":"provider_error","errorType":"authentication_error"}}`（Anthropic まで届いた）
 - **撮っておいた写真。** `entryMethod` を `picked` にして、食事と写真の控えを送る。同じく `estimating` に進む
-- **上限より長い名前に直す。** 推定できた料理の ID を `d` として（下の「料理の名前を直す」より先に送る。名前を直したあとは、推定し直しが終わるまで `awaiting_estimation` で断られる）、`long=$(printf 'あ%.0s' $(seq 101))` として、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"$long\"}]"` を送る。`rejected` で理由が `out_of_range`、取りに行っても `$d` の名前は変わらない
-- **料理の名前を直す。** 推定できた料理の ID を `d` として、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"親子丼（大盛り）\"}]"` を送る。`applied` で、取りに行くと `$d` の最後の `dish` の名前が変わっている
+- **上限より長い名前に直す。** 推定できた料理の ID を `d`、`long=$(printf 'あ%.0s' $(seq 101))` として、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"$long\"}]"` を送る。`rejected` で理由が `out_of_range`、取りに行っても `$d` の名前は変わらない
+- **料理の名前を直す。** `$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"親子丼（大盛り）\"}]"` を送る。`applied` で、取りに行くと `$d` の最後の `dish` の名前が変わっている
 - **サブスクリプションを待っている。** `$D sign-in "$run" expired --as-of "$(date -u -d '-60 days' +%FT%TZ)"` のアカウントで撮った食事を送る。写真の控えを送ったあと、`meal_estimation_status` が `awaiting_subscription`（鍵が無くても確かめられる）
 - **消す。** `$D push "$run" meal "[{\"type\":\"delete_meal\",\"mealId\":\"$m\"}]"` を送る。`applied` で、取りに行くと `$m` の変更が `meal_deletion` と `meal_estimation_status_deletion`（どちらも `record` は空）になる。推定できた食事なら、その料理の `dish_deletion` と材料の `ingredient_deletion` も届く。名前を直した料理なら `dish_estimation_status_deletion` も届く（直していない料理には届かない）
 
@@ -44,3 +44,4 @@ Preconditions:
 - 写真の控えは、食事より先に届いてもよく、消した食事の写真にも `204` を返す。`204` だけで写真が食事についたと読まず、推定の状態が `estimating` に進むかを見る
 - 推定は Durable Object のアラームで進むので、送った直後の取りに行く要求にはまだ出ない。固定の時間でなく、状態が変わるまで読む
 - 料理の名前を直すのは推定できた料理だけ。鍵の無い回では料理ができないので、この入口は確かめられない
+- 「上限より長い名前に直す」は「料理の名前を直す」より先に送る。名前を直した料理は、推定し直しが終わるまで `awaiting_estimation` で断られ、`out_of_range` まで届かない
