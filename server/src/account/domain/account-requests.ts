@@ -90,7 +90,7 @@ export const accountRequests = {
     } satisfies LoggedAccountResponse<unknown>;
   },
 
-  // 受け取れなかったら、失敗した段を出来事に載せる
+  // 受け取れなかったら、失敗した段を出来事に載せる。数の上限で断ったときは載せない
   receiveMealPhoto: async (
     stores: Pick<AccountStores, "writeRecordChanges" | "records" | "mealPhotoArchive">,
     request: { photoId: RecordId; photo: ArrayBuffer },
@@ -104,9 +104,10 @@ export const accountRequests = {
     );
     return {
       result: received,
-      usageEvents: R.isFailure(received)
-        ? [{ name: "meal_photo_receipt_failed", stage: received.error.stage }]
-        : [],
+      usageEvents:
+        R.isFailure(received) && received.error.name === "MealPhotoReceiptFailedError"
+          ? [{ name: "meal_photo_receipt_failed", stage: received.error.stage }]
+          : [],
     } satisfies AccountResponse<unknown>;
   },
 
