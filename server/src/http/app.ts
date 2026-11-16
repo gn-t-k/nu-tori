@@ -8,6 +8,7 @@ import { e2eEstimationAttemptRoutes } from "./e2e-estimation-attempt-routes";
 import { e2eSessionRoutes } from "./e2e-session-routes";
 import { goalSetupRoutes } from "./goal-setup-routes";
 import { healthRoutes } from "./health-routes";
+import { limitRequestBody } from "./limit-request-body";
 import { mealPhotoRoutes } from "./meal-photo-routes";
 import { observeRequest } from "./observe-request";
 import { rejectUnsupportedAppBuild } from "./reject-unsupported-app-build";
@@ -23,6 +24,7 @@ app
   .use(sentry(app, createSentryOptions))
   .use(observeRequest)
   .use("/v1/*", rejectUnsupportedAppBuild)
+  .use(limitRequestBody)
   .route("/", sessionRoutes)
   .route("/", e2eSessionRoutes)
   .route("/", e2eEstimationAttemptRoutes)

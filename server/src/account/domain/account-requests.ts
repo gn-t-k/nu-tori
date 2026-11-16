@@ -1,6 +1,7 @@
 import { R } from "@praha/byethrow";
 import { applySyncWrites } from "../../domain/apply-sync-writes";
 import { computeNextAlarmAt } from "../../domain/compute-next-alarm-at";
+import { ensureSyncWriteAllowance } from "../../domain/ensure-sync-write-allowance";
 import { pullSyncChanges } from "../../domain/pull-sync-changes";
 import { receiveMealPhoto } from "../../domain/receive-meal-photo";
 import { recordFirstSignIn } from "../../domain/record-first-sign-in";
@@ -48,23 +49,39 @@ export const accountRequests = {
     return { ...respond(undefined), usageEvents };
   },
 
+  // 書き込みの数の上限に届いていたら、何も当てずに断る。
   // 送り待ちを送り切った印のある要求だけ、送った記録を当ててから、目標の経過とまだ見直していない週を見る
   pushSyncWrites: (
     stores: Pick<AccountStores, "ledger" | "records" | "writeRecordChanges">,
     request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
     now: Date,
   ) => {
-    const { results, usageEvents } = applySyncWrites(stores.ledger, stores.records, {
-      ...request,
-      receivedAt: now,
-    });
-    const caughtUp = request.isFinalBatch
-      ? catchUpGoalProgress(stores, { timeZone: request.clientState.timeZone, now })
-      : { reviewedWeekCount: undefined, usageEvents: [] };
+    const pushed = R.pipe(
+      ensureSyncWriteAllowance(stores.ledger, now),
+      R.map(() => {
+        const { results, usageEvents } = applySyncWrites(stores.ledger, stores.records, {
+          ...request,
+          receivedAt: now,
+        });
+        const caughtUp = request.isFinalBatch
+          ? catchUpGoalProgress(stores, { timeZone: request.clientState.timeZone, now })
+          : { reviewedWeekCount: undefined, usageEvents: [] };
+        return {
+          results,
+          usageEvents: [...usageEvents, ...caughtUp.usageEvents],
+          reviewedWeekCount: caughtUp.reviewedWeekCount,
+        };
+      }),
+    );
     return {
-      result: results,
-      usageEvents: [...usageEvents, ...caughtUp.usageEvents],
-      requestLog: { reviewedWeekCount: caughtUp.reviewedWeekCount },
+      result: R.pipe(
+        pushed,
+        R.map(({ results }) => results),
+      ),
+      usageEvents: R.isSuccess(pushed) ? [...pushed.value.usageEvents] : [],
+      requestLog: {
+        reviewedWeekCount: R.isSuccess(pushed) ? pushed.value.reviewedWeekCount : undefined,
+      },
     } satisfies LoggedAccountResponse<unknown>;
   },
 

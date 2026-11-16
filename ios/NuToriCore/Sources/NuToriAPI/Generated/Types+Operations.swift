@@ -615,13 +615,13 @@ internal enum Operations {
                 /// Creates a new `TooManyRequests`.
                 internal init() {}
             }
-            /// 回数の歯止めにかかった
+            /// 要求の回数か、直近 24 時間の書き込みの数の歯止めにかかった。何も当てていない。同じ書き込みを、あとで送り直せる
             ///
             /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/429`.
             ///
             /// HTTP response code: `429 tooManyRequests`.
             case tooManyRequests(Operations.PushSyncWrites.Output.TooManyRequests)
-            /// 回数の歯止めにかかった
+            /// 要求の回数か、直近 24 時間の書き込みの数の歯止めにかかった。何も当てていない。同じ書き込みを、あとで送り直せる
             ///
             /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/429`.
             ///
