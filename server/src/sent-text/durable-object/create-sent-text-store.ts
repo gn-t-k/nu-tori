@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, isNull } from "drizzle-orm";
+import { and, asc, count, eq, gt, gte, isNull } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { SentTextStore } from "../domain/sent-text-store";
@@ -57,14 +57,14 @@ export const createSentTextStore = (db: DrizzleSqliteDODatabase): SentTextStore 
   insertClassification: ({ sentTextId, classifiedAt, result }) => {
     db.insert(sentTextClassifications).values({ sentTextId, classifiedAt, result }).run();
   },
-  insertClassificationCall: ({ id, sentTextId, countedOn }) => {
-    db.insert(sentTextClassificationCalls).values({ id, sentTextId, countedOn }).run();
+  insertClassificationCall: ({ id, sentTextId, calledAt }) => {
+    db.insert(sentTextClassificationCalls).values({ id, sentTextId, calledAt }).run();
   },
-  countClassificationCallsCountedOn: (countedOn) =>
+  countClassificationCallsAfter: (after) =>
     db
       .select({ count: count() })
       .from(sentTextClassificationCalls)
-      .where(eq(sentTextClassificationCalls.countedOn, countedOn))
+      .where(gt(sentTextClassificationCalls.calledAt, after))
       .get()?.count ?? 0,
   findMealIds: (sentTextId) =>
     db

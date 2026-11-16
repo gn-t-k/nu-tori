@@ -15,18 +15,23 @@ import type {
 } from "../../reply/domain/conversation-provider";
 import type { LlmCallError } from "../../domain/llm-call-error";
 import { createReplyRequest } from "../../reply/domain/create-reply-request";
+import type { ReplyRequest } from "../../reply/domain/reply-request";
+import type { ReplyWrites } from "../../reply/domain/reply-writes";
 import type { ReplyHaltReason } from "../../sent-text-status/domain/sent-text-status";
 import { isSubscriptionExpired } from "../../subscription-status/domain/is-subscription-expired";
 import { readSubscriptionStatus } from "../../subscription-status/domain/read-subscription-status";
 import type { SubscriptionStatus } from "../../subscription-status/domain/subscription-status";
-import { maximumDailyClassifications } from "./maximum-daily-classifications";
+import {
+  classificationCountWindowMs,
+  maximumDailyClassifications,
+} from "./maximum-daily-classifications";
 import type { SentText } from "./sent-text";
 import type { SentTextClassification } from "./sent-text-classification";
 
 // アラームの読み分けの入口。読み分けを待っている文章を、送った順に1つずつ提供元に読ませ、1つのトランザクションで結果を書く。
 // 食事なら文章の食事を1つ作って推定の予定に入れ、会話・決めかねる・呼び出しの失敗なら会話にして返事の依頼を作る（#419 の「読み分け」）。
-// 読み分けは推定の回数にも返事の回数にも数えず、読み分けの回数（1日 maximumDailyClassifications）に数える。
-// 数える日でサブスクリプション切れか、その日の読み分けが上限に達していれば、提供元を呼ばずに会話にし、返事の依頼を同じ理由で止める。
+// 読み分けは推定の回数にも返事の回数にも数えず、読み分けの回数（直近 24 時間に maximumDailyClassifications）に数える。
+// 数える日でサブスクリプション切れか、直近 24 時間の読み分けが上限に達していれば、提供元を呼ばずに会話にし、返事の依頼を同じ理由で止める。
 // 提供元を呼ぶことは呼ぶ前に数える。呼んでいるあいだに止まったら、読み分けの行が無いまま残り、次のアラームで読み直す（その呼び出しも数える）
 export const classifySentTexts = async (
   writeRecordChanges: RecordChangeWriter,
@@ -55,12 +60,7 @@ export const classifySentTexts = async (
     const skipReason = findSkipReason(stores, subscriptionStatus, { countedOn, at: now });
     if (skipReason !== undefined) {
       if (recordSkippedClassification(writeRecordChanges, stores, sentText, skipReason, now)) {
-        classifications.push({
-          result: "conversation",
-          providerResult: "not_called",
-          providerErrorType: undefined,
-          skipReason,
-        });
+        classifications.push({ result: "conversation", providerResult: "not_called", skipReason });
         usageEvents.push({ name: "sent_text_classification_skipped", reason: skipReason });
       }
       continue;
@@ -69,7 +69,7 @@ export const classifySentTexts = async (
     stores.sentText.insertClassificationCall({
       id: generateRecordId(),
       sentTextId: sentText.id,
-      countedOn,
+      calledAt: now,
     });
     // 送った順に書くため、1つずつ呼ぶ
     const { providerResult, usage, providerError } = await askClassification(
@@ -83,7 +83,7 @@ export const classifySentTexts = async (
       if (providerError !== undefined) {
         providerErrors.push(providerError.cause ?? providerError);
       }
-      classifications.push({ result, providerResult, providerErrorType, skipReason: undefined });
+      classifications.push({ result, providerResult, providerErrorType });
       usageEvents.push({
         name: "sent_text_classified",
         result,
@@ -114,14 +114,14 @@ type ClassificationStores = Pick<
   | "subscriptionStatus"
 >;
 
-type ClassificationReport = {
-  result: SentTextClassification;
-  // not_called は、提供元を呼ばずに会話にした
-  providerResult: ProviderClassification["providerResult"] | "not_called";
-  providerErrorType: string | undefined;
-  // 提供元を呼ばなかった理由。呼んだら undefined
-  skipReason: ReplyHaltReason | undefined;
-};
+type ClassificationReport =
+  | {
+      result: SentTextClassification;
+      providerResult: ProviderClassification["providerResult"];
+      providerErrorType: string | undefined;
+    }
+  // 提供元を呼ばずに会話にした
+  | { result: "conversation"; providerResult: "not_called"; skipReason: ReplyHaltReason };
 
 // 提供元を呼ばない理由。サブスクリプション切れを回数より先に見る（推定・返事と同じ順）
 const findSkipReason = (
@@ -132,7 +132,8 @@ const findSkipReason = (
   if (isSubscriptionExpired(subscriptionStatus, { countedOn, at })) {
     return "subscription_expired";
   }
-  if (stores.sentText.countClassificationCallsCountedOn(countedOn) >= maximumDailyClassifications) {
+  const windowStart = new Date(at.getTime() - classificationCountWindowMs);
+  if (stores.sentText.countClassificationCallsAfter(windowStart) >= maximumDailyClassifications) {
     return "daily_limit";
   }
   return undefined;
@@ -177,13 +178,24 @@ const recordSkippedClassification = (
       result: "conversation",
     });
     addChange({ recordType: "sent_text_status", recordId: sentText.id });
-    const request = createReplyRequest(sentText, classifiedAt, stores.latestTimeZone, {
-      type: "classification",
-    });
-    reply.request(request);
+    const request = requestReply(stores, reply, sentText, classifiedAt);
     reply.halt({ requestId: request.id, haltedAt: classifiedAt, reason });
     return true;
   });
+
+// 会話と読み分けた文章に、きっかけが読み分けの返事の依頼を書く
+const requestReply = (
+  stores: ClassificationStores,
+  reply: ReplyWrites,
+  sentText: SentText,
+  classifiedAt: Date,
+): ReplyRequest => {
+  const request = createReplyRequest(sentText, classifiedAt, stores.latestTimeZone, {
+    type: "classification",
+  });
+  reply.request(request);
+  return request;
+};
 
 // 読み分けの結果と、文章の食事か返事の依頼を書く。呼んでいるあいだにほかで読み分けていたら、何も書かずに false を返す
 const recordClassification = (
@@ -201,11 +213,7 @@ const recordClassification = (
     addChange({ recordType: "sent_text_status", recordId: sentText.id });
     if (result === "conversation") {
       // 応答待ちになった状態の変更は、入口が足す（取りに行く応答では、同じ文章の変更は1つにまとまる）
-      reply.request(
-        createReplyRequest(sentText, classifiedAt, stores.latestTimeZone, {
-          type: "classification",
-        }),
-      );
+      requestReply(stores, reply, sentText, classifiedAt);
       return true;
     }
     // 時刻は送った時刻。推定が決めた時刻は、推定が終わったときに別に書く（#426）

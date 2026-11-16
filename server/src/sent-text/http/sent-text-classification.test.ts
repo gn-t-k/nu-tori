@@ -11,6 +11,7 @@ import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-u
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
+import { todayInTokyo } from "../../http/sync-routes/testing/today-in-tokyo";
 import { signInTestAccount } from "../../http/testing";
 import { mockCaptureExceptionOk } from "../../observability/capture-exception.mock";
 import { mockSetUserOk } from "../../observability/set-user.mock";
@@ -26,9 +27,6 @@ import {
 import { placeFreeTrialLastDay } from "../../subscription-status/http/testing/place-free-trial-last-day";
 import { createSentTextWrite } from "./testing/create-sent-text-write";
 import { insertCountedClassificationCalls } from "./testing/insert-counted-classification-calls";
-
-const todayInTokyo = () =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(Date.now());
 
 // 偽の提供元の読み分けが呼ばれた回数。作る口は毎回同じ偽物を返すので、1つ目の結果で数える
 const countClassifyCalls = (spy: ReturnType<typeof mockCreateConversationProviderOk>) => {
@@ -374,7 +372,7 @@ describe("読み分け", () => {
   const readCountedCalls = (sentTextId: string) =>
     readRows(
       accountId,
-      `SELECT counted_on FROM sent_text_classification_calls WHERE sent_text_id = '${sentTextId}'`,
+      `SELECT called_at FROM sent_text_classification_calls WHERE sent_text_id = '${sentTextId}'`,
     );
 
   describe("提供元を呼んで読み分けたとき", () => {
@@ -386,8 +384,8 @@ describe("読み分け", () => {
       await runEstimationAlarm(accountId);
     });
 
-    test("読み分けの回数を、ユーザーの最新のタイムゾーンでの今日の分として数えること", async () => {
-      expect(await readCountedCalls(sentTextId)).toEqual([{ counted_on: todayInTokyo() }]);
+    test("読み分けの回数に、呼んだ時刻で数えること", async () => {
+      expect(await readCountedCalls(sentTextId)).toEqual([{ called_at: Date.now() }]);
     });
   });
 
@@ -403,11 +401,11 @@ describe("読み分け", () => {
     });
 
     test("読み分けの回数に数えること", async () => {
-      expect(await readCountedCalls(sentTextId)).toEqual([{ counted_on: todayInTokyo() }]);
+      expect(await readCountedCalls(sentTextId)).toEqual([{ called_at: Date.now() }]);
     });
   });
 
-  describe("その日の読み分けが 49 回のときに、文章を2つ送ったとき", () => {
+  describe("直近 24 時間の読み分けが 49 回のときに、文章を2つ送ったとき", () => {
     let firstId: string;
     let secondId: string;
     let providerSpy: ReturnType<typeof mockCreateConversationProviderOk>;
@@ -417,7 +415,8 @@ describe("読み分け", () => {
       await enableUsageEventSending(accountId);
       providerSpy = mockCreateConversationProviderOk({ classification: "meal" });
       mockCreateEstimationProviderOk();
-      await insertCountedClassificationCalls(accountId, todayInTokyo(), 49);
+      // 24 時間前より 1 ミリ秒だけ後に呼んだ分
+      await insertCountedClassificationCalls(accountId, Date.now() - 86_400_000 + 1, 49);
       firstId = await sendText({ sentAt: Date.now() - 120_000 });
       secondId = await sendText({ sentAt: Date.now() - 60_000 });
       captureSpy = mockPostHogCaptureEndpointOk();
@@ -449,7 +448,7 @@ describe("読み分け", () => {
       expect(await readCountedCalls(secondId)).toEqual([]);
     });
 
-    test("呼ばなかった文章の出来事を、理由を1日の上限にして送ること", () => {
+    test("呼ばなかった文章の出来事を、理由を回数の上限にして送ること", () => {
       expect(
         readPostHogCapturedEvents(captureSpy).filter(
           ({ event }) => event === "sent_text_classification_skipped",
@@ -477,17 +476,17 @@ describe("読み分け", () => {
     });
   });
 
-  describe("前の日の読み分けが 50 回に達しているとき", () => {
+  describe("ちょうど 24 時間前に 50 回呼んでいたとき", () => {
     let sentTextId: string;
     beforeEach(async () => {
       mockCreateConversationProviderOk({ classification: "meal" });
       mockCreateEstimationProviderOk();
-      await insertCountedClassificationCalls(accountId, addDays(todayInTokyo(), -1), 50);
+      await insertCountedClassificationCalls(accountId, Date.now() - 86_400_000, 50);
       sentTextId = await sendText();
       await runEstimationAlarm(accountId);
     });
 
-    test("今日の文章を読み分けること", async () => {
+    test("回数に数えず、文章を読み分けること", async () => {
       expect(
         (await pullRecordsOf("sent_text_status")).filter(
           (status) => status["sentTextId"] === sentTextId,
