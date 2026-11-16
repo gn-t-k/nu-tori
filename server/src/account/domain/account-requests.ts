@@ -1,4 +1,5 @@
 import { R } from "@praha/byethrow";
+import { match } from "ts-pattern";
 import { applySyncWrites } from "../../domain/apply-sync-writes";
 import { computeNextAlarmAt } from "../../domain/compute-next-alarm-at";
 import { ensureSyncWriteAllowance } from "../../domain/ensure-sync-write-allowance";
@@ -107,7 +108,7 @@ export const accountRequests = {
     } satisfies LoggedAccountResponse<unknown>;
   },
 
-  // 受け取れなかったら、失敗した段を出来事に載せる
+  // 受け取れなかったら、失敗した段を出来事に載せる。数の上限で断ったときは載せない
   receiveMealPhoto: async (
     stores: Pick<AccountStores, "writeRecordChanges" | "records" | "mealPhotoArchive">,
     request: { photoId: RecordId; photo: ArrayBuffer },
@@ -122,7 +123,12 @@ export const accountRequests = {
     return {
       result: received,
       usageEvents: R.isFailure(received)
-        ? [{ name: "meal_photo_receipt_failed", stage: received.error.stage }]
+        ? match(received.error)
+            .with({ name: "MealPhotoLimitExceededError" }, () => [])
+            .with({ name: "MealPhotoReceiptFailedError" }, ({ stage }) => [
+              { name: "meal_photo_receipt_failed" as const, stage },
+            ])
+            .exhaustive()
         : [],
     } satisfies AccountResponse<unknown>;
   },
