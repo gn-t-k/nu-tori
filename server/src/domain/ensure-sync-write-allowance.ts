@@ -1,8 +1,8 @@
 import { R } from "@praha/byethrow";
 import { ErrorFactory } from "@praha/error-factory";
-import type { LedgerStore } from "../sync-ledger/ledger-store";
+import type { LedgerStore } from "./sync-ledger/ledger-store";
 
-// 直近 24 時間に受け付けた書き込みの数で、同期の書き込みの要求を受けるかを決める。
+// 直近 24 時間に控えを残した書き込み（受け付けなかったものを含む）の数で、同期の書き込みの要求を受けるかを決める。
 // 上限に届くまでは、要求をまるごと受ける（1回の要求は 500 件までなので、超える幅も 500 件に満たない）。
 // 要求の途中で断ると、端末が同じ 500 件を送り直しても通らない書き込みが残るため
 export const ensureSyncWriteAllowance = (
