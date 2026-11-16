@@ -27,6 +27,20 @@ const sentTextClassifications = sqliteTable("sent_text_classifications", {
   result: text("result", { enum: ["meal", "conversation"] }).notNull(),
 });
 
+// 読み分けで提供元を呼んだ文章と、その数える日。提供元を呼ばずに会話にした文章には行が無い
+const sentTextClassificationCalls = sqliteTable(
+  "sent_text_classification_calls",
+  {
+    sentTextId: text("sent_text_id")
+      .$type<RecordId>()
+      .primaryKey()
+      .references(() => sentTexts.id),
+    countedOn: text("counted_on").notNull(),
+  },
+  // 1日の読み分けの回数を、数える日で数えるため
+  (table) => [index("sent_text_classification_calls_counted_on").on(table.countedOn)],
+);
+
 // 会話として送り直す書き込みを当てたこと。文章は控えの record_id
 const sentTextConversationResends = sqliteTable("sent_text_conversation_resends", {
   syncWriteReceiptId: text("sync_write_receipt_id")
@@ -98,6 +112,7 @@ const mealEatenAtEstimations = sqliteTable(
 export const sentTextTables = {
   sentTexts,
   sentTextClassifications,
+  sentTextClassificationCalls,
   sentTextConversationResends,
   sentTextResends,
   conversationResendMealDeletions,

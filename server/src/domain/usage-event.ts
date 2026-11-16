@@ -80,6 +80,11 @@ export type UsageEvent =
       providerErrorType: string | undefined;
     }
   | {
+      // 提供元を呼ばずに送った文章を会話にしたとき。1日の読み分けの回数の上限か、サブスクリプション切れ
+      name: "sent_text_classification_skipped";
+      reason: ReplyHaltReason;
+    }
+  | {
       // 返事の試みの結果を書いたとき（呼び出しごと）。本文は含めない
       name: "reply_attempt_ended";
       result: ReplyAttemptOutcome["result"];

@@ -1,4 +1,6 @@
 import { R } from "@praha/byethrow";
+import { computeCalendarDayInTimeZone } from "../../domain/compute-calendar-day-in-time-zone";
+import { findLatestValidTimeZone } from "../../domain/find-latest-valid-time-zone";
 import { computeUtcOffsetSeconds } from "../../domain/compute-utc-offset-seconds";
 import { generateRecordId } from "../../domain/record-id";
 import type { RecordChangeWriter } from "../../domain/record-change-writer";
@@ -13,12 +15,19 @@ import type {
 } from "../../reply/domain/conversation-provider";
 import type { LlmCallError } from "../../domain/llm-call-error";
 import { createReplyRequest } from "../../reply/domain/create-reply-request";
+import type { ReplyHaltReason } from "../../sent-text-status/domain/sent-text-status";
+import { isSubscriptionExpired } from "../../subscription-status/domain/is-subscription-expired";
+import { readSubscriptionStatus } from "../../subscription-status/domain/read-subscription-status";
+import type { SubscriptionStatus } from "../../subscription-status/domain/subscription-status";
+import { maximumDailyClassifications } from "./maximum-daily-classifications";
 import type { SentText } from "./sent-text";
 import type { SentTextClassification } from "./sent-text-classification";
 
 // アラームの読み分けの入口。読み分けを待っている文章を、送った順に1つずつ提供元に読ませ、1つのトランザクションで結果を書く。
 // 食事なら文章の食事を1つ作って推定の予定に入れ、会話・決めかねる・呼び出しの失敗なら会話にして返事の依頼を作る（#419 の「読み分け」）。
-// 読み分けは推定の回数にも返事の回数にも数えない。呼んでいるあいだに止まったら、行が無いまま残り、次のアラームで読み直す
+// 読み分けは推定の回数にも返事の回数にも数えず、読み分けの回数（1日 maximumDailyClassifications）に数える。
+// 数える日でサブスクリプション切れか、その日の読み分けが上限に達していれば、提供元を呼ばずに会話にし、返事の依頼を同じ理由で止める。
+// 呼んでいるあいだに止まったら、行が無いまま残り、次のアラームで読み直す
 export const classifySentTexts = async (
   writeRecordChanges: RecordChangeWriter,
   stores: ClassificationStores,
@@ -34,7 +43,28 @@ export const classifySentTexts = async (
   const usageEvents: UsageEvent[] = [];
   const classifications: ClassificationReport[] = [];
   const providerErrors: unknown[] = [];
+  // 待っている文章があるときだけ読む（最初のサインインより前のアカウントのアラームでも、文章が無ければ読まない）
+  let subscriptionStatus: SubscriptionStatus | undefined;
   for (const { sentText, receivedAt } of stores.sentText.findUnclassified()) {
+    const now = new Date();
+    const countedOn = computeCalendarDayInTimeZone(
+      now,
+      findLatestValidTimeZone(stores.latestTimeZone) ?? sentText.timeZone,
+    );
+    subscriptionStatus ??= readSubscriptionStatus(stores.subscriptionStatus);
+    const skipReason = findSkipReason(stores, subscriptionStatus, { countedOn, at: now });
+    if (skipReason !== undefined) {
+      if (recordSkippedClassification(writeRecordChanges, stores, sentText, skipReason, now)) {
+        classifications.push({
+          result: "conversation",
+          providerResult: "not_called",
+          providerErrorType: undefined,
+          skipReason,
+        });
+        usageEvents.push({ name: "sent_text_classification_skipped", reason: skipReason });
+      }
+      continue;
+    }
     // 送った順に書くため、1つずつ呼ぶ
     const { providerResult, usage, providerError } = await askClassification(
       deps.provider,
@@ -42,12 +72,17 @@ export const classifySentTexts = async (
     );
     const result = providerResult === "meal" ? "meal" : "conversation";
     const classifiedAt = new Date();
-    if (recordClassification(writeRecordChanges, stores, sentText, result, classifiedAt)) {
+    if (
+      recordClassification(writeRecordChanges, stores, sentText, result, {
+        classifiedAt,
+        countedOn,
+      })
+    ) {
       const providerErrorType = providerError?.errorType;
       if (providerError !== undefined) {
         providerErrors.push(providerError.cause ?? providerError);
       }
-      classifications.push({ result, providerResult, providerErrorType });
+      classifications.push({ result, providerResult, providerErrorType, skipReason: undefined });
       usageEvents.push({
         name: "sent_text_classified",
         result,
@@ -69,13 +104,37 @@ export const classifySentTexts = async (
 
 type ClassificationStores = Pick<
   RecordKindStores,
-  "estimationSchedule" | "latestTimeZone" | "meal" | "mealPhoto" | "sentText" | "sentTextStatus"
+  | "estimationSchedule"
+  | "latestTimeZone"
+  | "meal"
+  | "mealPhoto"
+  | "sentText"
+  | "sentTextStatus"
+  | "subscriptionStatus"
 >;
 
 type ClassificationReport = {
   result: SentTextClassification;
-  providerResult: ProviderClassification["providerResult"];
+  // not_called は、提供元を呼ばずに会話にした
+  providerResult: ProviderClassification["providerResult"] | "not_called";
   providerErrorType: string | undefined;
+  // 提供元を呼ばなかった理由。呼んだら undefined
+  skipReason: ReplyHaltReason | undefined;
+};
+
+// 提供元を呼ばない理由。サブスクリプション切れを回数より先に見る（推定・返事と同じ順）
+const findSkipReason = (
+  stores: ClassificationStores,
+  subscriptionStatus: SubscriptionStatus,
+  { countedOn, at }: { countedOn: string; at: Date },
+): ReplyHaltReason | undefined => {
+  if (isSubscriptionExpired(subscriptionStatus, { countedOn, at })) {
+    return "subscription_expired";
+  }
+  if (stores.sentText.countClassificationCallsCountedOn(countedOn) >= maximumDailyClassifications) {
+    return "daily_limit";
+  }
+  return undefined;
 };
 
 // 提供元の答え。呼び出しが失敗したら failed にし、失敗を持つ
@@ -98,19 +157,47 @@ const askClassification = async (
     : { providerResult: "failed", usage: undefined, providerError: classified.error };
 };
 
-// 読み分けの結果と、文章の食事か返事の依頼を書く。呼んでいるあいだにほかで読み分けていたら、何も書かずに false を返す
+// 提供元を呼ばずに会話にし、返事の依頼を作って同じ理由で止める（翌日や買ったあとに再開しない。送り直すと返事の依頼を作り直す）。
+// ほかで読み分けていたら、何も書かずに false を返す
+const recordSkippedClassification = (
+  writeRecordChanges: RecordChangeWriter,
+  stores: ClassificationStores,
+  sentText: SentText,
+  reason: ReplyHaltReason,
+  classifiedAt: Date,
+): boolean =>
+  writeRecordChanges(({ addChange, reply }) => {
+    if (stores.sentTextStatus.findClassification(sentText.id) !== undefined) {
+      return false;
+    }
+    stores.sentText.insertClassification({
+      sentTextId: sentText.id,
+      classifiedAt,
+      result: "conversation",
+    });
+    addChange({ recordType: "sent_text_status", recordId: sentText.id });
+    const request = createReplyRequest(sentText, classifiedAt, stores.latestTimeZone, {
+      type: "classification",
+    });
+    reply.request(request);
+    reply.halt({ requestId: request.id, haltedAt: classifiedAt, reason });
+    return true;
+  });
+
+// 読み分けの結果と、提供元を呼んだことと、文章の食事か返事の依頼を書く。呼んでいるあいだにほかで読み分けていたら、何も書かずに false を返す
 const recordClassification = (
   writeRecordChanges: RecordChangeWriter,
   stores: ClassificationStores,
   sentText: SentText,
   result: SentTextClassification,
-  classifiedAt: Date,
+  { classifiedAt, countedOn }: { classifiedAt: Date; countedOn: string },
 ): boolean =>
   writeRecordChanges(({ addChange, estimation, reply }) => {
     if (stores.sentTextStatus.findClassification(sentText.id) !== undefined) {
       return false;
     }
     stores.sentText.insertClassification({ sentTextId: sentText.id, classifiedAt, result });
+    stores.sentText.insertClassificationCall({ sentTextId: sentText.id, countedOn });
     addChange({ recordType: "sent_text_status", recordId: sentText.id });
     if (result === "conversation") {
       // 応答待ちになった状態の変更は、入口が足す（取りに行く応答では、同じ文章の変更は1つにまとまる）
