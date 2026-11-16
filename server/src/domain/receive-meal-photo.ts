@@ -56,10 +56,11 @@ type MealPhotoReceiptStores = Pick<
   "estimationSchedule" | "latestTimeZone" | "meal" | "mealPhoto"
 >;
 
-// ふつうの使い方の多いほう（1日に6食を4枚ずつで24枚、電波の無かった1週間の分を一度に送って168枚）が届かない数にする。
 // 置いているあいだに並んで届いた要求は数に入らないので、その分だけ超えることがある
 const exceedsLimit = (store: MealPhotoStore, photoId: RecordId, receivedAt: Date): boolean => {
+  // ふつうの使い方の多いほう（1日に6食を4枚ずつで24枚、電波の無かった1週間の分を一度に送って168枚）が届かない数にする
   const maximumReceiptsPerDay = 300;
+  // 食事より先に着いた分だけの上限。超えた分は端末が送り直し、食事が届いたあとは数に入らないので通る
   const maximumUndeclaredReceipts = 100;
   const dayMilliseconds = 24 * 60 * 60 * 1000;
   if (

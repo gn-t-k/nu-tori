@@ -1,4 +1,5 @@
 import { R } from "@praha/byethrow";
+import { match } from "ts-pattern";
 import { applySyncWrites } from "../../domain/apply-sync-writes";
 import { computeNextAlarmAt } from "../../domain/compute-next-alarm-at";
 import { pullSyncChanges } from "../../domain/pull-sync-changes";
@@ -104,10 +105,14 @@ export const accountRequests = {
     );
     return {
       result: received,
-      usageEvents:
-        R.isFailure(received) && received.error.name === "MealPhotoReceiptFailedError"
-          ? [{ name: "meal_photo_receipt_failed", stage: received.error.stage }]
-          : [],
+      usageEvents: R.isFailure(received)
+        ? match(received.error)
+            .with({ name: "MealPhotoLimitExceededError" }, () => [])
+            .with({ name: "MealPhotoReceiptFailedError" }, ({ stage }) => [
+              { name: "meal_photo_receipt_failed" as const, stage },
+            ])
+            .exhaustive()
+        : [],
     } satisfies AccountResponse<unknown>;
   },
 

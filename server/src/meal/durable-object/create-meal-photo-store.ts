@@ -69,7 +69,7 @@ export const createMealPhotoStore = (db: DrizzleSqliteDODatabase): MealPhotoStor
       .onConflictDoNothing()
       .run();
   },
-  // 下の findUndeclaredReceipts が写真を受け取るたびに受け取りの表を端まで読むので、受け取った時刻に索引を置いても読む行は減らない
+  // 下の findUndeclaredReceipts が、次のアラームの時刻を出すために要求のたびに受け取りの表を端まで読むので、受け取った時刻に索引を置いても読む行は減らない
   countReceiptsAfter: (after) =>
     db
       .select({ count: count() })

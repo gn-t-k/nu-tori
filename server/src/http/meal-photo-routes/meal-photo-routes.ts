@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { R } from "@praha/byethrow";
 import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
+import { match } from "ts-pattern";
 import { recordIdSchema } from "../../domain/record-id";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
@@ -70,12 +71,15 @@ export const mealPhotoRoutes = new OpenAPIHono<{ Bindings: Env }>()
       if (R.isSuccess(received)) {
         return c.body(null, 204);
       }
-      // Durable Object の RPC を越えたエラーは instanceof で見分けられないので、名前で見分ける
-      if (received.error.name === "MealPhotoLimitExceededError") {
-        return c.body(null, 429);
-      }
-      // 受け取れなかったら投げて 500 にし、要求ごとのログに失敗した段を出す
-      throw received.error;
+      return (
+        match(received.error)
+          .with({ name: "MealPhotoLimitExceededError" }, () => c.body(null, 429))
+          // 受け取れなかったら投げて 500 にし、要求ごとのログに失敗した段を出す
+          .with({ name: "MealPhotoReceiptFailedError" }, (error) => {
+            throw error;
+          })
+          .exhaustive()
+      );
     },
   )
   .openapi(
