@@ -26,7 +26,6 @@ describe("送り直す", () => {
   let sessionToken: string;
   let clock: ReturnType<typeof useFakeClock>;
   let pullChangesAfter: (afterSequence: number) => Promise<PullResult>;
-  // 東京（ユーザーの最新のタイムゾーン）での今日
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();

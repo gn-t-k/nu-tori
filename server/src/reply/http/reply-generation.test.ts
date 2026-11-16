@@ -42,7 +42,6 @@ describe("返事を作る", () => {
   let clock: ReturnType<typeof useFakeClock>;
   let pullRecordsOf: (kind: string) => Promise<Record<string, unknown>[]>;
   let readAttemptResults: () => Promise<Record<string, unknown>[]>;
-  // 東京（ユーザーの最新のタイムゾーン）での今日
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();

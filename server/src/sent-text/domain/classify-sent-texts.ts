@@ -21,10 +21,7 @@ import type { ReplyHaltReason } from "../../sent-text-status/domain/sent-text-st
 import { isSubscriptionExpired } from "../../subscription-status/domain/is-subscription-expired";
 import { readSubscriptionStatus } from "../../subscription-status/domain/read-subscription-status";
 import type { SubscriptionStatus } from "../../subscription-status/domain/subscription-status";
-import {
-  classificationCountWindowMs,
-  maximumDailyClassifications,
-} from "./maximum-daily-classifications";
+import { maximumDailyClassifications } from "./maximum-daily-classifications";
 import type { SentText } from "./sent-text";
 import type { SentTextClassification } from "./sent-text-classification";
 
@@ -132,7 +129,7 @@ const findSkipReason = (
   if (isSubscriptionExpired(subscriptionStatus, { countedOn, at })) {
     return "subscription_expired";
   }
-  const windowStart = new Date(at.getTime() - classificationCountWindowMs);
+  const windowStart = new Date(at.getTime() - 24 * 60 * 60 * 1000);
   if (stores.sentText.countClassificationCallsAfter(windowStart) >= maximumDailyClassifications) {
     return "daily_limit";
   }
