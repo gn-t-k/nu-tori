@@ -352,7 +352,7 @@ describe("同期", () => {
 
     describe("前の要求が前の日で、いちばん古い送り待ちが1時間を超えているとき", () => {
       beforeEach(async () => {
-        await insertRequestLog(accountId, Date.now() - 2 * 24 * 60 * 60 * 1000);
+        await insertRequestLog(accountId, Date.now() - 2 * 24 * 60 * 60 * 1000, generateRecordId());
         await pullSyncChanges(sessionToken, {
           clientState: { oldestPendingWriteAgeSeconds: 7200 },
         });
@@ -646,6 +646,64 @@ describe("同期", () => {
     });
   });
 
+  describe("直近 24 時間に受け付けた書き込みが 30,000 件あるとき", () => {
+    let write: ReturnType<typeof createWeightRecordWrite>;
+    let response: Response;
+    beforeEach(async () => {
+      await insertWriteReceipts(accountId, { count: 30_000, receivedAt: Date.now() - 23 * hour });
+      write = createWeightRecordWrite();
+      response = await pushSyncWrites(sessionToken, { writes: [write] });
+    });
+
+    test("送る要求に 429 を返すこと", () => {
+      expect(response.status).toBe(429);
+    });
+
+    test("書き込みを当てないこと", async () => {
+      expect(
+        await readRows(
+          accountId,
+          "SELECT id FROM weight_records UNION SELECT id FROM sync_write_receipts WHERE id NOT LIKE 'seeded-%'",
+        ),
+      ).toEqual([]);
+    });
+
+    test("取りに行く要求は受けること", async () => {
+      expect((await pullSyncChanges(sessionToken)).status).toBe(200);
+    });
+  });
+
+  describe("受け付けた 30,000 件の書き込みが 24 時間より前のとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      await insertWriteReceipts(accountId, { count: 30_000, receivedAt: Date.now() - 25 * hour });
+      response = await pushSyncWrites(sessionToken, { writes: [createWeightRecordWrite()] });
+    });
+
+    test("書き込みを当てること", async () => {
+      expect((await response.json<PushResults>()).results.map(({ result }) => result)).toEqual([
+        "applied",
+      ]);
+    });
+  });
+
+  describe("直近 24 時間に受け付けた書き込みが 29,999 件のとき、2件を送ったとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      await insertWriteReceipts(accountId, { count: 29_999, receivedAt: Date.now() - hour });
+      response = await pushSyncWrites(sessionToken, {
+        writes: [createWeightRecordWrite(), createWeightRecordWrite()],
+      });
+    });
+
+    test("要求の書き込みをすべて当てること", async () => {
+      expect((await response.json<PushResults>()).results.map(({ result }) => result)).toEqual([
+        "applied",
+        "applied",
+      ]);
+    });
+  });
+
   describe("セッションが無いとき", () => {
     test("送る要求に 401 を返すこと", async () => {
       const response = await app.request(
@@ -663,14 +721,42 @@ describe("同期", () => {
   });
 });
 
-const insertRequestLog = (accountId: string, receivedAt: number) =>
+const insertRequestLog = (accountId: string, receivedAt: number, id: string) =>
   runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
     state.storage.sql.exec(
       `INSERT INTO sync_request_logs
          (id, device_id, received_at, time_zone, app_version, os_version,
           pending_write_count, oldest_pending_write_age_seconds, pending_photo_count)
        VALUES (?, 'device-1', ?, 'Asia/Tokyo', '1.0.0', '26.0', 0, NULL, 0)`,
-      generateRecordId(),
+      id,
       receivedAt,
     ),
   );
+
+const hour = 60 * 60 * 1000;
+
+// 1つの要求が残した形で、書き込みの控えを count 件置く（ID は seeded-1 から）
+const insertWriteReceipts = async (
+  accountId: string,
+  seeded: { count: number; receivedAt: number },
+) => {
+  const requestLogId = generateRecordId();
+  await insertRequestLog(accountId, seeded.receivedAt, requestLogId);
+  await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) => {
+    state.storage.sql.exec(
+      "INSERT INTO sync_push_logs (sync_request_log_id, is_final_batch) VALUES (?, 1)",
+      requestLogId,
+    );
+    state.storage.sql.exec(
+      `WITH RECURSIVE positions (position) AS (
+         SELECT 1 UNION ALL SELECT position + 1 FROM positions WHERE position < ?
+       )
+       INSERT INTO sync_write_receipts
+         (id, sync_request_log_id, position_in_request, kind, record_type, record_id, result)
+       SELECT 'seeded-' || position, ?, position, 'create', 'weight_record', 'record-' || position, 'applied'
+       FROM positions`,
+      seeded.count,
+      requestLogId,
+    );
+  });
+};
