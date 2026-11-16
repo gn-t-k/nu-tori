@@ -72,6 +72,7 @@ $D                                              # オプション（時刻の差
 
 - Anthropic の鍵が無い回では、推定・読み分け・返事の結果まで進まない。推定が始まる（`estimating`）ことと、Anthropic まで届いた（確かめの口で `authentication_error`）ことまでが確かめられる。結果は、merge のあとに `deploy.yml` の `main-flow-on-development`（開発用の環境で本物の提供元を通す）が確かめる
 - 返事が作れなかった（`failed`）文章を送り直して返事が作られるところは、鍵があっても通せない（`features/reply.md` の Gotchas）。`main-flow-on-development` も通らない。`server/src/sent-text/http/resend.test.ts` が確かめていて、本物の経路では TestFlight の版で確かめる
+- 24時間に受け取る写真の数の上限と、食事が届かないまま期限を過ぎた写真の控えの取り消しは、手元で通さない（`features/meal-estimation.md` の Gotchas）。`server/src/http/meal-photo-routes/meal-photo-routes.test.ts` が確かめている
 - Sign in with Apple、Apple のサーバー間通知、App Store の取引は、Apple を通すので手元で動かせない。TestFlight の版で確かめる
 - アプリの画面は、このスキルの外。Mac のセッションの UI テストで確かめる。アプリをこの回につないで動かすのは `verify-ios` の「手元のサーバーにつないで動かす」
 

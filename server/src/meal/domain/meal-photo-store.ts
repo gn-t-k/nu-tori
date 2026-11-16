@@ -15,4 +15,9 @@ export type MealPhotoStore = {
   // 消し残し: 受け取りがあり、写真の削除の印があり、R2 から消した事実が無い
   findLeftoverPhotoIds: () => RecordId[];
   insertFileDeletion: (photoId: RecordId, deletedAt: Date) => void;
+  // その時刻より後に受け取った写真の数。食事を消した写真も数える
+  countReceiptsAfter: (after: Date) => number;
+  // 受け取りがあり、どの食事も宣言しておらず、写真の削除の印も無い
+  findUndeclaredReceipts: () => { photoId: RecordId; receivedAt: Date }[];
+  deleteReceipt: (photoId: RecordId) => void;
 };
