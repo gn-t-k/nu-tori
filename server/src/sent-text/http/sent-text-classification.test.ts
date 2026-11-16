@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
+import { addDays } from "../../domain/add-days";
 import { generateRecordId } from "../../domain/record-id";
 import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
 import { insertCountedEstimations } from "../../estimation/http/testing/insert-counted-estimations";
@@ -10,6 +11,7 @@ import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-u
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
+import { todayInTokyo } from "../../http/sync-routes/testing/today-in-tokyo";
 import { signInTestAccount } from "../../http/testing";
 import { mockCaptureExceptionOk } from "../../observability/capture-exception.mock";
 import { mockSetUserOk } from "../../observability/set-user.mock";
@@ -22,7 +24,15 @@ import {
   mockCreateConversationProviderError,
   mockCreateConversationProviderOk,
 } from "../../reply/durable-object/create-conversation-provider/create-conversation-provider.mock";
+import { placeFreeTrialLastDay } from "../../subscription-status/http/testing/place-free-trial-last-day";
 import { createSentTextWrite } from "./testing/create-sent-text-write";
+import { insertCountedClassificationCalls } from "./testing/insert-counted-classification-calls";
+
+// 偽の提供元の読み分けが呼ばれた回数。作る口は毎回同じ偽物を返すので、1つ目の結果で数える
+const countClassifyCalls = (spy: ReturnType<typeof mockCreateConversationProviderOk>) => {
+  const provider = spy.mock.results[0]?.value;
+  return provider === undefined ? 0 : vi.mocked(provider.classifySentText).mock.calls.length;
+};
 
 describe("読み分け", () => {
   let accountId: string;
@@ -354,6 +364,180 @@ describe("読み分け", () => {
             output_tokens: 3,
             seconds_from_received_to_classified: 0,
           },
+        },
+      ]);
+    });
+  });
+
+  const readCountedCalls = (sentTextId: string) =>
+    readRows(
+      accountId,
+      `SELECT called_at FROM sent_text_classification_calls WHERE sent_text_id = '${sentTextId}'`,
+    );
+
+  describe("提供元を呼んで読み分けたとき", () => {
+    let sentTextId: string;
+    beforeEach(async () => {
+      mockCreateConversationProviderOk({ classification: "conversation" });
+      // 端末のタイムゾーン（東京）と違うタイムゾーンで送る
+      sentTextId = await sendText({ timeZone: "America/New_York" });
+      await runEstimationAlarm(accountId);
+    });
+
+    test("読み分けの回数に、呼んだ時刻で数えること", async () => {
+      expect(await readCountedCalls(sentTextId)).toEqual([{ called_at: Date.now() }]);
+    });
+  });
+
+  describe("読み分けの呼び出しが失敗したとき", () => {
+    let sentTextId: string;
+    beforeEach(async () => {
+      mockCreateConversationProviderError({
+        failingCall: "classify_sent_text",
+        error: new LlmCallError({ errorType: "overloaded_error" }),
+      });
+      sentTextId = await sendText();
+      await runEstimationAlarm(accountId);
+    });
+
+    test("読み分けの回数に数えること", async () => {
+      expect(await readCountedCalls(sentTextId)).toEqual([{ called_at: Date.now() }]);
+    });
+  });
+
+  describe("直近 24 時間の読み分けが 49 回のときに、文章を2つ送ったとき", () => {
+    let firstId: string;
+    let secondId: string;
+    let providerSpy: ReturnType<typeof mockCreateConversationProviderOk>;
+    let captureSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
+    let logSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(async () => {
+      await enableUsageEventSending(accountId);
+      providerSpy = mockCreateConversationProviderOk({ classification: "meal" });
+      mockCreateEstimationProviderOk();
+      // 24 時間前より 1 ミリ秒だけ後に呼んだ分
+      await insertCountedClassificationCalls(accountId, Date.now() - 86_400_000 + 1, 49);
+      firstId = await sendText({ sentAt: Date.now() - 120_000 });
+      secondId = await sendText({ sentAt: Date.now() - 60_000 });
+      captureSpy = mockPostHogCaptureEndpointOk();
+      logSpy = vi.spyOn(console, "log");
+      await runEstimationAlarm(accountId);
+    });
+
+    test("50 回目の文章だけ提供元に読ませ、次の文章は呼ばずに回数切れの会話にすること", async () => {
+      expect({
+        calls: countClassifyCalls(providerSpy),
+        statuses: (await pullRecordsOf("sent_text_status")).filter(
+          ({ sentTextId }) => sentTextId === firstId || sentTextId === secondId,
+        ),
+      }).toEqual({
+        calls: 1,
+        statuses: [
+          { sentTextId: firstId, classification: "meal", replyStatus: "none" },
+          {
+            sentTextId: secondId,
+            classification: "conversation",
+            replyStatus: "halted",
+            replyHaltReason: "daily_limit",
+          },
+        ],
+      });
+    });
+
+    test("呼ばなかった文章は、読み分けの回数に数えないこと", async () => {
+      expect(await readCountedCalls(secondId)).toEqual([]);
+    });
+
+    test("呼ばなかった文章の出来事を、理由を回数の上限にして送ること", () => {
+      expect(
+        readPostHogCapturedEvents(captureSpy).filter(
+          ({ event }) => event === "sent_text_classification_skipped",
+        ),
+      ).toEqual([
+        {
+          event: "sent_text_classification_skipped",
+          distinct_id: accountId,
+          properties: { reason: "daily_limit", $geoip_disable: true },
+        },
+      ]);
+    });
+
+    test("アラームの呼び出しのログに、呼ばなかった理由を出すこと", () => {
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountId,
+          route: "alarm",
+          classifications: [
+            { result: "meal", providerResult: "meal" },
+            { result: "conversation", providerResult: "not_called", skipReason: "daily_limit" },
+          ],
+        }),
+      );
+    });
+  });
+
+  describe("ちょうど 24 時間前に 50 回呼んでいたとき", () => {
+    let sentTextId: string;
+    beforeEach(async () => {
+      mockCreateConversationProviderOk({ classification: "meal" });
+      mockCreateEstimationProviderOk();
+      await insertCountedClassificationCalls(accountId, Date.now() - 86_400_000, 50);
+      sentTextId = await sendText();
+      await runEstimationAlarm(accountId);
+    });
+
+    test("回数に数えず、文章を読み分けること", async () => {
+      expect(
+        (await pullRecordsOf("sent_text_status")).filter(
+          (status) => status["sentTextId"] === sentTextId,
+        ),
+      ).toEqual([{ sentTextId, classification: "meal", replyStatus: "none" }]);
+    });
+  });
+
+  describe("無料体験が終わったアカウントが、文章を送ったとき", () => {
+    let sentTextId: string;
+    let providerSpy: ReturnType<typeof mockCreateConversationProviderOk>;
+    let captureSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
+    beforeEach(async () => {
+      await placeFreeTrialLastDay(accountId, addDays(todayInTokyo(), -10));
+      await enableUsageEventSending(accountId);
+      providerSpy = mockCreateConversationProviderOk({ classification: "meal" });
+      mockCreateEstimationProviderOk();
+      sentTextId = await sendText();
+      captureSpy = mockPostHogCaptureEndpointOk();
+      await runEstimationAlarm(accountId);
+    });
+
+    test("提供元を呼ばずに、サブスクリプション切れの止めの会話にすること", async () => {
+      expect({
+        calls: countClassifyCalls(providerSpy),
+        statuses: await pullRecordsOf("sent_text_status"),
+        meals: await pullRecordsOf("meal"),
+      }).toEqual({
+        calls: 0,
+        statuses: [
+          {
+            sentTextId,
+            classification: "conversation",
+            replyStatus: "halted",
+            replyHaltReason: "subscription_expired",
+          },
+        ],
+        meals: [],
+      });
+    });
+
+    test("呼ばなかった文章の出来事を、理由をサブスクリプション切れにして送ること", () => {
+      expect(
+        readPostHogCapturedEvents(captureSpy).filter(
+          ({ event }) => event === "sent_text_classification_skipped",
+        ),
+      ).toEqual([
+        {
+          event: "sent_text_classification_skipped",
+          distinct_id: accountId,
+          properties: { reason: "subscription_expired", $geoip_disable: true },
         },
       ]);
     });
