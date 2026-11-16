@@ -11,7 +11,7 @@ export const limitRequestBody = createMiddleware(async (c, next) => {
   return c.req.path === "/v1/sync/writes" ? limitSyncWrites(c, next) : limitJson(c, next);
 });
 
-// 同期の書き込みは1回 500 件まで。いちばん大きい書き込み（500 文字の送った文章）を 500 件並べても 1 MB に満たない。
+// 同期の書き込みは1回 500 件まで。いちばん大きい書き込み（500 文字の送った文章）を 500 件並べると、UTF-8 で 4 バイトの文字だけでも 1.1 MB ほど（端末は、ASCII でない文字を \u の形にせずそのまま送る）。
 // 今のアプリは 413 を受けると同じ要求を送り続けるので、ふつうの要求が届かない大きさにする
 const limitSyncWrites = bodyLimit({
   maxSize: 2 * 1024 * 1024,

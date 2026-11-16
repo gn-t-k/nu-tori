@@ -352,7 +352,7 @@ describe("同期", () => {
 
     describe("前の要求が前の日で、いちばん古い送り待ちが1時間を超えているとき", () => {
       beforeEach(async () => {
-        await insertRequestLog(accountId, Date.now() - 2 * 24 * 60 * 60 * 1000);
+        await insertRequestLog(accountId, Date.now() - 2 * 24 * 60 * 60 * 1000, generateRecordId());
         await pullSyncChanges(sessionToken, {
           clientState: { oldestPendingWriteAgeSeconds: 7200 },
         });
@@ -721,7 +721,7 @@ describe("同期", () => {
   });
 });
 
-const insertRequestLog = (accountId: string, receivedAt: number, id = generateRecordId()) =>
+const insertRequestLog = (accountId: string, receivedAt: number, id: string) =>
   runInDurableObject(getAccountDurableObject(env, accountId), (_, state) =>
     state.storage.sql.exec(
       `INSERT INTO sync_request_logs
@@ -736,10 +736,13 @@ const insertRequestLog = (accountId: string, receivedAt: number, id = generateRe
 const hour = 60 * 60 * 1000;
 
 // 1つの要求が残した形で、書き込みの控えを count 件置く（ID は seeded-1 から）
-const insertWriteReceipts = (accountId: string, seeded: { count: number; receivedAt: number }) =>
-  runInDurableObject(getAccountDurableObject(env, accountId), async (_, state) => {
-    const requestLogId = generateRecordId();
-    await insertRequestLog(accountId, seeded.receivedAt, requestLogId);
+const insertWriteReceipts = async (
+  accountId: string,
+  seeded: { count: number; receivedAt: number },
+) => {
+  const requestLogId = generateRecordId();
+  await insertRequestLog(accountId, seeded.receivedAt, requestLogId);
+  await runInDurableObject(getAccountDurableObject(env, accountId), (_, state) => {
     state.storage.sql.exec(
       "INSERT INTO sync_push_logs (sync_request_log_id, is_final_batch) VALUES (?, 1)",
       requestLogId,
@@ -756,3 +759,4 @@ const insertWriteReceipts = (accountId: string, seeded: { count: number; receive
       requestLogId,
     );
   });
+};

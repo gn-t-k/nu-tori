@@ -38,12 +38,12 @@ describe("要求の本文の大きさの上限", () => {
     });
   });
 
-  describe("500 文字の送った文章を 500 件並べた同期の書き込みのとき", () => {
+  describe("UTF-8 で 4 バイトの文字を 500 文字並べた送った文章を、500 件並べた同期の書き込みのとき", () => {
     let response: Response;
     beforeEach(async () => {
       response = await pushSyncWrites(sessionToken, {
         writes: Array.from({ length: 500 }, () =>
-          createSentTextWrite({ sentText: { body: "あ".repeat(500) } }),
+          createSentTextWrite({ sentText: { body: "𠮷".repeat(500) } }),
         ),
       });
     });
@@ -91,8 +91,8 @@ describe("要求の本文の大きさの上限", () => {
       expect((await postOversizedJson("/v1/sessions", sessionToken)).status).toBe(413);
     });
 
-    test("POST /v1/goal-setup/previews が 413 を返すこと", async () => {
-      expect((await postOversizedJson("/v1/goal-setup/previews", sessionToken)).status).toBe(413);
+    test("POST /v1/goal-setup/preview が 413 を返すこと", async () => {
+      expect((await postOversizedJson("/v1/goal-setup/preview", sessionToken)).status).toBe(413);
     });
 
     test("POST /v1/subscription-transactions が 413 を返すこと", async () => {
