@@ -7,6 +7,7 @@ import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites, type PushResults } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
+import { todayInTokyo } from "../../http/sync-routes/testing/today-in-tokyo";
 import { signInTestAccount } from "../../http/testing";
 import { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
 import {
@@ -25,8 +26,6 @@ describe("送り直す", () => {
   let sessionToken: string;
   let clock: ReturnType<typeof useFakeClock>;
   let pullChangesAfter: (afterSequence: number) => Promise<PullResult>;
-  // 東京（ユーザーの最新のタイムゾーン）での今日
-  let todayInTokyo: () => string;
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
@@ -38,8 +37,6 @@ describe("送り直す", () => {
     );
     pullChangesAfter = async (afterSequence) =>
       (await pullSyncChanges(sessionToken, { afterSequence })).json<PullResult>();
-    todayInTokyo = () =>
-      new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(Date.now());
   });
 
   const sendText = async () => {
