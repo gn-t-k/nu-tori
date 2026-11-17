@@ -114,7 +114,7 @@ const allowedDifferences: Readonly<Record<(typeof comparedNutrients)[number], nu
   salt_equivalent_g: 0.1,
 };
 
-// 6.1 - 6.0 が 0.1 をわずかに超えるような、小数の計算の誤差を落とさない
+// 表示 6.2・答え 6.1 の差が 0.1 をわずかに超えるような、小数の計算の誤差で落とさない
 const floatSlack = 1e-9;
 
 const nutrientLabels: Readonly<Record<(typeof comparedNutrients)[number], string>> = {

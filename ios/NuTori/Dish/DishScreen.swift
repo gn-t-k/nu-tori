@@ -175,6 +175,7 @@ struct DishScreen: View {
             .accessibilityIdentifier("nutrition-label-badge")
         return HStack(spacing: 8) {
             if ingredient.nutrientSource.kind == .nutritionLabel {
+                // DESIGN.md の Layout（間隔は標準に任せる）から外れて数値を渡す。ItemWrappingLayout は既定の間隔を持たないので、食事の画面の料理の行とそろえる
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
                         name.fixedSize()

@@ -148,6 +148,34 @@ describe("表示の読み取りの1回分の答えを正解と比べる", () => 
       });
     });
 
+    describe("食塩相当量が表示とちょうど 0.1 離れたとき", () => {
+      let answer: IdentifiedDishes;
+      beforeEach(() => {
+        answer = {
+          dishes: [
+            {
+              name: "とりそばラーメン",
+              quantity: 1,
+              unit: "食",
+              ingredients: [
+                {
+                  ...ramen,
+                  nutritionLabel: {
+                    ...ramenLabel,
+                    nutrients: { ...ramenLabel.nutrients, salt_equivalent_g: 6.2 },
+                  },
+                },
+              ],
+            },
+          ],
+        };
+      });
+
+      test("通ること", () => {
+        expect(judgeNutritionLabelRun(answer, labeledCase)).toEqual({ type: "passed" });
+      });
+    });
+
     describe("食塩相当量が表示から 0.1 より離れたとき", () => {
       let answer: IdentifiedDishes;
       beforeEach(() => {
