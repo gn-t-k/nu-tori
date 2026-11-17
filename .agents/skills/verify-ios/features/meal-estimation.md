@@ -8,6 +8,7 @@
 - `meal-photo-loading` 写真を読んでいるあいだ仮のカードを出し、食事のカードが出たら外す
 - `meal-open` 食事のカードから食事の画面へ、料理の行から料理の画面へ潜って戻る
 - `meal-edit` 食事の画面で時刻と料理の量と名前を直し、料理を足す・消すと、推定し直しが届く
+- `meal-nutrition-label-badge` 料理の画面の材料の行で、栄養の出どころが栄養成分表示の材料にだけ「表示」の印が出る（食事の画面とカードには出ない）
 - `meal-delete` 食事を削除すると、カードが消え、今日の丸の食事の記録ありが外れる
 
 ## How to get to it (user POV)
@@ -27,6 +28,7 @@ Preconditions:
 - **写真の食事が推定される・消す。** `$S/ui-test.sh RecordMealFromPickedPhotosUITests`。カードが出て、親子丼が届き、今日の丸が「食事の記録あり」になる。食事の画面に親子丼の行が出て（材料の行は出ない）、料理の画面へ潜って戻れる。食事を削除するとカードが消え、今日の丸から「食事の記録あり」が外れる
 - **読んでいるあいだ。** `$S/ui-test.sh ShowPickedPhotosLoadingUITests`。写真を読んでいるあいだ仮のカードが出て、食事のカードが出たら外れる
 - **直す・足す・消す。** `$S/ui-test.sh EditMealUITests`。推定中は「料理を足す」を押せず理由が添えられ、時刻を直すと推定（親子丼）が届く。料理の画面で量と名前（カツ丼）を直すと推定し直しが届き、味噌汁（1杯）を足して左へ送って消せる。足す名前の欄には、101 字打っても 100 字までしか入らない。最後の1品を左へ送ると確かめが出て、取り消すと料理は残る。料理の画面の「この料理を削除」（`dish-delete`）から「食事を削除」を押すと食事が消える
+- **「表示」の印。** `$S/ui-test.sh DishNutritionLabelBadgeUITests`（場面 `meal-nutrition-label`）。カレーライスが届き、料理の画面のレトルトカレーの行にだけ「表示」の印（`nutrition-label-badge`）が出る。ご飯の行と、食事の画面・タイムラインのカードには出ない
 - **カードから潜る。** `$S/ui-test.sh OpenWrittenMealFromCardUITests`。文章の食事のカードの右端の余白と右向きの矢印のどちらを押しても、食事の画面へ潜る
 - **手で見るとき。** `$S/launch.sh "$run" signed-in meal-estimation UI_TEST_PICKED_PHOTOS=1` で開き、`composer-photos` を押す（選ぶ画面を開かずに無地の写真を1枚選んだことになる）
 

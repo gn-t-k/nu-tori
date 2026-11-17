@@ -111,6 +111,7 @@ ${foodCompositionQuerySection}
 ## 栄養成分表示（nutritionLabel）
 - パッケージなどの栄養成分表示が写っていて、読み取れる材料だけに付ける。読めない・無いときは null にする。
 - basisGrams は表示の単位の g（100 g あたりなら 100。1 本あたりなら、その 1 本の g。ml は g とみなす）。
+- basisGramsEstimated は false にする。
 - nutrients は、書かれている栄養だけを、表示のままの値で答える。書かれていない栄養は含めない。栄養の名前と単位は次のとおり。
 ${nutrientLines}
 - ナトリウムだけが書かれていて、食塩相当量が書かれていないときは、食塩相当量を含めない。

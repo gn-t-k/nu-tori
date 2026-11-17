@@ -87,8 +87,15 @@ export type IdentifiedIngredient = {
   edibleGrams: number;
   // 成分表を引く語（調理の状態を含む）
   foodCompositionQuery: string;
-  // 写真に栄養成分表示が写っていたときの値。nutrients は表示の単位（basisGrams g）あたりで、書かれていない栄養は持たない
-  nutritionLabel: { basisGrams: number; nutrients: Readonly<Record<string, number>> } | undefined;
+  // 写真に栄養成分表示が写っていたときの値。nutrients は表示の単位（basisGrams g）あたりで、書かれていない栄養は持たない。
+  // basisGramsEstimated は、g の書かれていない「1食あたり」のように、basisGrams が表示に無く ① の見積もりのときに立つ。答えの検証にだけ使い、記録に残さない
+  nutritionLabel:
+    | {
+        basisGrams: number;
+        basisGramsEstimated: boolean;
+        nutrients: Readonly<Record<string, number>>;
+      }
+    | undefined;
 };
 
 // ② に渡す、栄養成分表示の無い材料。並びの順に答えを返させる
