@@ -82,6 +82,7 @@ struct DishScreen: View {
     /// 打ちかけの文字。打っていない欄は、キャッシュの今の値を見せる
     @State private var drafts: [Field: String] = [:]
     @State private var confirmsMealDeletion: Bool
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private enum Field: Hashable {
         case name
@@ -168,26 +169,25 @@ struct DishScreen: View {
 
     /// 材料の名前と量。量は Primary で、押すとその場で数字のキーボードが出る。材料の名前は直せない。
     /// 栄養の出どころが栄養成分表示の材料は、名前に「表示」の印を添える（推定の印は添えない。量の推定は料理の量の欄の印で分かる）。
-    /// 名前と同じ行に収まらない大きな文字では、印を名前の下の行へ送る（印が名前の幅を取ると、名前が1文字ずつ折れる）
+    /// アクセシビリティの大きさの文字では、印を名前の下の行へ送る（印が名前の幅を取ると、名前が1文字ずつ折れる）
     private func ingredientRow(_ ingredient: Ingredient) -> some View {
         let name = Text(ingredient.name)
         let badge = OutlinedBadge.nutritionLabel
             .accessibilityIdentifier("nutrition-label-badge")
         return HStack(spacing: 8) {
             if ingredient.nutrientSource.kind == .nutritionLabel {
-                // DESIGN.md の Layout（間隔は標準に任せる）から外れて数値を渡す。ItemWrappingLayout は既定の間隔を持たないので、食事の画面の料理の行とそろえる
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        name.fixedSize()
-                        badge.fixedSize()
-                    }
+                // 収まるかで選ぶ（ViewThatFits）と、量の欄と幅を分け合うため標準の文字でも送られる。
+                // 優先して幅を取ると量の欄が細る。文字の大きさで選ぶ
+                if dynamicTypeSize.isAccessibilitySize {
+                    // DESIGN.md の Layout（間隔は標準に任せる）から外れて数値を渡す。ItemWrappingLayout は既定の間隔を持たないので、食事の画面の料理の行とそろえる
                     ItemWrappingLayout(spacing: 8, lineSpacing: 2) {
                         name
                         badge
                     }
+                } else {
+                    name
+                    badge.fixedSize()
                 }
-                // 量の欄も幅を伸び縮みするので、優先しないと幅を半分ずつ分け、標準の文字でも印が次の行へ送られる
-                .layoutPriority(1)
             } else {
                 name
             }
