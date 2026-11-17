@@ -386,6 +386,59 @@ describe("体重記録の同期", () => {
     });
   });
 
+  describe("出どころの名前とバンドル ID が 255 字より長い、取り込んだ体重記録を作る書き込みを送ったとき", () => {
+    let results: PushResults["results"];
+    beforeEach(async () => {
+      const write = createWeightRecordWrite({
+        weightRecord: {
+          imported: {
+            // 絵文字は UTF-16 では2つに数えられる。コードポイントで切り、字の途中で切らない
+            sourceAppName: "🍚".repeat(256),
+            sourceBundleId: "a".repeat(256),
+            healthkitSampleUuid: generateRecordId(),
+          },
+        },
+      });
+      ({ results } = await (
+        await pushSyncWrites(sessionToken, { writes: [write] })
+      ).json<PushResults>());
+    });
+
+    test("当てたと返すこと", () => {
+      expect(results.map(({ result }) => result)).toEqual(["applied"]);
+    });
+
+    test("取りに行くと、255 字（コードポイント）までに切った出どころが返ること", async () => {
+      const pulled = await pullWeightRecordChanges(sessionToken);
+      expect(pulled.changes[0]?.record["imported"]).toMatchObject({
+        sourceAppName: "🍚".repeat(255),
+        sourceBundleId: "a".repeat(255),
+      });
+    });
+  });
+
+  describe("バンドル ID に対になっていないサロゲートが 255 字より多く並んだ、取り込んだ体重記録を作る書き込みを送ったとき", () => {
+    beforeEach(async () => {
+      const write = createWeightRecordWrite({
+        weightRecord: {
+          imported: {
+            sourceAppName: "Withings",
+            sourceBundleId: "\ud83c".repeat(256),
+            healthkitSampleUuid: generateRecordId(),
+          },
+        },
+      });
+      await pushSyncWrites(sessionToken, { writes: [write] });
+    });
+
+    test("取りに行くと、置き換えの字（U+FFFD）にしてから 255 字までに切ったバンドル ID が返ること", async () => {
+      const pulled = await pullWeightRecordChanges(sessionToken);
+      expect(pulled.changes[0]?.record["imported"]).toMatchObject({
+        sourceBundleId: "\ufffd".repeat(255),
+      });
+    });
+  });
+
   describe("体重が 20.0 kg 未満の作る書き込みを送ったとき", () => {
     let response: Response;
     beforeEach(async () => {
