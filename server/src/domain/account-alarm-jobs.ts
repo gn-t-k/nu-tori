@@ -1,6 +1,8 @@
 import { advanceEstimations } from "../estimation/domain/advance-estimations";
 import { computeNextEstimationJobAt } from "../estimation/domain/begin-estimation-attempts";
 import type { EstimationProvider } from "../estimation/domain/estimation-provider";
+import { computeUndeclaredMealPhotoExpiryAt } from "../meal/domain/compute-undeclared-meal-photo-expiry-at";
+import { deleteExpiredUndeclaredMealPhotos } from "../meal/domain/delete-expired-undeclared-meal-photos";
 import { deleteLeftoverMealPhotoFiles } from "../meal/domain/delete-leftover-meal-photo-files";
 import type { MealPhotoArchive } from "../meal/domain/meal-photo-archive";
 import { advanceReplies } from "../reply/domain/advance-replies";
@@ -92,6 +94,21 @@ export const accountAlarmJobs: readonly AlarmJob<
     // 消し残しがあれば今すぐ
     computeNextAt: (stores, now) =>
       stores.mealPhoto.findLeftoverPhotoIds().length > 0 ? now : undefined,
+  },
+  // 食事が届かないまま期限を過ぎた写真の控えの取り消し
+  {
+    advance: (stores, deps) =>
+      deleteExpiredUndeclaredMealPhotos(stores.mealPhoto, deps.archive, new Date()).then(
+        () => ({ result: "advanced", report: emptyReport }),
+        // 消し残しの消し直しと同じく、Cloudflare のアラームのやり直しに任せる
+        (error: unknown) => ({ result: "left_to_alarm_retry", error, report: emptyReport }),
+      ),
+    computeNextAt: (stores) =>
+      findEarliest(
+        stores.mealPhoto
+          .findUndeclaredReceipts()
+          .map(({ receivedAt }) => computeUndeclaredMealPhotoExpiryAt(receivedAt)),
+      ),
   },
 ];
 

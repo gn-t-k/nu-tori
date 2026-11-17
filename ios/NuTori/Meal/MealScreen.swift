@@ -363,6 +363,7 @@ struct MealScreen: View {
                     .onAppear {
                         focusesNewDishName = true
                     }
+                    .dishNameLimit(typed: newDishName) { newDishName = $0 }
                     .onChange(of: focusesNewDishName) { _, focused in
                         if !focused {
                             finishAddingDish()

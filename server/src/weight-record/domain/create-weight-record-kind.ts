@@ -73,10 +73,27 @@ const decideCreate = (
     addedChanges: [],
     usageEvents: [],
     commit: () => {
-      store.insert({ ...weightRecord, version: 1 });
+      store.insert({ ...weightRecord, imported: clipSource(weightRecord.imported), version: 1 });
     },
   };
 };
+
+// 出どころの名前とバンドル ID の、保存する長さの上限（コードポイント）。バンドル ID は Apple の決まりで 155 字まで
+const maximumSourceTextLength = 255;
+
+// 取り込んだ体重記録の出どころは、上限までに切って保存する。断ると、端末が同じサンプルを取り込み直して送り続ける
+const clipSource = (imported: WeightRecord["imported"]): WeightRecord["imported"] =>
+  imported === undefined
+    ? undefined
+    : {
+        ...imported,
+        sourceAppName: clipText(imported.sourceAppName),
+        sourceBundleId: clipText(imported.sourceBundleId),
+      };
+
+// 対になっていないサロゲートは、保存すると別の字に置き換わって数が変わるので、先に置き換えてから切る
+const clipText = (text: string): string =>
+  Array.from(text.toWellFormed()).slice(0, maximumSourceTextLength).join("");
 
 const decideUpdate = (
   dependencies: Dependencies,

@@ -72,6 +72,10 @@ final class EditMealUITests: XCTestCase {
         let newName = app.textFields["meal-add-dish-name"]
         XCTAssertTrue(newName.waitForExistence(timeout: 5))
         newName.tap()
+        // 名前の欄には、上限の 100 字より先の字が入らない
+        newName.typeText(String(repeating: "a", count: 101))
+        XCTAssertEqual((newName.value as? String)?.count, 100)
+        newName.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 100))
         newName.typeText("味噌汁\n")
         let misoSoup = app.mealDish(named: "味噌汁")
         XCTAssertTrue(misoSoup.waitForExistence(timeout: 5))

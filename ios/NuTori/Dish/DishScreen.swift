@@ -99,7 +99,8 @@ struct DishScreen: View {
                     valueField(
                         TextField("料理の名前", text: draft(.name, shown: contents.dish.name))
                             .submitLabel(.done)
-                            .focused($focusedField, equals: .name),
+                            .focused($focusedField, equals: .name)
+                            .dishNameLimit(typed: drafts[.name]) { drafts[.name] = $0 },
                         editable: offer.editsNameAndQuantity, identifier: "dish-name")
                 }
                 if let note = offer.progressNote {

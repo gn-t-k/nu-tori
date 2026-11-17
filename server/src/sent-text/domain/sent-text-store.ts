@@ -15,6 +15,10 @@ export type SentTextStore = {
     classifiedAt: Date;
     result: SentTextClassification;
   }) => void;
+  // 読み分けで提供元を呼ぶこと。呼ぶ前に書く
+  insertClassificationCall: (call: { id: RecordId; sentTextId: RecordId; calledAt: Date }) => void;
+  // after より後に、読み分けで提供元を呼んだ回数
+  countClassificationCallsAfter: (after: Date) => number;
   // その文章から作った、いまある文章の食事
   findMealIds: (sentTextId: RecordId) => RecordId[];
   // 会話として送り直したこと。文章は控えの record_id。消した食事の削除の印も、同じ控えで書く

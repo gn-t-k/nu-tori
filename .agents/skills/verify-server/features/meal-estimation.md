@@ -30,10 +30,13 @@ Preconditions:
 - **撮った食事を送る。** `m=$($D uuid); p=$($D uuid); now=$(date +%s)000` として、`$D push "$run" meal "[{\"type\":\"create_meal\",\"meal\":{\"id\":\"$m\",\"eatenAt\":$((now-60000)),\"eatenAtUtcOffsetSeconds\":32400,\"sentAt\":$now,\"sentTimeZone\":\"Asia/Tokyo\",\"entryMethod\":\"captured\",\"photos\":[{\"id\":\"$p\"}]}}]"` を送る。`applied` で、取りに行くと `$m` の `meal_estimation_status` が `awaiting_photos`
 - **写真の控えを送る。** `$D call "$run" meal PUT /v1/meal-photos/$p --body-file server/e2e/photos/oyakodon.jpg --content-type image/jpeg` を送る。状態コード `204`
 - **写真の控えを取りに行く。** `$D call "$run" meal GET /v1/meal-photos/$p --out "$run/evidence/photo.jpg"` を送る。状態コード `200` で、`file "$run/evidence/photo.jpg"` が JPEG（端末が送った縮小版のまま）
+- **JPEG でない中身を断る。** `printf 'JPEG ではない' > "$run/evidence/not-jpeg.bin"` として、`$D call "$run" meal PUT /v1/meal-photos/$($D uuid) --body-file "$run/evidence/not-jpeg.bin" --content-type image/jpeg` を送る。状態コード `415`
+- **食事より先に届く写真の数の上限。** `$D sign-in "$run" photos` のアカウントで、`for i in $(seq 100); do $D call "$run" photos PUT /v1/meal-photos/$($D uuid) --body-file server/e2e/photos/oyakodon.jpg --content-type image/jpeg; done` を送る。どれも `204`。続けて同じ要求をもう1回送ると `429`。そのあと `create_meal` を先に送った写真の控えを送ると `204`
 - **推定が進む。** 写真の控えが届くと `estimating` になる。5 秒おきに `$D pull "$run" meal | jq -c --arg m "$m" '[.[] | select(.kind=="meal_estimation_status" and .record.mealId==$m) | .record.status] | last'` を読む。`estimating` を経て `estimated` になり、`dish` と `ingredient` の記録が `$m` に届く。鍵の無い回では `estimating` のまま
 - **推定の失敗の理由を読む。** `$D call "$run" meal GET /v1/e2e/meals/$m/last-estimation-attempt --e2e` を送る。鍵の無い回では `{"lastEndedAttempt":{"result":"provider_error","errorType":"authentication_error"}}`（Anthropic まで届いた）
 - **撮っておいた写真。** `entryMethod` を `picked` にして、食事と写真の控えを送る。同じく `estimating` に進む
-- **料理の名前を直す。** 推定できた料理の ID を `d` として、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"親子丼（大盛り）\"}]"` を送る。`applied` で、取りに行くと `$d` の最後の `dish` の名前が変わっている
+- **上限より長い名前に直す。** 推定できた料理の ID を `d`、`long=$(printf 'あ%.0s' $(seq 101))` として、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"$long\"}]"` を送る。`rejected` で理由が `out_of_range`、取りに行っても `$d` の名前は変わらない
+- **料理の名前を直す。** `$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"親子丼（大盛り）\"}]"` を送る。`applied` で、取りに行くと `$d` の最後の `dish` の名前が変わっている
 - **サブスクリプションを待っている。** `$D sign-in "$run" expired --as-of "$(date -u -d '-60 days' +%FT%TZ)"` のアカウントで撮った食事を送る。写真の控えを送ったあと、`meal_estimation_status` が `awaiting_subscription`（鍵が無くても確かめられる）
 - **消す。** `$D push "$run" meal "[{\"type\":\"delete_meal\",\"mealId\":\"$m\"}]"` を送る。`applied` で、取りに行くと `$m` の変更が `meal_deletion` と `meal_estimation_status_deletion`（どちらも `record` は空）になる。推定できた食事なら、その料理の `dish_deletion` と材料の `ingredient_deletion` も届く。名前を直した料理なら `dish_estimation_status_deletion` も届く（直していない料理には届かない）
 
@@ -41,5 +44,8 @@ Preconditions:
 
 - 鍵の無い回の推定は、`authentication_error` の失敗を繰り返し、`estimating` のまま止まって見える。壊れたと読まない。結果は「確かめていない」と書き、merge のあとの `main-flow-on-development` に任せる
 - 写真の控えは、食事より先に届いてもよく、消した食事の写真にも `204` を返す。`204` だけで写真が食事についたと読まず、推定の状態が `estimating` に進むかを見る
+- 24時間に受け取る写真の数の上限は、届くまでの要求が回数の歯止めで数分かかるので通さない。食事が届かないまま期限を過ぎた写真の控えの取り消しは、手元では時刻を動かせないので通せない（どちらも、確かめる場所は SKILL.md の「確かめられないとき」）
+- `429` は、アカウントごとの回数の歯止め（1分に 120 回）でも返る。「食事より先に届く写真の数の上限」の項目は、新しいアカウントで1回だけ通し、やり直すときは別の名前でサインインし直す。101 回目より前に `429` が出たら、回数の歯止めと読む
 - 推定は Durable Object のアラームで進むので、送った直後の取りに行く要求にはまだ出ない。固定の時間でなく、状態が変わるまで読む
 - 料理の名前を直すのは推定できた料理だけ。鍵の無い回では料理ができないので、この入口は確かめられない
+- 「上限より長い名前に直す」は「料理の名前を直す」より先に送る。名前を直した料理は、推定し直しが終わるまで `awaiting_estimation` で断られ、`out_of_range` まで届かない
