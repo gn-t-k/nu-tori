@@ -22,7 +22,7 @@
 
 Preconditions:
 
-- なし（API の場面が、サインイン済みのアカウントと記録を作る。「直す」のほかの行の場面は、昨日 72.6 kg の記録で開く）
+- なし（アカウント `signed-in` と API の場面が、サインイン済みの状態と記録を作る。「直す」のほかの行の API の場面は、昨日 72.6 kg の記録で開く）
 
 - **入力欄から記録する。** `$S/ui-test.sh RecordWeightFromComposerUITests`。72.6 kg から 0.2 kg 減らして記録すると、タイムラインに 72.4 kg が出て、シートが閉じ、受け付けなかった1行は出ない
 - **入力欄から記録する（手で）。** `$S/launch.sh "$run" signed-in previous-day` で開き、`wait_for_ui` で `composer-weight` を待って `shot.sh "$run" weight-before`。今日の丸（`ring-2026-10-05`）の値が「体重の記録なし」。`composer-weight` を押し、シートの「0.1 kg 減らす」を2回押して、シートの「体重」の値が 72.4 kg になったら、シートの「記録」を押す。`wait_for_ui` で「記録」が `gone` になるのを待ち、`shot.sh "$run" weight-recorded`。タイムラインに昨日の「7:12 72.6 kg」と今日の「6:30 72.4 kg」の `weight-row` が並び、今日の丸の値が「体重の記録あり」になり、`rejected-weight-line` は無い
