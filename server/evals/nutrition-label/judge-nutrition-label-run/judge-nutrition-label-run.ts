@@ -91,7 +91,10 @@ const judgeDish = (dish: AnswerDish, expectedDish: ExpectedDish): RunVerdict => 
         }
       } else if (total.type !== "exactly") {
         return failed(`「${ingredient.name}」の${label}が不明（表示 ${expectedValue}）`);
-      } else if (Math.abs(total.value - expectedValue) > allowedDifference) {
+      } else if (
+        Math.abs(total.value - expectedValue) >
+        allowedDifferences[nutrient] + floatSlack
+      ) {
         return failed(
           `「${ingredient.name}」の${label} ${formatAmount(total.value)}（表示 ${expectedValue}）`,
         );
@@ -101,8 +104,18 @@ const judgeDish = (dish: AnswerDish, expectedDish: ExpectedDish): RunVerdict => 
   return passed;
 };
 
-// 丸めの差（表示の値の読み方と、量の掛け割り）を見込む
-const allowedDifference = 1;
+// 丸めの差（量の掛け割り）を見込む。表示の一番小さい桁に合わせ、kcal・P・F・C は 1、食塩相当量は 0.1 まで。
+// 食塩相当量は 2〜6 g と小さく、1 まで許すと「2.4」を「1.4」と読むような読み違いが通るため
+const allowedDifferences: Readonly<Record<(typeof comparedNutrients)[number], number>> = {
+  energy_kcal: 1,
+  protein_g: 1,
+  fat_g: 1,
+  carbohydrate_g: 1,
+  salt_equivalent_g: 0.1,
+};
+
+// 6.1 - 6.0 が 0.1 をわずかに超えるような、小数の計算の誤差を落とさない
+const floatSlack = 1e-9;
 
 const nutrientLabels: Readonly<Record<(typeof comparedNutrients)[number], string>> = {
   energy_kcal: "エネルギー",

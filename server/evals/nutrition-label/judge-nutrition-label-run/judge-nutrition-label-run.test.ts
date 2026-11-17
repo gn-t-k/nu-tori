@@ -68,7 +68,7 @@ describe("表示の読み取りの1回分の答えを正解と比べる", () => 
       };
     });
 
-    describe("表示の材料1つで、値が ±1 に収まるとき", () => {
+    describe("表示の材料1つで、値が許す差に収まるとき", () => {
       let answer: IdentifiedDishes;
       beforeEach(() => {
         answer = {
@@ -144,6 +144,37 @@ describe("表示の読み取りの1回分の答えを正解と比べる", () => 
         expect(judgeNutritionLabelRun(answer, labeledCase)).toEqual({
           type: "failed",
           reason: "「とりそばラーメン」のエネルギー 480（表示 500）",
+        });
+      });
+    });
+
+    describe("食塩相当量が表示から 0.1 より離れたとき", () => {
+      let answer: IdentifiedDishes;
+      beforeEach(() => {
+        answer = {
+          dishes: [
+            {
+              name: "とりそばラーメン",
+              quantity: 1,
+              unit: "食",
+              ingredients: [
+                {
+                  ...ramen,
+                  nutritionLabel: {
+                    ...ramenLabel,
+                    nutrients: { ...ramenLabel.nutrients, salt_equivalent_g: 5.1 },
+                  },
+                },
+              ],
+            },
+          ],
+        };
+      });
+
+      test("落ち、理由に答えと表示の値が出ること", () => {
+        expect(judgeNutritionLabelRun(answer, labeledCase)).toEqual({
+          type: "failed",
+          reason: "「とりそばラーメン」の食塩相当量 5.1（表示 6.1）",
         });
       });
     });
