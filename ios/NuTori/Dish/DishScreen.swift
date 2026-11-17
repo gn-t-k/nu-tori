@@ -186,6 +186,8 @@ struct DishScreen: View {
                         badge
                     }
                 }
+                // 量の欄も幅を伸び縮みするので、優先しないと幅を半分ずつ分け、標準の文字でも印が次の行へ送られる
+                .layoutPriority(1)
             } else {
                 name
             }
