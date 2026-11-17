@@ -166,14 +166,26 @@ struct DishScreen: View {
     }
 
     /// 材料の名前と量。量は Primary で、押すとその場で数字のキーボードが出る。材料の名前は直せない。
-    /// 栄養の出どころが栄養成分表示の材料は、名前に「表示」の印を添える（推定の印は添えない。量の推定は料理の量の欄の印で分かる）
+    /// 栄養の出どころが栄養成分表示の材料は、名前に「表示」の印を添える（推定の印は添えない。量の推定は料理の量の欄の印で分かる）。
+    /// 名前と同じ行に収まらない大きな文字では、印を名前の下の行へ送る（印が名前の幅を取ると、名前が1文字ずつ折れる）
     private func ingredientRow(_ ingredient: Ingredient) -> some View {
-        HStack(spacing: 8) {
-            Text(ingredient.name)
+        let name = Text(ingredient.name)
+        let badge = OutlinedBadge.nutritionLabel
+            .accessibilityIdentifier("nutrition-label-badge")
+        return HStack(spacing: 8) {
             if ingredient.nutrientSource.kind == .nutritionLabel {
-                OutlinedBadge.nutritionLabel
-                    .fixedSize()
-                    .accessibilityIdentifier("nutrition-label-badge")
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        name.fixedSize()
+                        badge.fixedSize()
+                    }
+                    ItemWrappingLayout(spacing: 8, lineSpacing: 2) {
+                        name
+                        badge
+                    }
+                }
+            } else {
+                name
             }
             TextField(
                 "",
