@@ -25,7 +25,7 @@ Preconditions:
 
 - **送ると返事が届く・送り直す。** `$S/ui-test.sh SendTextWithConversationScenarioUITests`。プリセットを送ると `reply-reading` と吹き出しが出て、返事（「今日は朝ごはんから」）が届くと読んでいますが消える。「昼は親子丼」を送るとカードがつながって親子丼になり、会話として送り直すとカードが消えて返事（「親子丼の話」）が届く。「次の食事は？」は作れなかった1行になり、送り直すと返事（「野菜の多い定食」）が届く
 - **ひらがなを確定して送る。** `$S/ui-test.sh SendConfirmedKanaTextUITests`。確定してから送ると、書く欄が空に戻る
-- **コピーと選択。** `$S/ui-test.sh CopyAndSelectUtteranceUITests`。吹き出しをコピーすると書く欄に貼り付けられる。返事と吹き出しでテキストを選択を選ぶと、その場で選べる欄に変わり、返事は余白を押すと戻る。全体が選ばれたかはテストが確かめず、残す画面（「全体を選んだ返事」「全体を選んだ吹き出し」）で見る
+- **コピーと選択。** `$S/ui-test.sh CopyAndSelectUtteranceUITests`。吹き出しをコピーすると書く欄に貼り付けられる。返事と吹き出しでテキストを選択を選ぶと、その場で選べる欄に変わり、返事は余白を押すと戻る。全体が選ばれたかはテストが確かめないので、回のフォルダの `evidence/attachments/` の画面（「全体を選んだ返事」「全体を選んだ吹き出し」）で見る
 - **手で見るとき。** `$S/launch.sh "$run" signed-in conversation` で開き、プリセット（`preset-chip` の「ここまでの食事のフィードバック」）を押して書く欄に入れ、`composer-send` を押す。「読んでいます…」のあと、送ってから10秒ほどで返事（`reply`、「今日は朝ごはんから」）が届く。返事の文は2つの要素に出るので、`wait_for_ui` は `textContains` でなく `identifier: "reply"` で待つ
 
 ## Gotchas
