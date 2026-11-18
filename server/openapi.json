@@ -1412,8 +1412,8 @@
               },
               "eatenAt": {
                 "type": "integer",
-                "minimum": -8640000000000000,
-                "maximum": 8640000000000000,
+                "minimum": -8639999395200000,
+                "maximum": 8639999395200000,
                 "description": "UNIX 時刻のミリ秒（UTC）"
               },
               "eatenAtUtcOffsetSeconds": {
@@ -1423,8 +1423,8 @@
               },
               "sentAt": {
                 "type": "integer",
-                "minimum": -8640000000000000,
-                "maximum": 8640000000000000,
+                "minimum": -8639999395200000,
+                "maximum": 8639999395200000,
                 "description": "UNIX 時刻のミリ秒（UTC）"
               },
               "sentTimeZone": {
@@ -1520,8 +1520,8 @@
           },
           "eatenAt": {
             "type": "integer",
-            "minimum": -8640000000000000,
-            "maximum": 8640000000000000,
+            "minimum": -8639999395200000,
+            "maximum": 8639999395200000,
             "description": "UNIX 時刻のミリ秒（UTC）"
           }
         },
@@ -1562,8 +1562,8 @@
               },
               "issuedAt": {
                 "type": "integer",
-                "minimum": -8640000000000000,
-                "maximum": 8640000000000000,
+                "minimum": -8639999395200000,
+                "maximum": 8639999395200000,
                 "description": "UNIX 時刻のミリ秒（UTC）"
               },
               "timeZone": {
@@ -1615,8 +1615,8 @@
             "properties": {
               "respondedAt": {
                 "type": "integer",
-                "minimum": -8640000000000000,
-                "maximum": 8640000000000000,
+                "minimum": -8639999395200000,
+                "maximum": 8639999395200000,
                 "description": "UNIX 時刻のミリ秒（UTC）"
               },
               "timeZone": {
@@ -1666,8 +1666,8 @@
               },
               "sentAt": {
                 "type": "integer",
-                "minimum": -8640000000000000,
-                "maximum": 8640000000000000,
+                "minimum": -8639999395200000,
+                "maximum": 8639999395200000,
                 "description": "送る操作をした時刻。UNIX 時刻のミリ秒（UTC）"
               },
               "timeZone": {
@@ -1774,8 +1774,8 @@
               },
               "measuredAt": {
                 "type": "integer",
-                "minimum": -8640000000000000,
-                "maximum": 8640000000000000,
+                "minimum": -8639999395200000,
+                "maximum": 8639999395200000,
                 "description": "UNIX 時刻のミリ秒（UTC）"
               },
               "timeZone": {
@@ -1863,8 +1863,8 @@
               },
               "measuredAt": {
                 "type": "integer",
-                "minimum": -8640000000000000,
-                "maximum": 8640000000000000,
+                "minimum": -8639999395200000,
+                "maximum": 8639999395200000,
                 "description": "UNIX 時刻のミリ秒（UTC）"
               },
               "timeZone": {

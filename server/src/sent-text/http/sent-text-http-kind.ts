@@ -5,6 +5,7 @@ import type { SyncWrite } from "../../domain/sync-write";
 import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import { writeIdSchema } from "../../http/sync-routes/write-id-schema";
 import type { SentText } from "../domain/sent-text";
+import { maximumAcceptedTimestamp } from "../../domain/maximum-accepted-timestamp";
 
 // 取りに行く変更の record の形。応答の SyncChange は種類によらず record を任意のオブジェクトで持つので、応答のスキーマからは指さない
 const sentTextRecordSchema = z
@@ -17,9 +18,6 @@ const sentTextRecordSchema = z
   .openapi({
     description: "kind が sent_text の変更の record。送った文章は消えない",
   });
-
-// Date が表せる範囲。これを超える時刻は、日付の計算で例外になる
-const maximumTimestamp = 8.64e15;
 
 const createSentTextWriteSchema = z
   .object({
@@ -34,8 +32,8 @@ const createSentTextWriteSchema = z
       sentAt: z
         .number()
         .int()
-        .min(-maximumTimestamp)
-        .max(maximumTimestamp)
+        .min(-maximumAcceptedTimestamp)
+        .max(maximumAcceptedTimestamp)
         .openapi({ description: "送る操作をした時刻。UNIX 時刻のミリ秒（UTC）" }),
       timeZone: z
         .string()

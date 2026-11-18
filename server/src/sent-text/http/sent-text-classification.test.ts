@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
 import { addDays } from "../../domain/add-days";
+import { maximumAcceptedTimestamp } from "../../domain/maximum-accepted-timestamp";
 import { generateRecordId } from "../../domain/record-id";
 import { mockCreateEstimationProviderOk } from "../../estimation/durable-object/create-estimation-provider/create-estimation-provider.mock";
 import { insertCountedEstimations } from "../../estimation/http/testing/insert-counted-estimations";
@@ -114,6 +115,37 @@ describe("読み分け", () => {
 
     test("返事の依頼を作らないこと", async () => {
       expect(await readReplyRequests()).toEqual([]);
+    });
+  });
+
+  // 土地の時刻と数える日を出す計算が、受け付ける範囲の端でも Date の外に出ないこと（#1062）
+  describe("受け付ける時刻の上限に、UTC からいちばん進んだ土地で送った文章を、食事と読み分けたとき", () => {
+    beforeEach(async () => {
+      mockCreateConversationProviderOk({ classification: "meal" });
+      mockCreateEstimationProviderOk();
+      await sendText({ sentAt: maximumAcceptedTimestamp, timeZone: "Pacific/Kiritimati" });
+      await runEstimationAlarm(accountId);
+    });
+
+    test("送った時刻の文章の食事が1つ届くこと", async () => {
+      expect((await pullRecordsOf("meal")).map(({ eatenAt }) => eatenAt)).toEqual([
+        maximumAcceptedTimestamp,
+      ]);
+    });
+  });
+
+  describe("受け付ける時刻の下限に、UTC からいちばん遅れた土地で送った文章を、食事と読み分けたとき", () => {
+    beforeEach(async () => {
+      mockCreateConversationProviderOk({ classification: "meal" });
+      mockCreateEstimationProviderOk();
+      await sendText({ sentAt: -maximumAcceptedTimestamp, timeZone: "Pacific/Pago_Pago" });
+      await runEstimationAlarm(accountId);
+    });
+
+    test("送った時刻の文章の食事が1つ届くこと", async () => {
+      expect((await pullRecordsOf("meal")).map(({ eatenAt }) => eatenAt)).toEqual([
+        -maximumAcceptedTimestamp,
+      ]);
     });
   });
 
