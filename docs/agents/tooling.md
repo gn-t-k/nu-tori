@@ -59,11 +59,10 @@ worktree やセッションを並べるときは、pstack の `principle-separat
 
 ## LLM の評価の鍵
 
-LLM の評価（`server/evals/`）は、開発用のワークスペースの Anthropic のキーで回す。読み方は `server/evals/read-eval-api-key.ts` の1か所にあり、環境変数 `NU_TORI_ANTHROPIC_API_KEY` を先に、無ければ Mac のキーチェーンを読む（#575）。
+LLM の評価（`server/evals/`）の鍵 `NU_TORI_ANTHROPIC_API_KEY` は、Mac とクラウドで置き場が違う（#575）。どのワークスペースのキーかは `docs/agents/server-llm.md` の「鍵と提供元」に、読み方と、無いときに止まる文言は `server/evals/read-eval-api-key.ts` にある。
 
-- Mac: 開発者が `security add-generic-password -s nu-tori-eval -a anthropic -w` でキーチェーンに置く
-- Claude Code on the web: 環境 `nu-tori` の環境変数に置いてある。プロジェクトの既定の環境を `nu-tori` にしてあるので、プロジェクトのスレッドとその子のサブエージェントは鍵を読める。ほかの環境で立ったセッションは読めないので、評価を回すセッションは `nu-tori` で立てる
-- 鍵の無い場所で回すと、置き場を書いた文言で止まる。そのときは開発者に、上のどちらかを頼む
+- Mac: 開発者がキーチェーンに置く（置くコマンドは、止まったときの文言にある）
+- Claude Code on the web: 環境 `nu-tori` の環境変数に置いてある。プロジェクトの既定の環境を `nu-tori` にしてあるので、プロジェクトのスレッドとその子のサブエージェントは鍵を読める。ほかの環境で立ったセッションは読めないので、評価を回すセッションは `nu-tori` で立てる。止まったときの文言は環境に触れないので、クラウドで止まったら、まず環境を確かめる
 
 ## Sentry を読む
 
