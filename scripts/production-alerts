@@ -37,7 +37,9 @@ const main = () => {
   const operands = rest.filter((arg) => arg !== "--dry-run");
   if (command === "sentry" && operands.length === 0) return alertAndResolve(dryRun);
   if (command === "resolve" && operands.length === 1 && /^[1-9][0-9]*$/.test(operands[0])) {
-    resolveClosedIssue(readIssue(operands[0]), { dryRun, strict: true });
+    const result = resolveClosedIssue(readIssue(operands[0]), { dryRun });
+    // 閉じたときの回は、解決の種類が決まっていないプロジェクトの課題で落として、開発者に気づかせる
+    if (result.kind === "undecided") throw new ExpectedFailure(result.message);
     return;
   }
   throw new ExpectedFailure(usage);
@@ -67,8 +69,10 @@ const alertAndResolve = (dryRun) => {
       // 解決の印がある Issue は、毎時のログに出さずに飛ばす
       if (readLatestState(issue) === resolvedState) continue;
       if (writeLimitReached()) return;
+      const result = resolveClosedIssue(issue, { dryRun });
+      if (result.kind === "written") writes += 1;
       // 解決の種類が決まっていないプロジェクトの課題は、飛ばして下の知らせを続ける
-      if (resolveClosedIssue(issue, { dryRun, strict: false })) writes += 1;
+      if (result.kind === "undecided") console.log(`何もしない: ${result.message}（#${issue.number}）`);
     }
   } else {
     // 解決のトークンを置く前も、知らせは止めない
@@ -107,35 +111,42 @@ const alertAndResolve = (dryRun) => {
 };
 
 // 完了で閉じた、印を信じてよい Issue の Sentry の課題を解決にして、Issue に resolved の印を付ける。何度呼んでも、解決と印は1回ずつになる。
-// 書いたら（印のコメントを足したら）true を返す。strict のときは、解決の種類が決まっていないプロジェクトの課題で止まる
-const resolveClosedIssue = (issue, { dryRun, strict }) => {
+// 印のコメントを足したら written、何もしなかったら skipped、解決の種類が決まっていないプロジェクトの課題なら undecided を返す。undecided で止めるかは呼ぶ側が決める
+const resolveClosedIssue = (issue, { dryRun }) => {
   const shortId = trusted(issue) && issue.body?.match(issueMarkPattern)?.[1];
   if (!shortId) {
     console.log(`何もしない: #${issue.number} に信じてよい Sentry の印が無い`);
-    return false;
+    return { kind: "skipped" };
   }
   if (issue.state !== "closed" || issue.state_reason !== "completed") {
     console.log(`何もしない: #${issue.number} は完了で閉じていない`);
-    return false;
+    return { kind: "skipped" };
   }
   if (readLatestState(issue) === resolvedState) {
     console.log(`何もしない: #${issue.number} は解決の印が付いている`);
-    return false;
+    return { kind: "skipped" };
   }
   if (!dryRun && !resolveTokenGiven()) throw new ExpectedFailure("NU_TORI_SENTRY_RESOLVE_TOKEN が無い");
   const plan = planResolution(readSentryIssue(shortId));
-  if (plan.action === "undecided" && strict) throw new ExpectedFailure(`${shortId} は${plan.reason}`);
-  if (plan.action === "skip" || plan.action === "undecided") {
-    console.log(`何もしない: ${shortId} は${plan.reason}（#${issue.number}）`);
-    return false;
-  }
-  if (plan.action === "resolve") {
-    console.log(`解決にする: ${shortId}（${plan.label}、#${issue.number}）`);
-    if (!dryRun) {
-      sentry(["issue", "resolve", shortId, ...(plan.in ? ["--in", plan.in] : []), "--json", "--fields", "status"], {
-        resolve: true,
-      });
-    }
+  switch (plan.action) {
+    case "undecided":
+      return { kind: "undecided", message: `${shortId} は${plan.reason}` };
+    case "skip":
+      console.log(`何もしない: ${shortId} は${plan.reason}（#${issue.number}）`);
+      return { kind: "skipped" };
+    case "resolve":
+      console.log(`解決にする: ${shortId}（${plan.label}、#${issue.number}）`);
+      if (!dryRun) {
+        sentry(["issue", "resolve", shortId, ...(plan.in ? ["--in", plan.in] : []), "--json", "--fields", "status"], {
+          resolve: true,
+        });
+      }
+      break;
+    case "mark":
+      // すでに解決済みなので、印だけを付ける
+      break;
+    default:
+      throw new Error(`知らない action: ${plan.action}`);
   }
   console.log(`コメントする: #${issue.number}（${shortId} が ${resolvedState}）`);
   if (!dryRun) {
@@ -143,7 +154,7 @@ const resolveClosedIssue = (issue, { dryRun, strict }) => {
       body: resolvedCommentBody(shortId, plan),
     });
   }
-  return true;
+  return { kind: "written" };
 };
 
 // 毎時の回で拾い直す Issue。閉じた理由が予定なし（wontfix・重複）なら Sentry に触らない
