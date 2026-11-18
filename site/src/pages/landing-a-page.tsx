@@ -93,6 +93,9 @@ export const landingAPage = createLandingVariantPage({
                 写真を送ると、料理と材料と量を読み取って栄養を出します。撮り忘れたら、「
                 {forgottenMealText}」と書いて送れば、同じように記録されます。
               </p>
+              <p>
+                コンビニのラーメンやお弁当は、パッケージの栄養成分表示も一緒に写っていれば、表示の数字のとおりに記録します。
+              </p>
             </div>
             {/* 昼に撮って送ったあと、朝の記録を忘れていたのに気づいて書いて送った、アプリの画面の下のほう */}
             <div class="lp-plate app-timeline">
@@ -160,9 +163,7 @@ export const landingAPage = createLandingVariantPage({
                   </span>
                 </li>
               </ol>
-              <p class="lp-fine">
-                パッケージの栄養成分表示が写っていれば、その表示を使います。成分表に近い食品が無い材料は、値を見積もります。
-              </p>
+              <p class="lp-fine">成分表に近い食品が無い材料は、値を見積もります。</p>
               <p>写真を選ぶと、材料と量と、値の出どころが見られます。</p>
             </div>
             <div class="lp-plate">
