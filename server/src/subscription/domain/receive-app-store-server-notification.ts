@@ -47,6 +47,7 @@ export const receiveAppStoreServerNotification = (
     }
     const reversedRevocationIds = match(notification.notificationType)
       .with("REFUND_REVERSED", () => findUnreversedRevocationIds(store, notification.transaction))
+      // oxlint-disable-next-line nu-tori/no-otherwise -- Apple の通知の種類は外から来る文字列で、扱わない種類も届く
       .otherwise(() => undefined);
     if (reversedRevocationIds?.length === 0) {
       return { result: "awaiting_revocation", usageEvents: [] };
@@ -75,6 +76,7 @@ export const receiveAppStoreServerNotification = (
                 failedAt: notification.signedAt,
                 gracePeriodExpiresAt: match(notificationSubtype)
                   .with("GRACE_PERIOD", () => notification.gracePeriodExpiresAt)
+                  // oxlint-disable-next-line nu-tori/no-otherwise -- Apple の通知の副種類は外から来る文字列で、猶予期間のほかは期限を持たない
                   .otherwise(() => undefined),
               });
               return true;

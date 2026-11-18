@@ -4,7 +4,7 @@ import Testing
 
 @Suite("栄養の合計")
 struct NutrientTotalsTests {
-    // swiftlint:disable:next no_parameterized_test
+    // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
     @Test(
         "材料の合計は、値の分かる材料の分を足し、不明が混じれば以上、すべて不明なら不明になること",
         arguments: try SharedTestCases.decode(

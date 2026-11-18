@@ -60,6 +60,10 @@
                     records: [], startedOn: today, estimatedDishes: Self.oyakodon(mealId:),
                     estimateDish: Self.reestimate(dishId:name:),
                     mealEstimation: .afterEatenAtCorrected)
+            case .mealNutritionLabel:
+                return .init(
+                    records: [], startedOn: today,
+                    estimatedDishes: Self.curryWithRetortPouch(mealId:))
             case .conversation:
                 // 読んでいますを、画面の読み取りが遅い CI でも見られるよう、答えるのを5回めの取得まで待つ。5 は、NuToriCore の `RecordSyncTests` の「文章を送ったあと」の `RepliedAtFifthPull` が確かめる取得の並び（送ってすぐ、見守る要求が閉じてすぐ、そのあと3秒おきの [0, 0, 3, 6, 9] 秒）に合わせた数で、答えは送ってから9秒あとに届く。食事と読み分ける文章は、同じ5回めに読み分けが届き、その次の取得（3秒あと）で推定を終える（同じ並びを `ClassifiedAsMealAtThirdPull` が確かめる）。段取りの並びを変えたら、この数も数え直す
                 return .init(
@@ -77,7 +81,9 @@
             case .goalAchieved:
                 return weeklyReview(.achieved)
             case .subscriptionExpired:
-                return subscriptionExpired()
+                return subscriptionExpired(appAccountToken: .issues)
+            case .subscriptionExpiredTokenPending:
+                return subscriptionExpired(appAccountToken: .hangs)
             case .listingSample:
                 return listingSampleScenario(.waitsForCorrection)
             case .listingSamplePhotoEstimated:
@@ -92,7 +98,9 @@
         }
 
         /// 無料体験の最後の日を昨日にし、サブスクリプションは無い。取引を知らせると、今日から30日の月額に結びつく
-        private func subscriptionExpired() -> FakeSyncServer.Scenario {
+        private func subscriptionExpired(
+            appAccountToken: FakeSyncServer.AppAccountToken
+        ) -> FakeSyncServer.Scenario {
             // 結びついた月額の期限までの長さ。月の長さは問わないので、30日にする
             let monthlyPeriodSeconds: TimeInterval = 30 * 24 * 60 * 60
             let freeTrial = SyncedSubscriptionStatus.FreeTrial.available(
@@ -106,7 +114,8 @@
                         subscription: .subscribed(
                             plan: .monthly,
                             periodEndsAt: clock.now().addingTimeInterval(monthlyPeriodSeconds),
-                            billingGrace: .none))))
+                            billingGrace: .none))),
+                appAccountToken: appAccountToken)
         }
 
         private static let manualId = fixedId("11111111-1111-4111-8111-111111111111")
@@ -347,6 +356,37 @@
                         nutrients: [
                             "energy_kcal": 156, "protein_g": 2.5, "fat_g": 0.3,
                             "carbohydrate_g": 37.1,
+                        ])),
+            ]
+        }
+
+        /// カレーライス（ご飯 200 g は成分表、レトルトカレー 1袋は栄養成分表示）。表示の値は作り物で、1袋 180 g あたり。
+        /// 料理と材料の ID は、推定を終えたときに振る
+        nonisolated private static func curryWithRetortPouch(mealId: UUID) -> [SyncChange] {
+            let dishId = UUID()
+            return [
+                .dish(
+                    SyncedDish(
+                        id: dishId, mealId: mealId, name: "カレーライス",
+                        quantity: .init(value: 1, unit: "皿", source: .estimated),
+                        positionInMeal: 0, version: 1)),
+                .ingredient(
+                    ingredient(
+                        dishId: dishId, name: "ご飯", grams: 200, position: 0,
+                        foodNumber: "01088",
+                        nutrients: [
+                            "energy_kcal": 156, "protein_g": 2.5, "fat_g": 0.3,
+                            "carbohydrate_g": 37.1,
+                        ])),
+                .ingredient(
+                    SyncedIngredient(
+                        id: UUID(), dishId: dishId, name: "レトルトカレー", quantity: 1,
+                        quantitySource: .estimated, unit: "袋",
+                        edibleGramsPerUnit: 180, positionInDish: 1,
+                        nutrientSource: .nutritionLabel(basisGrams: 180),
+                        nutrients: [
+                            "energy_kcal": 180, "protein_g": 5.4, "fat_g": 9.0,
+                            "carbohydrate_g": 19.8,
                         ])),
             ]
         }

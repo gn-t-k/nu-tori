@@ -6,6 +6,8 @@ import UIKit
 struct AccountScreen: View {
     /// 一番上の「サブスクリプション」の行。サブスクリプションの状態がまだ届いていなければ nil で、行を出さない
     let subscription: AccountSubscriptionRow?
+    /// アカウントを削除する確かめのアラートの文
+    let deletionMessage: String
     let openPaywall: () -> Void
     /// 保存してある「利用状況を送る」
     let sendsUsageData: Bool
@@ -151,7 +153,7 @@ struct AccountScreen: View {
             }
             Button("キャンセル", role: .cancel) {}
         } message: {
-            Text("記録はすぐに消え、元に戻せません。ヘルスケアに書き込んだ体重と栄養は残ります。")
+            Text(deletionMessage)
         }
         .task {
             accountId = await actions.signedInAccountId()
@@ -161,6 +163,7 @@ struct AccountScreen: View {
     /// deletion と signOutStep は開いたときの状態。削除とサインアウトは画面の中で進むので、あとから渡し直しても変わらない
     init(
         subscription: AccountSubscriptionRow?,
+        deletionMessage: String,
         openPaywall: @escaping () -> Void,
         sendsUsageData: Bool,
         cameraAccess: CameraAccess,
@@ -173,6 +176,7 @@ struct AccountScreen: View {
         onClose: @escaping () -> Void
     ) {
         self.subscription = subscription
+        self.deletionMessage = deletionMessage
         self.openPaywall = openPaywall
         self.sendsUsageData = sendsUsageData
         self.cameraAccess = cameraAccess

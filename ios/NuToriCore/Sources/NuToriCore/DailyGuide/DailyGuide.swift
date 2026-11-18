@@ -21,15 +21,24 @@ public struct DailyGuide: Hashable, Sendable {
     /// 見直しで前の週の1日の目安から変える量の上限（±）。上限に当たった週の文に出す。正本はサーバーの `maximumWeeklyChangeKcal`
     static let weeklyChangeLimitKilocalories = 150
 
-    /// 必要な速さの上限（1週間に体重の何 % か）。上限に当たった週の文に出す。
-    /// 正本はサーバーの、減量・増量は `weeklyPaceRates` のハード案、維持は `maintenanceWeeklyRate`
+    /// 必要な速さの上限（1週間に体重の何 % か）。上限に当たった週の文に出す
     static func requiredPaceLimitPercent(_ direction: Goal.Direction) -> Double {
-        switch direction {
-        case .lose: 0.75
-        case .gain: 0.5
-        case .maintain: 0.15
-        }
+        let rate =
+            switch direction {
+            case .lose: loseRequiredPaceLimitRate
+            case .gain: gainRequiredPaceLimitRate
+            case .maintain: maintainRequiredPaceLimitRate
+            }
+        return rate * 100
     }
+
+    // scripts/check がサーバーの値と比べられるよう、% でなくサーバーと同じ割合で持つ
+    /// 正本はサーバーの `weeklyPaceRates.lose.hard`
+    private static let loseRequiredPaceLimitRate = 0.0075
+    /// 正本はサーバーの `weeklyPaceRates.gain.hard`
+    private static let gainRequiredPaceLimitRate = 0.005
+    /// 正本はサーバーの `maintenanceWeeklyRate`
+    private static let maintainRequiredPaceLimitRate = 0.0015
 
     public init(
         id: UUID,

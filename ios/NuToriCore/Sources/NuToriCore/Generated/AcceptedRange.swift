@@ -22,7 +22,7 @@ public enum AcceptedRange {
                 lowerBound: 1.0, includesLowerBound: true, upperBound: 75.0)
         case .dishNameTrimmedLength:
             AcceptedBounds(
-                lowerBound: 1.0, includesLowerBound: true, upperBound: .infinity)
+                lowerBound: 1.0, includesLowerBound: true, upperBound: 100.0)
         case .dishQuantity:
             AcceptedBounds(
                 lowerBound: 0.0, includesLowerBound: false, upperBound: .infinity)

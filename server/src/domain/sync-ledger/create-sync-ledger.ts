@@ -177,9 +177,9 @@ export const createSyncLedger = <
         commit?.(receiptId);
         return { changedRecordId: recordId, addedChanges: [] };
       })
-      .with({ result: "rejected" }, ({ commit }) => {
+      .with({ result: "rejected" }, ({ redeliveredChanges, commit }) => {
         commit?.(receiptId);
-        return { changedRecordId: undefined, addedChanges: [] };
+        return { changedRecordId: undefined, addedChanges: [...redeliveredChanges] };
       })
       .with(
         { result: "unchanged" },

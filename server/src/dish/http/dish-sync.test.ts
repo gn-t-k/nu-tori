@@ -271,6 +271,120 @@ describe("料理の同期", () => {
         });
       });
     });
+
+    // 絵文字は UTF-16 では2つに数えられる。コードポイントで数えて、端末と同じ答えにする
+    describe("上限の 100 字の、絵文字の名前の料理を足す書き込みを送ったとき", () => {
+      let results: PushResults["results"];
+      beforeEach(async () => {
+        ({ results } = await (
+          await pushSyncWrites(sessionToken, {
+            writes: [createDishWrite(mealId, { name: "🍚".repeat(100) })],
+          })
+        ).json<PushResults>());
+      });
+
+      test("当てたと返すこと", () => {
+        expect(results.map(({ result }) => result)).toEqual(["applied"]);
+      });
+    });
+
+    describe("上限より 1 字多い 101 字の名前の料理を足す書き込みを送ったとき", () => {
+      let write: ReturnType<typeof createDishWrite>;
+      let rejection: Rejection;
+      beforeEach(async () => {
+        write = createDishWrite(mealId, { name: "あ".repeat(101) });
+        rejection = await pushRejection(sessionToken, [write]);
+      });
+
+      test("範囲の外として、今の値に無いことを添えること", () => {
+        expect(rejection).toEqual({
+          result: "rejected",
+          rejectionReason: "out_of_range",
+          status: "absent",
+        });
+      });
+
+      test("料理を保存しないこと", async () => {
+        expect(
+          await readRows(accountId, `SELECT id FROM dishes WHERE id = '${write.dishId}'`),
+        ).toEqual([]);
+      });
+    });
+    describe("前後の空白を含めると上限より長い名前の料理を足す書き込みを送ったとき", () => {
+      let rejection: Rejection;
+      beforeEach(async () => {
+        rejection = await pushRejection(sessionToken, [
+          createDishWrite(mealId, { name: `${" ".repeat(100)}味噌汁` }),
+        ]);
+      });
+
+      test("範囲の外とすること", () => {
+        expect(rejection.rejectionReason).toBe("out_of_range");
+      });
+    });
+
+    describe("対になっていないサロゲートを含む名前の料理を足す書き込みを送ったとき", () => {
+      let rejection: Rejection;
+      beforeEach(async () => {
+        rejection = await pushRejection(sessionToken, [
+          createDishWrite(mealId, { name: "味噌汁\ud83c" }),
+        ]);
+      });
+
+      test("範囲の外とすること", () => {
+        expect(rejection.rejectionReason).toBe("out_of_range");
+      });
+    });
+  });
+
+  describe("推定が上限より長い名前を付けた料理の、量を直す書き込みを送ったとき", () => {
+    let results: PushResults["results"];
+    beforeEach(async () => {
+      const name = "あ".repeat(101);
+      mockCreateEstimationProviderOk({
+        identifiedDishes: {
+          dishes: [
+            {
+              name,
+              quantity: 1,
+              unit: "杯",
+              ingredients: [
+                {
+                  name: "ご飯",
+                  quantity: 200,
+                  unit: "g",
+                  edibleGrams: 200,
+                  foodCompositionQuery: "ご飯",
+                  nutritionLabel: undefined,
+                },
+              ],
+            },
+          ],
+        },
+      });
+      await recordPhotographedMeal(sessionToken);
+      await runEstimationAlarm(accountId);
+      const estimated = await pullChangesAfter(0);
+      const dishId = requireRecordId(estimated, ({ kind }) => kind === "dish");
+      const riceId = requireRecordId(estimated, ({ kind }) => kind === "ingredient");
+      ({ results } = await (
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            updateDishWrite(dishId, {
+              name,
+              quantity: {
+                value: 2,
+                proportionedIngredients: [{ ingredientId: riceId, quantity: 400 }],
+              },
+            }),
+          ],
+        })
+      ).json<PushResults>());
+    });
+
+    test("名前は変えていないので、当てたと返すこと", () => {
+      expect(results.map(({ result }) => result)).toEqual(["applied"]);
+    });
   });
 
   describe("推定できた食事の料理を直すとき", () => {
@@ -509,6 +623,28 @@ describe("料理の同期", () => {
         });
       });
 
+      describe("上限より 1 字多い 101 字の名前のとき", () => {
+        beforeEach(async () => {
+          rejection = await pushRejection(sessionToken, [
+            updateDishWrite(dishId, { name: "あ".repeat(101) }),
+          ]);
+        });
+
+        test("範囲の外として、今の値に料理を添えること", () => {
+          expect(rejection).toEqual({
+            result: "rejected",
+            rejectionReason: "out_of_range",
+            status: "value",
+          });
+        });
+
+        test("名前を変えないこと", async () => {
+          expect(
+            await readRows(accountId, `SELECT name FROM dishes WHERE id = '${dishId}'`),
+          ).toEqual([{ name: "親子丼" }]);
+        });
+      });
+
       describe("量が 0 のとき", () => {
         beforeEach(async () => {
           rejection = await pushRejection(sessionToken, [
@@ -556,6 +692,20 @@ describe("料理の同期", () => {
             rejectionReason: "out_of_range",
             status: "value",
           });
+        });
+
+        // 端末は比例させた材料の量をキャッシュに当てているので、取りに行けば今の量に戻る（#1022）
+        test("比例させた材料の今の量を、取りに行く変更に載せ直すこと", async () => {
+          expect(
+            (await pullChangesAfter(lastSequence)).map(({ kind, recordId, record }) => ({
+              kind,
+              recordId,
+              quantity: record["quantity"],
+            })),
+          ).toEqual([
+            { kind: "ingredient", recordId: chickenId, quantity: 80 },
+            { kind: "ingredient", recordId: riceId, quantity: 200 },
+          ]);
         });
       });
     });

@@ -8,7 +8,11 @@ import { useFakeClock } from "../estimation/http/testing/use-fake-clock";
 import type { SyncClientState } from "../domain/sync-client-state";
 import { enableUsageEventSending } from "../http/sync-routes/testing/enable-usage-event-sending";
 import { mockSetUserOk } from "../observability/set-user.mock";
-import { mockPostHogCaptureEndpointOk, readPostHogCapturedEvents } from "../observability/testing";
+import {
+  mockPostHogCaptureEndpointOk,
+  mockPostHogCaptureEndpointPendingOk,
+  readPostHogCapturedEvents,
+} from "../observability/testing";
 import { durableObjectTables } from "./durable-object-tables";
 import type { AccountDurableObject } from "./account-durable-object";
 import { getAccountDurableObject } from "./get-account-durable-object";
@@ -251,6 +255,28 @@ describe("アカウントの Durable Object", () => {
           expect(readPostHogCapturedEvents(fetchSpy).map(({ event }) => event)).toEqual([
             "meal_photo_receipt_failed",
           ]);
+        });
+      });
+
+      // アカウントの削除は、記録を消したあとに PostHog に人の削除を頼むので、それより前に送り終えている必要がある
+      describe("PostHog が答えを返す前に、記録を消す呼び出しをしたとき", () => {
+        let order: string[];
+        beforeEach(async () => {
+          const posthogResponse = Promise.withResolvers<Response>();
+          mockPostHogCaptureEndpointPendingOk(posthogResponse.promise);
+          await callPushSyncWrites(accountId);
+          order = [];
+          const deleting = getAccountDurableObject(env, accountId)
+            .deleteRecords(accountId)
+            .then(() => order.push("deleteRecords が返った"));
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          order.push("PostHog が答えた");
+          posthogResponse.resolve(Response.json({ status: 1 }));
+          await deleting;
+        });
+
+        test("送りかけの出来事を送り終えてから返ること", () => {
+          expect(order).toEqual(["PostHog が答えた", "deleteRecords が返った"]);
         });
       });
 

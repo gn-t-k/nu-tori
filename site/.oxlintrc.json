@@ -12,9 +12,12 @@
     "reportUnusedDisableDirectives": "error"
   },
   "rules": {
+    // 関数は const functionName = () => {} で書く。function は、それでしか書けないもの（ジェネレーター関数など）にだけ使う
     "func-style": ["error", "expression"],
+    // キャスト（as と <T>x）は型の食い違いを隠すので、キャストのいらない形を探す（docs/agents/coding-style.md「キャストのいらない形を探す」）。as const は型を狭めるだけなので、この規則も許す
     "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
     "typescript/consistent-return": "off",
+    // 非 null の断言（x!）もキャストと同じく型の食い違いを隠す。無いはずの値は、無ければ投げて型を絞る
     "typescript/no-non-null-assertion": "error",
     "nu-tori/no-switch-statement": "error",
     "nu-tori/no-setup-in-describe": "error",
@@ -25,6 +28,9 @@
     "nu-tori/filename-matches-export": "error",
     "nu-tori/import-through-index": "error",
     "nu-tori/no-wrapped-comment": "error",
+    "nu-tori/no-parameterized-test": "error",
+    "nu-tori/no-otherwise": "error",
+    "nu-tori/no-instanceof-own-class": "error",
     "vitest/require-top-level-describe": "error",
     "vitest/no-duplicate-hooks": "error"
   },

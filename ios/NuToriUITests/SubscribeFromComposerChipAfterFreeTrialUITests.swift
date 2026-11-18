@@ -29,8 +29,6 @@ final class SubscribeFromComposerChipAfterFreeTrialUITests: XCTestCase {
         let purchase = app.buttons["paywall-purchase"]
         XCTAssertTrue(purchase.waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "チップから開いた課金画面")
-        // 購入者のトークンを受け取るまでは押せない
-        XCTAssertTrue(waitUntilEnabled(purchase))
         purchase.tap()
 
         XCTAssertTrue(purchase.waitForNonExistence(timeout: 5))

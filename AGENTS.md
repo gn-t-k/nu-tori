@@ -20,7 +20,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 
 ### コーディングの好み
 
-好みの入口は `CODING_STANDARDS.md` で、レビュー役が読む。PR を出す前と PR に push する前に、`docs/agents/git.md` の「PR の前のレビュー」を通し、アプリかサーバーの振る舞いを変えたなら「動かして確かめる」を回す。`/implement` と `/implement-spec` の中で `/code-review` を呼ぶときも、`docs/agents/git.md` の「PR の前のレビュー」の「好みのレビュー」を読む。好みのほうが違うと思ったら、ユーザーに聞いてから `CODING_STANDARDS.md` とそこから指す文書を直す。
+好みの入口は `CODING_STANDARDS.md` で、レビュー役が読む。PR を出す前と PR に push する前と、`/implement` と `/implement-spec` の中で `/code-review` を呼ぶときは、`docs/agents/review.md`（変更に何がかかるかと、照合と確かめの回し方）を読む。好みのほうが違うと思ったら、ユーザーに聞いてから `CODING_STANDARDS.md` とそこから指す文書を直す。`/to-spec` と `/tdd` で、新しいモジュールやインターフェースの継ぎ目を開発者に確かめる前は、`docs/agents/review.md` の「設計の照合」を読む。
 
 ### 進め方
 
@@ -30,7 +30,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 - UI や振る舞いの選択肢を尋ねるときは、`/prototype` で見比べられるものを先に作る
 - 試作を作る・探すときは、`docs/agents/decisions.md` の「試作の置き場」を読む
 - 工程のゲートや引き継ぎなどの大きな確認をするときは、`docs/agents/gate-review.md` を読む
-- 機能がどこにあり、ユーザーがどうたどり着くかを知りたいときは、`verify-<アプリ>` の地図の索引（`.agents/skills/verify-<アプリ>/features/README.md`。今はサーバーの `verify-server` だけ）を読む
+- 機能がどこにあり、ユーザーがどうたどり着くかを知りたいときは、`verify-<アプリ>` の地図の索引（`.agents/skills/verify-<アプリ>/features/README.md`）を読む
 - 次の場面では、pstack の原則を読む。Skill ツールでは呼べないので、`~/.claude/plugins/cache/cursor-plugins/pstack/<一番新しい版>/` か、無ければ `~/.cursor/plugins/` の下で `.cursor-plugin/plugin.json` の `version` が一番新しいものの `skills/<名前>/SKILL.md` を読む。どちらにも無いとき（Codex など）は `https://raw.githubusercontent.com/cursor/plugins/main/pstack/skills/<名前>/SKILL.md` を読む
   - 「確かめた」と書く前に、`principle-prove-it-works` を読む
   - 同じ編集や確かめを3回以上するときは、`principle-build-the-lever` を読む
@@ -46,7 +46,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 
 - アプリは `ios/`、サーバーは `server/`、`nu-tori.app` のページは `site/` に置く（モノレポ）。`ios/`・`server/`・`site/` のファイルを読み書きする前に、そのディレクトリの `AGENTS.md` を読む
 - 確かめる手順の入口は `scripts/check` の1本にする。引数なしでは、まだ push していない変更と作業中の変更が関わる対象を、`ios`・`server`・`site`・`scripts` を渡すと渡した対象の全部を確かめ、`--fix` で直してから確かめる。エージェントも人も CI も同じものを呼ぶ。エージェントは、変えたらコミットの前に `scripts/check --fix` を回し、0 で終わるまで直す。数分かかるときは Bash の `run_in_background` で回し、その終わりの知らせ1つを待って結果を読む（前景の `until`・`sleep` では待たない。止めるときは PID を確かめて `kill <PID>` で止める。コマンドライン全体で探す `pkill -f`・`pgrep -f` は、Claude Code では hook が拒む）。check の終わりの知らせを待つあいだに、クラウドのセッションの Stop hook が未コミット・未 push を言ってきても、コミットせずに「check 待ち」と返して止まる（hook は2回目の Stop では黙る）
-- スキルやサブエージェントの定義を足す・直すとき、worktree でサブエージェントを立てるとき、子のセッションの様子を読むとき、`/wizard` でウィザードを書くとき、hook・許可のルール・MCP・CI の設定を足す・直すとき、Sentry・App Store Connect・Cloudflare・PostHog・Search Console を読むとき、お金の数字（固定費・予算）を読む・書くとき、本番の知らせを Issue にする仕組み（`production-alerts`）に触るとき、`@nu-tori.app` からメールを送る道具を足すときは、`docs/agents/tooling.md` を読む
+- スキルやサブエージェントの定義を足す・直すとき、worktree でサブエージェントを立てるとき、子のセッションの様子を読むとき、`/wizard` でウィザードを書くとき、hook・許可のルール・MCP・CI の設定を足す・直すとき、Sentry・App Store Connect・Cloudflare・PostHog・Search Console を読むとき、LLM の評価（`server/evals/`）を回すとき（鍵が無くて止まったときを含む）、お金の数字（固定費・予算）を読む・書くとき、本番の知らせを Issue にする仕組み（`production-alerts`）に触るとき、`@nu-tori.app` からメールを送る道具を足すときは、`docs/agents/tooling.md` を読む
 - 依存と道具（Swift・Node・pnpm など）の版を上げるとき、依存の PR とその落ちた Issue を扱うとき、依存の更新で壊れた本番を戻すときは、`docs/agents/dependencies.md` を読む
 - 環境は本番と開発用の2つ。TestFlight と App Store の版は本番に、デバッグビルドは開発用につなぐ。DB、写真の置き場、LLM の API キー、Sign in with Apple の鍵は環境ごとに分け、開発用の LLM のキーには低い費用の上限をかける。Workers AI は、呼ぶときに環境ごとの AI Gateway を通し、開発用のゲートウェイに低い支出の上限をかける
 - 計算・判定・検証の決めごと（ドメイン知識）の正本は、既定でサーバーのドメイン層に置く。見た目の決めごと（`DESIGN.md`）と、ヘルスケアとの対応づけのような端末の入出力の変換は、ドメイン知識に含めない。端末に置くのは、サーバーに置くと次のどれかでユーザーが不利益を被るものだけにする（今の一覧は `ios/AGENTS.md`）
@@ -54,7 +54,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
   2. 操作についてくる速さが要る
   3. アプリが開かれていないとき、または電波がないときにも動く必要がある
 - 観測の道具（分け方は ADR-0017）のどれにも、記録の中身（写真、文章、料理と材料の名前、発言の本文、体重・体脂肪率・kcal・栄養の値）を送らず、PostHog に送る数値は数・率・差・所要時間・旗だけにする。観測は申告を待たずに気づくためのもので、人の声は TestFlight のフィードバックと問い合わせで受ける
-- 本番で障害・鍵の漏れ・個人情報の漏えいが起きたとき、費用の知らせが来たとき、アカウントを手で止めるとき、秘密の値を足すときは、`docs/agents/production-incidents.md` を読む
+- 本番で障害・鍵の漏れ・個人情報の漏えいが起きたとき、費用の知らせが来たとき、アカウントを手で止めるとき、テストユーザーを足す・外すとき（アカウントを削除した人から無料体験の問い合わせが来たときを含む）、秘密の値を足すときは、`docs/agents/production-incidents.md` を読む
 - 集めるもの、送り先、使い道、残る期間を変えるとき、公開のページ（`site/`）を書く・直すときは、`docs/agents/privacy.md` を読む
 - LP や App Store の掲載情報の文言・キーワード・訴求の順を決めるときは、`docs/agents/marketing.md` を読む
 - 端末とサーバーの両方に置く決めごと（栄養の合計の数え方、日と週の区切り、受け付ける値の範囲）を書く・直すときは、`docs/agents/shared-rules.md` を読む
@@ -68,5 +68,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 gn-t-k/nu-tori-ops（非公開のリポジトリ）を読み書きするとき、そのことを公開の nu-tori（Issue の brief、PR の本文、コミット、文書）に書くときは、`docs/agents/ops.md` を読む。
 
 ### git
+
+作業を終えたら、開発者に聞かずに PR を出す。コードでも文書でも設定でも同じで（試作のブランチだけは除く）、Claude Code の既定の「頼まれるまで PR を作らない」より、この決まりを先にする。
 
 コミット、PR の作成、ブランチの更新、GitHub の Issue と PR の操作をするときは `docs/agents/git.md` を読む。

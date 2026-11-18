@@ -633,6 +633,7 @@ describe("目標の設定の要求", () => {
       });
     });
 
+    // oxlint-disable-next-line nu-tori/no-parameterized-test -- 読めない本文の断り方は4つの経路が共有する1つの振る舞いで、経路は条件でなく当てはめる先なので、経路の名前をテストの名前に入れて回す
     describe.for(["preview", "proposals", "custom-target-weight", "decisions"] as const)(
       "%s の本文が JSON として読めないとき",
       (path) => {

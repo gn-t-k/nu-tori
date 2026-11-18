@@ -2,7 +2,8 @@ import NuToriCore
 import SwiftData
 
 /// SwiftData の、ID で引く記録のキャッシュ。NuToriCore の当て方（`CacheApplying`）が、行の形を知らずに読み書きする。
-/// 行の形との行き来は、行（`KeyedCacheRow`）が持つ。保存は箱（`SwiftDataSyncStore`）がメインのコンテキストで行う
+/// 行の形との行き来は、行（`KeyedCacheRow`）が持つ。保存は箱（`SwiftDataSyncStore`）がメインのコンテキストで行う。
+/// 保存しない読み方では、箱がメインの外で作った読み取り用のコンテキストを渡す。このキャッシュは、どのスレッドで動くかを知らない
 nonisolated struct SwiftDataKeyedRecordCache<Row: KeyedCacheRow>: KeyedRecordCache {
     let context: ModelContext
 

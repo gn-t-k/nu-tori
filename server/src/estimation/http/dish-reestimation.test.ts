@@ -212,7 +212,9 @@ describe("名前を直したときの推定し直し", () => {
         let result: PushResults["results"][number];
 
         describe("前の材料を載せた料理の量の書き込みのとき", () => {
+          let sequenceBefore: number;
           beforeEach(async () => {
+            sequenceBefore = requireLastSequence(await pullChangesAfter(0));
             result = await pushLateWrite(
               updateDishWrite(dishId, {
                 name: "カツ丼",
@@ -239,6 +241,11 @@ describe("名前を直したときの推定し直し", () => {
               status: "value",
               record: expect.objectContaining({ name: "カツ丼", quantity: 1, version: 3 }),
             });
+          });
+
+          // 前の材料は推定し直しの削除の印で届くので、載せ直すのは今もある材料だけにする（#1022）
+          test("置き換わった前の材料を、取りに行く変更に載せ直さないこと", async () => {
+            expect(await pullChangesAfter(sequenceBefore)).toEqual([]);
           });
         });
 

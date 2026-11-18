@@ -15,6 +15,7 @@ export const toIdentifiedDishes = (output: {
           ? undefined
           : {
               basisGrams: nutritionLabel.basisGrams,
+              basisGramsEstimated: nutritionLabel.basisGramsEstimated,
               nutrients: Object.fromEntries(
                 nutritionLabel.nutrients.map(({ nutrient, amount }) => [nutrient, amount]),
               ),

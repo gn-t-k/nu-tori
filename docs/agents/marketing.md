@@ -1,20 +1,22 @@
 # マーケティングの判断
 
-App Store の掲載情報は、名前・サブタイトル・キーワード・説明文・プロモーション用テキスト・スクリーンショットの見出しを指す。
+App Store の掲載情報が指す欄は、`GLOSSARY.md` の「掲載情報」にある。
 
-- 判断には根拠を添える。根拠は、出典つきの調査（`docs/research/`）か、計測の数字（App Store Connect のキャンペーンごとの数、Cloudflare Web Analytics、PostHog）
+- 判断には根拠を添える。根拠は、出典つきの調査（`docs/research/`）か、計測の数字（App Store Connect のキャンペーンごとの数、Cloudflare Web Analytics、PostHog）。計測の数字の置き場は、App Store Connect と Cloudflare Web Analytics は `docs/agents/tooling.md` の「流入の数を読む」、PostHog は同じ文書の「PostHog を読む」。Apple Ads のキーワードの人気度と、それを根拠にした掲載情報と LP の判断の理由は、公開のリポジトリに置かず gn-t-k/nu-tori-ops に置く。掲載情報の値そのものは下の「掲載情報の置き場と変える手順」の正本のまま。ops の読み書きと、公開側への書き方は `docs/agents/ops.md`
 - 根拠が開発者の実感や一般論だけのときは「推測」と書き、確かめる段取り（外部テスターへの聞き取り、LP の A/B、プロダクトページの最適化）を添える
 - 競合のレビューを引くときは、書いた人の名前を書かず、短い抜粋だけにする
 
 **Why:** 「一般公開の準備の範囲と方針を決める」（#592）で、「『AI 食事管理』がよく検索される」という推測を事実のように出し、開発者に指摘された。検索の回数は一次の情報からは取れず、確かめると大手は名前に「AI」を入れていなかった。
 
+**Why:** 「App Store のキーワードの人気度を見て、キーワード欄を直す」（#612）は人気度を `docs/research/` に残すとしていたが、nu-tori-ops の決まりと食い違い、開発者が ops に置くと決めた。
+
 ## 掲載情報の置き場と変える手順
 
-- 掲載情報の正本は `site/src/app-store-connect-listing.ts`（スクリーンショットの見出しと載せる生の画面は `site/src/app-store-screenshots.ts`）。掲載用の画像は `site/src/app-store-screenshot-images/` に置く。App Store Connect の値は、ここから wizard で入れたものとし、App Store Connect で直接書き換えない。足し方は `site/AGENTS.md` の「掲載情報を直す」
+- 掲載情報の正本は `site/` のモジュールで、置き場と足し方は `site/AGENTS.md` の「掲載情報を直す」にある。App Store Connect の値は、そのモジュールから wizard で入れたものとし、App Store Connect で直接書き換えない
 - 変えるときは次の順にする
   1. モジュールを直す PR を出す。字数・キーワードの重なり・金額・説明文に要るもの（利用規約とプライバシーポリシーの URL、医療の一文）は `scripts/check site` のテストが確かめる
-  2. 見出しか画面が変わったら、撮り直して合成し直し、画像を同じ PR か続く PR でコミットする（`site/AGENTS.md` の「合成する」）
-  3. main に入ったら、開発者が Mac で `scripts/app-store-connect-listing-wizard` を回して App Store Connect に入れる（`docs/agents/ios-release.md` の「App Store に出す」）。仮の文（`status: "draft"`）が残っているあいだは、wizard が入れる段を始めない
+  2. スクリーンショットの見出しか、載せる生の画面が変わったら、撮り直して合成し直し、画像を同じ PR か続く PR でコミットする（`site/AGENTS.md` の「合成する」）
+  3. main に入ったら、開発者が Mac で `scripts/app-store-connect-listing-wizard` を回して App Store Connect に入れる（`docs/agents/ios-release.md` の「App Store に出す」）
 - プロモーション用テキストだけは、新しい版を出さずに App Store Connect で変えられる。そのときも 1 の PR を先に出し、3 で入れる。ほかの欄は、次の版を審査に出すときに入る。名前は最初の提出のあとは新しい版でしか直せない
 
 ## アプリを入れていない人の語で書く

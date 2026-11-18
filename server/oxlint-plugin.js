@@ -1,4 +1,4 @@
-// 組み込みのルールで確かめられない好み（docs/agents/languages/typescript.md）を確かめる
+// 組み込みのルールで確かめられない好みを確かめる。決まりの理由は、文書でなく各ルールのメッセージに書く
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -11,7 +11,7 @@ export default {
           context.report({
             node,
             message:
-              "switch は使わず、ts-pattern の match(...).exhaustive() で分ける（docs/agents/languages/typescript.md「関数は処理の流れで分ける」）",
+              "switch は使わず、ts-pattern の match(...).exhaustive() で分ける。switch は場合を足したときの漏れが型エラーにならない",
           });
         },
       }),
@@ -29,6 +29,32 @@ export default {
         };
         return { ClassDeclaration: check, ClassExpression: check };
       },
+    },
+    "error-factory-requires-name": {
+      create: (context) => ({
+        CallExpression: (node) => {
+          if (node.callee.type !== "Identifier" || node.callee.name !== "ErrorFactory") {
+            return;
+          }
+          const [options] = node.arguments;
+          // 変数や広げた値から渡すと、name があるかはリントの時点では分からないので数えない
+          if (
+            options !== undefined &&
+            (options.type !== "ObjectExpression" ||
+              options.properties.some(
+                (property) =>
+                  property.type === "SpreadElement" || propertyName(property) === "name",
+              ))
+          ) {
+            return;
+          }
+          context.report({
+            node,
+            message:
+              'ErrorFactory には name を渡す。省くと name の型が string になり、match の { name: "..." } で絞れない',
+          });
+        },
+      }),
     },
     "no-setup-in-describe": {
       create: (context) => ({
@@ -108,7 +134,7 @@ export default {
             context.report({
               node: node.arguments[0],
               message:
-                "テストの名前は「〜こと」の形で振る舞いを書く。後ろに「（…）」の補足を付けてよい（docs/agents/testing.md「テストの構造」）",
+                "テストの名前は「〜こと」の形で、確かめる振る舞いを書く。条件は describe の名前に書くので、並べると振る舞いの一覧として読める。後ろに「（…）」の補足を付けてよい",
             });
           }
         },
@@ -144,7 +170,7 @@ export default {
           }
           context.report({
             node,
-            message: `ファイル名「${fileName}」を、export する名前（${names.join("、")}）のどれかのケバブケースにする（docs/agents/languages/typescript.md「ファイルと公開するもの」）`,
+            message: `ファイル名「${fileName}」を、export する名前（${names.join("、")}）のどれかのケバブケースにする（compute-weight-trend.ts → computeWeightTrend）。ファイル名から、中で公開するものを引けるようにするため。1つのファイルから出すものの決まりは docs/agents/languages/typescript.md「ファイルと公開するもの」`,
           });
         },
       }),
@@ -232,6 +258,79 @@ export default {
         },
       }),
     },
+    "no-parameterized-test": {
+      create: (context) => ({
+        MemberExpression: (node) => {
+          if (!isParameterizedTest(node)) {
+            return;
+          }
+          // 表が shared/*.test-cases.json の値なら、端末とサーバーで同じ入力と期待値を読むテストで、表で回すほうが合う
+          const table =
+            node.parent.type === "CallExpression" && node.parent.callee === node
+              ? node.parent.arguments[0]
+              : undefined;
+          if (
+            table !== undefined &&
+            isSharedTestCases(context.sourceCode.ast, rootIdentifier(table))
+          ) {
+            return;
+          }
+          context.report({
+            node,
+            message:
+              "既定では、表で回すパラメータ化テスト（test・it・describe の .each・.for）にせず、条件を名前にした describe と個別の test をベタ書きする。読むときに表と本体を行き来せずに済み、テストを足すときは1つ足すだけになる。shared/*.test-cases.json を import して回すテストは通す。ほかに要るときは、理由を添えて抑止する（docs/agents/testing.md「テストの構造」）",
+          });
+        },
+      }),
+    },
+    "no-otherwise": {
+      create: (context) => ({
+        CallExpression: (node) => {
+          if (
+            node.callee.type === "MemberExpression" &&
+            node.callee.property.type === "Identifier" &&
+            node.callee.property.name === "otherwise"
+          ) {
+            context.report({
+              node: node.callee.property,
+              message:
+                "自分たちのユニオンは .otherwise() で残りをまとめず、すべての場合を .with で書いて .exhaustive() で閉じる。場合を足したときの漏れが型エラーになる。外から来る値（Apple の通知の種類の文字列など）を分けるときだけ、理由を添えて抑止する（docs/agents/languages/typescript.md「関数は処理の流れで分ける」）",
+            });
+          }
+        },
+      }),
+    },
+    "no-instanceof-own-class": {
+      create: (context) => ({
+        BinaryExpression: (node) => {
+          if (node.operator !== "instanceof") {
+            return;
+          }
+          const name = rootIdentifier(node.right)?.name;
+          if (name !== undefined && ownNames(context.sourceCode.ast).has(name)) {
+            context.report({
+              node: node.right,
+              message:
+                '自分たちのエラーは instanceof でなく name で見分ける（match の { name: "..." } など）。Durable Object の RPC を越えたエラーには instanceof が効かない（server/AGENTS.md の「層」）。グローバル（Error など）とパッケージのクラスは instanceof で見分けてよい',
+            });
+          }
+        },
+      }),
+    },
+    "mock-export-name": {
+      create: (context) => ({
+        Program: (node) => {
+          for (const name of localExportNames(node)) {
+            if (!/^mock[A-Z]\w*(Ok|Error)$/u.test(name)) {
+              context.report({
+                node,
+                message: `mock のファイルが export する「${name}」を、成功の差し替えなら mockXxxOk、失敗の差し替えなら mockXxxError の名前にする。使う側で、どちらの条件を作るかが名前から読めるようにするため（docs/agents/languages/typescript.md「依存の差し替え」）`,
+              });
+            }
+          }
+        },
+      }),
+    },
     "no-wording-in-test": {
       create: (context) => {
         const check = (node, text) => {
@@ -264,7 +363,7 @@ const isDescribe = (callee) => isPlainCallOf(callee, ["describe"]);
 
 const isTest = (callee) => isPlainCallOf(callee, ["test", "it"]);
 
-// each・for の表から作るまとまりとテストは、決まりが許す使い方と見分けられないので数えない（#691）
+// each・for の呼び出しは表を受けるだけで、名前と本体はその戻り値の呼び出しに渡すので数えない。使ってよいかは no-parameterized-test が見る
 const isPlainCallOf = (callee, names) =>
   (callee.type === "Identifier" && names.includes(callee.name)) ||
   (callee.type === "MemberExpression" &&
@@ -272,6 +371,69 @@ const isPlainCallOf = (callee, names) =>
     names.includes(callee.object.name) &&
     callee.property.type === "Identifier" &&
     !["each", "for"].includes(callee.property.name));
+
+// test.skip.each のような修飾を挟んだものも、根の名前で見る
+const isParameterizedTest = (node) =>
+  ["test", "it", "describe"].includes(rootIdentifier(node.object)?.name) &&
+  node.property.type === "Identifier" &&
+  ["each", "for"].includes(node.property.name);
+
+// testCases.weightKilograms や testCases.filter(...) も、根の名前で見る
+const rootIdentifier = (node) => {
+  if (node === undefined || node === null) {
+    return undefined;
+  }
+  if (node.type === "Identifier") {
+    return node;
+  }
+  if (node.type === "MemberExpression") {
+    return rootIdentifier(node.object);
+  }
+  if (node.type === "CallExpression") {
+    return rootIdentifier(node.callee);
+  }
+  return node.type === "TSAsExpression" || node.type === "TSSatisfiesExpression"
+    ? rootIdentifier(node.expression)
+    : undefined;
+};
+
+const importedNames = (program, isSource) =>
+  new Set(
+    program.body
+      .filter(
+        (statement) =>
+          statement.type === "ImportDeclaration" &&
+          typeof statement.source.value === "string" &&
+          isSource(statement.source.value),
+      )
+      .flatMap((statement) => statement.specifiers.map((specifier) => specifier.local.name)),
+  );
+
+const isSharedTestCases = (program, identifier) =>
+  identifier !== undefined &&
+  importedNames(program, (source) => source.endsWith(".test-cases.json")).has(identifier.name);
+
+// 自分たちのクラスでありうる名前。相対パスから import した名前（関数や定数も入るが、instanceof の右辺に来るのはクラスだけ）と、同じファイルで宣言したクラス。名前の束ね（import * as x）は x.Foo の根で当たる
+const ownNames = (program) => {
+  const names = importedNames(program, (source) => source.startsWith("."));
+  for (const statement of program.body) {
+    const declaration =
+      statement.type === "ExportNamedDeclaration" || statement.type === "ExportDefaultDeclaration"
+        ? statement.declaration
+        : statement;
+    if (declaration?.type === "ClassDeclaration" && declaration.id !== null) {
+      names.add(declaration.id.name);
+    }
+    if (declaration?.type === "VariableDeclaration") {
+      for (const declarator of declaration.declarations) {
+        if (declarator.init?.type === "ClassExpression" && declarator.id.type === "Identifier") {
+          names.add(declarator.id.name);
+        }
+      }
+    }
+  }
+  return names;
+};
 
 const callbackStatements = (node) => {
   const callback = node.arguments.at(-1);
@@ -325,6 +487,13 @@ const declaredNames = (declaration) =>
     : declaration.id?.type === "Identifier"
       ? [declaration.id.name]
       : [];
+
+const propertyName = (property) =>
+  property.computed
+    ? undefined
+    : property.key.type === "Identifier"
+      ? property.key.name
+      : property.key.value;
 
 const moduleExportName = (node) => (node.type === "Identifier" ? node.name : node.value);
 

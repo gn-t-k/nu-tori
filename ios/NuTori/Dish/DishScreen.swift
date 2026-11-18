@@ -82,6 +82,7 @@ struct DishScreen: View {
     /// 打ちかけの文字。打っていない欄は、キャッシュの今の値を見せる
     @State private var drafts: [Field: String] = [:]
     @State private var confirmsMealDeletion: Bool
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private enum Field: Hashable {
         case name
@@ -99,7 +100,8 @@ struct DishScreen: View {
                     valueField(
                         TextField("料理の名前", text: draft(.name, shown: contents.dish.name))
                             .submitLabel(.done)
-                            .focused($focusedField, equals: .name),
+                            .focused($focusedField, equals: .name)
+                            .dishNameLimit(typed: drafts[.name]) { drafts[.name] = $0 },
                         editable: offer.editsNameAndQuantity, identifier: "dish-name")
                 }
                 if let note = offer.progressNote {
@@ -140,7 +142,7 @@ struct DishScreen: View {
             Text(field.unit)
                 .foregroundStyle(.secondary)
             if field.showsEstimateBadge {
-                EstimateBadge()
+                OutlinedBadge.estimate
             }
         }
     }
@@ -165,10 +167,30 @@ struct DishScreen: View {
             .accessibilityIdentifier(identifier)
     }
 
-    /// 材料の名前と量。量は Primary で、押すとその場で数字のキーボードが出る。材料の名前は直せない
+    /// 材料の名前と量。量は Primary で、押すとその場で数字のキーボードが出る。材料の名前は直せない。
+    /// 栄養の出どころが栄養成分表示の材料は、名前に「表示」の印を添える（推定の印は添えない。量の推定は料理の量の欄の印で分かる）。
+    /// アクセシビリティの大きさの文字では、印を名前の下の行へ送る（印が名前の幅を取ると、名前が1文字ずつ折れる）
     private func ingredientRow(_ ingredient: Ingredient) -> some View {
-        HStack(spacing: 8) {
-            Text(ingredient.name)
+        let name = Text(ingredient.name)
+        let badge = OutlinedBadge.nutritionLabel
+            .accessibilityIdentifier("nutrition-label-badge")
+        return HStack(spacing: 8) {
+            if ingredient.nutrientSource.kind == .nutritionLabel {
+                // 収まるかで選ぶ（ViewThatFits）と、量の欄と幅を分け合うため標準の文字でも送られる。
+                // 優先して幅を取ると量の欄が細る。文字の大きさで選ぶ
+                if dynamicTypeSize.isAccessibilitySize {
+                    // DESIGN.md の Layout（間隔は標準に任せる）から外れて数値を渡す。ItemWrappingLayout は既定の間隔を持たないので、食事の画面の料理の行とそろえる
+                    ItemWrappingLayout(spacing: 8, lineSpacing: 2) {
+                        name
+                        badge
+                    }
+                } else {
+                    name
+                    badge.fixedSize()
+                }
+            } else {
+                name
+            }
             TextField(
                 "",
                 text: draft(
