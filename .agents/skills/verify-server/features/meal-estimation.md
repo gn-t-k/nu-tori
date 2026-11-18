@@ -10,6 +10,8 @@
 - `meal-awaiting-subscription` 無料体験の終わったアカウントの食事が、サブスクリプションを待っているになる
 - `meal-photo-backup` 写真の控えを送り、ほかの端末から取りに行ける
 - `meal-rename-dish` 推定でできた料理の名前を直す
+- `meal-nutrition-label` 栄養成分表示が写った食事が、表示の値で記録される
+- `meal-nutrition-label-reestimate` 箱だけを撮って料理の名前を直すと、表示の材料と成分表の材料の料理になる
 - `meal-delete` 食事を消す
 
 ## How to get to it (user POV)
@@ -19,6 +21,7 @@
 - 入力欄に食事を書いて送る。端末は `create_sent_text` を送り、読み分けで食事になると文章の食事ができる（送った文章は [送った文章と返事](./reply.md)）
 - 写真を持たない端末で食事を見る。端末は `GET /v1/meal-photos/{photoId}` を呼ぶ
 - 料理の名前を直す（`update_dish`）、食事を消す（`delete_meal`）
+- 市販品と栄養成分表示を撮る（1枚に並べる、または同じ食事の別の写真）。送るものは撮った食事と同じ
 
 ## Driving it with verify-server
 
@@ -37,6 +40,8 @@ Preconditions:
 - **撮っておいた写真。** `entryMethod` を `picked` にして、食事と写真の控えを送る。同じく `estimating` に進む
 - **上限より長い名前に直す。** 推定できた料理の ID を `d`、`long=$(printf 'あ%.0s' $(seq 101))` として、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"$long\"}]"` を送る。`rejected` で理由が `out_of_range`、取りに行っても `$d` の名前は変わらない
 - **料理の名前を直す。** `$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"親子丼（大盛り）\"}]"` を送る。`applied` で、取りに行くと `$d` の最後の `dish` の名前が変わっている
+- **栄養成分表示の写った食事。** 評価のケースの写真（`server/.scratch/nutrition-label/<ケース>/photo-1.jpg`。無ければ `scripts/cloudflare evals get` で落とす。リポジトリには入れない）で、撮った食事と写真の控えを送る。推定できたら `$D pull "$run" meal | jq -c --arg m "$m" '[.[] | select(.kind=="dish" and .record.mealId==$m) | .record.id] as $ds | [.[] | select(.kind=="ingredient" and (.record.dishId | IN($ds[]))) | .record | {name, nutrientSource, nutrients}]'` を読む。表示の材料の `nutrientSource.type` が `nutrition_label` で、その栄養が `expected.json` の値と一致し、料理の名前が商品名
+- **箱だけを撮って名前を直す。** 箱だけの写真で推定できた食事の料理を `d` とし、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"カレーライス\"}]"` を送る。推定し直しが届くと、`$d` の材料に、出どころが栄養成分表示の材料と、成分表の材料が並ぶ（`nutrientSource.type` が `nutrition_label` のものと、そうでないもの）
 - **サブスクリプションを待っている。** `$D sign-in "$run" expired --as-of "$(date -u -d '-60 days' +%FT%TZ)"` のアカウントで撮った食事を送る。写真の控えを送ったあと、`meal_estimation_status` が `awaiting_subscription`（鍵が無くても確かめられる）
 - **消す。** `$D push "$run" meal "[{\"type\":\"delete_meal\",\"mealId\":\"$m\"}]"` を送る。`applied` で、取りに行くと `$m` の変更が `meal_deletion` と `meal_estimation_status_deletion`（どちらも `record` は空）になる。推定できた食事なら、その料理の `dish_deletion` と材料の `ingredient_deletion` も届く。名前を直した料理なら `dish_estimation_status_deletion` も届く（直していない料理には届かない）
 
@@ -47,5 +52,6 @@ Preconditions:
 - 24時間に受け取る写真の数の上限は、届くまでの要求が回数の歯止めで数分かかるので通さない。食事が届かないまま期限を過ぎた写真の控えの取り消しは、手元では時刻を動かせないので通せない（どちらも、確かめる場所は SKILL.md の「確かめられないとき」）
 - `429` は、アカウントごとの回数の歯止め（1分に 120 回）でも返る。「食事より先に届く写真の数の上限」の項目は、新しいアカウントで1回だけ通し、やり直すときは別の名前でサインインし直す。101 回目より前に `429` が出たら、回数の歯止めと読む
 - 推定は Durable Object のアラームで進むので、送った直後の取りに行く要求にはまだ出ない。固定の時間でなく、状態が変わるまで読む
+- 栄養成分表示の項目は、本物のモデルの読み取りに頼るので、1回の外れで壊れたと読まない。読み取りの揺れは `server/evals/nutrition-label/` の評価で見る
 - 料理の名前を直すのは推定できた料理だけ。鍵の無い回では料理ができないので、この入口は確かめられない
 - 「上限より長い名前に直す」は「料理の名前を直す」より先に送る。名前を直した料理は、推定し直しが終わるまで `awaiting_estimation` で断られ、`out_of_range` まで届かない
