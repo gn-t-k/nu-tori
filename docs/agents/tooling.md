@@ -57,6 +57,14 @@ worktree やセッションを並べるときは、pstack の `principle-separat
 - MCP のサーバーは、Claude Code（`.mcp.json`）・Codex（`.codex/config.toml`）・Cursor（`.cursor/mcp.json`）の3つの設定に同じものを置き、版や環境変数は起動スクリプト（`scripts/mobilebuildmcp`）の1か所に書く。Codex はプロジェクトを信頼したとき、Cursor は Customize でサーバーを一度オンにしたときに読む
 - Xcode の MCP（`xcrun mcpbridge`）は、各ツールの MCP の設定に直接置かず、MobileBuildMCP の中継で呼ぶ
 
+## LLM の評価の鍵
+
+LLM の評価（`server/evals/`）は、開発用のワークスペースの Anthropic のキーで回す。読み方は `server/evals/read-eval-api-key.ts` の1か所にあり、環境変数 `NU_TORI_ANTHROPIC_API_KEY` を先に、無ければ Mac のキーチェーンを読む（#575）。
+
+- Mac: 開発者が `security add-generic-password -s nu-tori-eval -a anthropic -w` でキーチェーンに置く
+- Claude Code on the web: 環境 `nu-tori` の環境変数に置いてある。プロジェクトの既定の環境を `nu-tori` にしてあるので、プロジェクトのスレッドとその子のサブエージェントは鍵を読める。ほかの環境で立ったセッションは読めないので、評価を回すセッションは `nu-tori` で立てる
+- 鍵の無い場所で回すと、置き場を書いた文言で止まる。そのときは開発者に、上のどちらかを頼む
+
 ## Sentry を読む
 
 Sentry の課題・イベント・スタック・端末・版・件数は、`scripts/sentry`（Sentry の公式の CLI、npm の `sentry`）で読む。版・テレメトリの停止・組織は、このスクリプトの1か所に書く。MCP の設定には Sentry を置かない。調べた経緯は `docs/research/sentry-agent-access.md`。
