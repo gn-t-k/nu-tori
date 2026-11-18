@@ -2,7 +2,7 @@
 
 App Store の掲載情報は、名前・サブタイトル・キーワード・説明文・プロモーション用テキスト・スクリーンショットの見出しを指す。
 
-- 判断には根拠を添える。根拠は、出典つきの調査（`docs/research/`）か、計測の数字（App Store Connect のキャンペーンごとの数、Cloudflare Web Analytics、PostHog）。計測の数字と Apple Ads のキーワードの人気度、それを根拠にした判断の理由は、公開のリポジトリに置かず gn-t-k/nu-tori-ops に置く。掲載情報の値そのものは下の「掲載情報の置き場と変える手順」の正本のまま。ops の読み書きと、公開側への書き方は `docs/agents/ops.md`
+- 判断には根拠を添える。根拠は、出典つきの調査（`docs/research/`）か、計測の数字（App Store Connect のキャンペーンごとの数、Cloudflare Web Analytics、PostHog）。計測の数字の置き場は、App Store Connect と Cloudflare Web Analytics は `docs/agents/tooling.md` の「流入の数を読む」、PostHog は同じ文書の「PostHog を読む」。Apple Ads のキーワードの人気度と、それを根拠にした掲載情報と LP の判断の理由は、公開のリポジトリに置かず gn-t-k/nu-tori-ops に置く。掲載情報の値そのものは下の「掲載情報の置き場と変える手順」の正本のまま。ops の読み書きと、公開側への書き方は `docs/agents/ops.md`
 - 根拠が開発者の実感や一般論だけのときは「推測」と書き、確かめる段取り（外部テスターへの聞き取り、LP の A/B、プロダクトページの最適化）を添える
 - 競合のレビューを引くときは、書いた人の名前を書かず、短い抜粋だけにする
 
