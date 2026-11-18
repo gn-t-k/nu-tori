@@ -5,7 +5,7 @@ import type { SyncWrite } from "../../domain/sync-write";
 import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import { writeIdSchema } from "../../http/sync-routes/write-id-schema";
 import type { Meal } from "../domain/meal";
-import { maximumAcceptedTimestamp } from "../../domain/maximum-accepted-timestamp";
+import { timestampSchema } from "../../http/sync-routes/timestamp-schema";
 
 // 取りに行く変更の record の形。応答の SyncChange は種類によらず record を任意のオブジェクトで持つので、応答のスキーマからは指さない
 const mealRecordSchema = z
@@ -25,13 +25,6 @@ const mealRecordSchema = z
     description:
       "kind が meal の変更の record。消えたら kind が meal_deletion で record が空の変更が届く",
   });
-
-const timestampSchema = z
-  .number()
-  .int()
-  .min(-maximumAcceptedTimestamp)
-  .max(maximumAcceptedTimestamp)
-  .openapi({ description: "UNIX 時刻のミリ秒（UTC）" });
 
 const createMealWriteSchema = z
   .object({

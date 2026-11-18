@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
-import { maximumAcceptedTimestamp } from "../../domain/maximum-accepted-timestamp";
+import { acceptedTimestampRange } from "../../domain/accepted-timestamp-range";
 import { generateRecordId } from "../../domain/record-id";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { withoutSubscriptionStatusChanges } from "../../http/sync-routes/testing/without-subscription-status-changes";
@@ -28,7 +28,7 @@ describe("送った文章の同期", () => {
       response = await pushSyncWrites(sessionToken, {
         writes: [
           createSentTextWrite({
-            sentText: { sentAt: maximumAcceptedTimestamp + 1, timeZone: "Asia/Tokyo" },
+            sentText: { sentAt: acceptedTimestampRange.maximum + 1, timeZone: "Asia/Tokyo" },
           }),
         ],
       });
@@ -45,7 +45,7 @@ describe("送った文章の同期", () => {
       response = await pushSyncWrites(sessionToken, {
         writes: [
           createSentTextWrite({
-            sentText: { sentAt: -maximumAcceptedTimestamp - 1, timeZone: "Asia/Tokyo" },
+            sentText: { sentAt: acceptedTimestampRange.minimum - 1, timeZone: "Asia/Tokyo" },
           }),
         ],
       });

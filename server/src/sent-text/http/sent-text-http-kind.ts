@@ -5,7 +5,7 @@ import type { SyncWrite } from "../../domain/sync-write";
 import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import { writeIdSchema } from "../../http/sync-routes/write-id-schema";
 import type { SentText } from "../domain/sent-text";
-import { maximumAcceptedTimestamp } from "../../domain/maximum-accepted-timestamp";
+import { timestampSchema } from "../../http/sync-routes/timestamp-schema";
 
 // 取りに行く変更の record の形。応答の SyncChange は種類によらず record を任意のオブジェクトで持つので、応答のスキーマからは指さない
 const sentTextRecordSchema = z
@@ -29,12 +29,9 @@ const createSentTextWriteSchema = z
         description:
           "本文。前後の空白を除いて 1〜500 のコードポイント（範囲はサーバーのドメイン層で確かめる）",
       }),
-      sentAt: z
-        .number()
-        .int()
-        .min(-maximumAcceptedTimestamp)
-        .max(maximumAcceptedTimestamp)
-        .openapi({ description: "送る操作をした時刻。UNIX 時刻のミリ秒（UTC）" }),
+      sentAt: timestampSchema.openapi({
+        description: "送る操作をした時刻。UNIX 時刻のミリ秒（UTC）",
+      }),
       timeZone: z
         .string()
         .openapi({ description: "送ったときのタイムゾーン（IANA 名）", example: "Asia/Tokyo" }),

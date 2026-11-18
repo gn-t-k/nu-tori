@@ -5,7 +5,7 @@ import type { SyncWrite } from "../../domain/sync-write";
 import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import { writeIdSchema } from "../../http/sync-routes/write-id-schema";
 import type { WeightRecord } from "../domain/weight-record";
-import { maximumAcceptedTimestamp } from "../../domain/maximum-accepted-timestamp";
+import { timestampSchema } from "../../http/sync-routes/timestamp-schema";
 
 // 取りに行く変更の record の形。応答の SyncChange は種類によらず record を任意のオブジェクトで持つので、応答のスキーマからは指さない
 const weightRecordRecordSchema = z
@@ -33,12 +33,7 @@ const weightRecordRecordSchema = z
 const weightRecordFields = {
   id: recordIdSchema,
   weightKg: z.number(),
-  measuredAt: z
-    .number()
-    .int()
-    .min(-maximumAcceptedTimestamp)
-    .max(maximumAcceptedTimestamp)
-    .openapi({ description: "UNIX 時刻のミリ秒（UTC）" }),
+  measuredAt: timestampSchema,
   timeZone: z.string().openapi({ example: "Asia/Tokyo" }),
 };
 

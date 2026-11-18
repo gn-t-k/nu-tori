@@ -5,7 +5,7 @@ import type { SyncWrite } from "../../domain/sync-write";
 import type { HttpRecordKind } from "../../http/sync-routes/http-record-kind";
 import { writeIdSchema } from "../../http/sync-routes/write-id-schema";
 import type { Notice } from "../domain/notice";
-import { maximumAcceptedTimestamp } from "../../domain/maximum-accepted-timestamp";
+import { timestampSchema } from "../../http/sync-routes/timestamp-schema";
 
 // 取りに行く変更（SyncChange）の kind が notice のときの record の形。応答の record は種類によらず
 // 文字列をキーにした値なので、openapi.json には部品として書き出し、端末が値の形を読めるようにする
@@ -29,13 +29,6 @@ const noticeRecordSchema = z.object({
     .optional()
     .openapi({ description: "答えていれば付く" }),
 });
-
-const timestampSchema = z
-  .number()
-  .int()
-  .min(-maximumAcceptedTimestamp)
-  .max(maximumAcceptedTimestamp)
-  .openapi({ description: "UNIX 時刻のミリ秒（UTC）" });
 
 const timeZoneSchema = z.string().openapi({ example: "Asia/Tokyo" });
 
