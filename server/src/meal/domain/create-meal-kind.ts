@@ -81,20 +81,40 @@ const decideCreate = (
     !isWithinAcceptedRange("mealPhotoCount", photoIds.length) ||
     !isWithinAcceptedRange("mealUtcOffsetSeconds", newMeal.eatenAtUtcOffsetSeconds)
   ) {
-    return discarded(store, newMeal, { result: "rejected", reason: "out_of_range" });
+    return discarded(store, newMeal, {
+      result: "rejected",
+      reason: "out_of_range",
+      redeliveredChanges: [],
+    });
   }
   if (new Set(photoIds).size !== photoIds.length) {
-    return discarded(store, newMeal, { result: "rejected", reason: "duplicate_photo_ids" });
+    return discarded(store, newMeal, {
+      result: "rejected",
+      reason: "duplicate_photo_ids",
+      redeliveredChanges: [],
+    });
   }
   if (!isPhotoMealEntryMethod(entryMethod)) {
-    return discarded(store, newMeal, { result: "rejected", reason: "invalid_entry_method" });
+    return discarded(store, newMeal, {
+      result: "rejected",
+      reason: "invalid_entry_method",
+      redeliveredChanges: [],
+    });
   }
   if (!isTimeZoneName(newMeal.sentTimeZone)) {
-    return discarded(store, newMeal, { result: "rejected", reason: "invalid_time_zone" });
+    return discarded(store, newMeal, {
+      result: "rejected",
+      reason: "invalid_time_zone",
+      redeliveredChanges: [],
+    });
   }
   // 写真の宣言の一意の違反で要求ごと戻ると、送り直し続けるので、書く前に確かめる
   if (store.findUsedPhotoIds(photoIds).length > 0) {
-    return discarded(store, newMeal, { result: "rejected", reason: "photo_already_used" });
+    return discarded(store, newMeal, {
+      result: "rejected",
+      reason: "photo_already_used",
+      redeliveredChanges: [],
+    });
   }
   const meal: Meal = { ...newMeal, entryMethod, sentTextId: undefined };
   return {
@@ -143,7 +163,9 @@ const countMealsOnEatenDay = (store: MealStore, meal: Meal): number => {
 const discarded = (
   store: MealStore,
   newMeal: NewMeal,
-  outcome: { result: "ignored_tombstone" } | { result: "rejected"; reason: RejectionReason },
+  outcome:
+    | { result: "ignored_tombstone" }
+    | { result: "rejected"; reason: RejectionReason; redeliveredChanges: readonly [] },
 ): WriteDecision<AddedRecordType> => {
   const usedPhotoIds = store.findUsedPhotoIds(newMeal.photoIds);
   const unusedPhotoIds = [...new Set(newMeal.photoIds)].filter(

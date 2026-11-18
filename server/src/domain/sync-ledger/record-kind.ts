@@ -88,7 +88,7 @@ export type WriteDecision<TAddedName extends string = never> =
       reason: RejectionReason;
       // 端末が書き込みと一緒にキャッシュに当てた、書き込みの記録の外の記録。行は変えずに、控えと結ばずに変更の並びに載せ直す。
       // 端末は受け付けなかった記録の今の値しか受け取らないので、これらは取りに行く変更の道で今の値に戻す（docs/agents/sync.md の原則4）
-      redeliveredChanges?: readonly RecordChangeTarget<TAddedName>[];
+      redeliveredChanges: readonly RecordChangeTarget<TAddedName>[];
       // 受け付けないときにも書く行があるときだけ渡す
       commit?: (receiptId: WriteReceiptId) => void;
     };
