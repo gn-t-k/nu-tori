@@ -693,6 +693,20 @@ describe("料理の同期", () => {
             status: "value",
           });
         });
+
+        // 端末は比例させた材料の量をキャッシュに当てているので、取りに行けば今の量に戻る（#1022）
+        test("比例させた材料の今の量を、取りに行く変更に載せ直すこと", async () => {
+          expect(
+            (await pullChangesAfter(lastSequence)).map(({ kind, recordId, record }) => ({
+              kind,
+              recordId,
+              quantity: record["quantity"],
+            })),
+          ).toEqual([
+            { kind: "ingredient", recordId: chickenId, quantity: 80 },
+            { kind: "ingredient", recordId: riceId, quantity: 200 },
+          ]);
+        });
       });
     });
 

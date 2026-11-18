@@ -51,7 +51,7 @@ export type KindFollows<TSourceName extends string> = {
 // - ignored_duplicate: 同じ記録がもうあるので捨てる
 // - ignored_tombstone: 削除の印のある記録への書き込みを捨てる。削除の印を取り終えた端末にも、作り直した記録を残させないよう、書き込みの記録の変更を載せ直す
 // - kept_corrected: 直してある記録なので、元のサンプルが消えても残す
-// - rejected: 受け付けない
+// - rejected: 受け付けない。端末が書き込みと一緒に当てたほかの記録があれば、その今の値を取りに行けるよう、変更の並びに載せ直す
 export type WriteDecision<TAddedName extends string = never> =
   | {
       result: "applied";
@@ -86,6 +86,9 @@ export type WriteDecision<TAddedName extends string = never> =
       writeKind: WriteKind;
       recordId: RecordId;
       reason: RejectionReason;
+      // 端末が書き込みと一緒にキャッシュに当てた、書き込みの記録の外の記録。行は変えずに、控えと結ばずに変更の並びに載せ直す。
+      // 端末は受け付けなかった記録の今の値しか受け取らないので、これらは取りに行く変更の道で今の値に戻す（docs/agents/sync.md の原則4）
+      redeliveredChanges?: readonly RecordChangeTarget<TAddedName>[];
       // 受け付けないときにも書く行があるときだけ渡す
       commit?: (receiptId: WriteReceiptId) => void;
     };

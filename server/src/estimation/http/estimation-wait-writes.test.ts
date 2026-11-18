@@ -464,8 +464,19 @@ describe("推定し直しを待っている料理への書き込み", () => {
         ]);
       });
 
-      test("何も当てないこと", async () => {
-        expect(await pullChangesAfter(lastSequence)).toEqual([]);
+      // 端末は比例させた材料の量をキャッシュに当てているので、取りに行けば今の量に戻る。
+      // 推定し直しが通らなければ材料は置き換わらないので、これが無いと比例させた量が残り続ける（#1022）
+      test("材料は変えず、比例させた材料の今の量を、取りに行く変更に載せ直すこと", async () => {
+        expect(
+          (await pullChangesAfter(lastSequence)).map(({ kind, recordId, record }) => ({
+            kind,
+            recordId,
+            quantity: record["quantity"],
+          })),
+        ).toEqual([
+          { kind: "ingredient", recordId: chickenId, quantity: 80 },
+          { kind: "ingredient", recordId: riceId, quantity: 200 },
+        ]);
       });
     });
 
