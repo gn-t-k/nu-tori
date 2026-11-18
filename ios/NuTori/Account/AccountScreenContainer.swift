@@ -23,6 +23,7 @@ struct AccountScreenContainer: View {
                     standing: $0, autoRenewal: autoRenewal,
                     timeZone: timeZone())
             },
+            deletionMessage: AccountDeletionConfirmation.message(standing: standing),
             openPaywall: {
                 guard let standing else { return }
                 paywallRequest = PaywallRequest(

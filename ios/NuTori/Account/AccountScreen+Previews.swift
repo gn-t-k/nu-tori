@@ -8,6 +8,7 @@
         NavigationStack {
             AccountScreen(
                 subscription: AccountScreen.SubscriptionSample.freeTrial.row,
+                deletionMessage: AccountScreen.SubscriptionSample.freeTrial.deletionMessage,
                 openPaywall: {},
                 sendsUsageData: sample.sendsUsageData,
                 cameraAccess: sample.cameraAccess,
@@ -27,6 +28,7 @@
         NavigationStack {
             AccountScreen(
                 subscription: sample.row,
+                deletionMessage: sample.deletionMessage,
                 openPaywall: {},
                 sendsUsageData: true,
                 cameraAccess: .permitted,
@@ -53,28 +55,29 @@
             case notArrived
 
             var row: AccountSubscriptionRow? {
-                let tokyo = TimeZone(identifier: "Asia/Tokyo")!
-                let periodEndsAt = CalendarDay.sampleToday.advanced(by: 30).noon(in: tokyo)
-                let subscribed = SubscriptionStanding.subscribed(
-                    plan: .monthly, periodEndsAt: periodEndsAt, endsAt: periodEndsAt)
+                standing.map {
+                    AccountSubscriptionRow(
+                        standing: $0, autoRenewal: self == .cancelled ? .off : .on,
+                        timeZone: Self.tokyo)
+                }
+            }
+
+            var deletionMessage: String {
+                AccountDeletionConfirmation.message(standing: standing)
+            }
+
+            private static let tokyo = TimeZone(identifier: "Asia/Tokyo")!
+
+            private var standing: SubscriptionStanding? {
+                let periodEndsAt = CalendarDay.sampleToday.advanced(by: 30).noon(in: Self.tokyo)
                 return switch self {
                 case .freeTrial:
-                    AccountSubscriptionRow(
-                        standing: .freeTrial(
-                            lastDay: CalendarDay.sampleToday.advanced(by: 9), remainingDays: 10),
-                        autoRenewal: .unknown, timeZone: tokyo)
-                case .subscribed:
-                    AccountSubscriptionRow(standing: subscribed, autoRenewal: .on, timeZone: tokyo)
-                case .cancelled:
-                    AccountSubscriptionRow(standing: subscribed, autoRenewal: .off, timeZone: tokyo)
-                case .expired:
-                    AccountSubscriptionRow(
-                        standing: .expired, autoRenewal: .unknown, timeZone: tokyo)
-                case .testUser:
-                    AccountSubscriptionRow(
-                        standing: .testUser, autoRenewal: .unknown, timeZone: tokyo)
-                case .notArrived:
-                    nil
+                    .freeTrial(lastDay: CalendarDay.sampleToday.advanced(by: 9), remainingDays: 10)
+                case .subscribed, .cancelled:
+                    .subscribed(plan: .monthly, periodEndsAt: periodEndsAt, endsAt: periodEndsAt)
+                case .expired: .expired
+                case .testUser: .testUser
+                case .notArrived: nil
                 }
             }
         }
