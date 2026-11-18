@@ -4,7 +4,7 @@ import Testing
 
 @Suite("日の代表値")
 struct RepresentativeWeightTests {
-    // swiftlint:disable:next no_parameterized_test
+    // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
     @Test(
         "日ごとに実際の時刻でいちばん早い記録を、日の順に返すこと",
         arguments: try SharedTestCases.decode(

@@ -7,6 +7,7 @@ import { readStoredRecord } from "../../domain/sync-ledger/read-stored-record";
 import type { RecordChangeTarget } from "../../domain/sync-ledger/record-change-target";
 import { rejectWrite } from "../../domain/sync-ledger/reject-write";
 import type { RecordKind, WriteDecision } from "../../domain/sync-ledger/record-kind";
+import type { RejectionReason } from "../../domain/rejection-reason";
 import { computeTargetDeletedEstimationEvents } from "../../estimation/domain/compute-target-deleted-estimation-events";
 import { scheduleDishReestimation } from "../../estimation/domain/schedule-dish-reestimation";
 import { computeReestimatedDishEditedEvents } from "./compute-reestimated-dish-edited-events";
@@ -83,7 +84,7 @@ const decideCreate = (
   if (mealAwaitsEstimation(stores.mealEstimationStatus, mealId)) {
     return rejectWrite("create", dishId, "awaiting_estimation");
   }
-  if (!isWithinAcceptedRange("dishNameTrimmedLength", name.trim().length)) {
+  if (!isAcceptableName(name)) {
     return rejectWrite("create", dishId, "out_of_range");
   }
   return {
@@ -157,28 +158,34 @@ const decideUpdate = (
   if (current === undefined) {
     return rejectWrite("update", dishId, "record_not_found");
   }
+  const proportionedIds = (quantity?.proportionedIngredients ?? []).map(
+    ({ ingredientId }) => ingredientId,
+  );
+  const currentIngredientIds = stores.ingredient.findCurrentIdsOfDish(dishId);
+  // 端末は量を直すとき、材料の量も比例させてキャッシュに当てている。断るときは、そのうち今もある材料の今の値を取りに行かせる（#1022）
+  const reject = (reason: RejectionReason): WriteDecision<AddedRecordType> => ({
+    ...rejectWrite("update", dishId, reason),
+    redeliveredChanges: proportionedIds
+      .filter((ingredientId) => currentIngredientIds.includes(ingredientId))
+      .map((ingredientId) => ({ recordType: "ingredient" as const, recordId: ingredientId })),
+  });
   // 比例の明細の材料は、同じ料理の今の材料でないと書けない（表の外部キーでは守れない）。
   // 組が違うのは、端末が比例させたあとに推定し直しで材料が置き換わっていたとき。量が今と同じでも、載せた組は確かめる。
   // 待っても直せないことを返すため、推定を待っていることより先に確かめる
-  if (
-    quantity !== undefined &&
-    !isSameIdSet(
-      quantity.proportionedIngredients.map(({ ingredientId }) => ingredientId),
-      stores.ingredient.findCurrentIdsOfDish(dishId),
-    )
-  ) {
-    return rejectWrite("update", dishId, "ingredients_replaced");
+  if (quantity !== undefined && !isSameIdSet(proportionedIds, currentIngredientIds)) {
+    return reject("ingredients_replaced");
   }
   if (dishAwaitsEstimation(stores, current)) {
-    return rejectWrite("update", dishId, "awaiting_estimation");
+    return reject("awaiting_estimation");
   }
+  // 名前は変えるときだけ確かめる。量を直す書き込みも今の名前を運ぶので、推定が付けた名前が範囲の外でも量は直せるようにする
+  const renamed = name !== current.name;
   if (
-    !isWithinAcceptedRange("dishNameTrimmedLength", name.trim().length) ||
+    (renamed && !isAcceptableName(name)) ||
     (quantity !== undefined && !isAcceptableQuantity(current, quantity))
   ) {
-    return rejectWrite("update", dishId, "out_of_range");
+    return reject("out_of_range");
   }
-  const renamed = name !== current.name;
   const quantityCorrection =
     quantity !== undefined && quantity.value !== current.quantity?.value ? quantity : undefined;
   if (!renamed && quantityCorrection === undefined) {
@@ -242,6 +249,15 @@ const scheduleReestimation = (
     scheduleDishReestimation(stores, writes, dish, receivedAt),
   );
 };
+
+// 端末と同じ数になるよう、前後の空白を除いたコードポイントで数える（docs/agents/shared-rules.md）。
+// 名前は届いたまま保存するので、前後の空白を含めた長さも同じ範囲に当てる（端末は前後の空白を除いて送る）。
+// 対になっていないサロゲートは、保存すると別の字に置き換わって数が変わるので受け付けない
+const isAcceptableName = (name: string): boolean =>
+  name.isWellFormed() &&
+  [name.trim(), name].every((counted) =>
+    isWithinAcceptedRange("dishNameTrimmedLength", Array.from(counted).length),
+  );
 
 // 量を持つ当てた推定が無い料理（単位が一度も無い料理）は、量を直せない
 const isAcceptableQuantity = (current: Dish, quantity: DishQuantityCorrection): boolean =>

@@ -1,0 +1,6 @@
+# 中身の正本は .claude/agents/docs-review.md。ここには読む先だけを置く
+name = "docs-review"
+description = "文書の照合（docs/agents/review.md の「照合の回し方」）を1周回す。PR を出す前と PR に push する前に、同じ文書の表でかかるときに、マージ先のブランチと、2周目か push の前なら照らしたコミットを渡して使う。"
+developer_instructions = """
+.claude/agents/docs-review.md を読み、先頭の --- で囲んだ部分より後ろの本文に従って、文書の照合を1周回す。
+"""

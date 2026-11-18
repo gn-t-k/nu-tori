@@ -21,13 +21,20 @@ export type AppStoreNotificationLogVariables = {
       };
 };
 
+// App Store の通知と端末の取引の知らせの受け口が置く、取引に購入者のトークン（appAccountToken）があったか。値は出さない。
+// 通知がどのアカウントにも案内できなかったとき、トークンが無かったのか、持ち主が無かったのかを分けるため（#1025）
+export type SubscriptionTransactionLogVariables = {
+  subscriptionTransaction?: { hasAppAccountToken: boolean };
+};
+
 // 要求 ID は Cloudflare の Ray ID にし、Workers Logs と Sentry の報告を同じ ID で辿れるようにする。
 // 失敗した段は、例外の stage の欄に持たせる（Durable Object の RPC を越えても独自の欄は届く）。
 // ビルド番号は、古いビルドを締め出したとき（426）だけ足す
 export const observeRequest = createMiddleware<{
   Bindings: Env;
   Variables: { accountId?: string; unsupportedAppBuild?: number } & RequestLogVariables &
-    AppStoreNotificationLogVariables;
+    AppStoreNotificationLogVariables &
+    SubscriptionTransactionLogVariables;
 }>(async (c, next) => {
   // oxlint-disable-next-line nu-tori/no-random-uuid -- ログを結ぶ ID で、DB にも API にも出さない
   const requestId = c.req.header("cf-ray") ?? crypto.randomUUID();
@@ -57,6 +64,7 @@ export const observeRequest = createMiddleware<{
     notificationType: notificationKind.notificationType,
     notificationSubtype: notificationKind.notificationSubtype,
     notificationResult: appStoreNotification?.result,
+    hasAppAccountToken: c.get("subscriptionTransaction")?.hasAppAccountToken,
     durationMs: Date.now() - startedAt,
   });
 });

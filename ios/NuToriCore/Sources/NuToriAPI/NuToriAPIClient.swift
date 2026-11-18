@@ -13,6 +13,19 @@ public struct NuToriAPIClient: Sendable {
     ) {
         self.init(
             serverURL: environment.serverURL,
+            appBuildGate: appBuildGate,
+            sessionToken: sessionToken
+        )
+    }
+
+    /// 接続先だけを替えて、本物の通信でつなぐ初期化。デバッグビルドで手元のサーバー（`wrangler dev`）につなぐときに使う
+    public init(
+        serverURL: URL,
+        appBuildGate: AppBuildGate,
+        sessionToken: @escaping @Sendable () async -> String?
+    ) {
+        self.init(
+            serverURL: serverURL,
             transport: URLSessionTransport(),
             appBuildGate: appBuildGate,
             sessionToken: sessionToken

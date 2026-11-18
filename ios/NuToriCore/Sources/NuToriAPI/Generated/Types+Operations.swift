@@ -615,13 +615,13 @@ internal enum Operations {
                 /// Creates a new `TooManyRequests`.
                 internal init() {}
             }
-            /// 回数の歯止めにかかった
+            /// 要求の回数か、直近 24 時間の書き込みの数の歯止めにかかった。何も当てていない。同じ書き込みを、あとで送り直せる
             ///
             /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/429`.
             ///
             /// HTTP response code: `429 tooManyRequests`.
             case tooManyRequests(Operations.PushSyncWrites.Output.TooManyRequests)
-            /// 回数の歯止めにかかった
+            /// 要求の回数か、直近 24 時間の書き込みの数の歯止めにかかった。何も当てていない。同じ書き込みを、あとで送り直せる
             ///
             /// - Remark: Generated from `#/paths//v1/sync/writes/post(pushSyncWrites)/responses/429`.
             ///
@@ -1223,7 +1223,7 @@ internal enum Operations {
     }
     /// 食事の写真の縮小版を送る
     ///
-    /// 食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える
+    /// 食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える。受け取る写真の数には上限があり、超えたら 429 で応える。食事より先に届いたまま、長いあいだ食事が届かない写真は、受け取らなかったことにする
     ///
     /// - Remark: HTTP `PUT /v1/meal-photos/{photoId}`.
     /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)`.
@@ -1444,13 +1444,13 @@ internal enum Operations {
                 /// Creates a new `TooManyRequests`.
                 internal init() {}
             }
-            /// 回数の歯止めにかかった
+            /// 回数の歯止めか、写真の数の上限にかかった。あとで送り直す
             ///
             /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/429`.
             ///
             /// HTTP response code: `429 tooManyRequests`.
             case tooManyRequests(Operations.PutMealPhoto.Output.TooManyRequests)
-            /// 回数の歯止めにかかった
+            /// 回数の歯止めか、写真の数の上限にかかった。あとで送り直す
             ///
             /// - Remark: Generated from `#/paths//v1/meal-photos/{photoId}/put(putMealPhoto)/responses/429`.
             ///

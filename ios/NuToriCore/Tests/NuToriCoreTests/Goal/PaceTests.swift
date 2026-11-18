@@ -4,7 +4,7 @@ import Testing
 
 @Suite("ペース")
 struct PaceTests {
-    // swiftlint:disable:next no_parameterized_test
+    // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
     @Test(
         "サーバーと同じ入力から、同じペースを返すこと",
         arguments: try SharedTestCases.decode(

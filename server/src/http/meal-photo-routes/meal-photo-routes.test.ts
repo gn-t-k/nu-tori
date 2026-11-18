@@ -7,6 +7,7 @@ import { getAccountDurableObject } from "../../durable-object/get-account-durabl
 import { useFakeClock } from "../../estimation/http/testing/use-fake-clock";
 import { createMealWrite } from "../../meal/http/testing/create-meal-write";
 import { deleteMealWrite } from "../../meal/http/testing/delete-meal-write";
+import { insertMealPhotoReceipts } from "../../meal/durable-object/testing/insert-meal-photo-receipts";
 import {
   mockPhotosBucketDeleteError,
   mockPhotosBucketPutError,
@@ -295,6 +296,153 @@ describe("食事の写真", () => {
 
     test("R2 に置かないこと", async () => {
       expect(await readPhotoFile(photoId)).toBeNull();
+    });
+  });
+
+  describe("JPEG の種類を名乗って、JPEG の先頭の印で始まらないものを送ったとき", () => {
+    let photoId: string;
+    let response: Response;
+    beforeEach(async () => {
+      photoId = generateRecordId();
+      response = await putMealPhoto(sessionToken, photoId, {
+        body: new TextEncoder().encode("JPEG ではない中身"),
+        contentType: "image/jpeg",
+      });
+    });
+
+    test("415 を返すこと", () => {
+      expect(response.status).toBe(415);
+    });
+
+    test("R2 に置かないこと", async () => {
+      expect(await readPhotoFile(photoId)).toBeNull();
+    });
+  });
+
+  describe("どの食事も宣言していない写真を 100 枚受け取っているとき", () => {
+    beforeEach(async () => {
+      await insertMealPhotoReceipts(accountId, 100, Date.now());
+    });
+
+    describe("食事より先に写真が届いたとき", () => {
+      let photoId: string;
+      let response: Response;
+      let captureSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
+      beforeEach(async () => {
+        await enableUsageEventSending(accountId);
+        captureSpy = mockPostHogCaptureEndpointOk();
+        photoId = generateRecordId();
+        response = await putMealPhoto(sessionToken, photoId);
+      });
+
+      test("429 を返すこと", () => {
+        expect(response.status).toBe(429);
+      });
+
+      test("R2 に置かないこと", async () => {
+        expect(await readPhotoFile(photoId)).toBeNull();
+      });
+
+      test("受け取りの失敗を PostHog に送らないこと", () => {
+        expect(readPostHogCapturedEvents(captureSpy)).toEqual([]);
+      });
+    });
+
+    describe("食事が先に届いた写真が届いたとき", () => {
+      let response: Response;
+      beforeEach(async () => {
+        const photoId = generateRecordId();
+        await pushSyncWrites(sessionToken, {
+          writes: [createMealWrite({ meal: { photos: [{ id: photoId }] } })],
+        });
+        response = await putMealPhoto(sessionToken, photoId);
+      });
+
+      test("受け取ったと応えること", () => {
+        expect(response.status).toBe(204);
+      });
+    });
+  });
+
+  describe("直近の24時間に写真を 300 枚受け取っているとき、食事が先に届いた写真が届いたら", () => {
+    let photoId: string;
+    let response: Response;
+    beforeEach(async () => {
+      await insertMealPhotoReceipts(accountId, 300, Date.now() - 23 * 3_600_000);
+      photoId = generateRecordId();
+      await pushSyncWrites(sessionToken, {
+        writes: [createMealWrite({ meal: { photos: [{ id: photoId }] } })],
+      });
+      response = await putMealPhoto(sessionToken, photoId);
+    });
+
+    test("429 を返すこと", () => {
+      expect(response.status).toBe(429);
+    });
+
+    test("R2 に置かないこと", async () => {
+      expect(await readPhotoFile(photoId)).toBeNull();
+    });
+  });
+
+  describe("24時間より前に写真を 300 枚受け取っているとき、食事が先に届いた写真が届いたら", () => {
+    let response: Response;
+    beforeEach(async () => {
+      await insertMealPhotoReceipts(accountId, 300, Date.now() - 25 * 3_600_000);
+      const photoId = generateRecordId();
+      await pushSyncWrites(sessionToken, {
+        writes: [createMealWrite({ meal: { photos: [{ id: photoId }] } })],
+      });
+      response = await putMealPhoto(sessionToken, photoId);
+    });
+
+    test("受け取ったと応えること", () => {
+      expect(response.status).toBe(204);
+    });
+  });
+
+  describe("食事より先に届いた写真に、30 日たっても食事が届かないとき", () => {
+    let photoId: string;
+    beforeEach(async () => {
+      // 張ったアラームがひとりでに動かないよう、時計を先に進めておく
+      const clock = useFakeClock(Date.now() + 86_400_000);
+      photoId = generateRecordId();
+      await putMealPhoto(sessionToken, photoId);
+      clock.advance(30 * 86_400_000);
+      await runDurableObjectAlarm(getAccountDurableObject(env, accountId));
+    });
+
+    test("アラームで R2 から写真の控えを消すこと", async () => {
+      expect(await readPhotoFile(photoId)).toBeNull();
+    });
+
+    test("受け取りを消すこと", async () => {
+      expect(await readRows(accountId, "SELECT * FROM meal_photo_file_receipts")).toEqual([]);
+    });
+
+    describe("そのあと同じ写真がまた届いたとき", () => {
+      beforeEach(async () => {
+        await putMealPhoto(sessionToken, photoId);
+      });
+
+      test("R2 に置くこと", async () => {
+        expect(await readPhotoFile(photoId)).not.toBeNull();
+      });
+    });
+  });
+
+  describe("食事より先に届いた写真に、30 日たつ前のアラームが動いたとき", () => {
+    let photoId: string;
+    beforeEach(async () => {
+      const clock = useFakeClock(Date.now() + 86_400_000);
+      photoId = generateRecordId();
+      await putMealPhoto(sessionToken, photoId);
+      clock.advance(29 * 86_400_000);
+      await runDurableObjectAlarm(getAccountDurableObject(env, accountId));
+    });
+
+    test("R2 の写真の控えを残すこと", async () => {
+      expect(await readPhotoFile(photoId)).not.toBeNull();
     });
   });
 

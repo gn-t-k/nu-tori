@@ -69,9 +69,11 @@ flowchart LR
 - `/v1/apps/<app>` の `subscriptionStatusUrl` と `subscriptionStatusUrlForSandbox` が、本番の routes（`server/wrangler.jsonc`）と通知の経路（`server/src/http/app-store-server-notification-routes/`）から組んだ URL を指し、`subscriptionStatusUrlVersion` と `subscriptionStatusUrlVersionForSandbox` が `V2`
 - ページの一覧（`site/src/site-pages.ts`）の `kind` が `public` のページと `/` が、本番で 200 を返す
 - 出すビルドで、Sentry の新しい課題と、TestFlight のクラッシュのフィードバックが無い
-- LLM の費用の上限はエージェントから読めないので、Anthropic のワークスペース `nu-tori-production` の月の上限、知らせの額、前払いの自動の補充と支払い方法が、`docs/agents/production-incidents.md` の「費用の知らせ」のとおりかを開発者に聞く
+- LLM の費用の上限は審査のたびには開発者に聞かない。`docs/agents/production-incidents.md` の「費用の知らせ」に、開発者が Console で確かめた日がある。上限・知らせの額・自動の補充を変えたときと、Anthropic の知らせが来たときだけ、開発者に確かめてもらってその日を書き換える
 
 **Why:** 審査に出すビルドで主な流れを全部、実機で通し直すチケット（#864）を切ったが、項目はどれも自動テストか機能ごとの実機のチケットで確かめてあり、出すたびにアカウントを作り直す手間に見合わなかった（#864 の解決コメントに、項目と確かめた場所の対応がある）
+
+**Why:** LLM の費用の上限はエージェントの鍵で読めず（個人のアカウントでは Admin API が使えない。`docs/research/anthropic-cloudflare-cost-api.md`）、審査のたびに開発者に聞いて、そのたびにスクリーンショットを送ってもらっていた。上限に届けば読み分けの失敗が Sentry の知らせで分かる（`docs/agents/server-llm.md`）ので、変えたときだけ確かめれば足りる
 
 ### 審査に出す
 

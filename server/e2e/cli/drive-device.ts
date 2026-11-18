@@ -33,6 +33,7 @@ const main = async ([command, ...args]: string[]): Promise<number> =>
     .with("push", () => runPush(args))
     .with("pull", () => runPull(args))
     .with("call", () => runCall(args))
+    // oxlint-disable-next-line nu-tori/no-otherwise -- コマンドは人が打つ引数の文字列で、知らないものも来る
     .otherwise(() => Promise.reject(new UsageError({ reason: "コマンドが無いか、読めない" })));
 
 const runSignIn = async (args: string[]): Promise<number> => {

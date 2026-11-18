@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { R } from "@praha/byethrow";
 import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
+import { match } from "ts-pattern";
 import { recordIdSchema } from "../../domain/record-id";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
@@ -30,7 +31,7 @@ export const mealPhotoRoutes = new OpenAPIHono<{ Bindings: Env }>()
       operationId: "putMealPhoto",
       summary: "食事の写真の縮小版を送る",
       description:
-        "食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える",
+        "食事の書き込みとは別に送る。食事より先に届いてもよい。同じ写真が再び届いたときと、消した食事の写真が届いたときも、受け取った形で応える。受け取る写真の数には上限があり、超えたら 429 で応える。食事より先に届いたまま、長いあいだ食事が届かない写真は、受け取らなかったことにする",
       security: [{ session: [] }],
       middleware: [authenticateAccount, limitPhotoSize] as const,
       request: {
@@ -50,7 +51,7 @@ export const mealPhotoRoutes = new OpenAPIHono<{ Bindings: Env }>()
         401: { description: "セッションが無いか、切れている" },
         413: { description: "3 MiB を超えている" },
         415: { description: "JPEG でない" },
-        429: { description: "回数の歯止めにかかった" },
+        429: { description: "回数の歯止めか、写真の数の上限にかかった。あとで送り直す" },
         500: { description: "受け取れなかった。送り直す" },
       },
     }),
@@ -59,15 +60,26 @@ export const mealPhotoRoutes = new OpenAPIHono<{ Bindings: Env }>()
       if (mediaType !== photoContentType) {
         return c.body(null, 415);
       }
+      const photo = await c.req.arrayBuffer();
+      if (!startsWithJpegMarker(photo)) {
+        return c.body(null, 415);
+      }
       const received = await getAccountDurableObject(c.env, c.var.accountId).receiveMealPhoto(
         c.var.accountId,
-        { photoId: c.req.valid("param").photoId, photo: await c.req.arrayBuffer() },
+        { photoId: c.req.valid("param").photoId, photo },
       );
-      // 受け取れなかったら投げて 500 にし、要求ごとのログに失敗した段を出す
-      if (R.isFailure(received)) {
-        throw received.error;
+      if (R.isSuccess(received)) {
+        return c.body(null, 204);
       }
-      return c.body(null, 204);
+      return (
+        match(received.error)
+          .with({ name: "MealPhotoLimitExceededError" }, () => c.body(null, 429))
+          // 受け取れなかったら投げて 500 にし、要求ごとのログに失敗した段を出す
+          .with({ name: "MealPhotoReceiptFailedError" }, (error) => {
+            throw error;
+          })
+          .exhaustive()
+      );
     },
   )
   .openapi(
@@ -100,3 +112,9 @@ export const mealPhotoRoutes = new OpenAPIHono<{ Bindings: Env }>()
       return c.body(photo, 200, { "content-type": photoContentType });
     },
   );
+
+// JPEG の先頭の印（SOI と、続く印の始まり）
+const startsWithJpegMarker = (photo: ArrayBuffer): boolean => {
+  const [first, second, third] = new Uint8Array(photo, 0, Math.min(3, photo.byteLength));
+  return first === 0xff && second === 0xd8 && third === 0xff;
+};

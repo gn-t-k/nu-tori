@@ -21,6 +21,50 @@ const withStore = <T>(seed: Seed, read: (store: LedgerStore<RecordType>) => T): 
   });
 
 describe("帳簿の置き場", () => {
+  describe("ある時刻よりあとの書き込みの控えを数えるとき", () => {
+    let seed: Seed;
+    beforeEach(() => {
+      seed = async (factory) => {
+        const logAt = async (receivedAt: string) => {
+          const log = await factory.syncRequestLogs.create({ receivedAt: new Date(receivedAt) });
+          await factory.syncPushLogs.create({ syncRequestLogId: log.id });
+          return log.id;
+        };
+        const atBoundary = await logAt("2026-06-01T12:00:00.000Z");
+        const afterBoundary = await logAt("2026-06-01T12:00:00.001Z");
+        await factory.syncWriteReceipts.create({ syncRequestLogId: atBoundary });
+        await factory.syncWriteReceipts.create({
+          syncRequestLogId: afterBoundary,
+          positionInRequest: 0,
+        });
+        await factory.syncWriteReceipts.create({
+          syncRequestLogId: afterBoundary,
+          positionInRequest: 1,
+          result: "rejected",
+        });
+      };
+    });
+
+    test("その時刻よりあとに届いた要求の控えだけを、結果によらず数えること", async () => {
+      expect(
+        await withStore(seed, (store) =>
+          store.countWriteReceiptsAfter(new Date("2026-06-01T12:00:00.000Z")),
+        ),
+      ).toBe(2);
+    });
+  });
+
+  describe("書き込みの控えが1つも無いとき", () => {
+    test("0 と数えること", async () => {
+      expect(
+        await withStore(
+          async () => {},
+          (store) => store.countWriteReceiptsAfter(new Date(0)),
+        ),
+      ).toBe(0);
+    });
+  });
+
   describe("書き込みの結果を読むとき", () => {
     describe("拒んだ書き込みのとき", () => {
       let seed: Seed;

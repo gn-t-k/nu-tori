@@ -14,6 +14,11 @@ on:
 
 permissions: {}
 
+# shell を指定しない run は bash -e で動き、パイプの前の失敗が消える。bash を指すと -o pipefail が付く（scripts/workflow-pipefail が見る）
+defaults:
+  run:
+    shell: bash
+
 jobs:
   sentry:
     if: github.event_name != 'issues'

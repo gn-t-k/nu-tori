@@ -127,6 +127,7 @@ const photoDishes: IdentifiedDishes = {
           foodCompositionQuery: "せん茶 浸出液",
           nutritionLabel: {
             basisGrams: 100,
+            basisGramsEstimated: false,
             nutrients: { energy_kcal: 0, protein_g: 0, salt_equivalent_g: 0.02 },
           },
         },

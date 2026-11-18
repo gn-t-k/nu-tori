@@ -11,10 +11,13 @@ export const createMemoryLedgerStore = <TRecordType extends string>(
     string,
     { outcome: SyncWriteOutcome; recordType: TRecordType; recordId: RecordId }
   >();
+  const receiptReceivedAts: Date[] = [];
   const changes: { sequence: number; recordType: TRecordType; recordId: RecordId }[] = [];
   return {
     transaction: (run) => run(),
     findLatestRequestReceivedAt: () => requestReceivedAts.at(-1),
+    countWriteReceiptsAfter: (receivedAfter) =>
+      receiptReceivedAts.filter((receivedAt) => receivedAt > receivedAfter).length,
     insertPushRequestLog: ({ receivedAt }) => {
       operations.push("request_log");
       requestReceivedAts.push(receivedAt);
@@ -27,6 +30,11 @@ export const createMemoryLedgerStore = <TRecordType extends string>(
     insertWriteReceipt: ({ writeId, outcome, recordType, recordId }) => {
       operations.push("receipt");
       receipts.set(writeId, { outcome, recordType, recordId });
+      const receivedAt = requestReceivedAts.at(-1);
+      if (receivedAt === undefined) {
+        throw new Error("要求の控えより先に、書き込みの控えを書いた");
+      }
+      receiptReceivedAts.push(receivedAt);
     },
     insertRecordChange: ({ recordType, recordId, writeId }) => {
       operations.push(writeId === undefined ? "added_change" : "change");

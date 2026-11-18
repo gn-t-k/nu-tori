@@ -6,7 +6,7 @@ mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-s
 
 - lock の外の skill は、`.agents/skills/<名前>/` に置いて `.claude/skills/` からリンクする。自動更新は lock にある名前だけを入れ直し、ほかは触らない。この決まりより前に置いた `model-based-ui-design` は `.claude/skills/` にだけあり、移すかは決めていない
 - `byethrow` は、`@praha/byethrow-docs` の `init claude` が書き出す skill を、`server/` の依存から docs を引く形に直したもの
-- `verify-server` は、pstack の `/pstack:create-verification-skill` で作ったサーバーの検証スキル。pstack の生成先（`.claude/skills/`）でなく、この決まりどおり `.agents/skills/` に置いた。nu-tori のファイルなので、直接直す。中の道具（`scripts/*.sh`）は `scripts/check scripts` が ShellCheck にかける
+- `verify-server` と `verify-ios` は、pstack の `/pstack:create-verification-skill` で作ったサーバーとアプリの検証スキル。pstack の生成先（`.claude/skills/`）でなく、この決まりどおり `.agents/skills/` に置いた。nu-tori のファイルなので、直接直す。中の道具（`scripts/*.sh`）は `scripts/check scripts` が ShellCheck にかける
 - `erd-design` は、開発者がほかのリポジトリでも使う自作の skill。どのリポジトリでも使える形に保ち、このリポジトリに固有の前提は `docs/agents/table-design.md` に書く
 
 pstack は Claude Code のプラグイン `pstack@cursor-plugins` で入れ、リポジトリで確かめた版を `pstack-lock.json` に書く。クラウドでは環境 `nu-tori` のセットアップスクリプトが新しいコンテナのたびに最新の版を入れ、手元（Mac）では手で上げるまで版が変わらない（#903）。版は、入っている版が lock より新しいと `check-pstack.sh` が知らせたときに、作業の PR とは別の PR（ブランチ `claude/update-pstack-<日付>`）で lock を上げる。手元の版が lock より古いと知らされたら、手元のプラグインを上げる
@@ -15,8 +15,9 @@ pstack は Claude Code のプラグイン `pstack@cursor-plugins` で入れ、�
 
 決まった頼みで繰り返し立てるサブエージェントは、定義にしてリポジトリに置く。中身の正本は Claude Code の `.claude/agents/<名前>.md` に書き、Codex の `.codex/agents/<名前>.toml` には、その本文を読むよう指す1行だけを置く。Cursor は両方を読む。
 
-- `preferences-review`: 好みのレビューを1周回す（`docs/agents/git.md` の「PR の前のレビュー」）。レビュー役はコードを直さないので、書く道具を外す。入れ子のサブエージェントに頼むと結果を待たずに返したことがある（#544）ので、`Agent` も外す。Bash は git の差分を読むために残す
-- `policy-review`: ポリシーの照合を1周回す（`docs/agents/git.md` の「PR の前のレビュー」）。道具を外す理由は `preferences-review` と同じ
+- `preferences-review`: 好みのレビューを1周回す（`docs/agents/review.md` の「照合の回し方」）。レビュー役はコードを直さないので、書く道具を外す。入れ子のサブエージェントに頼むと結果を待たずに返したことがある（#544）ので、`Agent` も外す。Bash は git の差分を読むために残す
+- `policy-review`: ポリシーの照合を1周回す（`docs/agents/review.md` の「照合の回し方」）。道具を外す理由は `preferences-review` と同じ
+- `docs-review`: 文書の照合を1周回す（`docs/agents/review.md` の「照合の回し方」）。道具を外す理由は `preferences-review` と同じ
 
 `isolation: "worktree"` で立てるサブエージェント（`/implement-spec` の実装役など）には、次の書き方を指示に入れる。worktree の見張りは、git が worktree の外で動かないと確かめられない Bash を拒む。#613 では実装役のコマンドが84回拒まれ、そのたびに打ち直した
 
@@ -42,7 +43,6 @@ worktree やセッションを並べるときは、pstack の `principle-separat
 - `check-pstack.sh`（クラウドと手元で始めたとき）: 入っている pstack の版が `pstack-lock.json` と違えば、上の「スキル」の上げ方を知らせる
 - `warn-behind-main.sh`（クラウドで続けたとき〈resume・compact・clear〉と、手元で始めたときと続けたとき）: 作業ツリーが origin/main より遅れていたら知らせ、手元では main を取り込ませる。長いセッションのあいだに main が進み、古い版の働き方の文書を読んでチケットを切り違えたため。手元の worktree は古い main から作られ、まだ無い道具を探して止まったため
 - `block-pkill-f.sh`（Bash を呼ぶ前）: `pkill -f`・`pgrep -f`（`-af` のような束ね方と `--full` を含む）を含むコマンドを止め、終わりの知らせを待つか PID を指して止めるよう返す。`-f` はコマンドライン全体に当たり、そのパターンを含む自分のシェルまで止める（exit 144）。`AGENTS.md` の注意書きだけでは、1週間に4つのセッションで起きたため（#787）。文字列に書いただけでも止まるので、コミットメッセージや本文に書くときは Write で書いたファイルで渡す（heredoc も止まる）
-- `block-self-archive.sh`（クラウドのセッションで `archive_session` を呼ぶ前）: 呼んだセッション自身の ID が渡されたら止め、返事を終えて止まれば開発者か親のセッションが閉じると返す。自分をアーカイブするとコンテナが解放されてターンが切れ、merge も Issue のクローズも済んでいるのにセッションが FAILED に見えたため（#904 と #905 のセッション。#927）
 
 ## 許可のルール
 
@@ -57,6 +57,13 @@ worktree やセッションを並べるときは、pstack の `principle-separat
 - MCP のサーバーは、Claude Code（`.mcp.json`）・Codex（`.codex/config.toml`）・Cursor（`.cursor/mcp.json`）の3つの設定に同じものを置き、版や環境変数は起動スクリプト（`scripts/mobilebuildmcp`）の1か所に書く。Codex はプロジェクトを信頼したとき、Cursor は Customize でサーバーを一度オンにしたときに読む
 - Xcode の MCP（`xcrun mcpbridge`）は、各ツールの MCP の設定に直接置かず、MobileBuildMCP の中継で呼ぶ
 
+## LLM の評価の鍵
+
+LLM の評価（`server/evals/`）の鍵 `NU_TORI_ANTHROPIC_API_KEY` は、Mac とクラウドで置き場が違う（#575）。どのワークスペースのキーかは `docs/agents/server-llm.md` の「鍵と提供元」に、読み方と、無いときに止まる文言は `server/evals/read-eval-api-key.ts` にある。
+
+- Mac: 開発者がキーチェーンに置く（置くコマンドは、止まったときの文言にある）
+- Claude Code on the web: 環境 `nu-tori` の環境変数に置いてある。プロジェクトの既定の環境を `nu-tori` にしてあるので、プロジェクトのスレッドとその子のサブエージェントは鍵を読める。ほかの環境で立ったセッションは読めないので、評価を回すセッションは `nu-tori` で立てる。止まったときの文言は環境に触れないので、クラウドで止まったら、まず環境を確かめる
+
 ## Sentry を読む
 
 Sentry の課題・イベント・スタック・端末・版・件数は、`scripts/sentry`（Sentry の公式の CLI、npm の `sentry`）で読む。版・テレメトリの停止・組織は、このスクリプトの1か所に書く。MCP の設定には Sentry を置かない。調べた経緯は `docs/research/sentry-agent-access.md`。
@@ -66,7 +73,7 @@ Sentry の課題・イベント・スタック・端末・版・件数は、`scr
 - 読んだイベントの中身（端末の ID、利用者、要求のヘッダー）は、公開の Issue・PR・コメントに貼らない。貼るのはスタックの関数名と、版・OS・件数まで
 - 認証は読むだけにする
   - Mac: 開発者が `scripts/sentry auth login --read-only` を一度走らせる
-  - Claude Code on the web と Cursor の Cloud Agents: 読むだけの個人のトークン（スコープ `org:read`・`project:read`・`team:read`・`event:read`・`member:read`）を、環境変数 `NU_TORI_SENTRY_READ_TOKEN` に置く。Claude Code on the web は個人の環境に置き、ネットを Custom にして `sentry.io` と `*.sentry.io` を足す（既定の一覧も残す）。Cursor は Cloud Agents の Secrets に置く
+  - Claude Code on the web と Cursor の Cloud Agents: 読むだけの個人のトークン（スコープ `org:read`・`project:read`・`team:read`・`event:read`・`member:read`）を、環境変数 `NU_TORI_SENTRY_READ_TOKEN` に置く。Claude Code on the web は環境 `nu-tori` に置く。Cursor は Cloud Agents の Secrets に置く
   - dSYM を上げる組織のトークン（Xcode Cloud の `SENTRY_AUTH_TOKEN`）は課題を読めないので、使い回さない
 - 認証の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどれかを頼む
 
@@ -96,12 +103,16 @@ App Store Connect の画面は英語で出るので、文書・Issue・開発者
   - 指標: `scripts/cloudflare metrics <development|production> [何時間前から]`。時刻と呼び出しの状態ごとの、要求・誤り・CPU 時間と壁時計の時間（単位はマイクロ秒）
   - LP の訪問: `scripts/cloudflare web-analytics [何日前から]`。読み方と鍵は下の「流入の数を読む」
   - DMARC: `scripts/cloudflare dmarc [何日前から]`（既定 7）。`nu-tori.app` に届いた DMARC の報告の、日（報告を受け取った日で、メールを送った日の翌日ごろ）・送り元の組織（`sourceOrgName`）・報告した組織（`orgName`）・処置（`disposition`）ごとの、通数と SPF・DKIM・DMARC に通った数。GraphQL の zone の `dmarcReportsSourcesAdaptiveGroups` を読む
+  - 評価の写真: `scripts/cloudflare evals list [キーの頭]`（キー・バイト数・更新の時刻の JSON）、`scripts/cloudflare evals get <キー> <書き出すパス>`。書くのは `evals put <キー> <上げるファイル>` と `evals delete <キー>`。R2 のバケット `nu-tori-evals` に、評価のケースの写真と正解の JSON を置く（#519）。アプリの写真のバケットとは分け、写真は開発者が撮った市販品だけにする。キーは英数字と `._-/` だけにし、ケースごとに `nutrition-label/<番号>-<名前>/photo-1.jpg`（2枚目は `photo-2.jpg`）と、隣に `expected.json` を置く。開発者は撮った写真を R2 の画面の Objects → Upload で `inbox/` に上げ、どれがどのケースかをエージェントに伝えるだけにする。エージェントが写真の表示を読んで `expected.json` を書き（kcal が 4×P＋9×F＋4×C とおおよそ合うかで読み違いを確かめる）、ケースのフォルダに置いて `inbox/` から消す
 - 指標を読んで、速くなった・悪くなったと判断する前に、pstack の `principle-explain-the-number` を読む
 - `logs` と `metrics` は、環境を毎回引数で名指す。本番を読んだら、返事にそう書く。`dmarc` はドメインの報告で、環境の区別が無い
 - 読んだ中身のうち、`accountId`、zone の ID、Durable Object の ID、要求 ID、要求の URL の値・ヘッダー・IP・User-Agent は、公開の Issue・PR・コメントに貼らない。貼るのは数・率・所要時間、経路の型、状態コード、例外の名前と `failedStage` まで。DMARC は、送り元のサーバーの IP と受け取った側のアドレスを貼らず、送り元と報告した組織の名前と、SPF・DKIM・DMARC の結果の件数まで
 - トークンは読むだけにする。アカウントのトークンで、Workers の役割 `Metadata Read-Only` を `nu-tori-development` と `nu-tori-production` に絞ったものと、`Account Analytics Read` と、範囲を `nu-tori.app` に絞った zone の `Analytics Read` だけを付ける（このトークンでログの問い合わせが通ることを 2026-10-09 に、`dmarc` が通ることを 2026-10-28 に確かめた）。zone の `Analytics Read` が無いと、`dmarc` は `zone.analytics.read` の権限が無いという `authz` の誤りで止まる（#775）。デプロイ用の `CLOUDFLARE_API_TOKEN` は使わない
   - Mac: シェルの設定に `NU_TORI_CLOUDFLARE_ACCOUNT_ID` と `NU_TORI_CLOUDFLARE_READ_TOKEN` を書く
   - Claude Code on the web と Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置く。Cursor の `NU_TORI_CLOUDFLARE_READ_TOKEN` は Runtime Secret にする
+- 評価の写真は、上のトークンでなく、`nu-tori-evals` だけを読み書きできる R2 の Account API token（Permissions は `Object Read & Write`、バケットを `nu-tori-evals` に絞る）の、S3 互換の API の鍵の組で扱う。R2 の文書が、このトークンは REST の API で使えないとしているため。上のトークンに R2 の権限を足すと、アプリの写真のバケットまで読めてしまう。エージェントの鍵は読むだけにする決まりの例外で、ケースを足す手間を開発者から外すために書けるようにした。漏れても届くのは、開発者が撮った市販品の写真と正解の JSON だけ。作り直すときは、R2 の Overview の API Tokens の Manage で作り、鍵の組でアプリの写真のバケット（`nu-tori-production-photos` と `nu-tori-development-photos`）の一覧が 401・403 になることを `curl -s -o /dev/null -w '%{http_code}' --aws-sigv4 aws:amz:auto:s3 --user "<Access Key ID>:<Secret Access Key>" "https://$NU_TORI_CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com/<バケット>?list-type=2&max-keys=1"` で確かめてから（2xx なら Revoke して作り直し、000・5xx は確かめられていない）、下の2か所に置き直す
+  - Mac: シェルの設定に `NU_TORI_CLOUDFLARE_EVALS_ACCESS_KEY_ID` と `NU_TORI_CLOUDFLARE_EVALS_SECRET_ACCESS_KEY` を書く（`NU_TORI_CLOUDFLARE_ACCOUNT_ID` もいる）
+  - Claude Code on the web と Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置く。Cursor の `NU_TORI_CLOUDFLARE_EVALS_SECRET_ACCESS_KEY` は Runtime Secret にする
 - AI Gateway のログは読まない（ゲートウェイは置いていない。`docs/agents/server-llm.md` の「鍵と提供元」）。Workers AI を呼び始めてゲートウェイを作るときに、トークンに `AI Gateway Read` を足し、スクリプトにゲートウェイの ID とログを読む口を足す。そのときも、要求と応答の本文（`request_head`・`response_head`、`.../logs/<id>/request`・`/response`）は読まない
 - アカウント ID かトークンの無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどちらかの置き場に2つとも置くよう頼む
 
@@ -116,9 +127,10 @@ App Store Connect の画面は英語で出るので、文書・Issue・開発者
 - 読んだ中身のうち、`distinct_id`（アカウント ID）、`person_id`、`$session_id`・`$device_id`・`$anon_distinct_id` などの ID、人の属性、1人ごとの行は、公開の Issue・PR・コメントに貼らない。貼るのは集計（件数・率・差・中央値の秒、版・週ごとの内訳）までで、1〜2人の内訳は「数人」とまとめる
 - 鍵は読むだけにする。個人の API キーで、スコープは `query:read` だけ（preset「Performing analytics queries」）、届く範囲は nu-tori のプロジェクトだけにする（この鍵で `HogQLQuery` と `RetentionQuery` が通ることを 2026-10-09 に確かめた）。`query:read` でも `persons` の表は読めるので、ID を外に出さないことは上の決まりで守る。Worker が人を消す `POSTHOG_PERSONAL_API_KEY` は使わない
   - Mac: シェルの設定に `NU_TORI_POSTHOG_PROJECT_ID`（プロジェクトの URL の数字）と `NU_TORI_POSTHOG_READ_KEY` を書く
-  - Claude Code on the web と Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置く。Cursor の `NU_TORI_POSTHOG_READ_KEY` は Runtime Secret にする。Claude Code on the web のネットを Custom にしているなら、`eu.posthog.com` を足す
+  - Claude Code on the web: 同じ2つを、環境 `nu-tori` と `nu-tori-discovery` に置く
+  - Cursor の Cloud Agents: 同じ2つを、Sentry のトークンと同じ置き場に置き、`NU_TORI_POSTHOG_READ_KEY` は Runtime Secret にする
 - Query API はいまは無料だが、PostHog はいずれ課金すると書いている。上限はプロジェクトごとに 1 時間 2,400 回・1 分 240 回・同時 3 本・実行 10 秒で、ほかに個人の API キーで読む分には、プロジェクトごとに 1 時間に読む量の予算がある（量は公開されていない）。どれかを超えると `429` が返り、読む量の予算なら `api_queries_budget_exceeded` が付く
-- プロジェクトの ID か鍵の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどちらかの置き場に2つとも置くよう頼む
+- プロジェクトの ID か鍵の無い場所で呼ぶと `Not authenticated` で止まる。そのときは開発者に、上のどれかの置き場に2つとも置くよう頼む
 
 ## お金の数字を読む
 
@@ -142,7 +154,7 @@ flowchart LR
 
 ## 流入の数を読む
 
-見つけてもらう役（#738）が読む、検索・App Store・LP の流入の数。3つの鍵は、クラウドの環境 `nu-tori-discovery` にだけ置く。`nu-tori`・`nu-tori-finance`・Mac には置かないので、ほかの場所で呼ぶと `Not authenticated` で止まる。鍵を作り直すとき、申し込みが止まったときは、開発者に `scripts/discovery-analytics-wizard` を Mac で回すよう頼む。調べた経緯は `docs/research/search-console-agent-access.md`・`docs/research/app-store-connect-analytics.md`・`docs/research/cloudflare-web-analytics.md`。
+見つけてもらう役（#738）が読む、検索・App Store・LP の流入の数。3つの鍵は、クラウドの環境 `nu-tori-discovery` にだけ置く。`nu-tori`・`nu-tori-finance`・Mac には置かないので、ほかの場所で呼ぶと `Not authenticated` で止まる。流入のあと入れた人が使い始めたかは、同じ環境で「PostHog を読む」のとおりに読む。鍵を作り直すとき、申し込みが止まったときは、開発者に `scripts/discovery-analytics-wizard` を Mac で回すよう頼む。調べた経緯は `docs/research/search-console-agent-access.md`・`docs/research/app-store-connect-analytics.md`・`docs/research/cloudflare-web-analytics.md`。
 
 - **数字は公開のリポジトリに書かない**。読んだ件数・率・順位・検索語は、ファイル・Issue・PR・コミット・コメントに書かず、週の報告は `nu-tori-ops` に置く。リポジトリに書くのは、読めたか、何行返ったか、断られた理由まで
 - 数の増減を読んで判断する前に、pstack の `principle-explain-the-number` を読む
@@ -159,7 +171,6 @@ flowchart LR
   - 鍵: `NU_TORI_ASC_SALES_KEY_ID`・`NU_TORI_ASC_SALES_ISSUER_ID`・`NU_TORI_ASC_SALES_PRIVATE_KEY`（チームのキーで役割 Sales and Reports。`.p8` を base64 の1行に）。この役割は販売レポート（お金の数字）も読めるので、スクリプトは Analytics Reports の口のほかへは送らない
 - Cloudflare: `scripts/cloudflare web-analytics [何日前から]`（既定 7、93 まで）。`nu-tori.app` のボットでない読み込みを、日・ページのパス・参照元のホストとパスごとに、ページビュー（`count`）と、ほかのサイトか直接来た訪問（`sum.visits`）で返す。クエリ文字列（UTM）は取れない。データセットは Beta なので、名前や次元が変わったら問い合わせを直す
   - 鍵: `NU_TORI_CLOUDFLARE_ANALYTICS_READ_TOKEN`（アカウントのトークンで `Account Analytics Read` だけ）。アカウントの ID はトークンから引く。Workers Logs を読めるサーバーの `NU_TORI_CLOUDFLARE_READ_TOKEN` は、この環境に置かない
-- 環境のネットを Limited にするなら、`oauth2.googleapis.com`・`searchconsole.googleapis.com`・`api.appstoreconnect.apple.com`・`api.cloudflare.com` と、segment を落とす S3 のホスト（最初に読んだときに分かる）を許す
 
 ## 本番の知らせを Issue にする
 
@@ -178,6 +189,15 @@ flowchart LR
 - Mac で確かめるときは `scripts/production-alerts sentry --dry-run` か `scripts/production-alerts resolve <Issue の番号> --dry-run`。GitHub と Sentry に書かず、作る Issue の題とコメントする先と、解決にする課題だけを出す
 - 公開のリポジトリでは、60 日動きが無いと定期実行が止まる。止まったら Actions の画面で入れ直す
 
+## 検証スキルの地図の見回り
+
+定期のタスク「検証スキルの地図の見直し（server・ios）」（`trig_016f9v8n4RY8tAvnDHdjqYdj`、毎週水曜 5:00〈日本時間〉、毎回新しいセッション）が、pstack の `maintain-verification-skill` で `verify-server` と `verify-ios` の地図（`features/`）を見直す。手順はタスクの指示にある。
+
+- `verify-server` は、クラウドのセッションで実際に立てて入口を通す
+- `verify-ios` は、クラウドにシミュレーターが無いので、main の最新の `ios-ui-test.yml` の回の結果と、地図の行とテスト・実装の読み合わせで見る。手で動かす行は回せず、報告に場面の名前を挙げ、Mac のセッションで回す
+- 地図を直すとき（結果が changed）は、新しいブランチで PR を1つ出し、`docs/agents/review.md` で変更にかかるものを通す。見張らず、merge もしない。製品の不具合は直さず Issue にする
+- タスクの指示を変えたら、ここも直す
+
 ## `nu-tori.app` からメールを送る
 
 `nu-tori.app` のメールは Google Workspace で受けて送る（#649 の「メールの窓口」。DNS の値と理由は #651 の解決コメント）。DNS は Cloudflare のダッシュボードで手で置き、リポジトリには宣言を持たない。
@@ -190,6 +210,10 @@ flowchart LR
 ## CI
 
 - CI は変わったパスでジョブを分け、main のルールセットでは `check.yml` の `ios-app` 以外のジョブをすべて必須にする。飛ばすのはジョブの条件（変わったファイルを判定するステップ）で行い、文書（`*.md`）だけの変更ではジョブを飛ばす。ワークフローの `paths` で飛ばすと、必須のチェックが保留のまま残る。どのパスがどの対象に当たるかの決まりは `scripts/check` に1か所だけ置き、`changes` のジョブは PR の差分を `scripts/check --pick-targets` に渡す。比べる範囲と、差分が取れないときにすべてを確かめることは、呼ぶ側が決める。必須にしないワークフロー（デプロイ、`ios-ui-test.yml`）は `paths` で飛ばしてよい
+- ワークフロー（`.github/workflows/` の下のどれでも）と `.github/dependabot.yml` と `.github/actionlint.yaml` と `ios/ci_scripts/` を変えたら、`scripts` のジョブを回す。ジョブの中の `scripts/check scripts` が、ワークフローを actionlint にかけ（`run` の中身は同じ版の ShellCheck に渡す）、`ios/ci_scripts/` のシェルを ShellCheck にかける。actionlint は `dependabot.yml` を読まないので、そこを変えた回は選ばれても検査にはかからない。独自のランナーのラベル（`xcode-27`）は `.github/actionlint.yaml` に書く
+- ワークフローは、先頭に `defaults: run: shell: bash` を置き、`shell:` に bash のほかを書かない。`scripts/workflow-pipefail` が見る
+
+  **Why:** `shell` を指定しない `run` は `bash -e` で動き、`pipefail` が効かない。パイプの前の `gh api` が落ちても、ステップは成功のまま進み、Issue を二重に立てうる不具合が2度出た（#828、#832）。actionlint の ShellCheck はこの抜けを見ない。ジョブの既定にだけ置くと、ジョブを足したときに漏れるので、ワークフローの既定に置く
 - エージェントが読む文書の変更では、文書だけの変更でも `scripts` のジョブを回し、文書のあいだで同じ段落か箇条書きの1項目が重なっていないかを `scripts/agent-docs-duplicates` で見る。どれをエージェントが読む文書とするかは、そのスクリプトにある（#930）
 - GitHub Actions の秘密の値は、main からだけ使える Environment に置く（ADR-0010）
 - ジョブと、そこから呼ぶスクリプトを足す・直すときは、pstack の `principle-make-operations-idempotent` を読む

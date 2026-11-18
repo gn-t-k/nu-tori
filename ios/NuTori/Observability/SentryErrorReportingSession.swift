@@ -22,23 +22,12 @@ actor SentryErrorReportingSession: ErrorReportingSession {
 
     func report(_ failure: HandledFailure, cause: FailureCause?) async {
         guard started else { return }
-        let message =
-            switch failure {
-            case .sync: "sync"
-            case .healthRead: "health_read"
-            case .healthWrite: "health_write"
-            case .healthNutritionWrite: "health_nutrition_write"
-            case .cacheSave: "cache_save"
-            case .storeRecovery: "store_recovery"
-            case .photoUpload: "photo_upload"
-            case .reminderSchedule: "reminder_schedule"
-            case .cacheRead: "cache_read"
-            case .notificationPermissionRequest: "notification_permission_request"
-            case .goalSetupRequest: "goal_setup_request"
-            case .appStoreSync: "app_store_sync"
-            }
+        let name = failure.reportName
         await MainActor.run {
-            _ = SentrySDK.capture(message: message) { scope in
+            _ = SentrySDK.capture(message: name) { scope in
+                // スタックはどの種類でも同じで、Sentry がスタックで分けると種類を問わず1つの課題にまとまるので、種類で分ける。
+                // 原因のコードは入れない。同じ種類の失敗がコードごとに課題に割れないようにするため
+                scope.setFingerprint(["handled-failure", name])
                 guard let cause else { return }
                 scope.setTag(value: cause.domain, key: "error.domain")
                 scope.setTag(value: String(cause.code), key: "error.code")

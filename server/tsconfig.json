@@ -4,6 +4,7 @@
     "target": "ES2024",
     "lib": ["ES2024"],
     "module": "Preserve",
+    // 拡張子なしの ./index やディレクトリの import は、Bundler を前提にする
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "noEmit": true,

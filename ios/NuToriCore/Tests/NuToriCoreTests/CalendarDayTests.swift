@@ -6,7 +6,7 @@ import Testing
 struct CalendarDayTests {
     @Suite("日の区切り")
     struct ContainingInstant {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test(
             "時刻に時差を足した UTC の日付の日に入れること",
             arguments: try SharedTestCases.decode(
@@ -47,7 +47,7 @@ struct CalendarDayTests {
 
     @Suite("タイムゾーンから出す日の区切り")
     struct ContainingInstantInTimeZone {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test(
             "その時刻の時差から出した日に入れること",
             arguments: try SharedTestCases.decode(
@@ -60,7 +60,7 @@ struct CalendarDayTests {
             )
         }
 
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test(
             "その時刻の UTC との時差を秒で返すこと",
             arguments: try SharedTestCases.decode(
@@ -103,7 +103,7 @@ struct CalendarDayTests {
 
     @Suite("週の区切り")
     struct StartOfWeek {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test(
             "その週の月曜から始まる週に入れること",
             arguments: try SharedTestCases.decode(

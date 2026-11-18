@@ -33,7 +33,7 @@
 
 ## 掲載情報を直す
 
-App Store Connect に入れる掲載情報（名前、サブタイトル、プロモーション用テキスト、説明文、キーワード欄、審査へのメモ、URL、著作権の欄の形、カテゴリ）は `src/app-store-connect-listing.ts` の1か所に、スクリーンショット5枚の見出しと載せる生の画面は `src/app-store-screenshots.ts` に置く。どちらもページには出さず、テストと合成のコマンドと wizard が読む。アプリの ID と提供者のトークン（`src/app-store-listing.ts`）はバッジが使う別のもの。変える順は `docs/agents/marketing.md` の「掲載情報の置き場と変える手順」。
+掲載情報（欄は `GLOSSARY.md`）のうちスクリーンショットのほかの欄と、あわせて App Store Connect に入れる審査へのメモ・URL・著作権の欄の形・カテゴリは `src/app-store-connect-listing.ts` の1か所に、スクリーンショット5枚の見出しと載せる生の画面は `src/app-store-screenshots.ts` に置く。どちらもページには出さず、テストと合成のコマンドと wizard が読む。アプリの ID と提供者のトークン（`src/app-store-listing.ts`）はバッジが使う別のもの。変える順は `docs/agents/marketing.md` の「掲載情報の置き場と変える手順」。
 
 - 文言の欄（サブタイトル、プロモーション用テキスト、説明文、見出し）は `ListingCopy`（`src/listing-copy.ts`）で書き、仮の文は `status: "draft"`、決めた文は `"final"` にする。仮の文が残るあいだ、wizard は App Store Connect に入れる段を始めない
 - 説明文の URL は、ページの一覧から作る（`publicPageUrl`）。URL を手で書かない

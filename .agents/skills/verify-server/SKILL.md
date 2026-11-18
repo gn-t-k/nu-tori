@@ -1,6 +1,6 @@
 ---
 name: verify-server
-description: "nu-tori のサーバー（server/）を手元で wrangler dev で立て、端末と同じ API を叩いて、触れた機能が動くことを証拠つきで確かめる。PR を出す前と PR に push する前の確かめ（docs/agents/git.md の「動かして確かめる」）で使う。"
+description: "nu-tori のサーバー（server/）を手元で wrangler dev で立て、端末と同じ API を叩いて、触れた機能が動くことを証拠つきで確かめる。PR を出す前と PR に push する前の確かめ（docs/agents/review.md の「確かめの回し方」。かかるかは同じ文書の表）で使う。"
 ---
 
 # サーバーを動かして確かめる
@@ -18,7 +18,8 @@ run=$($S/start.sh)        # ポートを変えるときは $S/start.sh 8800
 - 空の DB に D1 の移行を当て、`wrangler dev --local` を開発用の設定（`wrangler.jsonc` の上の階層）で立てる。Durable Object の移行は、最初の要求で各 Durable Object が当てる
 - 立ったと言えるのは、ログの `Ready on` と `GET /health` が `{"status":"ok"}` の両方が揃ったとき。最後の行に回のフォルダ（`.scratch/verify-server/<時刻>-<ポート>/`、gitignore 済み）を出す
 - 秘密の値は手元だけの偽物で、Apple と Sentry には届かない。確かめのサインインの口（`/v1/e2e/*`、`docs/agents/server-e2e.md`）は、この回だけの秘密の値で開く
-- 推定・読み分け・返事は Anthropic を呼ぶ。開発用のワークスペース（`nu-tori-development`）の鍵を `VERIFY_SERVER_ANTHROPIC_API_KEY` で渡して立てたときだけ、結果まで進む。渡さなければ呼び出しは `authentication_error` で失敗し、そこから先は下の「確かめられないとき」の入口になる
+- 推定・読み分け・返事は Anthropic を呼ぶ。開発用のワークスペース（`nu-tori-development`）の鍵を `VERIFY_SERVER_ANTHROPIC_API_KEY` で渡して立てたときだけ、結果まで進む。この鍵は `server/evals/` の評価の鍵と同じ（置き場と、クラウドで読める環境は `docs/agents/tooling.md` の「LLM の評価の鍵」）で、環境変数 `NU_TORI_ANTHROPIC_API_KEY` にあれば `VERIFY_SERVER_ANTHROPIC_API_KEY="$NU_TORI_ANTHROPIC_API_KEY" $S/start.sh`、Mac のキーチェーンにあれば `VERIFY_SERVER_ANTHROPIC_API_KEY="$(security find-generic-password -s nu-tori-eval -a anthropic -w)" $S/start.sh` で立てる。渡さなければ呼び出しは `authentication_error` で失敗し、そこから先は下の「確かめられないとき」の入口になる
+- macOS と Linux のどちらでも立つ
 - 1つの回は1つのポートと1つのフォルダを持つので、並べて立ててよい。自分で立てていないポートで何かが応答していれば、`start.sh` は断って止まる。人の開いている `wrangler dev` を叩かない
 
 ## Doctor
@@ -43,7 +44,7 @@ $D call "$run" <名前> <メソッド> <パス>            # ほかの API を1�
 $D                                              # オプション（時刻の差し替え、本文、--timeout など）の使い方
 ```
 
-送った要求と応答は `"$run/evidence/requests.log"` に足される。
+送った要求と応答は `"$run/evidence/requests.log"` に足される。`push` は、書き込みが全部 `applied` のときだけ結果の配列（`[{"result":"applied"}]`）を出す。ほかの結果が1つでもあれば、その種類と理由を1行出して 1 で終わる。`rejected` や `kept_corrected` の応答の本文は `requests.log` で読む
 
 主な流れ（サインイン → 体重 → 目標と週の見直し → 写真と文章の食事の推定 → 返事 → 削除 → 無料体験の終わったアカウント）を1回で通すときは、merge のあとに CI が開発用の環境に向けるのと同じ入口を、この回に向ける。
 
@@ -63,15 +64,17 @@ $D                                              # オプション（時刻の差
 - 証拠は `"$run/evidence/"` に残る。`requests.log` に、送った要求と、返った状態コードと本文が並ぶ
 - 動いたと言えるのは、ユーザーの経路（端末が呼ぶ API）で操作し、その結果を別の見方（取りに行く要求に届いた記録、続く要求の状態コード）で読めたとき。書き込みが `applied` を返しただけでは足りない
 - 確かめの口（`/v1/e2e/*`）は、本物の経路で見えないもの（推定の失敗の理由）を読むときと、Apple を通せないサインインの代わりにだけ使う
-- PR の本文の「確かめ」（`docs/agents/git.md` の「動かして確かめる」）に書く見えた結果は、状態コードと、届いた記録の種類と値
+- PR の本文の「確かめ」（`docs/agents/review.md` の「確かめの回し方」）に書く見えた結果は、状態コードと、届いた記録の種類と値
 
 ## 確かめられないとき
 
-次の入口は手元で通せない。`docs/agents/git.md` の「動かして確かめる」で「確かめていない」と書くときに、確かめる場所をここから引く。ほかの入口を通せなかったときは、試したコマンドと、揃わなかった前提を書く。
+次の入口は手元で通せない。`docs/agents/review.md` の「確かめの回し方」で「確かめていない」と書くときに、確かめる場所をここから引く。ほかの入口を通せなかったときは、試したコマンドと、揃わなかった前提を書く。
 
 - Anthropic の鍵が無い回では、推定・読み分け・返事の結果まで進まない。推定が始まる（`estimating`）ことと、Anthropic まで届いた（確かめの口で `authentication_error`）ことまでが確かめられる。結果は、merge のあとに `deploy.yml` の `main-flow-on-development`（開発用の環境で本物の提供元を通す）が確かめる
+- 返事が作れなかった（`failed`）文章を送り直して返事が作られるところは、鍵があっても通せない（`features/reply.md` の Gotchas）。`main-flow-on-development` も通らない。`server/src/sent-text/http/resend.test.ts` が確かめていて、本物の経路では TestFlight の版で確かめる
+- 24時間に受け取る写真の数の上限と、食事が届かないまま期限を過ぎた写真の控えの取り消しは、手元で通さない（`features/meal-estimation.md` の Gotchas）。`server/src/http/meal-photo-routes/meal-photo-routes.test.ts` が確かめている
 - Sign in with Apple、Apple のサーバー間通知、App Store の取引は、Apple を通すので手元で動かせない。TestFlight の版で確かめる
-- アプリの画面は、このスキルの外。Mac のセッションの UI テストで確かめる
+- アプリの画面は、このスキルの外。Mac のセッションの UI テストで確かめる。アプリをこの回につないで動かすのは `verify-ios` の「手元のサーバーにつないで動かす」
 
 ## 片付け
 

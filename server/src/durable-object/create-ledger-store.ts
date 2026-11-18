@@ -1,4 +1,4 @@
-import { desc, eq, gt, sql } from "drizzle-orm";
+import { count, desc, eq, gt, sql } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { RecordType } from "../domain/record-type";
 import type { SyncClientState } from "../domain/sync-client-state";
@@ -27,6 +27,13 @@ export const createLedgerStore = (storage: DurableObjectStorage): LedgerStore<Re
         .orderBy(desc(syncRequestLogs.receivedAt))
         .limit(1)
         .get()?.receivedAt,
+    countWriteReceiptsAfter: (receivedAfter) =>
+      db
+        .select({ count: count() })
+        .from(syncWriteReceipts)
+        .innerJoin(syncRequestLogs, eq(syncRequestLogs.id, syncWriteReceipts.syncRequestLogId))
+        .where(gt(syncRequestLogs.receivedAt, receivedAfter))
+        .get()?.count ?? 0,
     insertPushRequestLog: ({ id, receivedAt, clientState, isFinalBatch }) => {
       insertRequestLog(db, { id, receivedAt, clientState });
       db.insert(syncPushLogs).values({ syncRequestLogId: id, isFinalBatch }).run();

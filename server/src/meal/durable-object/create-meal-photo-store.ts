@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, count, eq, gt, isNull } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { MealPhotoStore } from "../domain/meal-photo-store";
 import { mealPhotoTables } from "./meal-photo-tables";
@@ -68,5 +68,29 @@ export const createMealPhotoStore = (db: DrizzleSqliteDODatabase): MealPhotoStor
       .values({ mealPhotoId: photoId, deletedAt })
       .onConflictDoNothing()
       .run();
+  },
+  // 下の findUndeclaredReceipts が、次のアラームの時刻を出すために要求のたびに受け取りの表を端まで読むので、受け取った時刻に索引を置いても読む行は減らない
+  countReceiptsAfter: (after) =>
+    db
+      .select({ count: count() })
+      .from(mealPhotoFileReceipts)
+      .where(gt(mealPhotoFileReceipts.receivedAt, after))
+      .get()?.count ?? 0,
+  findUndeclaredReceipts: () =>
+    db
+      .select({
+        photoId: mealPhotoFileReceipts.mealPhotoId,
+        receivedAt: mealPhotoFileReceipts.receivedAt,
+      })
+      .from(mealPhotoFileReceipts)
+      .leftJoin(mealPhotos, eq(mealPhotos.id, mealPhotoFileReceipts.mealPhotoId))
+      .leftJoin(
+        mealPhotoDeletions,
+        eq(mealPhotoDeletions.mealPhotoId, mealPhotoFileReceipts.mealPhotoId),
+      )
+      .where(and(isNull(mealPhotos.id), isNull(mealPhotoDeletions.mealPhotoId)))
+      .all(),
+  deleteReceipt: (photoId) => {
+    db.delete(mealPhotoFileReceipts).where(eq(mealPhotoFileReceipts.mealPhotoId, photoId)).run();
   },
 });
