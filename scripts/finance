@@ -102,12 +102,24 @@ const computeCloudflareMonthlyCost = async ({ token, month }) => {
 
 // サブスクリプションの数字の式と取る先の正本は #591 の解決コメント。人数・解約・新しく入った人は、PostHog でなくここから数える
 // 返すのはレポートから数えた元の数だけで、そこから導ける月末の人数（期間ごとの人数の合計）と解約率は、ダッシュボードのページが出す
-// readReport(reportType, date) は、その日のレポートの TSV を返し、行が無い日は null を返す
+// readReport(reportType, date) は、その日のレポートの TSV を返し、行が無い日は null を返し、ほかの失敗は投げる
 const computeAppStoreMonthlyNumbers = async ({ month, readReport }) => {
   const days = daysOf(month);
   const daysWithoutReport = Object.fromEntries(Object.values(REPORTS).map(({ key }) => [key, []]));
+  const daysReportNotCreated = Object.fromEntries(
+    Object.values(REPORTS)
+      .filter(({ mayBeNotCreated }) => mayBeNotCreated)
+      .map(({ key }) => [key, []]),
+  );
   const readRows = async (reportType, date) => {
-    const text = await readReport(reportType, date);
+    let text;
+    try {
+      text = await readReport(reportType, date);
+    } catch (error) {
+      if (!isNotCreatedSubscriptionReport(reportType, error)) throw error;
+      daysReportNotCreated[REPORTS[reportType].key].push(date);
+      return [];
+    }
     if (text === null) {
       daysWithoutReport[REPORTS[reportType].key].push(date);
       return [];
@@ -160,10 +172,13 @@ const computeAppStoreMonthlyNumbers = async ({ month, readReport }) => {
     cancellations: quantityOf(CANCEL_EVENTS),
     activeAtStart: sum(firstDay.map(paidCountOf)),
     daysWithoutReport,
+    // ここまで来たときは、同じ番号の Summary Sales Report が毎日、TSV か 404 で返っている（ほかの失敗なら上で止まる）。仮の番号では Summary Sales Report もサーバー誤りになる（#1031）ので、番号は正しい
+    daysReportNotCreated,
     source:
       `App Store Connect の販売レポート（${days[0]}〜${days[days.length - 1]} の日ごと）。` +
       "期間ごとの人数と MRR は月末の日の Subscription Report の Active Standard Price Subscriptions（MRR は × Customer Price ÷ 期間の月数）、" +
-      "月初めの数は月初めの日の同じ数、新しく入った人数と解約は Subscription Event Report の Quantity、手取りは Summary Sales Report の Units × Developer Proceeds の合計",
+      "月初めの数は月初めの日の同じ数、新しく入った人数と解約は Subscription Event Report の Quantity、手取りは Summary Sales Report の Units × Developer Proceeds の合計。" +
+      "daysReportNotCreated に挙がった日のそのレポートは Apple がまだ作っておらず（サブスクリプションがまだ一度も売れていない）、その日の数は 0",
   };
 };
 
@@ -175,7 +190,15 @@ const CANCEL_EVENTS = [
   "Canceled After Renewal Extension",
 ];
 
-// 読むレポートの種類ごとの、出力の daysWithoutReport の鍵、版、数字に使う列
+// サブスクリプションのレポートは、Apple がまだ作っていないとき（一度も売れていないアカウント）に、404 でなく 400「Invalid vendor number specified」を返す（#1031。見立てで、Apple の文書には無い）
+// 番号が本当に違う場合と見分けるため、Summary Sales Report には当てない（REPORTS の mayBeNotCreated）。同じ番号の Summary Sales Report が 404 以外で失敗すれば、そちらで止まる
+const isNotCreatedSubscriptionReport = (reportType, error) =>
+  REPORTS[reportType].mayBeNotCreated &&
+  error instanceof ExpectedFailure &&
+  error.message.startsWith("400 ") &&
+  error.message.includes("Invalid vendor number specified");
+
+// 読むレポートの種類ごとの、出力の daysWithoutReport と daysReportNotCreated の鍵、版、数字に使う列と、Apple がまだ作っていないことがあるか（isNotCreatedSubscriptionReport）
 // 版は https://developer.apple.com/documentation/appstoreconnectapi/get-v1-salesreports の今の版（2026-11-04 に確かめた）。古い版は落とせなくなる
 // 列の名前で読むので、Apple が列を足しても並べ替えても読める。使う列が消えたら黙って 0 にせず止まる
 const REPORTS = {
@@ -183,9 +206,10 @@ const REPORTS = {
     key: "subscription",
     version: "1_3",
     requiredColumns: ["Standard Subscription Duration", "Customer Price", "Customer Currency", "Active Standard Price Subscriptions"],
+    mayBeNotCreated: true,
   },
-  SUBSCRIPTION_EVENT: { key: "subscriptionEvent", version: "1_3", requiredColumns: ["Event", "Quantity"] },
-  SALES: { key: "sales", version: "1_0", requiredColumns: ["Units", "Developer Proceeds", "Currency of Proceeds"] },
+  SUBSCRIPTION_EVENT: { key: "subscriptionEvent", version: "1_3", requiredColumns: ["Event", "Quantity"], mayBeNotCreated: true },
+  SALES: { key: "sales", version: "1_0", requiredColumns: ["Units", "Developer Proceeds", "Currency of Proceeds"], mayBeNotCreated: false },
 };
 
 const salesReportPath = ({ reportType, date, vendorNumber }) => {
