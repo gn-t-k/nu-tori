@@ -21,7 +21,7 @@ describe("送った文章の同期", () => {
     (await (await pushSyncWrites(sessionToken, { writes: [write] })).json<PushResults>())
       .results[0];
 
-  // Date の表せる端の時刻は、土地の時刻を出す計算が Date の外に出るので受け付けない（#1062）
+  // 受け付ける範囲（2000〜2100 年）の外の時刻は断る。理由は accepted-timestamp-range.ts のコメント（#1062）
   describe("送った時刻が受け付ける上限より 1 ミリ秒あとの書き込みを送ったとき", () => {
     let response: Response;
     beforeEach(async () => {
