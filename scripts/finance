@@ -35,7 +35,14 @@ const runAppStore = async (month) => {
   }
   const vendorNumber = process.env.NU_TORI_ASC_FINANCE_VENDOR_NUMBER;
   if (!vendorNumber) throw new ExpectedFailure("Not authenticated: NU_TORI_ASC_FINANCE_VENDOR_NUMBER が無い");
-  const readReport = (reportType, date) => readFinanceReport(salesReportPath({ reportType, date, vendorNumber }));
+  const readReport = async (reportType, date) => {
+    try {
+      return await readFinanceReport(salesReportPath({ reportType, date, vendorNumber }));
+    } catch (error) {
+      if (isNotCreatedSubscriptionReport(reportType, error)) return NOT_CREATED_REPORT;
+      throw error;
+    }
+  };
   return computeAppStoreMonthlyNumbers({ month, readReport });
 };
 
@@ -102,12 +109,17 @@ const computeCloudflareMonthlyCost = async ({ token, month }) => {
 
 // サブスクリプションの数字の式と取る先の正本は #591 の解決コメント。人数・解約・新しく入った人は、PostHog でなくここから数える
 // 返すのはレポートから数えた元の数だけで、そこから導ける月末の人数（期間ごとの人数の合計）と解約率は、ダッシュボードのページが出す
-// readReport(reportType, date) は、その日のレポートの TSV を返し、行が無い日は null を返す
+// readReport(reportType, date) は、その日のレポートの TSV を返し、行が無い日は null を、まだ作られていないサブスクリプションのレポートは NOT_CREATED_REPORT を返す
 const computeAppStoreMonthlyNumbers = async ({ month, readReport }) => {
   const days = daysOf(month);
   const daysWithoutReport = Object.fromEntries(Object.values(REPORTS).map(({ key }) => [key, []]));
+  const notCreatedReports = new Set();
   const readRows = async (reportType, date) => {
     const text = await readReport(reportType, date);
+    if (text === NOT_CREATED_REPORT) {
+      notCreatedReports.add(REPORTS[reportType].key);
+      return [];
+    }
     if (text === null) {
       daysWithoutReport[REPORTS[reportType].key].push(date);
       return [];
@@ -160,10 +172,13 @@ const computeAppStoreMonthlyNumbers = async ({ month, readReport }) => {
     cancellations: quantityOf(CANCEL_EVENTS),
     activeAtStart: sum(firstDay.map(paidCountOf)),
     daysWithoutReport,
+    // ここまで来たときは、同じ番号の Summary Sales Report を毎日読めている（読めなければ上で止まる）ので、番号は正しい
+    subscriptionReportsNotCreated: [...notCreatedReports],
     source:
       `App Store Connect の販売レポート（${days[0]}〜${days[days.length - 1]} の日ごと）。` +
       "期間ごとの人数と MRR は月末の日の Subscription Report の Active Standard Price Subscriptions（MRR は × Customer Price ÷ 期間の月数）、" +
-      "月初めの数は月初めの日の同じ数、新しく入った人数と解約は Subscription Event Report の Quantity、手取りは Summary Sales Report の Units × Developer Proceeds の合計",
+      "月初めの数は月初めの日の同じ数、新しく入った人数と解約は Subscription Event Report の Quantity、手取りは Summary Sales Report の Units × Developer Proceeds の合計。" +
+      "subscriptionReportsNotCreated に挙がったレポートは Apple がまだ作っていない（サブスクリプションがまだ一度も売れていない）ので、そのレポートの数は 0",
   };
 };
 
@@ -174,6 +189,16 @@ const CANCEL_EVENTS = [
   "Canceled from Billing Grace Period",
   "Canceled After Renewal Extension",
 ];
+
+// サブスクリプションのレポートは、Apple がまだ作っていないとき（一度も売れていないアカウント）に、404 でなく 400「Invalid vendor number specified」を返す（#1031。見立てで、Apple の文書には無い）
+// 番号が本当に違う場合と見分けるため、Summary Sales Report には当てない。同じ番号の Summary Sales Report が通らなければ、そちらで止まる
+const isNotCreatedSubscriptionReport = (reportType, error) =>
+  reportType !== "SALES" &&
+  error instanceof ExpectedFailure &&
+  error.message.startsWith("400 ") &&
+  error.message.includes("Invalid vendor number specified");
+
+const NOT_CREATED_REPORT = Symbol("サブスクリプションのレポートがまだ作られていない");
 
 // 読むレポートの種類ごとの、出力の daysWithoutReport の鍵、版、数字に使う列
 // 版は https://developer.apple.com/documentation/appstoreconnectapi/get-v1-salesreports の今の版（2026-11-04 に確かめた）。古い版は落とせなくなる
@@ -285,7 +310,7 @@ const fetchCloudflareResult = async (token, pathAndQuery) => {
   return parsed.result;
 };
 
-module.exports = { computeAppStoreMonthlyNumbers };
+module.exports = { computeAppStoreMonthlyNumbers, isNotCreatedSubscriptionReport, NOT_CREATED_REPORT };
 
 // テストが require したときは動かない
 if (require.main === module) {

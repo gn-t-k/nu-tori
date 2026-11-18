@@ -4,7 +4,8 @@
 
 const assert = require("node:assert/strict");
 const { describe, it, before } = require("node:test");
-const { computeAppStoreMonthlyNumbers } = require("./finance");
+const { ExpectedFailure } = require("./expected-failure.js");
+const { computeAppStoreMonthlyNumbers, isNotCreatedSubscriptionReport, NOT_CREATED_REPORT } = require("./finance");
 
 // Subscription Report（1_3）の列。数字に使わない列も、本物と同じく並べる
 const SUBSCRIPTION_COLUMNS = [
@@ -293,5 +294,80 @@ describe("App Store Connect の販売レポートから月のサブスクリプ�
     it("列の形が変わったとみて止まること", async () => {
       await assert.rejects(computeAppStoreMonthlyNumbers({ month: "2026-02", readReport }), /列が無い/);
     });
+  });
+  describe("サブスクリプションのレポートがまだ作られておらず、Summary Sales Report は読めるとき", () => {
+    let numbers;
+    before(async () => {
+      const sales = readReportFrom({
+        SALES: { "2026-02-10": tsv(SALES_COLUMNS, [salesRow({ Units: 1, "Developer Proceeds": 700 })]) },
+      });
+      const readReport = async (reportType, date) => (reportType === "SALES" ? sales(reportType, date) : NOT_CREATED_REPORT);
+      numbers = await computeAppStoreMonthlyNumbers({ month: "2026-02", readReport });
+    });
+
+    it("止まらずに、サブスクリプションの数を 0 として出すこと", () => {
+      assert.deepEqual(
+        {
+          subscribersByDuration: numbers.subscribersByDuration,
+          mrrJpy: numbers.mrrJpy,
+          newSubscribers: numbers.newSubscribers,
+          activeAtStart: numbers.activeAtStart,
+          proceedsJpy: numbers.proceedsJpy,
+        },
+        { subscribersByDuration: {}, mrrJpy: 0, newSubscribers: 0, activeAtStart: 0, proceedsJpy: 700 },
+      );
+    });
+
+    it("まだ作られていないレポートを挙げ、レポートが無い日には数えないこと", () => {
+      assert.deepEqual(
+        {
+          notCreated: numbers.subscriptionReportsNotCreated,
+          subscriptionDays: numbers.daysWithoutReport.subscription.length,
+        },
+        { notCreated: ["subscription", "subscriptionEvent"], subscriptionDays: 0 },
+      );
+    });
+  });
+
+  describe("Summary Sales Report が読めないとき", () => {
+    let readReport;
+    before(() => {
+      readReport = async (reportType) => {
+        if (reportType === "SALES") throw new ExpectedFailure('400 {"errors":[{"detail":"Invalid vendor number specified"}]}');
+        return NOT_CREATED_REPORT;
+      };
+    });
+
+    it("番号が違うとみて止まること", async () => {
+      await assert.rejects(computeAppStoreMonthlyNumbers({ month: "2026-02", readReport }), /Invalid vendor number/);
+    });
+  });
+});
+
+describe("サブスクリプションのレポートがまだ作られていないことを、Apple の誤りから見分ける", () => {
+  const invalidVendor = new ExpectedFailure(
+    '400 {"errors":[{"status":"400","code":"PARAMETER_ERROR.INVALID","detail":"Invalid vendor number specified"}]}',
+  );
+
+  it("サブスクリプションのレポートの 400「Invalid vendor number specified」を、まだ作られていないとみること", () => {
+    assert.deepEqual(
+      ["SUBSCRIPTION", "SUBSCRIPTION_EVENT"].map((reportType) => isNotCreatedSubscriptionReport(reportType, invalidVendor)),
+      [true, true],
+    );
+  });
+
+  it("Summary Sales Report の同じ 400 は、番号が違うとみること", () => {
+    assert.equal(isNotCreatedSubscriptionReport("SALES", invalidVendor), false);
+  });
+
+  it("ほかの誤りは、まだ作られていないとみないこと", () => {
+    assert.deepEqual(
+      [
+        new ExpectedFailure('400 {"errors":[{"detail":"Invalid date"}]}'),
+        new ExpectedFailure("401 Invalid vendor number specified"),
+        new Error("400 Invalid vendor number specified"),
+      ].map((error) => isNotCreatedSubscriptionReport("SUBSCRIPTION", error)),
+      [false, false, false],
+    );
   });
 });
