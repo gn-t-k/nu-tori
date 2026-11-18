@@ -177,6 +177,37 @@ struct DishEditTests {
         }
     }
 
+    // 家族の絵文字は、見た目の1字が 7 つのコードポイント。サーバーと同じくコードポイントで数える
+    @Suite("料理の名前を、前後の空白を除いてコードポイントで上限の 100 字の名前に直したとき")
+    struct RenamingToLongestName {
+        let edited: DishEdit?
+
+        init() {
+            edited = DishEdit.renaming(
+                Dish.fixture(name: "親子丼"), to: " " + String(repeating: "あ", count: 93) + "👨‍👩‍👧‍👦")
+        }
+
+        @Test("直すこと")
+        func renames() {
+            #expect(edited?.dish.name == String(repeating: "あ", count: 93) + "👨‍👩‍👧‍👦")
+        }
+    }
+
+    @Suite("料理の名前を、見た目は 95 字で、コードポイントでは上限より 1 字多い 101 字の名前に直したとき")
+    struct RenamingToTooLongName {
+        let edited: DishEdit?
+
+        init() {
+            edited = DishEdit.renaming(
+                Dish.fixture(name: "親子丼"), to: String(repeating: "あ", count: 94) + "👨‍👩‍👧‍👦")
+        }
+
+        @Test("直さないこと")
+        func ignores() {
+            #expect(edited == nil)
+        }
+    }
+
     @Suite("料理の名前を、前後の空白を除いて今と同じ名前に直したとき")
     struct RenamingToSame {
         let edited: DishEdit?

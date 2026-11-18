@@ -6,6 +6,8 @@ import type { WriteKind } from "./write-kind";
 export type LedgerStore<TRecordType extends string> = {
   transaction: <T>(run: () => T) => T;
   findLatestRequestReceivedAt: () => Date | undefined;
+  // その時刻よりあとに届いた要求が残した、書き込みの控えの数。同じ書き込みの ID の再送は控えを残さないので数えない
+  countWriteReceiptsAfter: (receivedAfter: Date) => number;
   insertPushRequestLog: (log: {
     id: string;
     receivedAt: Date;

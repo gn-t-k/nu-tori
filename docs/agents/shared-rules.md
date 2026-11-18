@@ -2,8 +2,9 @@
 
 端末とサーバーの両方に置く決めごとは、係数や範囲をデータ（JSON）にしてルートの `shared/` に置き、両側で読む。
 
-- サーバーは import で読み、端末は JSON から書き出した Swift のファイル（`ios/NuToriCore/Sources/NuToriCore/Generated/`）で持つ。書き出しは `ios/SharedRulesGenerator/` のパッケージで動かし、JSON を変えたら `scripts/check ios --fix` で書き出し直す（`scripts/check ios` が最新かを確かめる）。書き出す JSON を足すときは、生成器にも足す
-- 手順は両側に書き、入力と期待値の JSON も `shared/` に置いて両方のテストで読む
+- サーバーは import で読み、端末は JSON から書き出した Swift のファイル（`ios/NuToriCore/Sources/NuToriCore/Generated/`）で持つ。書き出しは `ios/SharedRulesGenerator/` のパッケージで動かし、JSON を変えたら `scripts/check ios --fix` で書き出し直す（`scripts/check ios` が最新かを確かめる）
+- 手順は両側に書き、入力と期待値の JSON（`*.test-cases.json`）も `shared/` に置く
+- 両側で読んでいるか（係数の JSON は生成器とサーバー、入力と期待値の JSON は両方のテスト）は、`scripts/check` の ios と server の Lint の手順がファイルの名前で見る
 - 値や検証の結果が違ったときは、サーバーを正とする
 - 小さな純粋な計算の域を超えたら、TypeScript で1回だけ書き、端末では JavaScriptCore で動かす
 
@@ -25,11 +26,12 @@
 
 ## 受け付ける値の範囲
 
+- 文字列の長さの上限を足す・上げるときは、`docs/agents/sync.md` の「量の上限」を読む（同期の要求の本文の大きさの上限に届かないかを見直す）
 - 範囲は `shared/accepted-ranges.json`、入力と期待値は `shared/accepted-ranges.test-cases.json`。サーバーは `isWithinAcceptedRange`（`server/src/domain/is-within-accepted-range/`）、端末は書き出した `AcceptedRange` の `bounds.contains`
 - 範囲ごとに、下限は `minimum`（含む）か `exclusiveMinimum`（含まない）、上限は `maximum`（含む）で書く。書いていない側は限りが無い（料理と材料の量は「0 より大きい」なので `exclusiveMinimum` だけ）
 - 身長（`heightCentimeters`）と年齢（`ageYears`）は、初めて目標を立てるときの身体データの範囲。打ち間違い（m で入れた身長など）を止めるだけの広い幅にする（体重と同じ考え）。サーバーは、推定消費カロリーを式で出すとき（`computeInitialExpenditureEstimate`。`server/src/expenditure-estimate/domain/`）に当てる。年齢は、生年月日か生まれた年から端末が出した歳
-- 料理の名前は、前後の空白を除いた文字数を `dishNameTrimmedLength` に当てる。前後の空白を除くのは、サーバーは `String.prototype.trim`、端末は `trimmingCharacters(in: .whitespacesAndNewlines)`
-- 送った文章の本文は、料理の名前と同じ手順で前後の空白を除き、Unicode のコードポイントの数を `sentTextBodyTrimmedLength` に当てる。サーバーは `Array.from(text).length`、端末は `unicodeScalars.count`。端末とサーバーで同じ数になるようにコードポイントで数える（絵文字や結合文字は、見た目の1字が2つ以上に数えられることがある）
+- 料理の名前と送った文章の本文は、前後の空白を除き、Unicode のコードポイントの数を `dishNameTrimmedLength`・`sentTextBodyTrimmedLength` に当てる。前後の空白を除くのは、サーバーは `String.prototype.trim`、端末は `trimmingCharacters(in: .whitespacesAndNewlines)`。数えるのは、サーバーは `Array.from(text).length`、端末は `unicodeScalars.count`。端末とサーバーで同じ数になるようにコードポイントで数える（絵文字や結合文字は、見た目の1字が2つ以上に数えられることがある）
+- 料理の名前の長さは、足す書き込みと、名前を変える書き込みで確かめる。量を直す書き込みは今の名前を運ぶだけなので確かめない。サーバーだけが余分に断る名前は `isAcceptableName`（`server/src/dish/domain/create-dish-kind.ts`）にある
 
 ## 受け付ける期限
 
@@ -88,8 +90,8 @@
 端末が文に出すだけで計算や判定に使わない値（1日の目安の下限など）と、同期の API の決まりの値（1回に送る書き込みの数の上限）は、両側の決めごとではないので `shared/` に置かない。端末の定数に「正本はサーバーの `<サーバーの名前>`」のコメントを添え、そのすぐ下に `let <端末の名前> = <数>` の形で書く（端末の名前はサーバーとそろえなくてよい）。
 
 - `scripts/check` の ios と server の Lint の手順が、コメントの `<サーバーの名前>` でサーバーの `const <サーバーの名前> = <値>;`（`server/src` のテストでないファイルにちょうど1つ）を引き、値が同じかを比べる。サーバーの名前を変えたら、コメントの名前も直す
+- サーバーの値が入れ子のオブジェクトの中にあるときは、`<サーバーの名前>.<キー>.<キー>` で指す（必要な速さの上限の `weeklyPaceRates.lose.hard`）。端末も同じ割合で持ち、% のような読み替えは計算で出す
 - 今の写しは、`ios/` を「正本はサーバーの」で検索して引く
-- 必要な速さの上限（`DailyGuide.requiredPaceLimitPercent`）は、サーバーの割合を % にして持つので、比べる手順に乗らない。サーバーの `weeklyPaceRates` か `maintenanceWeeklyRate` を変えたら、手で合わせる
 
 ## 今は片側だけの決めごと
 

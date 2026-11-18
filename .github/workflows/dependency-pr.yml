@@ -15,6 +15,11 @@ on:
 # PR のコードは checkout せず、GitHub の API は App のトークンで呼ぶ
 permissions: {}
 
+# shell を指定しない run は bash -e で動き、パイプの前の失敗が消える。bash を指すと -o pipefail が付く（scripts/workflow-pipefail が見る）
+defaults:
+  run:
+    shell: bash
+
 jobs:
   # 対象の PR を見分ける。check が通ったか落ちたかに関わらず動き、対象でなければ number が空になる
   identify-pr:

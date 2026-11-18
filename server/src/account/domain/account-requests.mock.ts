@@ -92,7 +92,7 @@ const spyOnAccountRequests = (
   return {
     pushSyncWrites: vi
       .spyOn(accountRequests, "pushSyncWrites")
-      .mockReturnValue({ result: [], usageEvents, requestLog }),
+      .mockReturnValue({ result: R.succeed([]), usageEvents, requestLog }),
     pullSyncChanges: vi.spyOn(accountRequests, "pullSyncChanges").mockReturnValue({
       result: { changes: [], hasMore: false, nextAfterSequence: 0, startedOn: undefined },
       usageEvents,

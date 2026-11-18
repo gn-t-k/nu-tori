@@ -7,7 +7,10 @@ import { verifyAppStoreServerNotification } from "../../app-store/verify-app-sto
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { routeAppStoreServerNotification } from "../../subscription/d1/route-app-store-server-notification";
 import { readAppStoreSubscriptionTransaction } from "../../subscription/domain/read-app-store-subscription-transaction";
-import type { AppStoreNotificationLogVariables } from "../observe-request";
+import type {
+  AppStoreNotificationLogVariables,
+  SubscriptionTransactionLogVariables,
+} from "../observe-request";
 import { AppStoreServerNotificationUnhandledError } from "./app-store-server-notification-unhandled-error";
 
 // App Store のサーバー通知（App Store Server Notifications V2）の受け口（#647 の「App Store のサーバー通知を受ける」）。
@@ -16,7 +19,8 @@ import { AppStoreServerNotificationUnhandledError } from "./app-store-server-not
 // 署名を確かめられない通知と、Production の環境の断った通知・案内できない通知は Sentry に送る。Sandbox の環境のものは、開発用のビルドで買うたびに本番のサーバーにも届いて起きるので、Workers Logs にだけ出す
 export const appStoreServerNotificationRoutes = new OpenAPIHono<{
   Bindings: Env;
-  Variables: { accountId?: string } & AppStoreNotificationLogVariables;
+  Variables: { accountId?: string } & AppStoreNotificationLogVariables &
+    SubscriptionTransactionLogVariables;
 }>().openapi(
   createRoute({
     method: "post",
@@ -87,6 +91,9 @@ export const appStoreServerNotificationRoutes = new OpenAPIHono<{
       reportUnhandled(transaction.error.reason);
       return c.body(null, 400);
     }
+    c.set("subscriptionTransaction", {
+      hasAppAccountToken: transaction.value.appAccountToken !== undefined,
+    });
     const accountId = await routeAppStoreServerNotification(c.env.DB, transaction.value);
     if (accountId === undefined) {
       c.set("appStoreNotification", { ...log, result: "unrouted" });

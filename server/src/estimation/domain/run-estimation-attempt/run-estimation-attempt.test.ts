@@ -7,6 +7,7 @@ import { LlmCallError } from "../../../domain/llm-call-error";
 import { LlmCallInvalidResponseError } from "../../../domain/llm-call-invalid-response-error";
 import type { EstimationProvider, IdentifiedDishes } from "../estimation-provider";
 import { mockEstimationProviderError, mockEstimationProviderOk } from "../estimation-provider.mock";
+import { computeNutrientTotal } from "../../../ingredient/domain/compute-nutrient-total";
 import { runEstimationAttempt } from "./index";
 
 // 東京の 2026-10-10（土）08:30
@@ -56,10 +57,35 @@ const greenTea: IdentifiedDishes["dishes"][number] = {
       unit: "本",
       edibleGrams: 500,
       foodCompositionQuery: "せん茶 浸出液",
-      nutritionLabel: { basisGrams: 100, nutrients: { energy_kcal: 0 } },
+      nutritionLabel: {
+        basisGrams: 100,
+        basisGramsEstimated: false,
+        nutrients: { energy_kcal: 0 },
+      },
     },
   ],
 };
+
+// 栄養成分表示が料理まるごとの値で、材料が商品そのもの1つの料理。1食を 30 g とした 500 kcal の表示
+const ramen = ({
+  basisGramsEstimated,
+}: {
+  basisGramsEstimated: boolean;
+}): IdentifiedDishes["dishes"][number] => ({
+  name: "〇〇ラーメン",
+  quantity: 1,
+  unit: "食",
+  ingredients: [
+    {
+      name: "〇〇ラーメン",
+      quantity: 1,
+      unit: "食",
+      edibleGrams: 30,
+      foodCompositionQuery: "中華めん",
+      nutritionLabel: { basisGrams: 30, basisGramsEstimated, nutrients: { energy_kcal: 500 } },
+    },
+  ],
+});
 
 describe("推定の試み", () => {
   let archive: MealPhotoArchive;
@@ -323,7 +349,11 @@ describe("推定の試み", () => {
                 ...greenTea,
                 ingredients: greenTea.ingredients.map((ingredient) => ({
                   ...ingredient,
-                  nutritionLabel: { basisGrams: 100, nutrients: { caffeine_mg: 20 } },
+                  nutritionLabel: {
+                    basisGrams: 100,
+                    basisGramsEstimated: false,
+                    nutrients: { caffeine_mg: 20 },
+                  },
                 })),
               },
             ],
@@ -349,7 +379,11 @@ describe("推定の試み", () => {
                 ...greenTea,
                 ingredients: greenTea.ingredients.map((ingredient) => ({
                   ...ingredient,
-                  nutritionLabel: { basisGrams: 50, nutrients: { energy_kcal: 600 } },
+                  nutritionLabel: {
+                    basisGrams: 50,
+                    basisGramsEstimated: false,
+                    nutrients: { energy_kcal: 600 },
+                  },
                 })),
               },
             ],
@@ -374,11 +408,64 @@ describe("推定の試み", () => {
                 ...greenTea,
                 ingredients: greenTea.ingredients.map((ingredient) => ({
                   ...ingredient,
-                  nutritionLabel: { basisGrams: 50, nutrients: { energy_kcal: 600.5 } },
+                  nutritionLabel: {
+                    basisGrams: 50,
+                    basisGramsEstimated: false,
+                    nutrients: { energy_kcal: 600.5 },
+                  },
                 })),
               },
             ],
           },
+        });
+      });
+
+      test("① で確かめに通らない試みにすること", async () => {
+        expect(await runEstimationAttempt({ archive, provider }, photographedMeal)).toMatchObject({
+          result: "invalid_response",
+          failedStage: "identify_dishes",
+        });
+      });
+    });
+
+    describe("① が、基準の g が見積もりの「1食あたり」の表示（1食 30 g と見積もり・500 kcal。100 g あたり約 1,667 kcal）を返したとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          identifiedDishes: { dishes: [ramen({ basisGramsEstimated: true })] },
+        });
+      });
+
+      test("通った試みにし、材料の栄養を表示どおりの 500 kcal にすること", async () => {
+        const attempt = await runEstimationAttempt({ archive, provider }, photographedMeal);
+        if (attempt.result !== "succeeded") {
+          throw new Error(`通った試みでない: ${attempt.result}`);
+        }
+        const ingredients = attempt.dishes.flatMap((dish) => dish.ingredients);
+        expect(computeNutrientTotal(ingredients, "energy_kcal")).toEqual({
+          type: "exactly",
+          value: 500,
+        });
+      });
+
+      test("見積もりの旗を記録に残さず、材料の出どころを表示の基準の g だけにすること", async () => {
+        const attempt = await runEstimationAttempt({ archive, provider }, photographedMeal);
+        if (attempt.result !== "succeeded") {
+          throw new Error(`通った試みでない: ${attempt.result}`);
+        }
+        expect(
+          attempt.dishes.flatMap((dish) =>
+            dish.ingredients.map(({ nutrientSource }) => nutrientSource),
+          ),
+        ).toEqual([{ type: "nutrition_label", labelBasisGrams: 30 }]);
+      });
+    });
+
+    describe("① が、基準の g が書かれた表示で、同じ濃さ（30 g あたり 500 kcal）を返したとき", () => {
+      let provider: EstimationProvider;
+      beforeEach(() => {
+        provider = mockEstimationProviderOk({
+          identifiedDishes: { dishes: [ramen({ basisGramsEstimated: false })] },
         });
       });
 
@@ -400,7 +487,11 @@ describe("推定の試み", () => {
                 ...greenTea,
                 ingredients: greenTea.ingredients.map((ingredient) => ({
                   ...ingredient,
-                  nutritionLabel: { basisGrams: 50, nutrients: { protein_g: 100 } },
+                  nutritionLabel: {
+                    basisGrams: 50,
+                    basisGramsEstimated: false,
+                    nutrients: { protein_g: 100 },
+                  },
                 })),
               },
             ],
@@ -425,7 +516,11 @@ describe("推定の試み", () => {
                 ...greenTea,
                 ingredients: greenTea.ingredients.map((ingredient) => ({
                   ...ingredient,
-                  nutritionLabel: { basisGrams: 50, nutrients: { protein_g: 100.5 } },
+                  nutritionLabel: {
+                    basisGrams: 50,
+                    basisGramsEstimated: false,
+                    nutrients: { protein_g: 100.5 },
+                  },
                 })),
               },
             ],
@@ -451,7 +546,11 @@ describe("推定の試み", () => {
                 ...greenTea,
                 ingredients: greenTea.ingredients.map((ingredient) => ({
                   ...ingredient,
-                  nutritionLabel: { basisGrams: 10, nutrients: { potassium_mg: 5000 } },
+                  nutritionLabel: {
+                    basisGrams: 10,
+                    basisGramsEstimated: false,
+                    nutrients: { potassium_mg: 5000 },
+                  },
                 })),
               },
             ],

@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { R } from "@praha/byethrow";
 import { getAccountDurableObject } from "../../durable-object/get-account-durable-object";
 import { authenticateAccount } from "../authenticate-account";
 import { httpRecordKinds } from "./http-record-kinds";
@@ -77,12 +78,15 @@ const routes = new OpenAPIHono<{ Bindings: Env; Variables: RequestLogVariables }
         },
         400: { description: "要求の形が違うか、書き込みが 500 件を超えている。何も当てていない" },
         401: { description: "セッションが無いか、切れている" },
-        429: { description: "回数の歯止めにかかった" },
+        429: {
+          description:
+            "要求の回数か、直近 24 時間の書き込みの数の歯止めにかかった。何も当てていない。同じ書き込みを、あとで送り直せる",
+        },
       },
     }),
     async (c) => {
       const { clientState, writes, isFinalBatch } = c.req.valid("json");
-      const { result: results, requestLog } = await getAccountDurableObject(
+      const { result: pushed, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
       ).pushSyncWrites(c.var.accountId, {
@@ -91,9 +95,12 @@ const routes = new OpenAPIHono<{ Bindings: Env; Variables: RequestLogVariables }
         isFinalBatch,
       });
       c.set("requestLog", requestLog);
+      if (R.isFailure(pushed)) {
+        return c.body(null, 429);
+      }
       return c.json(
         {
-          results: results.map(({ writeId, outcome, rejectedRecord }) => ({
+          results: pushed.value.map(({ writeId, outcome, rejectedRecord }) => ({
             writeId,
             result: outcome.result,
             rejectionReason: outcome.result === "rejected" ? outcome.reason : undefined,

@@ -5,7 +5,7 @@ import Testing
 struct AcceptedRangeTests {
     @Suite("体重")
     struct WeightKilograms {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test("受け付けるかを決めること", arguments: try TestCases.load().weightKilograms)
         func decidesWhetherToAccept(testCase: TestCase) {
             #expect(
@@ -15,7 +15,7 @@ struct AcceptedRangeTests {
 
     @Suite("体脂肪率")
     struct BodyFatPercentage {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test("受け付けるかを決めること", arguments: try TestCases.load().bodyFatPercentage)
         func decidesWhetherToAccept(testCase: TestCase) {
             #expect(
@@ -26,7 +26,7 @@ struct AcceptedRangeTests {
 
     @Suite("身長")
     struct HeightCentimeters {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test("受け付けるかを決めること", arguments: try TestCases.load().heightCentimeters)
         func decidesWhetherToAccept(testCase: TestCase) {
             #expect(
@@ -37,7 +37,7 @@ struct AcceptedRangeTests {
 
     @Suite("年齢")
     struct AgeYears {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test("受け付けるかを決めること", arguments: try TestCases.load().ageYears)
         func decidesWhetherToAccept(testCase: TestCase) {
             #expect(AcceptedRange.ageYears.bounds.contains(testCase.value) == testCase.accepted)
@@ -46,7 +46,7 @@ struct AcceptedRangeTests {
 
     @Suite("食事の写真の枚数")
     struct MealPhotoCount {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test("受け付けるかを決めること", arguments: try TestCases.load().mealPhotoCount)
         func decidesWhetherToAccept(testCase: TestCase) {
             #expect(
@@ -56,7 +56,7 @@ struct AcceptedRangeTests {
 
     @Suite("食事の時差")
     struct MealUtcOffsetSeconds {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test("受け付けるかを決めること", arguments: try TestCases.load().mealUtcOffsetSeconds)
         func decidesWhetherToAccept(testCase: TestCase) {
             #expect(
@@ -67,7 +67,7 @@ struct AcceptedRangeTests {
 
     @Suite("料理の量")
     struct DishQuantity {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test("受け付けるかを決めること", arguments: try TestCases.load().dishQuantity)
         func decidesWhetherToAccept(testCase: TestCase) {
             #expect(AcceptedRange.dishQuantity.bounds.contains(testCase.value) == testCase.accepted)
@@ -76,7 +76,7 @@ struct AcceptedRangeTests {
 
     @Suite("材料の量")
     struct IngredientQuantity {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test("受け付けるかを決めること", arguments: try TestCases.load().ingredientQuantity)
         func decidesWhetherToAccept(testCase: TestCase) {
             #expect(
@@ -87,7 +87,7 @@ struct AcceptedRangeTests {
 
     @Suite("料理の名前の、前後の空白を除いた文字数")
     struct DishNameTrimmedLength {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test("受け付けるかを決めること", arguments: try TestCases.load().dishNameTrimmedLength)
         func decidesWhetherToAccept(testCase: TestCase) {
             #expect(
@@ -98,7 +98,7 @@ struct AcceptedRangeTests {
 
     @Suite("送った文章の、前後の空白を除いたコードポイントの数")
     struct SentTextBodyTrimmedLength {
-        // swiftlint:disable:next no_parameterized_test
+        // swiftlint:disable:next no_parameterized_test - 入力と期待値は shared/ の JSON にあり、サーバーのテストと同じ表を回す
         @Test("受け付けるかを決めること", arguments: try TestCases.load().sentTextBodyTrimmedLength)
         func decidesWhetherToAccept(testCase: TestCase) {
             #expect(

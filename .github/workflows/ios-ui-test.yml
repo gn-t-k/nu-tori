@@ -29,6 +29,11 @@ concurrency:
 permissions:
   contents: read
 
+# shell を指定しない run は bash -e で動き、パイプの前の失敗が消える。bash を指すと -o pipefail が付く（scripts/workflow-pipefail が見る）
+defaults:
+  run:
+    shell: bash
+
 jobs:
   ios-ui-test:
     # main への push では inputs が空なので、UI テストを回す
@@ -140,7 +145,7 @@ jobs:
         run: |
           comment_on_or_create_issue() {
             local title="$1" details="$2" number
-            number="$(jq -r --arg title "$title" '.[] | select(.title == $title) | .number' <<< "$ISSUES" | head -n 1)"
+            number="$(jq -r --arg title "$title" 'first(.[] | select(.title == $title) | .number) // empty' <<< "$ISSUES")"
             if [ -n "$number" ]; then
               comment_on_issue "$number" "$details"
             else

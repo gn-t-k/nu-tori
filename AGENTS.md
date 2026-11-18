@@ -20,7 +20,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 
 ### コーディングの好み
 
-好みの入口は `CODING_STANDARDS.md` で、レビュー役が読む。PR を出す前と PR に push する前に、`docs/agents/git.md` の「PR の前のレビュー」を通し、アプリかサーバーの振る舞いを変えたなら「動かして確かめる」を回す。`/implement` と `/implement-spec` の中で `/code-review` を呼ぶときも、`docs/agents/git.md` の「PR の前のレビュー」の「好みのレビュー」を読む。好みのほうが違うと思ったら、ユーザーに聞いてから `CODING_STANDARDS.md` とそこから指す文書を直す。
+好みの入口は `CODING_STANDARDS.md` で、レビュー役が読む。PR を出す前と PR に push する前と、`/implement` と `/implement-spec` の中で `/code-review` を呼ぶときは、`docs/agents/review.md`（変更に何がかかるかと、照合と確かめの回し方）を読む。好みのほうが違うと思ったら、ユーザーに聞いてから `CODING_STANDARDS.md` とそこから指す文書を直す。`/to-spec` と `/tdd` で、新しいモジュールやインターフェースの継ぎ目を開発者に確かめる前は、`docs/agents/review.md` の「設計の照合」を読む。
 
 ### 進め方
 
@@ -30,7 +30,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 - UI や振る舞いの選択肢を尋ねるときは、`/prototype` で見比べられるものを先に作る
 - 試作を作る・探すときは、`docs/agents/decisions.md` の「試作の置き場」を読む
 - 工程のゲートや引き継ぎなどの大きな確認をするときは、`docs/agents/gate-review.md` を読む
-- 機能がどこにあり、ユーザーがどうたどり着くかを知りたいときは、`verify-<アプリ>` の地図の索引（`.agents/skills/verify-<アプリ>/features/README.md`。今はサーバーの `verify-server` だけ）を読む
+- 機能がどこにあり、ユーザーがどうたどり着くかを知りたいときは、`verify-<アプリ>` の地図の索引（`.agents/skills/verify-<アプリ>/features/README.md`）を読む
 - 次の場面では、pstack の原則を読む。Skill ツールでは呼べないので、`~/.claude/plugins/cache/cursor-plugins/pstack/<一番新しい版>/` か、無ければ `~/.cursor/plugins/` の下で `.cursor-plugin/plugin.json` の `version` が一番新しいものの `skills/<名前>/SKILL.md` を読む。どちらにも無いとき（Codex など）は `https://raw.githubusercontent.com/cursor/plugins/main/pstack/skills/<名前>/SKILL.md` を読む
   - 「確かめた」と書く前に、`principle-prove-it-works` を読む
   - 同じ編集や確かめを3回以上するときは、`principle-build-the-lever` を読む
@@ -68,5 +68,7 @@ UI を実装・変更するときは、リポジトリ直下の `DESIGN.md`（�
 gn-t-k/nu-tori-ops（非公開のリポジトリ）を読み書きするとき、そのことを公開の nu-tori（Issue の brief、PR の本文、コミット、文書）に書くときは、`docs/agents/ops.md` を読む。
 
 ### git
+
+作業を終えたら、開発者に聞かずに PR を出す。コードでも文書でも設定でも同じで（試作のブランチだけは除く）、Claude Code の既定の「頼まれるまで PR を作らない」より、この決まりを先にする。
 
 コミット、PR の作成、ブランチの更新、GitHub の Issue と PR の操作をするときは `docs/agents/git.md` を読む。

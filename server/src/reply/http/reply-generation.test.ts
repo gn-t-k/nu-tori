@@ -11,6 +11,7 @@ import { enableUsageEventSending } from "../../http/sync-routes/testing/enable-u
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { pushSyncWrites } from "../../http/sync-routes/testing/push-sync-writes";
 import { readRows } from "../../http/sync-routes/testing/read-rows";
+import { todayInTokyo } from "../../http/sync-routes/testing/today-in-tokyo";
 import { signInTestAccount } from "../../http/testing";
 import { createMealWrite } from "../../meal/http/testing/create-meal-write";
 import { deleteMealWrite } from "../../meal/http/testing/delete-meal-write";
@@ -21,6 +22,7 @@ import {
   readPostHogCapturedEvents,
 } from "../../observability/testing";
 import { createSentTextWrite } from "../../sent-text/http/testing/create-sent-text-write";
+import { resendSentTextWrite } from "../../sent-text/http/testing/resend-sent-text-write";
 import { LlmCallBadRequestError } from "../../domain/llm-call-bad-request-error";
 import { LlmCallError } from "../../domain/llm-call-error";
 import { LlmCallInvalidResponseError } from "../../domain/llm-call-invalid-response-error";
@@ -40,8 +42,6 @@ describe("返事を作る", () => {
   let clock: ReturnType<typeof useFakeClock>;
   let pullRecordsOf: (kind: string) => Promise<Record<string, unknown>[]>;
   let readAttemptResults: () => Promise<Record<string, unknown>[]>;
-  // 東京（ユーザーの最新のタイムゾーン）での今日
-  let todayInTokyo: () => string;
   beforeEach(async () => {
     mockAppleKeysEndpointOk();
     mockExchangeAppleAuthorizationCodeOk();
@@ -66,8 +66,6 @@ describe("返事を作る", () => {
            ON reply_generation_attempt_errors.reply_generation_attempt_id = reply_generation_attempts.id
          ORDER BY attempted_at`,
       );
-    todayInTokyo = () =>
-      new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(Date.now());
   });
 
   const sendText = async (sentText: Record<string, unknown> = {}) => {
@@ -659,7 +657,8 @@ describe("返事を作る", () => {
     });
   });
 
-  describe("無料体験が終わったアカウントが、会話の文章を送ったとき", () => {
+  // 無料体験が終わったアカウントの文章は、読み分けが提供元を呼ばずに止める。返事の流れが止めるのは、その文章の送り直し
+  describe("無料体験が終わったアカウントが、止まった会話の文章を送り直したとき", () => {
     let sentTextId: string;
     let replySpy: ReturnType<typeof mockCreateConversationProviderOk>;
     let captureSpy: ReturnType<typeof mockPostHogCaptureEndpointOk>;
@@ -668,6 +667,8 @@ describe("返事を作る", () => {
       await enableUsageEventSending(accountId);
       replySpy = mockCreateConversationProviderOk({ classification: "conversation" });
       sentTextId = await sendText();
+      await runEstimationAlarm(accountId);
+      await pushSyncWrites(sessionToken, { writes: [resendSentTextWrite(sentTextId)] });
       captureSpy = mockPostHogCaptureEndpointOk();
       await runEstimationAlarm(accountId);
     });

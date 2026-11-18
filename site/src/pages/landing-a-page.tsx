@@ -51,7 +51,10 @@ export const landingAPage = createLandingVariantPage({
               <wbr />
               分かります。
             </h1>
-            <p class="lp-lead">することは、体重を量ることと食べる前に写真を1枚撮ることだけです。</p>
+            <p class="lp-lead">
+              あなたに合った1日の摂取カロリーを毎週計算し直す iPhone
+              アプリです。することは、体重を量ることと食べる前に写真を1枚撮ることだけです。
+            </p>
             <div class="lp-actions">
               <AppStoreBadge href={appStoreUrl} />
               <p class="lp-secondary">30日間、支払いの登録なしで、すべての機能を使えます。</p>

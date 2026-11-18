@@ -76,6 +76,7 @@ flowchart TD
 ### scripts
 
 - ShellCheck: `scripts/check` の版と、配布物ごとの SHA-256
+- actionlint: `scripts/check` の版と、配布物ごとの SHA-256（リリースの `actionlint_<版>_checksums.txt`）
 
 ### エージェントの道具
 
