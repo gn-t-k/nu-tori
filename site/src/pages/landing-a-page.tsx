@@ -165,7 +165,7 @@ export const landingAPage = createLandingVariantPage({
                 </li>
               </ol>
               <p class="lp-fine">
-                パッケージの栄養成分表示が写っていれば、その表示を使います。成分表に近い食品が無い材料は、値を見積もります。
+                成分表に近い食品が無い材料は、値を見積もります。
               </p>
               <p>写真を選ぶと、材料と量と、値の出どころが見られます。</p>
             </div>
