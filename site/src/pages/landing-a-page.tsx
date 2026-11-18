@@ -164,9 +164,7 @@ export const landingAPage = createLandingVariantPage({
                   </span>
                 </li>
               </ol>
-              <p class="lp-fine">
-                成分表に近い食品が無い材料は、値を見積もります。
-              </p>
+              <p class="lp-fine">成分表に近い食品が無い材料は、値を見積もります。</p>
               <p>写真を選ぶと、材料と量と、値の出どころが見られます。</p>
             </div>
             <div class="lp-plate">
