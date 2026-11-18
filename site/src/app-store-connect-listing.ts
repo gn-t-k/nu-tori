@@ -71,7 +71,7 @@ export const appStoreConnectListing: AppStoreConnectListing = (() => {
       ].join("\n"),
     },
     // 名前・サブタイトル・カテゴリの語は入れない。サブタイトルを書き直したら、そこに入った語を抜く（#597 の5）。#816 のサブタイトルで抜く語は無い
-    keywords: "食事管理,PFC,体重管理,ダイエット,AI,にゅーとり,栄養,成分表,減量,増量",
+    keywords: "ダイエット,食事管理,体重管理,体重記録,栄養,PFC,にゅーとり,減量,増量",
     screenshots: appStoreScreenshots,
     // 審査の人とのやりとりは英語なので、英語で書く。会社の名前は審査へのメモには書いてよいが、掲載情報には書かない（仕様 #853「審査に出す」）
     reviewNotes: [
