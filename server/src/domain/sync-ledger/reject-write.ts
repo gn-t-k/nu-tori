@@ -3,7 +3,7 @@ import type { RejectionReason } from "../rejection-reason";
 import type { WriteDecision } from "./record-kind";
 import type { WriteKind } from "./write-kind";
 
-// 何も書かずに受け付けない決定
+// 何も書かずに受け付けない決定。載せ直す記録も無い
 export const rejectWrite = (
   writeKind: WriteKind,
   recordId: RecordId,
@@ -13,4 +13,5 @@ export const rejectWrite = (
   writeKind,
   recordId,
   reason,
+  redeliveredChanges: [],
 });
