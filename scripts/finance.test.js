@@ -400,7 +400,21 @@ describe("App Store Connect の販売レポートから月のサブスクリプ�
     });
 
     it("止まること", async () => {
-      await assert.rejects(computeAppStoreMonthlyNumbers({ month: "2026-02", readReport }), /^Error: 401/);
+      await assert.rejects(computeAppStoreMonthlyNumbers({ month: "2026-02", readReport }), { message: /^401 / });
+    });
+  });
+
+  describe("サブスクリプションのレポートが ExpectedFailure でない誤りで同じ文を返すとき", () => {
+    let readReport;
+    before(() => {
+      readReport = async (reportType) => {
+        if (reportType === "SALES") return null;
+        throw new Error("400 Invalid vendor number specified");
+      };
+    });
+
+    it("止まること", async () => {
+      await assert.rejects(computeAppStoreMonthlyNumbers({ month: "2026-02", readReport }), { message: /^400 Invalid vendor/ });
     });
   });
 });

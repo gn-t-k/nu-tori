@@ -106,7 +106,11 @@ const computeCloudflareMonthlyCost = async ({ token, month }) => {
 const computeAppStoreMonthlyNumbers = async ({ month, readReport }) => {
   const days = daysOf(month);
   const daysWithoutReport = Object.fromEntries(Object.values(REPORTS).map(({ key }) => [key, []]));
-  const daysReportNotCreated = { subscription: [], subscriptionEvent: [] };
+  const daysReportNotCreated = Object.fromEntries(
+    Object.values(REPORTS)
+      .filter(({ mayBeNotCreated }) => mayBeNotCreated)
+      .map(({ key }) => [key, []]),
+  );
   const readRows = async (reportType, date) => {
     let text;
     try {
@@ -187,14 +191,14 @@ const CANCEL_EVENTS = [
 ];
 
 // サブスクリプションのレポートは、Apple がまだ作っていないとき（一度も売れていないアカウント）に、404 でなく 400「Invalid vendor number specified」を返す（#1031。見立てで、Apple の文書には無い）
-// 番号が本当に違う場合と見分けるため、Summary Sales Report には当てない。同じ番号の Summary Sales Report が 404 以外で失敗すれば、そちらで止まる
+// 番号が本当に違う場合と見分けるため、Summary Sales Report には当てない（REPORTS の mayBeNotCreated）。同じ番号の Summary Sales Report が 404 以外で失敗すれば、そちらで止まる
 const isNotCreatedSubscriptionReport = (reportType, error) =>
-  reportType !== "SALES" &&
+  REPORTS[reportType].mayBeNotCreated &&
   error instanceof ExpectedFailure &&
   error.message.startsWith("400 ") &&
   error.message.includes("Invalid vendor number specified");
 
-// 読むレポートの種類ごとの、出力の daysWithoutReport の鍵、版、数字に使う列
+// 読むレポートの種類ごとの、出力の daysWithoutReport と daysReportNotCreated の鍵、版、数字に使う列と、Apple がまだ作っていないことがあるか（isNotCreatedSubscriptionReport）
 // 版は https://developer.apple.com/documentation/appstoreconnectapi/get-v1-salesreports の今の版（2026-11-04 に確かめた）。古い版は落とせなくなる
 // 列の名前で読むので、Apple が列を足しても並べ替えても読める。使う列が消えたら黙って 0 にせず止まる
 const REPORTS = {
@@ -202,9 +206,10 @@ const REPORTS = {
     key: "subscription",
     version: "1_3",
     requiredColumns: ["Standard Subscription Duration", "Customer Price", "Customer Currency", "Active Standard Price Subscriptions"],
+    mayBeNotCreated: true,
   },
-  SUBSCRIPTION_EVENT: { key: "subscriptionEvent", version: "1_3", requiredColumns: ["Event", "Quantity"] },
-  SALES: { key: "sales", version: "1_0", requiredColumns: ["Units", "Developer Proceeds", "Currency of Proceeds"] },
+  SUBSCRIPTION_EVENT: { key: "subscriptionEvent", version: "1_3", requiredColumns: ["Event", "Quantity"], mayBeNotCreated: true },
+  SALES: { key: "sales", version: "1_0", requiredColumns: ["Units", "Developer Proceeds", "Currency of Proceeds"], mayBeNotCreated: false },
 };
 
 const salesReportPath = ({ reportType, date, vendorNumber }) => {
