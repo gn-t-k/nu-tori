@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { mockExchangeAppleAuthorizationCodeOk } from "../../auth/exchange-apple-authorization-code/exchange-apple-authorization-code.mock";
 import { mockAppleKeysEndpointOk } from "../../auth/testing";
+import { acceptedTimestampRange } from "../../domain/accepted-timestamp-range";
 import { generateRecordId } from "../../domain/record-id";
 import { pullSyncChanges, type PullResult } from "../../http/sync-routes/testing/pull-sync-changes";
 import { withoutSubscriptionStatusChanges } from "../../http/sync-routes/testing/without-subscription-status-changes";
@@ -19,6 +20,41 @@ describe("送った文章の同期", () => {
   const pushOne = async (write: ReturnType<typeof createSentTextWrite>) =>
     (await (await pushSyncWrites(sessionToken, { writes: [write] })).json<PushResults>())
       .results[0];
+
+  // 受け付ける範囲（2000〜2100 年）の外の時刻は断る。理由は accepted-timestamp-range.ts のコメント（#1062）
+  describe("送った時刻が受け付ける上限より 1 ミリ秒あとの書き込みを送ったとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await pushSyncWrites(sessionToken, {
+        writes: [
+          createSentTextWrite({
+            sentText: { sentAt: acceptedTimestampRange.maximum + 1, timeZone: "Asia/Tokyo" },
+          }),
+        ],
+      });
+    });
+
+    test("400 を返すこと", () => {
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe("送った時刻が受け付ける下限より 1 ミリ秒まえの書き込みを送ったとき", () => {
+    let response: Response;
+    beforeEach(async () => {
+      response = await pushSyncWrites(sessionToken, {
+        writes: [
+          createSentTextWrite({
+            sentText: { sentAt: acceptedTimestampRange.minimum - 1, timeZone: "Asia/Tokyo" },
+          }),
+        ],
+      });
+    });
+
+    test("400 を返すこと", () => {
+      expect(response.status).toBe(400);
+    });
+  });
 
   describe("送った文章を作る書き込みを送ったとき", () => {
     let write: ReturnType<typeof createSentTextWrite>;
