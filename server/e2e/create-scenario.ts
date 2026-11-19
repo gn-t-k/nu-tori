@@ -59,7 +59,7 @@ const createFreeTrialExpired = async (client: DeviceClient): Promise<DeviceSessi
   const session = await client.signIn(
     new Date(Date.now() - expiredAccountAgeDays * millisecondsPerDay),
   );
-  await requireFreeTrialEnded(session, expiredAccountAgeDays);
+  await requireFreeTrialEnded(session);
   return session;
 };
 

@@ -90,7 +90,7 @@ const runFreeTrialFlow = async (options: Flow, session: DeviceSession): Promise<
 
 // 無料体験の終わったアカウントで撮った食事は、推定を始めず、推定の状態がサブスクリプションを待っているになる
 const runExpiredFreeTrialFlow = async (options: Flow, session: DeviceSession): Promise<void> => {
-  await requireFreeTrialEnded(session, expiredAccountAgeDays);
+  await requireFreeTrialEnded(session);
   options.log("無料体験の終わったアカウントだった");
   const mealId = await sendPhotographedMeal(options, session);
   options.log("無料体験の終わったアカウントで写真の食事を送った");
