@@ -73,4 +73,101 @@ describe("体重記録の置き場", () => {
       expect(await withStore(seed, (store) => store.hasDeletion(weight2))).toBe(false);
     });
   });
+
+  describe("体重と時刻を直した記録と、直していない記録があるとき", () => {
+    let seed: Seed;
+    beforeEach(() => {
+      seed = async (factory) => {
+        await factory.weightRecords.create({
+          id: weight1,
+          weightKg: 60.5,
+          measuredAt: new Date("2026-01-01T00:00:00Z"),
+        });
+        await factory.weightRecords.create({
+          id: weight2,
+          weightKg: 70.0,
+          measuredAt: new Date("2026-01-03T00:00:00Z"),
+        });
+        // 受け取った順は控えの ID や行の順でなく、変更の通し番号で決まる。あとに置く行を、前の通し番号にする
+        const corrections = [
+          { receiptId: "update-later", sequence: 2, weightKg: 62.0 },
+          { receiptId: "update-earlier", sequence: 1, weightKg: 61.0 },
+        ];
+        for (const { receiptId, sequence, weightKg } of corrections) {
+          await factory.syncWriteReceipts.create({
+            id: receiptId,
+            kind: "update",
+            recordId: weight1,
+          });
+          await factory.recordChanges.create({ sequence, recordId: weight1 });
+          await factory.syncWriteRecordChanges.create({
+            recordChangeSequence: sequence,
+            syncWriteReceiptId: receiptId,
+          });
+          await factory.weightRecordWeightCorrections.create({
+            syncWriteReceiptId: receiptId,
+            weightKg,
+          });
+        }
+        await factory.weightRecordMeasuredAtCorrections.create({
+          syncWriteReceiptId: "update-earlier",
+          measuredAt: new Date("2026-01-05T00:00:00Z"),
+          timeZone: "America/Los_Angeles",
+        });
+      };
+    });
+
+    test("ID で読むと、受け取った順でいちばんあとの修正を今の値にし、版を当てた直す控えの数から出すこと", async () => {
+      const record = await withStore(seed, (store) => store.find(weight1));
+      expect(record).toMatchObject({
+        weightKg: 62.0,
+        measuredAt: new Date("2026-01-05T00:00:00Z"),
+        timeZone: "America/Los_Angeles",
+        version: 3,
+      });
+    });
+
+    test("全件を読むと、ID で読んだのと同じ今の値を、今の時刻の順に返すこと", async () => {
+      const { all, found } = await withStore(seed, (store) => ({
+        all: store.findAllInMeasuredOrder(),
+        found: [store.find(weight2), store.find(weight1)],
+      }));
+      expect(all).toEqual(
+        found.map((record) => ({
+          id: record?.id,
+          weightKg: record?.weightKg,
+          measuredAt: record?.measuredAt,
+          timeZone: record?.timeZone,
+        })),
+      );
+    });
+
+    test("時刻の範囲で読むと、直して範囲に入った記録を返すこと", async () => {
+      const records = await withStore(seed, (store) =>
+        store.findMeasuredBetween(
+          new Date("2026-01-04T00:00:00Z"),
+          new Date("2026-01-06T00:00:00Z"),
+        ),
+      );
+      expect(records.map(({ id }) => id)).toEqual([weight1]);
+    });
+
+    test("時刻の範囲で読むと、作ったときの時刻が範囲に入っても、直して範囲から出た記録は返さないこと", async () => {
+      const records = await withStore(seed, (store) =>
+        store.findMeasuredBetween(
+          new Date("2026-01-01T00:00:00Z"),
+          new Date("2026-01-04T00:00:00Z"),
+        ),
+      );
+      expect(records.map(({ id }) => id)).toEqual([weight2]);
+    });
+
+    test("直した記録だけを、直したと見ること", async () => {
+      const corrected = await withStore(seed, (store) => [
+        store.hasCorrection(weight1),
+        store.hasCorrection(weight2),
+      ]);
+      expect(corrected).toEqual([true, false]);
+    });
+  });
 });

@@ -194,11 +194,12 @@ describe("体重記録の同期", () => {
       });
     });
 
-    describe("版 3 の直しのあとに、版 2 の直しを送ったとき", () => {
+    describe("2台の端末が同じ記録を続けて直したとき", () => {
       beforeEach(async () => {
         await pushSyncWrites(sessionToken, {
-          writes: [updateWeightRecordWrite(recordId, { weightRecord: { version: 3 } })],
+          writes: [updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 71.0 } })],
         });
+        // もう1台は、1台目の直しを取りに行く前に直したので、版 2 で送る
         await pushSyncWrites(sessionToken, {
           writes: [
             updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 70.0, version: 2 } }),
@@ -206,7 +207,105 @@ describe("体重記録の同期", () => {
         });
       });
 
-      test("あとに受け取った値を、前より大きい版 4 で採ること", async () => {
+      test("あとに受け取った値を、前より大きい版 3 で採ること", async () => {
+        const pulled = await pullWeightRecordChanges(sessionToken);
+        expect(pulled.changes[0]?.record).toEqual(
+          expect.objectContaining({ weightKg: 70.0, version: 3 }),
+        );
+      });
+    });
+
+    describe("体重だけを直す書き込みを送ったとき", () => {
+      let createdMeasuredAt: number;
+      beforeEach(async () => {
+        const created = await pullWeightRecordChanges(sessionToken);
+        createdMeasuredAt = Number(created.changes[0]?.record["measuredAt"]);
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            updateWeightRecordWrite(recordId, {
+              weightRecord: { weightKg: 71.5, measuredAt: createdMeasuredAt },
+            }),
+          ],
+        });
+      });
+
+      test("体重だけを置き換え、時刻とタイムゾーンは作ったときのまま返すこと", async () => {
+        const pulled = await pullWeightRecordChanges(sessionToken);
+        expect(pulled.changes[0]?.record).toEqual({
+          id: recordId,
+          weightKg: 71.5,
+          measuredAt: createdMeasuredAt,
+          timeZone: "Asia/Tokyo",
+          version: 2,
+        });
+      });
+
+      test("体重の修正だけを、直す書き込みの控えに書き、控えを変更の並びと結ぶこと", async () => {
+        const rows = await readRows(
+          accountId,
+          `SELECT
+             (SELECT COUNT(*) FROM weight_record_weight_corrections AS corrections
+                INNER JOIN sync_write_record_changes AS changes
+                  ON changes.sync_write_receipt_id = corrections.sync_write_receipt_id) AS weight_corrections,
+             (SELECT COUNT(*) FROM weight_record_measured_at_corrections) AS measured_at_corrections,
+             (SELECT weight_kg FROM weight_records) AS created_weight_kg`,
+        );
+        expect(rows).toEqual([
+          { weight_corrections: 1, measured_at_corrections: 0, created_weight_kg: 72.4 },
+        ]);
+      });
+    });
+
+    describe("今と同じ値の直す書き込みを送ったとき", () => {
+      let created: PullResult;
+      let response: Response;
+      beforeEach(async () => {
+        created = await pullWeightRecordChanges(sessionToken);
+        response = await pushSyncWrites(sessionToken, {
+          writes: [
+            updateWeightRecordWrite(recordId, {
+              weightRecord: {
+                weightKg: 72.4,
+                measuredAt: created.changes[0]?.record["measuredAt"],
+                timeZone: "Asia/Tokyo",
+              },
+            }),
+          ],
+        });
+      });
+
+      test("当てたと返すこと", async () => {
+        expect((await response.json<PushResults>()).results[0]?.result).toBe("applied");
+      });
+
+      test("前回の続きから取りに行くと、変更が増えていないこと", async () => {
+        const pulled = await pullWeightRecordChanges(sessionToken, {
+          afterSequence: created.nextAfterSequence,
+        });
+        expect(pulled.changes).toEqual([]);
+      });
+
+      test("最初から取りに行くと、同じ値のまま版が1つ上がって返ること", async () => {
+        const pulled = await pullWeightRecordChanges(sessionToken);
+        expect(pulled.changes[0]?.record).toEqual({
+          ...created.changes[0]?.record,
+          version: 2,
+        });
+      });
+    });
+
+    describe("電波がないあいだに続けて直した書き込みを、まとめて送ったとき", () => {
+      beforeEach(async () => {
+        await pushSyncWrites(sessionToken, {
+          writes: [
+            updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 71.0, version: 2 } }),
+            updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 70.5, version: 3 } }),
+            updateWeightRecordWrite(recordId, { weightRecord: { weightKg: 70.0, version: 4 } }),
+          ],
+        });
+      });
+
+      test("最後の値を、直した回数 ＋ 1 の版で返すこと", async () => {
         const pulled = await pullWeightRecordChanges(sessionToken);
         expect(pulled.changes[0]?.record).toEqual(
           expect.objectContaining({ weightKg: 70.0, version: 4 }),
@@ -732,6 +831,47 @@ describe("体重記録の同期", () => {
       test("最初の結果を返すこと", async () => {
         expect((await response.json<PushResults>()).results[0]?.result).toBe("kept_corrected");
       });
+    });
+  });
+
+  describe("同じ値で保存しただけの取り込みの体重記録の、元のサンプルが消えたという書き込みを送ったとき", () => {
+    let recordId: string;
+    let response: Response;
+    beforeEach(async () => {
+      const measuredAt = Date.now();
+      const create = createWeightRecordWrite({
+        weightRecord: {
+          weightKg: 72.4,
+          measuredAt,
+          timeZone: "Asia/Tokyo",
+          imported: {
+            sourceAppName: "Withings",
+            sourceBundleId: "com.withings.wiScaleNG",
+            healthkitSampleUuid: generateRecordId(),
+          },
+        },
+      });
+      recordId = String(create.weightRecord["id"]);
+      await pushSyncWrites(sessionToken, {
+        writes: [
+          create,
+          updateWeightRecordWrite(recordId, {
+            weightRecord: { weightKg: 72.4, measuredAt, timeZone: "Asia/Tokyo" },
+          }),
+        ],
+      });
+      response = await pushSyncWrites(sessionToken, {
+        writes: [sourceDeletedWeightRecordWrite(recordId)],
+      });
+    });
+
+    test("直していないものとして消すこと", async () => {
+      expect((await response.json<PushResults>()).results[0]?.result).toBe("applied");
+    });
+
+    test("削除の印を返すこと", async () => {
+      const pulled = await pullWeightRecordChanges(sessionToken);
+      expect(pulled.changes.map(({ kind }) => kind)).toEqual(["weight_record_deletion"]);
     });
   });
 

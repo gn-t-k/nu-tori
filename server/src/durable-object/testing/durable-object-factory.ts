@@ -91,7 +91,6 @@ const weightRecords = defineFactory({
     weightKg: 60.5,
     measuredAt: new Date("2026-01-01T00:00:00Z"),
     timeZone: "Asia/Tokyo",
-    version: 1,
   }),
 });
 
@@ -130,6 +129,47 @@ const weightRecordDeletions = defineFactory({
       use(syncWriteReceipts)
         .create()
         .then((receipt) => receipt.id),
+  }),
+});
+
+// 当てた書き込みの控えと、変更の並びの結び。修正の受け取った順は、この通し番号で決まる
+const syncWriteRecordChanges = defineFactory({
+  schema,
+  table: "syncWriteRecordChanges",
+  resolver: ({ use }) => ({
+    recordChangeSequence: () =>
+      use(recordChanges)
+        .create()
+        .then((change) => change.sequence),
+    syncWriteReceiptId: () =>
+      use(syncWriteReceipts)
+        .create({ kind: "update" })
+        .then((receipt) => receipt.id),
+  }),
+});
+
+const weightRecordWeightCorrections = defineFactory({
+  schema,
+  table: "weightRecordWeightCorrections",
+  resolver: ({ use }) => ({
+    syncWriteReceiptId: () =>
+      use(syncWriteReceipts)
+        .create({ kind: "update" })
+        .then((receipt) => receipt.id),
+    weightKg: 61.0,
+  }),
+});
+
+const weightRecordMeasuredAtCorrections = defineFactory({
+  schema,
+  table: "weightRecordMeasuredAtCorrections",
+  resolver: ({ use }) => ({
+    syncWriteReceiptId: () =>
+      use(syncWriteReceipts)
+        .create({ kind: "update" })
+        .then((receipt) => receipt.id),
+    measuredAt: new Date("2026-01-02T00:00:00Z"),
+    timeZone: "Asia/Tokyo",
   }),
 });
 
@@ -653,10 +693,13 @@ export const durableObjectFactory = composeFactory({
   syncWriteReceipts,
   syncWriteRejections,
   recordChanges,
+  syncWriteRecordChanges,
   weightRecords,
   importedWeightRecords,
   importedBodyFatPercentages,
   weightRecordDeletions,
+  weightRecordWeightCorrections,
+  weightRecordMeasuredAtCorrections,
   accountSettings,
   meals,
   sentTexts,

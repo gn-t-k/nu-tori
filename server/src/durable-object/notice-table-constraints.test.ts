@@ -47,16 +47,33 @@ describe("知らせの表の制約", () => {
 });
 
 describe("体重記録の表の索引", () => {
-  test("体重記録を時刻の順に読むとき、時刻の索引を使うこと", async () => {
+  test("時刻の範囲で体重記録の候補を引くとき、作ったときの時刻の索引を使うこと", async () => {
     const plan = await runInAccount((sql) =>
       sql
         .exec<{ detail: string }>(
-          "EXPLAIN QUERY PLAN SELECT id FROM weight_records ORDER BY measured_at",
+          "EXPLAIN QUERY PLAN SELECT id FROM weight_records WHERE measured_at >= 0 AND measured_at < 1",
         )
         .toArray()
         .map((row) => row.detail),
     );
-    expect(plan).toEqual(["SCAN weight_records USING INDEX weight_records_measured_at"]);
+    expect(plan).toEqual([
+      "SEARCH weight_records USING INDEX weight_records_measured_at (measured_at>? AND measured_at<?)",
+    ]);
+  });
+
+  test("時刻の範囲で体重記録の候補を引くとき、直した時刻の索引を使うこと", async () => {
+    const plan = await runInAccount((sql) =>
+      sql
+        .exec<{ detail: string }>(
+          "EXPLAIN QUERY PLAN SELECT receipts.record_id FROM weight_record_measured_at_corrections AS corrections INNER JOIN sync_write_receipts AS receipts ON receipts.id = corrections.sync_write_receipt_id WHERE corrections.measured_at >= 0 AND corrections.measured_at < 1",
+        )
+        .toArray()
+        .map((row) => row.detail),
+    );
+    expect(plan).toEqual([
+      "SEARCH corrections USING INDEX weight_record_measured_at_corrections_measured_at (measured_at>? AND measured_at<?)",
+      "SEARCH receipts USING INDEX sqlite_autoindex_sync_write_receipts_1 (id=?)",
+    ]);
   });
 });
 

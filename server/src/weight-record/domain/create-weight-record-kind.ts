@@ -73,7 +73,7 @@ const decideCreate = (
     addedChanges: [],
     usageEvents: [],
     commit: () => {
-      store.insert({ ...weightRecord, imported: clipSource(weightRecord.imported), version: 1 });
+      store.insert({ ...weightRecord, imported: clipSource(weightRecord.imported) });
     },
   };
 };
@@ -124,20 +124,31 @@ const decideUpdate = (
   ) {
     return rejectWrite("update", weightRecord.id, "record_before_started_on");
   }
+  const weightChanged = weightRecord.weightKg !== current.weightKg;
+  const measuredAtChanged =
+    weightRecord.measuredAt.getTime() !== current.measuredAt.getTime() ||
+    weightRecord.timeZone !== current.timeZone;
+  // 何も書かなくても控えは当てた扱いになり、版の数に入る。端末が直すたびに版を1つ上げるのとそろう
+  if (!weightChanged && !measuredAtChanged) {
+    return { result: "unchanged", writeKind: "update", recordId: weightRecord.id };
+  }
+  // 修正の行の順は変更の並びの通し番号で決まるので、修正を書くときは必ず applied で返し、記録の変更を並びに載せる
   return {
     result: "applied",
     writeKind: "update",
     recordId: weightRecord.id,
     addedChanges: [],
     usageEvents: [],
-    commit: () => {
-      // 2台で同じ記録を直したとき、あとに受け取ったほうの版が前より小さくならないようにする
-      store.update(weightRecord.id, {
-        weightKg: weightRecord.weightKg,
-        measuredAt: weightRecord.measuredAt,
-        timeZone: weightRecord.timeZone,
-        version: Math.max(weightRecord.version, current.version + 1),
-      });
+    commit: (receiptId) => {
+      if (weightChanged) {
+        store.insertWeightCorrection(receiptId, weightRecord.weightKg);
+      }
+      if (measuredAtChanged) {
+        store.insertMeasuredAtCorrection(receiptId, {
+          measuredAt: weightRecord.measuredAt,
+          timeZone: weightRecord.timeZone,
+        });
+      }
     },
   };
 };
@@ -150,10 +161,11 @@ const decideSourceDeleted = (
   if (store.hasDeletion(weightRecordId)) {
     return { result: "ignored_tombstone", writeKind: "source_deleted", recordId: weightRecordId };
   }
-  const current = store.find(weightRecordId);
-  if (current !== undefined && current.version >= 2) {
+  // 守りたいのは直した値なので、同じ値で保存しただけの記録は残さない
+  if (store.hasCorrection(weightRecordId)) {
     return { result: "kept_corrected", writeKind: "source_deleted", recordId: weightRecordId };
   }
+  const exists = store.find(weightRecordId) !== undefined;
   // 記録がまだ届いていなくても印を残し、あとから届く作る書き込みで生き返らせない
   return {
     result: "applied",
@@ -162,7 +174,7 @@ const decideSourceDeleted = (
     addedChanges: [],
     usageEvents: [],
     commit: (receiptId) => {
-      if (current !== undefined) {
+      if (exists) {
         store.remove(weightRecordId);
       }
       store.insertDeletion(receiptId);

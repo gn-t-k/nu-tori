@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/durable-sqlite";
 import { beforeEach, describe, expect, test } from "vitest";
 import { recordIdSchema } from "../domain/record-id";
 import { createDishStore } from "../dish/durable-object/create-dish-store";
+import { createWeightRecordStore } from "../weight-record/durable-object/create-weight-record-store";
 import { applyDurableObjectMigrations } from "./apply-durable-object-migrations";
 import { durableObjectMigrations } from "./durable-object-migrations";
 
@@ -778,3 +779,242 @@ const readAllRows = (sql: Sql): Record<string, unknown[]> =>
       .toArray()
       .map(({ name }) => [name, sql.exec(`SELECT * FROM "${name}" ORDER BY rowid`).toArray()]),
   );
+
+// 版 14 の移行で読む体重記録。取り込んで直した記録、取り込んで直していない記録、手で記録して直した記録が2つ
+const importedCorrected = recordIdSchema.parse("e1000000-0000-4000-8000-000000000000");
+const importedUncorrected = recordIdSchema.parse("e2000000-0000-4000-8000-000000000000");
+const manualCorrectedOnce = recordIdSchema.parse("e3000000-0000-4000-8000-000000000000");
+const manualCorrectedTwice = recordIdSchema.parse("e4000000-0000-4000-8000-000000000000");
+
+describe("Durable Object の移行の版 14（体重の修正と時刻の修正）", () => {
+  describe("版 13 までの形の、直した体重記録と直していない体重記録があるとき", () => {
+    let account: DurableObjectStub;
+    beforeEach(async () => {
+      account = env.ACCOUNT.get(env.ACCOUNT.newUniqueId());
+      await runInDurableObject(account, async (_, state) => {
+        await state.storage.deleteAll();
+        applyDurableObjectMigrations(
+          state.storage,
+          durableObjectMigrations.filter(({ version }) => version <= 13),
+        );
+        seedVersion13WeightRows(state.storage.sql);
+        applyDurableObjectMigrations(state.storage, durableObjectMigrations);
+      });
+    });
+
+    test("外部キーの違反が無いこと", async () => {
+      const violations = await runInAccount(account, (sql) =>
+        sql.exec("PRAGMA foreign_key_check").toArray(),
+      );
+      expect(violations).toEqual([]);
+    });
+
+    test("体重記録の版の列が無くなり、ほかの列が残ること", async () => {
+      const columns = await runInAccount(account, (sql) =>
+        sql
+          .exec<{ name: string }>("SELECT name FROM pragma_table_info('weight_records')")
+          .toArray()
+          .map(({ name }) => name),
+      );
+      expect(columns).toEqual(["id", "weight_kg", "measured_at", "time_zone"]);
+    });
+
+    test("取り込みと体脂肪率の行が残ること", async () => {
+      const rows = await runInAccount(account, (sql) => ({
+        imported: sql
+          .exec("SELECT weight_record_id FROM imported_weight_records ORDER BY weight_record_id")
+          .toArray(),
+        bodyFat: sql.exec("SELECT weight_record_id FROM imported_body_fat_percentages").toArray(),
+      }));
+      expect(rows).toEqual({
+        imported: [
+          { weight_record_id: importedCorrected },
+          { weight_record_id: importedUncorrected },
+        ],
+        bodyFat: [{ weight_record_id: importedCorrected }],
+      });
+    });
+
+    test("直した記録ごとに、いちばんあとに当てた直す控えへ、体重の修正を1行置くこと", async () => {
+      const corrections = await runInAccount(account, (sql) =>
+        sql
+          .exec(
+            "SELECT sync_write_receipt_id, weight_kg FROM weight_record_weight_corrections ORDER BY sync_write_receipt_id",
+          )
+          .toArray(),
+      );
+      expect(corrections).toEqual([
+        { sync_write_receipt_id: "update-imported", weight_kg: 71.0 },
+        { sync_write_receipt_id: "update-manual-once", weight_kg: 65.0 },
+        { sync_write_receipt_id: "update-manual-twice-later", weight_kg: 80.0 },
+      ]);
+    });
+
+    test("時刻の修正は、直した手の記録にだけ置くこと", async () => {
+      const corrections = await runInAccount(account, (sql) =>
+        sql
+          .exec(
+            "SELECT sync_write_receipt_id, measured_at, time_zone FROM weight_record_measured_at_corrections ORDER BY sync_write_receipt_id",
+          )
+          .toArray(),
+      );
+      expect(corrections).toEqual([
+        {
+          sync_write_receipt_id: "update-manual-once",
+          measured_at: 3_000,
+          time_zone: "America/Los_Angeles",
+        },
+        {
+          sync_write_receipt_id: "update-manual-twice-later",
+          measured_at: 4_000,
+          time_zone: "Asia/Tokyo",
+        },
+      ]);
+    });
+
+    test("今の値が移行の前と同じで、版が 1 ＋ 当てた直す控えの数になること", async () => {
+      const records = await runInDurableObject(account, (_, state) => {
+        const store = createWeightRecordStore(drizzle(state.storage));
+        return [importedCorrected, importedUncorrected, manualCorrectedOnce, manualCorrectedTwice]
+          .map((id) => store.find(id))
+          .map((record) => ({
+            weightKg: record?.weightKg,
+            measuredAt: record?.measuredAt.getTime(),
+            timeZone: record?.timeZone,
+            version: record?.version,
+          }));
+      });
+      expect(records).toEqual([
+        { weightKg: 71.0, measuredAt: 1_000, timeZone: "Asia/Tokyo", version: 2 },
+        { weightKg: 72.0, measuredAt: 2_000, timeZone: "Asia/Tokyo", version: 1 },
+        // 移行の前は版 3 だったが、当てた直す控えは1つなので、版 2 に下がる（#977 の「版」の稀な場面）
+        { weightKg: 65.0, measuredAt: 3_000, timeZone: "America/Los_Angeles", version: 2 },
+        { weightKg: 80.0, measuredAt: 4_000, timeZone: "Asia/Tokyo", version: 3 },
+      ]);
+    });
+
+    test("直した取り込みの記録だけを、直したと見ること", async () => {
+      const corrected = await runInDurableObject(account, (_, state) => {
+        const store = createWeightRecordStore(drizzle(state.storage));
+        return [store.hasCorrection(importedCorrected), store.hasCorrection(importedUncorrected)];
+      });
+      expect(corrected).toEqual([true, false]);
+    });
+  });
+});
+
+// 版 13 までの形の体重記録と、その控え。直した記録の weight_records の値は、上書きしてきた今の値
+const seedVersion13WeightRows = (sql: Sql) => {
+  sql.exec(
+    "INSERT INTO sync_request_logs (id, device_id, received_at, time_zone, app_version, os_version, pending_write_count, pending_photo_count) VALUES ('request-1', 'device-1', 0, 'Asia/Tokyo', '1.0.0', '26.0', 1, 0)",
+  );
+  sql.exec(
+    "INSERT INTO sync_push_logs (sync_request_log_id, is_final_batch) VALUES ('request-1', 1)",
+  );
+  const records = [
+    {
+      id: importedCorrected,
+      weightKg: 71.0,
+      measuredAt: 1_000,
+      timeZone: "Asia/Tokyo",
+      version: 2,
+    },
+    {
+      id: importedUncorrected,
+      weightKg: 72.0,
+      measuredAt: 2_000,
+      timeZone: "Asia/Tokyo",
+      version: 1,
+    },
+    {
+      id: manualCorrectedOnce,
+      weightKg: 65.0,
+      measuredAt: 3_000,
+      timeZone: "America/Los_Angeles",
+      version: 3,
+    },
+    {
+      id: manualCorrectedTwice,
+      weightKg: 80.0,
+      measuredAt: 4_000,
+      timeZone: "Asia/Tokyo",
+      version: 3,
+    },
+  ];
+  for (const { id, weightKg, measuredAt, timeZone, version } of records) {
+    sql.exec(
+      "INSERT INTO weight_records (id, weight_kg, measured_at, time_zone, version) VALUES (?, ?, ?, ?, ?)",
+      id,
+      weightKg,
+      measuredAt,
+      timeZone,
+      version,
+    );
+  }
+  for (const id of [importedCorrected, importedUncorrected]) {
+    sql.exec(
+      "INSERT INTO imported_weight_records (weight_record_id, source_app_name, source_bundle_id, healthkit_sample_uuid) VALUES (?, 'Withings', 'com.withings.wiScaleNG', ?)",
+      id,
+      `sample-${id}`,
+    );
+  }
+  sql.exec(
+    "INSERT INTO imported_body_fat_percentages (weight_record_id, body_fat_percentage, healthkit_sample_uuid) VALUES (?, 18.5, 'body-fat-sample')",
+    importedCorrected,
+  );
+  // 控えの行の順と変更の通し番号をずらし、いちばんあとの控えを通し番号で選ぶことを確かめる。
+  // 受け付けなかった直しは変更と結ばれず、版にも数えない
+  const receipts = [
+    { id: "create-imported", kind: "create", recordId: importedCorrected, sequence: 1 },
+    { id: "update-imported", kind: "update", recordId: importedCorrected, sequence: 2 },
+    { id: "create-imported-2", kind: "create", recordId: importedUncorrected, sequence: 3 },
+    { id: "create-manual-once", kind: "create", recordId: manualCorrectedOnce, sequence: 4 },
+    { id: "update-manual-once", kind: "update", recordId: manualCorrectedOnce, sequence: 5 },
+    {
+      id: "update-manual-once-rejected",
+      kind: "update",
+      recordId: manualCorrectedOnce,
+      sequence: undefined,
+    },
+    { id: "create-manual-twice", kind: "create", recordId: manualCorrectedTwice, sequence: 6 },
+    {
+      id: "update-manual-twice-later",
+      kind: "update",
+      recordId: manualCorrectedTwice,
+      sequence: 8,
+    },
+    {
+      id: "update-manual-twice-earlier",
+      kind: "update",
+      recordId: manualCorrectedTwice,
+      sequence: 7,
+    },
+  ];
+  for (const [position, { id, kind, recordId, sequence }] of receipts.entries()) {
+    sql.exec(
+      "INSERT INTO sync_write_receipts (id, sync_request_log_id, position_in_request, kind, record_type, record_id, result) VALUES (?, 'request-1', ?, ?, 'weight_record', ?, ?)",
+      id,
+      position,
+      kind,
+      recordId,
+      sequence === undefined ? "rejected" : "applied",
+    );
+    if (sequence === undefined) {
+      sql.exec(
+        "INSERT INTO sync_write_rejections (sync_write_receipt_id, reason) VALUES (?, 'out_of_range')",
+        id,
+      );
+      continue;
+    }
+    sql.exec(
+      "INSERT INTO record_changes (sequence, record_type, record_id) VALUES (?, 'weight_record', ?)",
+      sequence,
+      recordId,
+    );
+    sql.exec(
+      "INSERT INTO sync_write_record_changes (record_change_sequence, sync_write_receipt_id) VALUES (?, ?)",
+      sequence,
+      id,
+    );
+  }
+};
