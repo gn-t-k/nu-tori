@@ -69,6 +69,7 @@ flowchart LR
 - `/v1/apps/<app>` の `subscriptionStatusUrl` と `subscriptionStatusUrlForSandbox` が、本番の routes（`server/wrangler.jsonc`）と通知の経路（`server/src/http/app-store-server-notification-routes/`）から組んだ URL を指し、`subscriptionStatusUrlVersion` と `subscriptionStatusUrlVersionForSandbox` が `V2`
 - ページの一覧（`site/src/site-pages.ts`）の `kind` が `public` のページと `/` が、本番で 200 を返す
 - 出すビルドで、Sentry の新しい課題と、TestFlight のクラッシュのフィードバックが無い
+- 前に出した版のあとに、エージェントが merge したフェーズ2の PR（`agent-merged` のラベル。`docs/agents/review.md` の「フェーズ2」）が入っていれば、その一覧を開発者に見せ、出すビルドを TestFlight で使って困ったことが無いかを聞く
 - LLM の費用の上限は審査のたびには開発者に聞かない。`docs/agents/production-incidents.md` の「費用の知らせ」に、開発者が Console で確かめた日がある。上限・知らせの額・自動の補充を変えたときと、Anthropic の知らせが来たときだけ、開発者に確かめてもらってその日を書き換える
 
 **Why:** 審査に出すビルドで主な流れを全部、実機で通し直すチケット（#864）を切ったが、項目はどれも自動テストか機能ごとの実機のチケットで確かめてあり、出すたびにアカウントを作り直す手間に見合わなかった（#864 の解決コメントに、項目と確かめた場所の対応がある）
