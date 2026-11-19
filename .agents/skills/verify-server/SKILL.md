@@ -41,6 +41,7 @@ $D sign-in "$run" <名前>                         # 新しいアカウント。
 $D push "$run" <名前> '<書き込みの JSON の配列>'   # POST /v1/sync/writes
 $D pull "$run" <名前>                            # GET /v1/sync/changes を最後まで。変更の配列を出す
 $D call "$run" <名前> <メソッド> <パス>            # ほかの API を1回呼ぶ
+$D scenario "$run" <名前> <場面>                  # 時の経過で起きる知らせの場面のアカウント（.agents/skills/verify-ios の「時の経過で起きる知らせを確かめる」）
 $D                                              # オプション（時刻の差し替え、本文、--timeout など）の使い方
 ```
 
@@ -74,7 +75,7 @@ $D                                              # オプション（時刻の差
 - 返事が作れなかった（`failed`）文章を送り直して返事が作られるところは、鍵があっても通せない（`features/reply.md` の Gotchas）。`main-flow-on-development` も通らない。`server/src/sent-text/http/resend.test.ts` が確かめていて、本物の経路では TestFlight の版で確かめる
 - 24時間に受け取る写真の数の上限と、食事が届かないまま期限を過ぎた写真の控えの取り消しは、手元で通さない（`features/meal-estimation.md` の Gotchas）。`server/src/http/meal-photo-routes/meal-photo-routes.test.ts` が確かめている
 - Sign in with Apple、Apple のサーバー間通知、App Store の取引は、Apple を通すので手元で動かせない。TestFlight の版で確かめる
-- アプリの画面は、このスキルの外。Mac のセッションの UI テストで確かめる。アプリをこの回につないで動かすのは `verify-ios` の「手元のサーバーにつないで動かす」
+- アプリの画面は、このスキルの外。Mac のセッションの UI テストで確かめる。アプリをこの回につないで動かすのは `verify-ios` の「手元のサーバーにつないで動かす」で、時の経過で起きる知らせを見るのも同じ道（同じスキルの「時の経過で起きる知らせを確かめる」）
 
 ## 片付け
 

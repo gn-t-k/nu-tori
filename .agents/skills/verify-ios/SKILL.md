@@ -92,6 +92,25 @@ $S/launch-local-server.sh "$run" "$server" app
 - 推定・読み分け・返事の結果まで見るなら、`verify-server` の「起動」の Anthropic の鍵を渡して立てる
 - 片付けは、下の「片付け」に加えて `$V/stop.sh "$server"`
 
+### 時の経過で起きる知らせを確かめる
+
+目標の期限・期限後の維持の知らせ、見直しのあとの1日の目安の変更の知らせと週の振り返り、無料体験の終わり（サブスクリプション切れの知らせ）は、日がたたないと届かない。手元のサーバーに、過去に使い始めたことにしたアカウント（場面のアカウント）を作り、上と同じ道でそのアカウントのアプリを開いて、待たずに見る（決めたことは #812 の解決コメント）。
+
+```bash
+$V/device.sh scenario "$server" deadline goal-deadline-passed   # sign-in の代わり
+$S/launch-local-server.sh "$run" "$server" deadline
+```
+
+場面のアカウントは3つ。作り方は `server/e2e/create-scenario.ts` の注にある。
+
+- `goal-deadline-passed`: 期限の知らせと期限後の維持の知らせが届く。間の週の振り返りも並ぶ
+- `unreviewed-week`: 週の振り返りが届く。目安が変われば1日の目安の変更の知らせも届く
+- `free-trial-expired`: サブスクリプション切れの知らせと、課金画面が出る
+
+- 期限の確定と週の見直しは、アプリが開いて最初に取りに行く要求（今の時刻）で起きる。先に `device.sh pull` を呼ぶと、そこで起きてしまい、アプリでは届いたあとの状態から始まる
+- 場面のアカウントは Asia/Tokyo の日付で作る。`launch.sh` が `TZ=Asia/Tokyo` で開くので、起動の値で `TZ` を替えない（替えると、知らせの日付がずれる）
+- 請求の猶予は App Store の知らせで決まるので、この道では作れない
+
 ## 地図
 
 索引は `features/README.md`、確かめる手順は機能ごとのファイルにある。
