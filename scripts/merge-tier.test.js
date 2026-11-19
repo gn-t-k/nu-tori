@@ -130,7 +130,7 @@ describe("差分のパスから merge のフェーズを決めること", () => 
 
     it("フェーズ2だけに入れないパスも出すこと", () => {
       const result = spawnSync(process.execPath, [MERGE_TIER, "--list"], { encoding: "utf8" });
-      assert.match(result.stdout, /^- LLM への指示と要求（フェーズ2だけ）: .*`server\/src\/reply\/durable-object\/create-conversation-provider\/`/m);
+      assert.match(result.stdout, /^- API の境目（フェーズ2だけ）: .*`server\/src\/\*\/http\/`/m);
     });
   });
 
@@ -164,22 +164,85 @@ describe("差分のパスから merge のフェーズを決めること", () => 
     });
 
     // API の形・DB の移行・端末とサーバーの決めごと・画像は、プロダクトのコードの置き場の外なので当たらない。プロダクトのコードと一緒に1つずつ渡す
-    for (const [title, path] of [
-      ["API の形に触るとき", "M\tserver/openapi.json"],
-      ["DB の移行を足すとき", "A\tserver/durable-object-migrations/0015_example.sql"],
-      ["端末とサーバーの決めごとに触るとき", "M\tshared/pace.json"],
-      ["画像と色に触るとき", "M\tios/NuTori/Assets.xcassets/Protein.colorset/Contents.json"],
-    ]) {
-      describe(title, () => {
-        beforeEach(() => {
-          lines = ["M\tserver/src/meal/meal-total.ts", path];
-        });
-
-        it("待つと返すこと", () => {
-          assert.equal(judge(lines).verdict, "待つ");
-        });
+    describe("API の形に触るとき", () => {
+      beforeEach(() => {
+        lines = ["M\tserver/src/meal/meal-total.ts", "M\tserver/openapi.json"];
       });
-    }
+
+      it("待つと返すこと", () => {
+        assert.equal(judge(lines).verdict, "待つ");
+      });
+    });
+
+    describe("DB の移行を足すとき", () => {
+      beforeEach(() => {
+        lines = ["M\tserver/src/meal/meal-total.ts", "A\tserver/durable-object-migrations/0015_example.sql"];
+      });
+
+      it("待つと返すこと", () => {
+        assert.equal(judge(lines).verdict, "待つ");
+      });
+    });
+
+    describe("端末とサーバーの決めごとに触るとき", () => {
+      beforeEach(() => {
+        lines = ["M\tserver/src/meal/meal-total.ts", "M\tshared/pace.json"];
+      });
+
+      it("待つと返すこと", () => {
+        assert.equal(judge(lines).verdict, "待つ");
+      });
+    });
+
+    describe("画像と色に触るとき", () => {
+      beforeEach(() => {
+        lines = ["M\tserver/src/meal/meal-total.ts", "M\tios/NuTori/Assets.xcassets/Protein.colorset/Contents.json"];
+      });
+
+      it("待つと返すこと", () => {
+        assert.equal(judge(lines).verdict, "待つ");
+      });
+    });
+
+    describe("サーバーの受け口に触るとき", () => {
+      beforeEach(() => {
+        lines = ["M\tserver/src/meal/http/meal-http-kind.ts"];
+      });
+
+      it("どのゲートかを理由に添えて待つと返すこと", () => {
+        assert.match(judge(lines).stdout, /^待つ\n.*（API の境目）$/m);
+      });
+    });
+
+    describe("アプリの API のつなぎに触るとき", () => {
+      beforeEach(() => {
+        lines = ["M\tios/NuToriCore/Sources/NuToriAPI/RecordKindWireCoding.swift"];
+      });
+
+      it("どのゲートかを理由に添えて待つと返すこと", () => {
+        assert.match(judge(lines).stdout, /^待つ\n.*（API の境目）$/m);
+      });
+    });
+
+    describe("テストのための偽物を書き換えるとき", () => {
+      beforeEach(() => {
+        lines = ["M\tserver/src/observability/capture-exception.mock.ts"];
+      });
+
+      it("待つと返すこと", () => {
+        assert.equal(judge(lines).verdict, "待つ");
+      });
+    });
+
+    describe("UI テストの場面を書き換えるとき", () => {
+      beforeEach(() => {
+        lines = ["M\tios/NuTori/UITesting/UITestScenario.swift"];
+      });
+
+      it("待つと返すこと", () => {
+        assert.equal(judge(lines).verdict, "待つ");
+      });
+    });
 
     describe("LLM への指示に触るとき", () => {
       beforeEach(() => {
@@ -189,7 +252,7 @@ describe("差分のパスから merge のフェーズを決めること", () => 
       it("どのゲートかを理由に添えて待つと返すこと", () => {
         assert.equal(
           judge(lines).stdout,
-          "待つ\n  M\tserver/src/reply/durable-object/create-conversation-provider/reply-instructions.ts\tフェーズ2に入れないもの（LLM への指示と要求）\n",
+          "待つ\n  M\tserver/src/reply/durable-object/create-conversation-provider/reply-instructions.ts\tフェーズ2に入れないもの（LLM への指示・文脈・要求）\n",
         );
       });
     });
