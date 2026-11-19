@@ -1,4 +1,4 @@
-import { type SQL, and, asc, count, eq, gte, inArray, lt, or } from "drizzle-orm";
+import { type SQL, and, count, eq, gte, inArray, lt, or } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { RecordId } from "../../domain/record-id";
 import type { CorrectionTable } from "../../durable-object/correction-table";
@@ -37,9 +37,9 @@ export const createWeightRecordStore = (db: DrizzleSqliteDODatabase): WeightReco
       return undefined;
     }
     // まとめて読む口と同じ関数で、この記録の分だけ読む。今の値の手順を1つにし、読む口ごとに食い違わないようにする
-    const recordFilter = eq(syncWriteReceipts.recordId, id);
-    const weightKg = findLatestWeightCorrections(db, recordFilter).get(id) ?? row.record.weightKg;
-    const measured = findLatestMeasuredAtCorrections(db, recordFilter).get(id) ?? row.record;
+    const receiptFilter = isReceiptOfRecord(id);
+    const weightKg = findLatestWeightCorrections(db, receiptFilter).get(id) ?? row.record.weightKg;
+    const measured = findLatestMeasuredAtCorrections(db, receiptFilter).get(id) ?? row.record;
     return toWeightRecord({
       ...row,
       current: { weightKg, measuredAt: measured.measuredAt, timeZone: measured.timeZone },
@@ -205,16 +205,20 @@ const countVersion = (db: DrizzleSqliteDODatabase, id: RecordId): number =>
     )
     .get()?.total ?? 0);
 
-// 記録ごとの、受け取った順でいちばんあとの体重の修正。通し番号の昇順に読み、あとの行で上書きする。recordFilter で読む記録を絞れる
+// 記録ごとの、受け取った順でいちばんあとの体重の修正。receiptFilter で読む記録を絞れる。
+// 修正の表は体重記録の控えだけを指すので、控えの種類では絞らない。種類で絞ると控えの種類の索引から、
+// 通し番号で並べると変更の並びから引く計画になり、どちらも修正の数でなく記録や変更の数だけなめる。
+// そのため、修正の表から引き、いちばんあとの通し番号はアプリで選ぶ
 const findLatestWeightCorrections = (
   db: DrizzleSqliteDODatabase,
-  recordFilter?: SQL,
+  receiptFilter?: SQL,
 ): Map<RecordId, number> =>
-  new Map(
+  pickLatestByRecord(
     db
       .select({
         recordId: syncWriteReceipts.recordId,
-        weightKg: weightRecordWeightCorrections.weightKg,
+        sequence: syncWriteRecordChanges.recordChangeSequence,
+        value: weightRecordWeightCorrections.weightKg,
       })
       .from(weightRecordWeightCorrections)
       .innerJoin(
@@ -228,23 +232,24 @@ const findLatestWeightCorrections = (
           weightRecordWeightCorrections.syncWriteReceiptId,
         ),
       )
-      .where(and(eq(syncWriteReceipts.recordType, "weight_record"), recordFilter))
-      .orderBy(asc(syncWriteRecordChanges.recordChangeSequence))
-      .all()
-      .map(({ recordId, weightKg }) => [recordId, weightKg]),
+      .where(receiptFilter)
+      .all(),
   );
 
-// 記録ごとの、受け取った順でいちばんあとの時刻の修正。時刻とタイムゾーンは組で引く。読み方は体重の修正と同じ
+// 記録ごとの、受け取った順でいちばんあとの時刻の修正。時刻とタイムゾーンは組で引く。引き方は体重の修正と同じ
 const findLatestMeasuredAtCorrections = (
   db: DrizzleSqliteDODatabase,
-  recordFilter?: SQL,
+  receiptFilter?: SQL,
 ): Map<RecordId, Pick<WeightRecord, "measuredAt" | "timeZone">> =>
-  new Map(
+  pickLatestByRecord(
     db
       .select({
         recordId: syncWriteReceipts.recordId,
-        measuredAt: weightRecordMeasuredAtCorrections.measuredAt,
-        timeZone: weightRecordMeasuredAtCorrections.timeZone,
+        sequence: syncWriteRecordChanges.recordChangeSequence,
+        value: {
+          measuredAt: weightRecordMeasuredAtCorrections.measuredAt,
+          timeZone: weightRecordMeasuredAtCorrections.timeZone,
+        },
       })
       .from(weightRecordMeasuredAtCorrections)
       .innerJoin(
@@ -258,11 +263,23 @@ const findLatestMeasuredAtCorrections = (
           weightRecordMeasuredAtCorrections.syncWriteReceiptId,
         ),
       )
-      .where(and(eq(syncWriteReceipts.recordType, "weight_record"), recordFilter))
-      .orderBy(asc(syncWriteRecordChanges.recordChangeSequence))
-      .all()
-      .map(({ recordId, measuredAt, timeZone }) => [recordId, { measuredAt, timeZone }]),
+      .where(receiptFilter)
+      .all(),
   );
+
+// 修正の行から、記録ごとに通し番号がいちばん大きい行の値を選ぶ
+const pickLatestByRecord = <T>(
+  rows: readonly { recordId: RecordId; sequence: number; value: T }[],
+): Map<RecordId, T> => {
+  const latest = new Map<RecordId, { sequence: number; value: T }>();
+  for (const row of rows) {
+    const current = latest.get(row.recordId);
+    if (current === undefined || row.sequence > current.sequence) {
+      latest.set(row.recordId, row);
+    }
+  }
+  return new Map([...latest].map(([recordId, { value }]) => [recordId, value]));
+};
 
 const sortByMeasuredAt = <T extends { measuredAt: Date }>(records: T[]): T[] =>
   records.toSorted((a, b) => a.measuredAt.getTime() - b.measuredAt.getTime());

@@ -75,6 +75,29 @@ describe("体重記録の表の索引", () => {
       "SEARCH receipts USING INDEX sqlite_autoindex_sync_write_receipts_1 (id=?)",
     ]);
   });
+  test("時刻の範囲の候補の、直した時刻を引くとき、体重記録の控えと変更の並びを全部なめないこと", async () => {
+    const plan = await runInAccount((sql) =>
+      sql
+        .exec<{ detail: string }>(
+          "EXPLAIN QUERY PLAN SELECT receipts.record_id, corrections.measured_at, changes.record_change_sequence FROM weight_record_measured_at_corrections AS corrections INNER JOIN sync_write_receipts AS receipts ON receipts.id = corrections.sync_write_receipt_id INNER JOIN sync_write_record_changes AS changes ON changes.sync_write_receipt_id = corrections.sync_write_receipt_id WHERE receipts.record_id IN (SELECT id FROM weight_records WHERE measured_at >= 0 AND measured_at < 1) OR receipts.record_id IN (SELECT receipts2.record_id FROM weight_record_measured_at_corrections AS corrections2 INNER JOIN sync_write_receipts AS receipts2 ON receipts2.id = corrections2.sync_write_receipt_id WHERE corrections2.measured_at >= 0 AND corrections2.measured_at < 1)",
+        )
+        .toArray()
+        .map((row) => row.detail),
+    );
+    // 修正の表から引き、控えと変更の並びは主キーと一意の索引で1行ずつ引く。修正の数だけ読み、記録や変更の数によらない
+    expect(plan).toEqual([
+      "SCAN corrections",
+      "SEARCH receipts USING INDEX sqlite_autoindex_sync_write_receipts_1 (id=?)",
+      "LIST SUBQUERY 1",
+      "SEARCH weight_records USING INDEX weight_records_measured_at (measured_at>? AND measured_at<?)",
+      "CREATE BLOOM FILTER",
+      "LIST SUBQUERY 2",
+      "SEARCH corrections2 USING INDEX weight_record_measured_at_corrections_measured_at (measured_at>? AND measured_at<?)",
+      "SEARCH receipts2 USING INDEX sqlite_autoindex_sync_write_receipts_1 (id=?)",
+      "CREATE BLOOM FILTER",
+      "SEARCH changes USING COVERING INDEX sync_write_record_changes_receipt (sync_write_receipt_id=?)",
+    ]);
+  });
 });
 
 const runInAccount = <T>(run: (sql: Sql) => T): Promise<T> =>
