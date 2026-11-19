@@ -3,6 +3,7 @@ import type { RecordId } from "../../domain/record-id";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 
 // 作ったときの値のまま、UPDATE しない。直した値は体重の修正と時刻の修正に書き足す（#977）。
+// 消すのは、元のサンプルが消えたときの、直していない記録の行だけ（取り込みと体脂肪率は CASCADE で消える）。
 // 例外として、#977 の移行より前に直した記録は、上書きで直す前の値を失っているので、移行の時点の今の値を持つ
 const weightRecords = sqliteTable(
   "weight_records",
