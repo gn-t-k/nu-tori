@@ -1,7 +1,7 @@
-import { type SQL, and, asc, count, desc, eq, gte, inArray, lt, or } from "drizzle-orm";
+import { type SQL, and, asc, count, eq, gte, inArray, lt, or } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { RecordId } from "../../domain/record-id";
-import { findLatestCorrection } from "../../durable-object/find-latest-correction";
+import type { CorrectionTable } from "../../durable-object/correction-table";
 import { syncLedgerTables } from "../../durable-object/sync-ledger-tables";
 import type { WeightRecord } from "../domain/weight-record";
 import type { WeightRecordStore } from "../domain/weight-record-store";
@@ -36,10 +36,10 @@ export const createWeightRecordStore = (db: DrizzleSqliteDODatabase): WeightReco
     if (row === undefined) {
       return undefined;
     }
-    const weightKg =
-      findLatestCorrection(db, weightRecordWeightCorrections, "weightKg", receiptOfRecord(id))
-        ?.value ?? row.record.weightKg;
-    const measured = findLatestMeasuredAtCorrection(db, id) ?? row.record;
+    // まとめて読む口と同じ関数で、この記録の分だけ読む。今の値の手順を1つにし、読む口ごとに食い違わないようにする
+    const recordFilter = eq(syncWriteReceipts.recordId, id);
+    const weightKg = findLatestWeightCorrections(db, recordFilter).get(id) ?? row.record.weightKg;
+    const measured = findLatestMeasuredAtCorrections(db, recordFilter).get(id) ?? row.record;
     return toWeightRecord({
       ...row,
       current: { weightKg, measuredAt: measured.measuredAt, timeZone: measured.timeZone },
@@ -133,27 +133,18 @@ export const createWeightRecordStore = (db: DrizzleSqliteDODatabase): WeightReco
         syncWriteReceipts,
         eq(syncWriteReceipts.id, weightRecordDeletions.syncWriteReceiptId),
       )
-      .where(receiptOfRecordCondition(recordId))
+      .where(isReceiptOfRecord(recordId))
       .all().length > 0,
   hasCorrection: (id) =>
-    db
-      .select({ id: weightRecordWeightCorrections.syncWriteReceiptId })
-      .from(weightRecordWeightCorrections)
-      .innerJoin(
-        syncWriteReceipts,
-        eq(syncWriteReceipts.id, weightRecordWeightCorrections.syncWriteReceiptId),
-      )
-      .where(receiptOfRecordCondition(id))
-      .get() !== undefined ||
-    db
-      .select({ id: weightRecordMeasuredAtCorrections.syncWriteReceiptId })
-      .from(weightRecordMeasuredAtCorrections)
-      .innerJoin(
-        syncWriteReceipts,
-        eq(syncWriteReceipts.id, weightRecordMeasuredAtCorrections.syncWriteReceiptId),
-      )
-      .where(receiptOfRecordCondition(id))
-      .get() !== undefined,
+    [weightRecordWeightCorrections, weightRecordMeasuredAtCorrections].some(
+      (corrections: CorrectionTable) =>
+        db
+          .select({ id: corrections.syncWriteReceiptId })
+          .from(corrections)
+          .innerJoin(syncWriteReceipts, eq(syncWriteReceipts.id, corrections.syncWriteReceiptId))
+          .where(isReceiptOfRecord(id))
+          .get() !== undefined,
+    ),
   insert: ({ id, weightKg, measuredAt, timeZone, imported }) => {
     db.insert(weightRecords).values({ id, weightKg, measuredAt, timeZone }).run();
     if (imported === undefined) {
@@ -196,12 +187,7 @@ export const createWeightRecordStore = (db: DrizzleSqliteDODatabase): WeightReco
   },
 });
 
-const receiptOfRecord = (recordId: RecordId) => ({
-  recordType: "weight_record" as const,
-  recordId,
-});
-
-const receiptOfRecordCondition = (recordId: RecordId) =>
+const isReceiptOfRecord = (recordId: RecordId) =>
   and(eq(syncWriteReceipts.recordType, "weight_record"), eq(syncWriteReceipts.recordId, recordId));
 
 // 版は列に持たず、当てた直す書き込みの控えから数える。今の値と同じで何も書かなかった直し（unchanged）も、控えは applied なので数える
@@ -212,42 +198,18 @@ const countVersion = (db: DrizzleSqliteDODatabase, id: RecordId): number =>
     .from(syncWriteReceipts)
     .where(
       and(
-        receiptOfRecordCondition(id),
+        isReceiptOfRecord(id),
         eq(syncWriteReceipts.kind, "update"),
         eq(syncWriteReceipts.result, "applied"),
       ),
     )
     .get()?.total ?? 0);
 
-// 時刻の修正は時刻とタイムゾーンの2列を組で引くので、1つの列を引く findLatestCorrection と同じ順で、ここで引く
-const findLatestMeasuredAtCorrection = (
+// 記録ごとの、受け取った順でいちばんあとの体重の修正。通し番号の昇順に読み、あとの行で上書きする。recordFilter で読む記録を絞れる
+const findLatestWeightCorrections = (
   db: DrizzleSqliteDODatabase,
-  id: RecordId,
-): Pick<WeightRecord, "measuredAt" | "timeZone"> | undefined =>
-  db
-    .select({
-      measuredAt: weightRecordMeasuredAtCorrections.measuredAt,
-      timeZone: weightRecordMeasuredAtCorrections.timeZone,
-    })
-    .from(weightRecordMeasuredAtCorrections)
-    .innerJoin(
-      syncWriteReceipts,
-      eq(syncWriteReceipts.id, weightRecordMeasuredAtCorrections.syncWriteReceiptId),
-    )
-    .innerJoin(
-      syncWriteRecordChanges,
-      eq(
-        syncWriteRecordChanges.syncWriteReceiptId,
-        weightRecordMeasuredAtCorrections.syncWriteReceiptId,
-      ),
-    )
-    .where(receiptOfRecordCondition(id))
-    .orderBy(desc(syncWriteRecordChanges.recordChangeSequence))
-    .limit(1)
-    .get();
-
-// 記録ごとの、受け取った順でいちばんあとの体重の修正。通し番号の昇順に読み、あとの行で上書きする
-const findLatestWeightCorrections = (db: DrizzleSqliteDODatabase): Map<RecordId, number> =>
+  recordFilter?: SQL,
+): Map<RecordId, number> =>
   new Map(
     db
       .select({
@@ -266,13 +228,13 @@ const findLatestWeightCorrections = (db: DrizzleSqliteDODatabase): Map<RecordId,
           weightRecordWeightCorrections.syncWriteReceiptId,
         ),
       )
-      .where(eq(syncWriteReceipts.recordType, "weight_record"))
+      .where(and(eq(syncWriteReceipts.recordType, "weight_record"), recordFilter))
       .orderBy(asc(syncWriteRecordChanges.recordChangeSequence))
       .all()
       .map(({ recordId, weightKg }) => [recordId, weightKg]),
   );
 
-// 記録ごとの、受け取った順でいちばんあとの時刻の修正。読み方は体重の修正と同じ。recordFilter で読む記録を絞れる
+// 記録ごとの、受け取った順でいちばんあとの時刻の修正。時刻とタイムゾーンは組で引く。読み方は体重の修正と同じ
 const findLatestMeasuredAtCorrections = (
   db: DrizzleSqliteDODatabase,
   recordFilter?: SQL,

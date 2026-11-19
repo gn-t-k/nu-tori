@@ -22,6 +22,7 @@ import {
   readPostHogCapturedEvents,
 } from "../../observability/testing";
 import { createWeightRecordWrite } from "../../weight-record/http/testing/create-weight-record-write";
+import { updateWeightRecordWrite } from "../../weight-record/http/testing/update-weight-record-write";
 
 // その日（YYYY-MM-DD）の日本時間の正午
 const computeNoonInTokyo = (calendarDay: string) => Date.parse(`${calendarDay}T03:00:00Z`);
@@ -118,6 +119,36 @@ describe("目標の達成と期限の日の結果", () => {
         judgedAt: Date.now(),
         timeZone: "Asia/Tokyo",
       });
+    });
+  });
+
+  describe("目標体重に届かない体重記録を、目標体重に届く値に直したとき", () => {
+    beforeEach(async () => {
+      const created = createWeightRecordWrite({
+        weightRecord: {
+          weightKg: 71.0,
+          measuredAt: Date.parse(`${goalStartedOn}T00:00:00Z`),
+          timeZone: "Asia/Tokyo",
+        },
+      });
+      await pushSyncWrites(sessionToken, { writes: [created] });
+      await pushSyncWrites(sessionToken, {
+        writes: [
+          updateWeightRecordWrite(String(created.weightRecord["id"]), {
+            weightRecord: {
+              weightKg: 69.8,
+              measuredAt: created.weightRecord["measuredAt"],
+              timeZone: "Asia/Tokyo",
+            },
+          }),
+        ],
+      });
+    });
+
+    test("直した値でその日を達成した日にすること", async () => {
+      expect((await pullGoal())?.["achievement"]).toEqual(
+        expect.objectContaining({ achievedOn: goalStartedOn }),
+      );
     });
   });
 

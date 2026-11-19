@@ -25,7 +25,7 @@
 
 パスは `server/` から数える。
 
-- 体重記録の仕様（#103、直しの形は #977）の表の置き場: 体重記録・取り込み・取り込んだ体脂肪率・削除の印・体重の修正・時刻の修正は `src/weight-record/durable-object/weight-record-tables.ts`。どの表も書き足すだけで、体重記録の行は作ったときの値のまま UPDATE しない。直した値は、直す書き込みの控えを指す体重の修正と時刻の修正に書き足し、今の値は受け取った順でいちばんあとの修正から出す。消すのは、元のサンプルが消えたときの直していない記録の行だけ。版は列に持たず、当てた直す書き込みの控えの数から出す
+- 体重記録の仕様（#103、直しの形は #977）の表の置き場: 体重記録・取り込み・取り込んだ体脂肪率・削除の印・体重の修正・時刻の修正は `src/weight-record/durable-object/weight-record-tables.ts`。どの表も書き足すだけで、今の値と版の出し方と例外は、同じファイルの宣言のコメントにある
 - 食事の仕様（#188）の表の置き場: 食事とその削除の印は `src/meal/durable-object/meal-tables.ts`、写真（宣言、ファイルの受け取りと R2 から消した事実、宣言の削除の印）は同じフォルダの `meal-photo-tables.ts`、推定の出来事（予定・つなぎ・見送り・推定・試み・結果・完了・断念）は `src/estimation/durable-object/estimation-tables.ts`、料理は `src/dish/durable-object/dish-tables.ts`、材料と出どころのサブセットと栄養の値は `src/ingredient/durable-object/ingredient-tables.ts`。推定の出来事は記録の種類ではないので `src/estimation/` に別に置く。表を足すときは、親の表の束を import して外部キーを張る
 - 食事を直す仕様（#332）の表の置き場: 当てた推定・推定の量・料理の名前と量の修正・比例の明細・料理が対象の予定のつなぎ・料理の削除の印は `dish-tables.ts`、材料の量の修正と材料の削除の印は `ingredient-tables.ts`、食事の時刻の修正は `meal-tables.ts`、予定の取り消しは `estimation-tables.ts`。表の束が互いを指す（料理 ↔ 材料、料理 ↔ 推定の出来事）ところは、指し返すほうの `references` に `(): AnySQLiteColumn =>` と型を書き、型の推論の循環を切る
 - 文章と会話の仕様（#419）の表の置き場: 送った文章・読み分け・読み分けで提供元を呼んだこと（`sent_text_classification_calls`。書く時機は `docs/agents/server-llm.md` の「読み分け」）・会話として送り直し・送り直し・会話として送り直しで消した食事の削除の印と、文章の食事のサブセット（文章の食事・推定が作った食事・推定した時刻）は `src/sent-text/durable-object/sent-text-tables.ts`、返事の流れの出来事（依頼・きっかけ・回数切れ・生成・試み・結果・作れなかった）は `src/reply/durable-object/reply-tables.ts`、返事と指し示す食事は `src/ai-utterance/durable-object/ai-utterance-tables.ts`。返事の流れは記録の種類ではないので、推定と同じく `src/reply/` に別に置く

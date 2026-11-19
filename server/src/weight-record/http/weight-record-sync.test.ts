@@ -159,6 +159,23 @@ describe("体重記録の同期", () => {
         ]);
       });
 
+      test("1つの控えから体重の修正と時刻の修正を1行ずつ書き、控えを変更の並びと結ぶこと", async () => {
+        const rows = await readRows(
+          accountId,
+          `SELECT
+             (SELECT COUNT(*) FROM weight_record_weight_corrections AS weights
+                INNER JOIN weight_record_measured_at_corrections AS measured_ats
+                  ON measured_ats.sync_write_receipt_id = weights.sync_write_receipt_id
+                INNER JOIN sync_write_record_changes AS changes
+                  ON changes.sync_write_receipt_id = weights.sync_write_receipt_id) AS linked_pairs,
+             (SELECT COUNT(*) FROM weight_record_weight_corrections) AS weight_corrections,
+             (SELECT COUNT(*) FROM weight_record_measured_at_corrections) AS measured_at_corrections`,
+        );
+        expect(rows).toEqual([
+          { linked_pairs: 1, weight_corrections: 1, measured_at_corrections: 1 },
+        ]);
+      });
+
       test("取りに行くと、直した記録が1件にまとまって返ること", async () => {
         const pulled = await pullWeightRecordChanges(sessionToken);
         expect(pulled.changes).toHaveLength(1);

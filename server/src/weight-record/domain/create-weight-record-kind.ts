@@ -165,7 +165,6 @@ const decideSourceDeleted = (
   if (store.hasCorrection(weightRecordId)) {
     return { result: "kept_corrected", writeKind: "source_deleted", recordId: weightRecordId };
   }
-  const exists = store.find(weightRecordId) !== undefined;
   // 記録がまだ届いていなくても印を残し、あとから届く作る書き込みで生き返らせない
   return {
     result: "applied",
@@ -174,9 +173,8 @@ const decideSourceDeleted = (
     addedChanges: [],
     usageEvents: [],
     commit: (receiptId) => {
-      if (exists) {
-        store.remove(weightRecordId);
-      }
+      // 記録がまだ届いていなければ、消す行は無く何も起きない
+      store.remove(weightRecordId);
       store.insertDeletion(receiptId);
     },
   };
