@@ -7,7 +7,8 @@ import { computeStartOfWeek } from "../src/domain/compute-start-of-week";
 import { generateRecordId } from "../src/domain/record-id";
 import { createScenario } from "./create-scenario";
 import { type DeviceClient, type DeviceSession, createDeviceClient } from "./device-client";
-import { computeTodayOfStartedOn, readFreeTrialLastDay } from "./read-free-trial-last-day";
+import { computeTodayOfStartedOn } from "./compute-today-of-started-on";
+import { readFreeTrialLastDay } from "./read-free-trial-last-day";
 
 const signInSecret = "e2e-sign-in-secret-0123456789abcdef0123456789";
 

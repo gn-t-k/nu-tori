@@ -2,7 +2,8 @@ import { match } from "ts-pattern";
 import { createWeightWrite } from "./create-weight-write";
 import { decideStandardLoseGoal } from "./decide-standard-lose-goal";
 import type { DeviceClient, DeviceSession } from "./device-client";
-import { expiredAccountAgeDays, requireFreeTrialEnded } from "./read-free-trial-last-day";
+import { expiredAccountAgeDays } from "./expired-account-age-days";
+import { requireFreeTrialEnded } from "./require-free-trial-ended";
 import { addDays } from "../src/domain/add-days";
 import { computeCalendarDayInTimeZone } from "../src/domain/compute-calendar-day-in-time-zone";
 import { millisecondsPerDay } from "../src/domain/milliseconds-per-day";
@@ -58,7 +59,7 @@ const createFreeTrialExpired = async (client: DeviceClient): Promise<DeviceSessi
   const session = await client.signIn(
     new Date(Date.now() - expiredAccountAgeDays * millisecondsPerDay),
   );
-  await requireFreeTrialEnded(session);
+  await requireFreeTrialEnded(session, expiredAccountAgeDays);
   return session;
 };
 

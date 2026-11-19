@@ -7,13 +7,12 @@ import {
   createDeviceClient,
 } from "./device-client";
 import { createWeightWrite } from "./create-weight-write";
-import { decideStandardLoseGoal, sampleBodyData } from "./decide-standard-lose-goal";
-import {
-  computeTodayOfStartedOn,
-  expiredAccountAgeDays,
-  readFreeTrialLastDay,
-  requireFreeTrialEnded,
-} from "./read-free-trial-last-day";
+import { computeTodayOfStartedOn } from "./compute-today-of-started-on";
+import { decideStandardLoseGoal } from "./decide-standard-lose-goal";
+import { expiredAccountAgeDays } from "./expired-account-age-days";
+import { readFreeTrialLastDay } from "./read-free-trial-last-day";
+import { requireFreeTrialEnded } from "./require-free-trial-ended";
+import { sampleBodyData } from "./sample-body-data";
 import { mealTextBody } from "./meal-text-body";
 import { addDays } from "../src/domain/add-days";
 import { computeCalendarDayInTimeZone } from "../src/domain/compute-calendar-day-in-time-zone";
@@ -91,7 +90,7 @@ const runFreeTrialFlow = async (options: Flow, session: DeviceSession): Promise<
 
 // 無料体験の終わったアカウントで撮った食事は、推定を始めず、推定の状態がサブスクリプションを待っているになる
 const runExpiredFreeTrialFlow = async (options: Flow, session: DeviceSession): Promise<void> => {
-  await requireFreeTrialEnded(session);
+  await requireFreeTrialEnded(session, expiredAccountAgeDays);
   options.log("無料体験の終わったアカウントだった");
   const mealId = await sendPhotographedMeal(options, session);
   options.log("無料体験の終わったアカウントで写真の食事を送った");

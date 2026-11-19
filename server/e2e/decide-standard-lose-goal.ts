@@ -3,14 +3,7 @@ import type { DeviceSession } from "./device-client";
 import { generateRecordId } from "../src/domain/record-id";
 import { goalDecisionSchema } from "../src/http/goal-setup-routes/goal-decision-schema";
 import { goalProposalsSchema } from "../src/http/goal-setup-routes/goal-proposals-schema";
-
-// 目標の設定に添える身体データ。作り話にする（公開リポジトリ）。サーバーは計算に使ったら捨てる
-export const sampleBodyData = {
-  sex: "female",
-  heightCentimeters: 160,
-  ageYears: 35,
-  activity: { type: "level", level: "standing" },
-};
+import { sampleBodyData } from "./sample-body-data";
 
 // 減量の標準の案を、目標案で見せていた値のとおりに決める。端末が目標案から目標を決めるのと同じ順で送る。
 // 使い始めたばかりで食べた量の記録が無い人として、身体データを添えて式で出す。
@@ -22,6 +15,7 @@ export const decideStandardLoseGoal = async (
 ): Promise<{
   proposals: z.infer<typeof goalProposalsSchema>;
   decisionRequest: Record<string, unknown>;
+  // 応答の本文そのまま。再送の応答が本文ごと同じかを比べるのに使う（読んだ形は知らない欄を落とすので、比べには使わない）
   decision: unknown;
   decided: Extract<z.infer<typeof goalDecisionSchema>, { status: "decided" }>;
 }> => {
