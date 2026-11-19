@@ -21,8 +21,8 @@ const main = () => {
     return 2;
   }
   if (args[0] === "--list") {
-    for (const { name, paths } of GATES) console.log(`- ${name}: ${paths.map((path) => `\`${path}\``).join("、")}`);
-    console.log(`- ${LLM_INSTRUCTIONS.name}（フェーズ2だけ）: ${LLM_INSTRUCTIONS.description}`);
+    for (const { name, paths } of GATES) console.log(`- ${name}: ${formatPaths(paths)}`);
+    console.log(`- ${LLM_REQUESTS.name}（フェーズ2だけ）: ${formatPaths(LLM_REQUESTS.paths)}`);
     return 0;
   }
   if (args[0] === "--stdin") return report(parseNameStatus(readFileSync(0, "utf8")));
@@ -156,10 +156,14 @@ const verdictOf = (classified) => {
   return classified.every(({ tier }) => tier === TIER.phase1 || tier === TIER.phase2) ? TIER.phase2 : TIER.wait;
 };
 
+const formatPaths = (paths) => paths.map((path) => `\`${path}\``).join("、");
+
+const matchesAny = (path, gatePaths) => gatePaths.some((gatePath) => matches(path, gatePath));
+
 const matches = (path, gatePath) => (gatePath.endsWith("/") ? path.startsWith(gatePath) : path === gatePath);
 
 const classify = ({ status, path }, agentDocuments) => {
-  const gate = GATES.find(({ paths }) => paths.some((gatePath) => matches(path, gatePath)));
+  const gate = GATES.find(({ paths }) => matchesAny(path, paths));
   if (gate !== undefined) return { tier: TIER.wait, reason: `フェーズ1・フェーズ2に入れないもの（${gate.name}）` };
   // 調べものの PR は今の決まりのままにする。ほかと一緒に変えたときは、フェーズ1にも調べものにも当たらない
   if (path.startsWith("docs/research/")) return { tier: TIER.research, reason: "調べもの" };
@@ -172,7 +176,7 @@ const classify = ({ status, path }, agentDocuments) => {
   if (TOOL_ROOTS.some((toolRoot) => path === toolRoot || path.startsWith(`${toolRoot}/`))) {
     return { tier: TIER.phase1, reason: "scripts/・CI・道具" };
   }
-  if (LLM_INSTRUCTIONS.test(path)) return { tier: TIER.wait, reason: `フェーズ2に入れないもの（${LLM_INSTRUCTIONS.name}）` };
+  if (matchesAny(path, LLM_REQUESTS.paths)) return { tier: TIER.wait, reason: `フェーズ2に入れないもの（${LLM_REQUESTS.name}）` };
   if (isProductCode(path)) return { tier: TIER.phase2, reason: "プロダクトのコード" };
   return { tier: TIER.wait, reason: "フェーズ1・フェーズ2に当たらない" };
 };
@@ -183,16 +187,20 @@ const classify = ({ status, path }, agentDocuments) => {
 const isProductCode = (path) =>
   /^server\/src\/.+\.ts$/.test(path) || /^ios\/(NuTori|NuToriCore\/Sources)\/.+\.swift$/.test(path);
 
-// LLM に送る指示と要求を組むところは、変えると評価を回して要約を見る決まり（server/AGENTS.md の「テスト」）なので、プロダクトのコードでもフェーズ2に入れない
-const LLM_REQUEST_ROOTS = [
-  "server/src/estimation/durable-object/create-estimation-provider/",
-  "server/src/reply/durable-object/create-conversation-provider/",
-  "server/src/durable-object/anthropic/",
-];
-const LLM_INSTRUCTIONS = {
+// LLM に送る指示・文脈の文面・要求を組むところと、評価（server/evals）と同じ決まりを使うところは、変えると評価を回し直す決まり
+// （server/AGENTS.md の「テスト」、docs/agents/server-llm.md）なので、プロダクトのコードでもフェーズ2に入れない
+const LLM_REQUESTS = {
   name: "LLM への指示と要求",
-  description: LLM_REQUEST_ROOTS.map((root) => `\`${root}\``).join("、"),
-  test: (path) => LLM_REQUEST_ROOTS.some((root) => path.startsWith(root)),
+  paths: [
+    "server/src/estimation/durable-object/create-estimation-provider/",
+    "server/src/reply/durable-object/create-conversation-provider/",
+    "server/src/durable-object/anthropic/",
+    "server/src/reply/domain/build-reply-context/",
+    "server/src/reply/domain/render-reply-context/",
+    "server/src/reply/domain/list-referable-meal-ids.ts",
+    "server/src/estimation/domain/compose-labeled-ingredient.ts",
+    "server/src/estimation/domain/is-valid-identified-dishes.ts",
+  ],
 };
 
 // 道具の置き場。サーバーに出るコードもアプリも変えない

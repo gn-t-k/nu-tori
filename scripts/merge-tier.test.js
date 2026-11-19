@@ -163,24 +163,25 @@ describe("差分のパスから merge のフェーズを決めること", () => 
       });
     });
 
-    // API の形・DB の移行・端末とサーバーの決めごと・画像は、プロダクトのコードの置き場の外なので当たらない
-    describe("API の形や DB の移行に触るとき", () => {
-      beforeEach(() => {
-        lines = [
-          "M\tserver/src/meal/meal-total.ts",
-          "M\tserver/openapi.json",
-          "A\tserver/durable-object-migrations/0015_example.sql",
-          "M\tshared/pace.json",
-          "M\tios/NuTori/Assets.xcassets/Protein.colorset/Contents.json",
-        ];
-      });
+    // API の形・DB の移行・端末とサーバーの決めごと・画像は、プロダクトのコードの置き場の外なので当たらない。プロダクトのコードと一緒に1つずつ渡す
+    for (const [title, path] of [
+      ["API の形に触るとき", "M\tserver/openapi.json"],
+      ["DB の移行を足すとき", "A\tserver/durable-object-migrations/0015_example.sql"],
+      ["端末とサーバーの決めごとに触るとき", "M\tshared/pace.json"],
+      ["画像と色に触るとき", "M\tios/NuTori/Assets.xcassets/Protein.colorset/Contents.json"],
+    ]) {
+      describe(title, () => {
+        beforeEach(() => {
+          lines = ["M\tserver/src/meal/meal-total.ts", path];
+        });
 
-      it("待つと返すこと", () => {
-        assert.equal(judge(lines).verdict, "待つ");
+        it("待つと返すこと", () => {
+          assert.equal(judge(lines).verdict, "待つ");
+        });
       });
-    });
+    }
 
-    describe("LLM への指示と要求に触るとき", () => {
+    describe("LLM への指示に触るとき", () => {
       beforeEach(() => {
         lines = ["M\tserver/src/reply/durable-object/create-conversation-provider/reply-instructions.ts"];
       });
@@ -190,6 +191,26 @@ describe("差分のパスから merge のフェーズを決めること", () => 
           judge(lines).stdout,
           "待つ\n  M\tserver/src/reply/durable-object/create-conversation-provider/reply-instructions.ts\tフェーズ2に入れないもの（LLM への指示と要求）\n",
         );
+      });
+    });
+
+    describe("LLM に渡す文脈の文面を組むところに触るとき", () => {
+      beforeEach(() => {
+        lines = ["M\tserver/src/reply/domain/render-reply-context/render-reply-context.ts"];
+      });
+
+      it("待つと返すこと", () => {
+        assert.equal(judge(lines).verdict, "待つ");
+      });
+    });
+
+    describe("評価と同じ決まりを使うところに触るとき", () => {
+      beforeEach(() => {
+        lines = ["M\tserver/src/reply/domain/list-referable-meal-ids.ts"];
+      });
+
+      it("待つと返すこと", () => {
+        assert.equal(judge(lines).verdict, "待つ");
       });
     });
 
