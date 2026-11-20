@@ -125,8 +125,8 @@ $S/launch-local-server.sh "$run" "$server" deadline
 
 次は、このスキルで通せない。`docs/agents/review.md` の「確かめの回し方」で「確かめていない」と書くときに、確かめる場所をここから引く。ほかの入口を通せなかったときは、試したコマンドと、揃わなかった前提を書く。
 
-- クラウドのセッション（Linux）ではシミュレーターが無い。アプリの画面は「確かめていない」と書き、Mac のセッションで確かめると書く。UI テストは `ios/AGENTS.md` の「確かめる」のとおり、CI の `ios-ui-test.yml` を手で回せる（全件の回）。その回が通れば、UI テストのある入口の証拠にしてよい（ランの URL と、成果物 `ios-ui-test-report` の画面）
-- クラウドのセッションでは、上の「手元のサーバーにつないで動かす」も回せない。API の境目にかかる変更の書き方は `docs/agents/review.md` の「端末とサーバーをつなぐ確かめ」の3。つないだ全体は Mac のセッションか、merge のあとの TestFlight の版で確かめる
+- クラウドのセッション（Linux）ではシミュレーターが無い。アプリの画面の確かめがかかるなら、`docs/agents/review.md` の「このセッションで回せないとき」のとおり draft PR で止まり、Mac のセッションに渡す。UI テストは `ios/AGENTS.md` の「確かめる」のとおり、CI の `ios-ui-test.yml` を手で回せる（全件の回）。その回が通れば、UI テストのある入口の証拠にしてよい（ランの URL と、成果物 `ios-ui-test-report` の画面）
+- クラウドのセッションでは、上の「手元のサーバーにつないで動かす」も回せない。API の境目にかかる変更は `docs/agents/review.md` の「端末とサーバーをつなぐ確かめ」の3のとおり draft PR で止まり、Mac のセッションで確かめる
 - Sign in with Apple、本物のヘルスケア、カメラ、写真を選ぶ標準の画面、通知、App Store の購入は、起動の値で差し替えるので、本物の振る舞いは実機の TestFlight の版で確かめる（`docs/agents/ios-release.md`）
 - 送り待ちの置き場の移行は、前の版が書いたファイルが要る。`docs/agents/ios-mac.md` の「置き場の移行を実機で確かめる」を開発者に頼む
 
