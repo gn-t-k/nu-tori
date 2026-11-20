@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// PR の差分のパスから、エージェントが merge してよい振る舞いを変えない変更（フェーズ1）かを決める（#1000）
+// PR の差分のパスから、エージェントが merge してよい振る舞いを変えない変更（フェーズ1・フェーズ2）かを決める（#1000、#1001）
 // 実装役が自分で決めないよう、当たるかはここだけで決める。merge の条件は docs/agents/review.md の「判断なしに通す変更」
 // 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
 "use strict";
@@ -16,12 +16,13 @@ const main = () => {
     console.error("使い方: scripts/merge-tier [<マージ先のブランチ>]");
     console.error("       scripts/merge-tier --stdin < <git diff --name-status --no-renames の出力>");
     console.error("       scripts/merge-tier --list");
-    console.error("  引数なし  origin/main から分かれたあとの、このブランチのコミットの差分で決める。1行目が フェーズ1・待つ・調べもの のどれか");
-    console.error("  --list    フェーズ1に入れないパスを、ゲートごとに PR の本文に貼れる形で出す");
+    console.error("  引数なし  origin/main から分かれたあとの、このブランチのコミットの差分で決める。1行目が フェーズ1・フェーズ2・待つ・調べもの のどれか");
+    console.error("  --list    フェーズ1・フェーズ2に入れないパスを、ゲートごとに PR の本文に貼れる形で出す");
     return 2;
   }
   if (args[0] === "--list") {
-    for (const { name, paths } of GATES) console.log(`- ${name}: ${paths.map((path) => `\`${path}\``).join("、")}`);
+    for (const { name, paths } of GATES) console.log(`- ${name}: ${formatPaths(paths)}`);
+    for (const { name, paths } of PHASE2_GATES) console.log(`- ${name}（フェーズ2だけ）: ${formatPaths(paths)}`);
     return 0;
   }
   if (args[0] === "--stdin") return report(parseNameStatus(readFileSync(0, "utf8")));
@@ -47,12 +48,15 @@ const report = (changes) => {
   if (verdict === TIER.research) {
     console.log("  フェーズ1の条件ではなく、docs/agents/issue-tracker.md の「調べもののチケットを終える」のとおり、CI が通ったら merge する");
   }
+  if (verdict === TIER.phase2) {
+    console.log("  フェーズ1の条件に加えて、docs/agents/review.md の「フェーズ2」の条件（振る舞いの変化が無いと好みのレビューが返した、確かめが通った、agent-merged のラベル）をそろえて merge する");
+  }
   if (classified.length === 0) console.log("  差分が無い");
   for (const { status, path, reason } of classified) console.log(`  ${status}\t${path}\t${reason}`);
   return 0;
 };
 
-// フェーズ1に入れないもの。ゲートを弱める変更や、用語・見た目・覆しにくい決定そのものは、開発者が merge を言う。
+// フェーズ1にもフェーズ2にも入れないもの。ゲートを弱める変更や、用語・見た目・覆しにくい決定そのものは、開発者が merge を言う。
 // 末尾が / のものはフォルダの下の全部、ほかはそのファイルだけに当たる
 const GATES = [
   {
@@ -142,19 +146,34 @@ const GATES = [
 ];
 
 // 判定の値。出力の1行目にそのまま出る
-const TIER = { phase1: "フェーズ1", wait: "待つ", research: "調べもの" };
+const TIER = { phase1: "フェーズ1", phase2: "フェーズ2", wait: "待つ", research: "調べもの" };
 
 const verdictOf = (classified) => {
   if (classified.length === 0) return TIER.wait;
   if (classified.every(({ tier }) => tier === TIER.research)) return TIER.research;
-  return classified.every(({ tier }) => tier === TIER.phase1) ? TIER.phase1 : TIER.wait;
+  if (classified.every(({ tier }) => tier === TIER.phase1)) return TIER.phase1;
+  // プロダクトのコードを1つでも含めば、フェーズ1に当たるものと一緒でもフェーズ2の条件で通す
+  return classified.every(({ tier }) => tier === TIER.phase1 || tier === TIER.phase2) ? TIER.phase2 : TIER.wait;
 };
 
-const matches = (path, gatePath) => (gatePath.endsWith("/") ? path.startsWith(gatePath) : path === gatePath);
+const formatPaths = (paths) => paths.map((path) => `\`${path}\``).join("、");
+
+const matchesAny = (path, gatePaths) => gatePaths.some((gatePath) => matches(path, gatePath));
+
+// 「*」はパスの1段だけに当たる（server/src/*/http/ は、記録の種類ごとの http/ の下）
+const matches = (path, gatePath) => {
+  if (gatePath.includes("*")) {
+    const pattern = gatePath.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join("[^/]+");
+    return new RegExp(`^${pattern}${gatePath.endsWith("/") ? "" : "$"}`).test(path);
+  }
+  return matchesExactly(path, gatePath);
+};
+
+const matchesExactly = (path, gatePath) => (gatePath.endsWith("/") ? path.startsWith(gatePath) : path === gatePath);
 
 const classify = ({ status, path }, agentDocuments) => {
-  const gate = GATES.find(({ paths }) => paths.some((gatePath) => matches(path, gatePath)));
-  if (gate !== undefined) return { tier: TIER.wait, reason: `フェーズ1に入れないもの（${gate.name}）` };
+  const gate = GATES.find(({ paths }) => matchesAny(path, paths));
+  if (gate !== undefined) return { tier: TIER.wait, reason: `フェーズ1・フェーズ2に入れないもの（${gate.name}）` };
   // 調べものの PR は今の決まりのままにする。ほかと一緒に変えたときは、フェーズ1にも調べものにも当たらない
   if (path.startsWith("docs/research/")) return { tier: TIER.research, reason: "調べもの" };
   if (agentDocuments.has(path)) return { tier: TIER.phase1, reason: "エージェントが読む文書" };
@@ -166,15 +185,58 @@ const classify = ({ status, path }, agentDocuments) => {
   if (TOOL_ROOTS.some((toolRoot) => path === toolRoot || path.startsWith(`${toolRoot}/`))) {
     return { tier: TIER.phase1, reason: "scripts/・CI・道具" };
   }
-  return { tier: TIER.wait, reason: "フェーズ1に当たらない" };
+  const phase2Gate = PHASE2_GATES.find(({ paths }) => matchesAny(path, paths));
+  if (phase2Gate !== undefined) return { tier: TIER.wait, reason: `フェーズ2に入れないもの（${phase2Gate.name}）` };
+  if (isProductCode(path)) return { tier: TIER.phase2, reason: "プロダクトのコード" };
+  return { tier: TIER.wait, reason: "フェーズ1・フェーズ2に当たらない" };
 };
+
+// フェーズ2で通すプロダクトのコード。サーバーの TypeScript と、アプリの Swift だけにする。
+// API の形（server/openapi.json、ios/OpenAPIGenerator/）、DB の移行、端末とサーバーの決めごと（shared/）、設定と依存、画像と色、site/ は当たらない。
+// site/ は文言がそのまま本番に出て、フェーズ2の確かめ（verify-server・verify-ios）も無いので入れない
+const isProductCode = (path) =>
+  /^server\/src\/.+\.ts$/.test(path) || /^ios\/(NuTori|NuToriCore\/Sources)\/.+\.swift$/.test(path);
+
+// プロダクトのコードの置き場の中でも、フェーズ2に入れないもの。末尾が / のものはフォルダの下の全部、ほかはそのファイルだけに当たる
+const PHASE2_GATES = [
+  // 端末とサーバーのつなぎは、組み直すと型の照合では縛られない形（同期の記録の中身など）で食い違いうるのに、
+  // 端末とサーバーをつなぐ確かめは Mac のセッションでしか回らず、merge を待たせない（#1002）
+  {
+    name: "API の境目",
+    paths: ["server/src/http/", "server/src/*/http/", "ios/NuToriCore/Sources/NuToriAPI/", "ios/NuTori/Sync/"],
+  },
+  // LLM に送る指示・文脈の文面・要求を組むところは、変えると評価を回し直す決まり（server/AGENTS.md の「テスト」、docs/agents/server-llm.md）
+  {
+    name: "LLM への指示・文脈・要求",
+    paths: [
+      "server/src/estimation/durable-object/create-estimation-provider/",
+      "server/src/reply/durable-object/create-conversation-provider/",
+      "server/src/durable-object/anthropic/",
+      "server/src/reply/domain/build-reply-context/",
+      "server/src/reply/domain/render-reply-context/",
+    ],
+  },
+  // 評価（server/evals）が本番と同じ決まりを使うところ。変えると評価の結果も変わるので、回し直す
+  {
+    name: "評価と同じ決まり",
+    paths: [
+      "server/src/reply/domain/list-referable-meal-ids.ts",
+      "server/src/estimation/domain/compose-labeled-ingredient.ts",
+      "server/src/estimation/domain/is-valid-identified-dishes.ts",
+      "server/src/estimation/domain/to-written-meals-request.ts",
+    ],
+  },
+];
 
 // 道具の置き場。サーバーに出るコードもアプリも変えない
 const TOOL_ROOTS = ["scripts", ".github", ".claude", ".agents", ".codex", ".cursor", ".mobilebuildmcp", ".mcp.json", "pstack-lock.json"];
 
-// テストのファイルの置き場は CODING_STANDARDS.md の「文書」のテストの条件と同じ。scripts/ のテストは道具として見る
+// テストのファイルの置き場は CODING_STANDARDS.md の「文書」のテストの条件にそろえ、テストのための偽物と場面
+// （*.mock.ts、NuToriTestSupport、UI テストの場面）を足す。偽物を書き換えると守っていた振る舞いが変わりうるため。scripts/ のテストは道具として見る
 const isTest = (path) =>
   /^(server|site)\/.*\.test\.tsx?$/.test(path) ||
+  /^server\/.*\.mock\.ts$/.test(path) ||
+  /^ios\/(NuToriCore\/Sources\/NuToriTestSupport|NuTori\/UITesting)\//.test(path) ||
   /^(server|site)\/(.+\/)?testing\//.test(path) ||
   /^ios\/(NuToriCore\/Tests|NuToriTests|NuToriUITests)\//.test(path);
 
