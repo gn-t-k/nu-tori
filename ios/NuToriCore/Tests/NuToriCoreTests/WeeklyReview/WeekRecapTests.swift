@@ -265,14 +265,14 @@ struct WeekRecapTests {
                 line = try #require(recap.topLine)
             }
 
-            @Test("その週の日曜の実際の速さと、期限に届くのに要るペースを、文でなく値の行で並べること")
+            @Test("その週の日曜の実際の速さと、期限に間に合うペースを、文でなく値の行で並べること")
             func showsActualAndRequiredPace() {
                 #expect(line.headline == "間に合うペースです")
                 #expect(
                     line.detail
                         == .paceRows([
                             .init(label: "いまのペース", value: "−0.5 kg／週"),
-                            .init(label: "要るペース", value: "−0.2 kg／週"),
+                            .init(label: "期限に間に合うペース", value: "−0.2 kg／週"),
                         ]))
             }
         }
@@ -295,14 +295,14 @@ struct WeekRecapTests {
                 line = try #require(recap.topLine)
             }
 
-            @Test("届かない量と、実際の速さと要るペースの値の行を並べること")
+            @Test("届かない量と、実際の速さと期限に間に合うペースの値の行を並べること")
             func showsShortfall() {
                 #expect(line.headline == "このままだと期限に 1.2 kg 届きません")
                 #expect(
                     line.detail
                         == .paceRows([
                             .init(label: "いまのペース", value: "−0.1 kg／週"),
-                            .init(label: "要るペース", value: "−0.2 kg／週"),
+                            .init(label: "期限に間に合うペース", value: "−0.2 kg／週"),
                         ]))
             }
         }

@@ -1,5 +1,5 @@
 extension WeekRecap {
-    /// 一番上の、太字の1行と、その下の文かペースの値の行。ペースが出る週は「いまのペース」「要るペース」の値の行を並べ、ペースが返らない週（達成した、期限の日を迎えた）は、その週に起きたことを文で書く
+    /// 一番上の、太字の1行と、その下の文かペースの値の行。ペースが出る週は「いまのペース」「期限に間に合うペース」の値の行を並べ、ペースが返らない週（達成した、期限の日を迎えた）は、その週に起きたことを文で書く
     public struct TopLine: Hashable, Sendable {
         public let headline: String
         public let detail: Detail
@@ -12,7 +12,7 @@ extension WeekRecap {
         /// 太字の1行の下に置くもの
         public enum Detail: Hashable, Sendable {
             case sentence(String)
-            /// 「いまのペース」「要るペース」の値の行
+            /// 「いまのペース」「期限に間に合うペース」の値の行
             case paceRows([PaceRow])
         }
 
@@ -92,11 +92,12 @@ extension WeekRecap {
                 detail: .sentence(result ?? "\(GoalText.monthDay(deadline))が期限でした。"))
         }
 
-        /// 「いまのペース　−0.5 kg／週」「要るペース　−0.3 kg／週」。いまは体重の傾向の速さ、要るは期限に目標体重へ届く速さ
+        /// 「いまのペース　−0.5 kg／週」「期限に間に合うペース　−0.3 kg／週」。いまは体重の傾向の速さ、期限に間に合うは期限の日に目標体重へ届く速さ
         private static func paceRows(actual: Int, required: Int) -> [PaceRow] {
             [
                 PaceRow(label: "いまのペース", value: "\(GoalText.signedKilograms(tenths: actual))／週"),
-                PaceRow(label: "要るペース", value: "\(GoalText.signedKilograms(tenths: required))／週"),
+                PaceRow(
+                    label: "期限に間に合うペース", value: "\(GoalText.signedKilograms(tenths: required))／週"),
             ]
         }
     }
