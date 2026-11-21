@@ -58,26 +58,26 @@ struct TimelineComposer: View {
                 } else if draft.showsPresets {
                     presets
                 }
-                if dynamicTypeSize.isAccessibilitySize {
-                    HStack(spacing: 12) {
-                        circleButtons
-                        Spacer(minLength: 0)
+                Group {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        HStack(spacing: 12) {
+                            circleButtons
+                            Spacer(minLength: 0)
+                        }
+                    } else {
+                        HStack(alignment: .bottom, spacing: 12) {
+                            circleButtons
+                            field
+                                // 1行のとき、丸のボタンと縦の中心をそろえる（行は下端でそろえ、伸びた欄は上へ広がる）
+                                .padding(.bottom, max(0, (buttonSize - Self.fieldMinHeight) / 2))
+                        }
                     }
-                    .modifier(ButtonsMotion(writing: writing, hasText: !draft.text.isEmpty))
-                } else {
-                    HStack(alignment: .bottom, spacing: 12) {
-                        circleButtons
+                    // DESIGN.md の入力欄（書く欄は丸の右の残りの幅）に従わない。大きな文字では丸が大きく、丸の右には1文字ぶんの幅しか残らないため（#447）
+                    if dynamicTypeSize.isAccessibilitySize {
                         field
-                            // 1行のとき、丸のボタンと縦の中心をそろえる（行は下端でそろえ、伸びた欄は上へ広がる）
-                            .padding(.bottom, max(0, (buttonSize - Self.fieldMinHeight) / 2))
                     }
-                    .modifier(ButtonsMotion(writing: writing, hasText: !draft.text.isEmpty))
                 }
-                // DESIGN.md の入力欄（書く欄は丸の右の残りの幅）に従わない。大きな文字では丸が大きく、丸の右には1文字ぶんの幅しか残らないため（#447）
-                if dynamicTypeSize.isAccessibilitySize {
-                    field
-                        .modifier(ButtonsMotion(writing: writing, hasText: !draft.text.isEmpty))
-                }
+                .modifier(ButtonsMotion(writing: writing, hasText: !draft.text.isEmpty))
                 if let notice = draft.lengthNotice {
                     lengthNoticeText(notice)
                         .font(.footnote)
