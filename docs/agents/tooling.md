@@ -2,9 +2,10 @@
 
 ## スキル
 
-mattpocock/skills は `skills-lock.json` で管理し、`.claude/hooks/session-start.sh` がクラウドのセッションの開始時に更新を確かめる。更新は、作業ツリーに触れずに別の worktree に当て、作業の PR とは別の PR（ブランチ `claude/update-mattpocock-skills-<日付>`）で取り込む。更新で上書きされるため、lock にある skill は直接編集しない。Claude Code は `.claude/skills/`（`.agents/skills/` へのリンク）を、Codex は `.agents/skills/` を読む。`.claude/skills/` にだけある `model-based-ui-design` は、Codex からは見えない。
+mattpocock/skills と emilkowalski/skills は `skills-lock.json` で管理し（`npx skills add <リポジトリ> -s <名前> -a claude-code -a codex` で入れる）、`.claude/hooks/session-start.sh` がクラウドのセッションの開始時に、lock にある skill の更新をまとめて確かめる。更新は、作業ツリーに触れずに別の worktree に当て、作業の PR とは別の PR（ブランチ `claude/update-skills-<日付>`）で取り込む。更新で上書きされるため、lock にある skill は直接編集しない。Claude Code は `.claude/skills/`（`.agents/skills/` へのリンク）を、Codex は `.agents/skills/` を読む。`.claude/skills/` にだけある `model-based-ui-design` は、Codex からは見えない。
 
 - lock の外の skill は、`.agents/skills/<名前>/` に置いて `.claude/skills/` からリンクする。自動更新は lock にある名前だけを入れ直し、ほかは触らない。この決まりより前に置いた `model-based-ui-design` は `.claude/skills/` にだけあり、移すかは決めていない
+- emilkowalski/skills は、nu-tori の道具（SwiftUI のアプリと Hono の静的なサイト）で使うアニメーションと見た目の skill だけを入れた。React・React Native・Sonner 向けの `animate-expo`・`ask-sonner`・`pick-ui-library`・`mobile-native`、ほかの skill の案内役の `ask-emil`、Swift の書き方を `CODING_STANDARDS.md` と別に決める `write-swift` は入れていない。`prototype` は mattpocock/skills の `prototype` と名前がぶつかり、lock は名前で引くので入れられない
 - `byethrow` は、`@praha/byethrow-docs` の `init claude` が書き出す skill を、`server/` の依存から docs を引く形に直したもの
 - `verify-server` と `verify-ios` は、pstack の `/pstack:create-verification-skill` で作ったサーバーとアプリの検証スキル。pstack の生成先（`.claude/skills/`）でなく、この決まりどおり `.agents/skills/` に置いた。nu-tori のファイルなので、直接直す。中の道具（`scripts/*.sh`）は `scripts/check scripts` が ShellCheck にかける
 - `erd-design` は、開発者がほかのリポジトリでも使う自作の skill。どのリポジトリでも使える形に保ち、このリポジトリに固有の前提は `docs/agents/table-design.md` に書く
@@ -39,7 +40,7 @@ worktree やセッションを並べるときは、pstack の `principle-separat
 
 確かめることは `scripts/check` と CI に置き、Claude Code の hook は便利のためだけに使う（Codex と Cursor では hook が動かない）。
 
-- `session-start.sh`（クラウドで始めたとき）: 浅い clone の履歴を全部取り（`git fetch --unshallow`）、Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる。履歴は、浅いと `git log`・`git blame`・変更の多い所の調べものが数十コミットで切れて取り違えたため取る（#932。測ると3秒ほど、`.git` が 10MB ほど増える）。async で動くが、ほかの準備より先に回すので、ふつうは最初のターンのうちに終わる。落ちたら hook が知らせる。依存は、サブエージェントがライブラリのソースを読めるよう入れる（無いと CDN から取り直していた）
+- `session-start.sh`（クラウドで始めたとき）: 浅い clone の履歴を全部取り（`git fetch --unshallow`）、Swift とサーバーの依存を入れ、`skills-lock.json` の skill の更新を確かめる。履歴は、浅いと `git log`・`git blame`・変更の多い所の調べものが数十コミットで切れて取り違えたため取る（#932。測ると3秒ほど、`.git` が 10MB ほど増える）。async で動くが、ほかの準備より先に回すので、ふつうは最初のターンのうちに終わる。落ちたら hook が知らせる。依存は、サブエージェントがライブラリのソースを読めるよう入れる（無いと CDN から取り直していた）
 - `check-pstack.sh`（クラウドと手元で始めたとき）: 入っている pstack の版が `pstack-lock.json` と違えば、上の「スキル」の上げ方を知らせる
 - `warn-behind-main.sh`（クラウドで続けたとき〈resume・compact・clear〉と、手元で始めたときと続けたとき）: 作業ツリーが origin/main より遅れていたら知らせ、手元では main を取り込ませる。長いセッションのあいだに main が進み、古い版の働き方の文書を読んでチケットを切り違えたため。手元の worktree は古い main から作られ、まだ無い道具を探して止まったため
 - `block-pkill-f.sh`（Bash を呼ぶ前）: `pkill -f`・`pgrep -f`（`-af` のような束ね方と `--full` を含む）を含むコマンドを止め、終わりの知らせを待つか PID を指して止めるよう返す。`-f` はコマンドライン全体に当たり、そのパターンを含む自分のシェルまで止める（exit 144）。`AGENTS.md` の注意書きだけでは、1週間に4つのセッションで起きたため（#787）。文字列に書いただけでも止まるので、コミットメッセージや本文に書くときは Write で書いたファイルで渡す（heredoc も止まる）
