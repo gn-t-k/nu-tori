@@ -59,7 +59,7 @@ struct DayRingView: View {
 
 /// 1日の丸の1色ぶんの弧。始まりと終わりを動かせるので、塗りの長さが変わると伸び縮みする。
 /// 色の間のすき間は、両端を `inset`（線の真ん中での長さ）ずつ削って作る（Swift Charts の `angularInset` と同じ見た目）
-private struct RingArc: Shape {
+nonisolated private struct RingArc: Shape {
     var start: Double
     var end: Double
     let lineWidth: CGFloat
