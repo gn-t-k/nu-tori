@@ -312,7 +312,8 @@ struct TimelineScreen: View {
                         .padding()
                         .id(Self.contentId)
                         // 日の中だけでなく、日の高さとタイムラインの下端もいっしょに動かすよう、中身の全体に掛ける
-                        .animation(TimelineMotion.animation, value: TimelineMotion.key(of: timeline.days))
+                        .animation(
+                            TimelineMotion.animation, value: TimelineMotion.key(of: timeline.days))
                     }
                     .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                     // 余白や文を押したら、キーボードを下げる。押せるもの（記録の行、カード、知らせの中の欄）は自分の動きをする
