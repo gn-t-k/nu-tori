@@ -603,6 +603,9 @@ figcaption .gone{text-decoration:line-through;color:var(--page-muted)}
 .scale.mark{border-radius:50%}
 .nav.tln{grid-template-columns:auto 1fr auto;gap:8px}
 .nav.tln .t{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cardrow{display:flex;align-items:center;gap:12px;margin:0 -16px -16px;padding:11px 16px;border-top:.5px solid var(--sep);font-size:var(--t-body)}
+.cardrow .grow{flex:1}
+.cardrow .disc{color:var(--ink3);font-size:18px}
 </style>
 </head>
 <body>
@@ -610,7 +613,7 @@ figcaption .gone{text-decoration:line-through;color:var(--page-muted)}
 
 <div class="intro">
   <h1>#771 体重の画面・目標の画面・日のまとめ（今と案）</h1>
-  <p>5 に、体重の画面への入口を足す案 A・B・C を足しました（2026-11-20）。<br>
+  <p>5 に、体重の画面への入口を足す案 A・B・C を足しました（2026-11-20）。開発者は A と B を選び、A も B のように1枚のカードにまとめる形にしました（2026-11-21）。<br>
   左が今のアプリ（main のコードの文と並びを写したもの。値は例）、右が #771 で決めた案です。変えたところは点線の枠で囲んでいます。<br>
   役割：体重の画面 =「記録を見て直す」、目標の画面 =「目標に向けて進んでいるかと、1日の目安の根拠」、日のまとめ =「その日の1枚と、各画面への入口」。<br>
   1つの情報は正本の画面を1つにし、ほかの画面には短い要約と行だけを置きます。</p>
@@ -869,9 +872,7 @@ figcaption .gone{text-decoration:line-through;color:var(--page-muted)}
 <line x1="0" y1="20" x2="300" y2="105" stroke="var(--guide)" stroke-dasharray="4 3"/><text x="296" y="100" text-anchor="end">目標 70.0</text>
 <polyline points="0,20 40,28 80,36 120,44 160,52 175,55" fill="none" stroke="var(--series)" stroke-width="2.5" stroke-linecap="round"/><text x="180" y="52" fill="var(--series)">72.4</text>
 <text x="0" y="124">9月1日</text><text x="300" y="124" text-anchor="end">12月24日</text></svg></div>
-          </div>
-          <div class="list mark">
-            <div class="cell"><span class="grow">体重の記録<span class="sub">最近 72.4 kg（11月10日）</span></span><span class="disc">›</span></div>
+            <div class="cardrow mark"><span class="grow">体重の記録</span><span class="disc">›</span></div>
           </div>
           <div class="card gcard">
             <div class="hd"><b>今の1日の目安</b><span class="sm">11月9日から</span></div>
@@ -883,7 +884,7 @@ figcaption .gone{text-decoration:line-through;color:var(--page-muted)}
           </div>
         </div>
       </div>
-      <figcaption><b>A　目標の画面から</b>　体重の傾向のカードのすぐ下に「体重の記録 ›」の1行（押すと今日の体重の画面）。体重の画面の「目標 ›」と行き来できる。目標の画面へは左上のカプセルから1回で来られるので、タイムラインからは2回で届く。目標が無い人はカプセルが無いので、この道は使えない。</figcaption>
+      <figcaption><b>A　目標の画面から</b>　体重の傾向のカードの中、グラフの下に「体重の記録 ›」の1行（押すと今日の体重の画面）。B と同じく、概要（傾向とグラフ）と詳細への入口が1枚のカードにまとまる。体重の画面の「目標 ›」と行き来できる。目標の画面へは左上のカプセルから1回で来られるので、タイムラインからは2回で届く。目標が無い人はカプセルが無いので、この道は使えない。</figcaption>
     </figure>
 
     <figure>
