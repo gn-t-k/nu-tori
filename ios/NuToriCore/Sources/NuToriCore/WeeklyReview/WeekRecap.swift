@@ -89,6 +89,12 @@ public struct WeekRecap: Hashable, Sendable {
         return isInProgress ? "\(range)（途中）" : range
     }
 
+    /// 「体重」の節の「体重の記録 ›」で開く体重の画面の日。並べる日の最後（日曜、今週は今日）。
+    /// `days` は開始の日から最後の日までの閉じた範囲で組むので空にならず、`monday` には落ちない
+    public var weightScreenDay: CalendarDay {
+        days.last?.day ?? monday
+    }
+
     /// 「減量の3週目」
     public var weekLabel: String {
         "\(GoalText.directionName(goal.direction))の\(weekNumber)週目"

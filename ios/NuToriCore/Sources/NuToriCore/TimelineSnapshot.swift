@@ -139,11 +139,6 @@ public struct TimelineSnapshot: Sendable {
         WeekRecap(weekOf: monday, today: today, records: goalRecords, meals: meals)
     }
 
-    /// 体重の画面の目標までの道のり。目標がなければ nil
-    public var weightGoalPath: WeightGoalPath? {
-        WeightGoalPath(status: goalStatus, today: today, records: goalRecords)
-    }
-
     /// 体重の画面の、最近4週の傾向のグラフ
     public var weightTrendChart: WeightTrendChart {
         WeightTrendChart(
