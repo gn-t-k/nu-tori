@@ -32,11 +32,13 @@ enum TimelineMotion {
     private static func itemKeys(of day: Timeline.Day) -> [ItemKey] {
         // 体重の知らせは、答えて抜けるときだけ動かす。答えると、先に体重の行が同じ日に入り、知らせはそのあと別の保存で抜ける。
         // 体重の行がある日の知らせだけを見れば、知らせが届いたときには変わらず、抜けたときに変わる
-        let isAnswering = day.items.contains { role(of: $0) == .ownRecord(.weight) }
+        let isAnswering = day.items.contains {
+            if case .ownRecord(.weight) = role(of: $0) { true } else { false }
+        }
         return day.items.compactMap { item in
             switch role(of: item) {
-            case .ownRecord:
-                ItemKey(id: item.id, meals: meals(of: item), replyLine: replyLine(of: item))
+            case .ownRecord(let record):
+                ItemKey(id: item.id, meals: meals(of: record), replyLine: replyLine(of: record))
             case .answerableNotice:
                 isAnswering ? ItemKey(id: item.id, meals: [], replyLine: nil) : nil
             case .still:
@@ -45,16 +47,21 @@ enum TimelineMotion {
         }
     }
 
-    private static func meals(of item: Timeline.Item) -> [MealKey] {
-        var cards: [MealCard] = []
-        if case .meal(let card) = item { cards = [card] }
-        if case .sentText(let bubble) = item { cards = bubble.meals }
+    private static func meals(of record: OwnRecord) -> [MealKey] {
+        let cards: [MealCard] =
+            switch record {
+            case .weight: []
+            case .meal(let card): [card]
+            case .sentText(let bubble): bubble.meals
+            }
         return cards.map { MealKey(id: $0.meal.id, state: $0.state) }
     }
 
-    private static func replyLine(of item: Timeline.Item) -> SentTextBubble.ReplyLine? {
-        guard case .sentText(let bubble) = item else { return nil }
-        return bubble.replyLine
+    private static func replyLine(of record: OwnRecord) -> SentTextBubble.ReplyLine? {
+        switch record {
+        case .weight, .meal: nil
+        case .sentText(let bubble): bubble.replyLine
+        }
     }
 
     /// 項目の出入り。「視差効果を減らす」がオンなら、縮みと上がる動きを外して薄れだけにする
@@ -85,22 +92,24 @@ enum TimelineMotion {
     }
 
     /// 項目が出入りの動きで受け持つ役。動かす項目の分け方はここだけに書く
-    private enum Role: Equatable {
+    private enum Role {
         case ownRecord(OwnRecord)
         case answerableNotice
         /// 今のまま、その場に出す。返事は1文字ずつ伸びる出方を持つので、重ねて動かさない
         case still
     }
 
-    private enum OwnRecord: Equatable {
-        case weight, meal, sentText
+    private enum OwnRecord {
+        case weight
+        case meal(MealCard)
+        case sentText(SentTextBubble)
     }
 
     private static func role(of item: Timeline.Item) -> Role {
         switch item {
         case .weightRecord: .ownRecord(.weight)
-        case .meal: .ownRecord(.meal)
-        case .sentText: .ownRecord(.sentText)
+        case .meal(let card): .ownRecord(.meal(card))
+        case .sentText(let bubble): .ownRecord(.sentText(bubble))
         case .notice: .answerableNotice
         case .rejectedWeightLine, .rejectedMealLine, .goalSetupNotice, .weeklyReviewCard,
             .dailyGuideChangeNotice, .goalNotice, .rejectedSentTextLine, .reply,

@@ -140,7 +140,7 @@ struct DayRingStrip: View {
                     Circle()
                         .fill(Color.secondary)
                         .frame(width: 7, height: 7)
-                        // 体重の知らせに答えて記録したとき、タイムラインの体重の行と同時に薄れから付く（DESIGN.md の Motion）
+                        // タイムラインに体重の行が出入りするのと同時に、薄れで付け外しする（DESIGN.md の Motion）
                         .transition(.opacity)
                 }
             }
