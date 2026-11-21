@@ -231,13 +231,40 @@ extension GoalOverviewTests {
                 ).weightChart
             }
 
-            @Test("あと何 kg、あと何日、間に合うペースかを出すこと")
+            @Test("あと何 kg、あと何日、最近の傾向の速さと間に合うペースかを出すこと")
             func showsProgress() {
                 #expect(
                     chart.progress
                         == GoalOverview.WeightChart.Progress(
                             remainingKilograms: "あと 2.8 kg", remainingDays: "あと 45 日",
-                            pace: "間に合うペースです"))
+                            pace: "−0.5 kg／週・間に合うペースです"))
+            }
+        }
+
+        @Suite("減量の目標が期限に届かないペースのとき")
+        struct LosingBehind {
+            let chart: GoalOverview.WeightChart
+
+            init() throws {
+                let records = try [10, 3, 6, 8].map { day in
+                    try WeightRecord.manual(
+                        70.8, at: "2026-11-\(String(format: "%02d", day))T07:00:00+09:00",
+                        in: "Asia/Tokyo")
+                }
+                chart = try #require(
+                    GoalOverviewTests.overview(
+                        today: GoalOverviewTests.day(11, 10), goals: [try .losing()],
+                        weightTrend: GoalOverviewTests.trend([
+                            (GoalOverviewTests.day(10, 27), 71.0),
+                            (GoalOverviewTests.day(11, 10), 70.8),
+                        ]),
+                        weightRecords: records)
+                ).weightChart
+            }
+
+            @Test("最近の傾向の速さと、届かない量を出すこと")
+            func showsShortfall() {
+                #expect(chart.progress?.pace == "−0.1 kg／週・このままだと期限に 2.2 kg 届きません")
             }
         }
 

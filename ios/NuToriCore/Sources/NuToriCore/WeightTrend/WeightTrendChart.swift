@@ -109,6 +109,14 @@ public struct WeightTrendChart: Hashable, Sendable {
         /// 維持。保つ幅を薄く塗り、点線を引く
         case band(kilograms: Double, halfWidthKilograms: Double)
 
+        /// 目標体重（維持は保つ体重）
+        public var kilograms: Double {
+            switch self {
+            case .line(let kilograms), .beyondRange(let kilograms, _), .band(let kilograms, _):
+                kilograms
+            }
+        }
+
         /// 「目標 70.0」「↓ 目標 70.0 kg」「維持 72.0 kg」
         public var label: String {
             switch self {

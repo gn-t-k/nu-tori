@@ -20,14 +20,6 @@
                 capture: { _ in },
                 performEdit: { _ in },
                 startGoalSetup: sample.startsGoalSetup ? {} : nil,
-                goalPath: sample.goal.flatMap { goal in
-                    WeightGoalPath(
-                        status: GoalStatus(currentGoal: goal, goals: [goal]), today: .sampleToday,
-                        records: GoalRecords(
-                            goals: [goal], dailyGuides: [], expenditureEstimates: [],
-                            weeklyReviews: [], weightTrend: sample.trend,
-                            weightRecords: sample.records))
-                },
                 openGoalScreen: {}
             )
         }
@@ -52,7 +44,7 @@
             case trendLineAcrossFirstDay
             /// 目標が無く、目標を立てる知らせのカードがタイムラインにある。傾向のグラフの下に「目標を立てる」
             case goalSetupAvailable
-            /// 傾向の線を引く記録に、減量の目標がある。目標体重が4週の幅に入らないので、下の端に矢印。下に目標までの道のり
+            /// 傾向の線を引く記録に、減量の目標がある。目標体重が4週の幅に入らないので、下の端に矢印。下に「目標 ›」の1行
             case goalLosing
             /// 傾向の線を引く記録に、今の体重のまわりを保つ維持の目標がある。保つ幅を塗る
             case goalMaintaining

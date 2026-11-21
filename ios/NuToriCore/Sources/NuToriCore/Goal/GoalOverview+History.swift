@@ -140,13 +140,13 @@ extension GoalOverview {
                 } else { nil }
         }
 
-        /// 「あと 2.8 kg」「あと 45 日」「間に合うペースです」
+        /// 「あと 2.8 kg」「あと 45 日」「−0.4 kg／週・間に合うペースです」
         public struct Progress: Hashable, Sendable {
             /// 「あと 2.8 kg」。体重の傾向がまだ無ければ nil
             public let remainingKilograms: String?
             /// 「あと 45 日」。今日と期限の日を含める
             public let remainingDays: String
-            /// 返さないペースでは nil
+            /// 「−0.4 kg／週・間に合うペースです」。返さないペースでは nil
             public let pace: String?
 
             public init(remainingKilograms: String?, remainingDays: String, pace: String?) {
@@ -172,12 +172,13 @@ extension GoalOverview {
                 ).flatMap(Self.paceText)
             }
 
-            /// 減量・増量の進行中に書くペース。返さないときは書かない
+            /// 減量・増量の進行中に書くペース。頭に最近の傾向の速さを置く。返さないときは書かない
             private static func paceText(_ pace: Pace) -> String? {
                 switch pace {
-                case .onTrack: "間に合うペースです"
-                case .behind(let shortfall, _, _):
-                    "このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません"
+                case .onTrack(let actual, _):
+                    "\(GoalText.signedKilograms(tenths: actual))／週・間に合うペースです"
+                case .behind(let shortfall, let actual, _):
+                    "\(GoalText.signedKilograms(tenths: actual))／週・このままだと期限に \(GoalText.kilograms(tenths: shortfall)) 届きません"
                 case .inconclusive, .pending, .unavailable, .maintenance: nil
                 }
             }

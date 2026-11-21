@@ -17,6 +17,8 @@ struct GoalScreen: View {
     let openGoalSetup: (GoalSetupObservation.Entry) -> Void
     /// 週の振り返りを、この画面の上に押して進む
     let openWeeklyReview: (CalendarDay) -> Void
+    /// 体重の傾向のカードの「体重の記録 ›」。今日の体重の画面を、この画面の上に押して進む
+    let openWeightScreen: () -> Void
 
     var body: some View {
         Group {
@@ -58,6 +60,8 @@ struct GoalScreen: View {
                             weightProgress(progress)
                         }
                         GoalWeightChartView(chart: overview.weightChart, goal: goal)
+                    } footer: {
+                        weightRecordRow
                     }
                     .accessibilityIdentifier("goal-weight-chart")
                 }
@@ -140,6 +144,21 @@ struct GoalScreen: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("goal-weight-progress")
+    }
+
+    /// 体重の傾向のカードの下の「体重の記録 ›」。傾向（概要）と体重の画面（詳細）への入口を1枚のカードにまとめる（#771）
+    private var weightRecordRow: some View {
+        VStack(spacing: 0) {
+            Divider()
+            Button(action: openWeightScreen) {
+                WeightRecordLinkLabel()
+                    .padding(.horizontal)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("goal-weight-record-link")
+        }
     }
 
     /// 「あと 2.8 kg」
@@ -331,18 +350,22 @@ extension GoalStatus {
     }
 }
 
-/// 目標の画面の、見出しの付いた白いカード（グラフを載せる）
-private struct GoalScreenCard<Content: View>: View {
+/// 目標の画面の、見出しの付いた白いカード（グラフを載せる）。`footer` は、カードの幅いっぱいの線で区切った下の行
+private struct GoalScreenCard<Content: View, Footer: View>: View {
     let title: String
     @ViewBuilder let content: Content
+    @ViewBuilder let footer: Footer
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.headline)
-            content
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.headline)
+                content
+            }
+            .padding()
+            footer
         }
-        .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12)

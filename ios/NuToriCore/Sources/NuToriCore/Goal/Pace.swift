@@ -1,8 +1,8 @@
 /// ペース。今の体重の傾向の動きのままで期限に目標体重へ届くか（維持では、体重の傾向が目標体重の近くに収まっているか）。
-/// 電波が無くても1日の丸・日のまとめ・体重の画面・週の振り返りで見せるため、同期で届いた体重の傾向から出す。
+/// 電波が無くても1日の丸・日のまとめ・目標の画面・週の振り返りで見せるため、同期で届いた体重の傾向から出す。
 /// 手順と入力と期待値はサーバーの `computePace` と同じ（`docs/agents/shared-rules.md` の「ペース」）
 public enum Pace: Hashable, Sendable {
-    /// 間に合う。要るペースは週の振り返りの文だけが使う
+    /// 間に合う。期限に間に合うペースは週の振り返りの値の行だけが使う
     case onTrack(actualTenthsOfKilogramPerWeek: Int, requiredTenthsOfKilogramPerWeek: Int)
     /// 届かない
     case behind(

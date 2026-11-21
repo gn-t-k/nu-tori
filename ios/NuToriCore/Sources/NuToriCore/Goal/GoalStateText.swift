@@ -1,4 +1,4 @@
-/// 日のまとめと体重の画面が、達成・期限・維持の目標に書く1行
+/// 日のまとめと週の振り返りが、達成・期限・維持の目標に書く1行
 enum GoalStateText {
     /// 「70.0 kg を達成しました」
     static func achieved(_ goal: Goal) -> String {

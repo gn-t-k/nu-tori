@@ -65,6 +65,7 @@ struct WeightTrendChartTests {
             let chart = try Self.chart(goal: try Self.losing(to: 71.5))
             #expect(chart.target == .line(kilograms: 71.5))
             #expect(chart.target?.label == "目標 71.5")
+            #expect(chart.target?.kilograms == 71.5)
             #expect(chart.kilogramsRange == 71...73)
         }
 
@@ -73,6 +74,7 @@ struct WeightTrendChartTests {
             let chart = try Self.chart(goal: try .losing())
             #expect(chart.target == .beyondRange(kilograms: 68.0, isAbove: false))
             #expect(chart.target?.label == "↓ 目標 68.0 kg")
+            #expect(chart.target?.kilograms == 68.0)
             #expect(chart.kilogramsRange == 71...73)
         }
 
@@ -88,6 +90,7 @@ struct WeightTrendChartTests {
             let chart = try Self.chart(goal: try .maintaining())
             #expect(chart.target == .band(kilograms: 65.0, halfWidthKilograms: 0.7))
             #expect(chart.target?.label == "維持 65.0 kg")
+            #expect(chart.target?.kilograms == 65.0)
             #expect(chart.kilogramsRange == 64...73)
         }
     }

@@ -804,17 +804,19 @@ struct TimelineScreen: View {
                 },
                 openWeeklyReview: { monday in
                     send(.weeklyReviewRequested(weekOf: monday, .goalScreen))
-                })
+                },
+                openWeightScreen: { send(.weightScreenRequested(snapshot.today)) })
         case .weeklyReview(let monday, let entry):
             WeeklyReviewScreen(
                 monday: monday, entry: entry, recap: snapshot.weekRecap(monday:),
-                capture: capture
-            ) { day in
-                send(.returnedToTimeline)
-                if let timeline = snapshot.timeline {
-                    viewport.dayChosen(day, in: timeline.days)
-                }
-            }
+                capture: capture,
+                openWeightScreen: { send(.weightScreenRequested($0)) },
+                returnToTimeline: { day in
+                    send(.returnedToTimeline)
+                    if let timeline = snapshot.timeline {
+                        viewport.dayChosen(day, in: timeline.days)
+                    }
+                })
         case .dailyGuideCitation:
             DailyGuideCitationScreen()
         }
@@ -862,7 +864,7 @@ struct TimelineScreen: View {
         }
     }
 
-    /// 体重の画面。タイムラインの体重のカードと、日のまとめの体重の行から潜る
+    /// 体重の画面。タイムラインの体重のカード、日のまとめの体重の行、目標の画面と週の振り返りの「体重の記録 ›」から潜る
     private func weightScreen(on day: CalendarDay) -> some View {
         let startGoalSetup: (() -> Void)? =
             snapshot.offersGoalSetup ? { send(.goalSetupRequested(.weightScreen)) } : nil
@@ -875,7 +877,6 @@ struct TimelineScreen: View {
             capture: capture,
             performEdit: performEdit,
             startGoalSetup: startGoalSetup,
-            goalPath: snapshot.weightGoalPath,
             // 体重の画面の上に積むので、戻るは「‹ 体重」
             openGoalScreen: { send(.goalScreenRequested(.weightScreen)) }
         )

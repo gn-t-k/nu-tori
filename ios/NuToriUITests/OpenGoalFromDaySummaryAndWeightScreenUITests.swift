@@ -1,10 +1,10 @@
 import XCTest
 
 /// 目標を達成した月曜に、日のまとめの目標の行から目標の画面を開く → 「次の目標を選ぶ」でタイムラインの一番下に目標の設定のカードを広げる。
-/// 体重の画面の「目標 ›」から目標の画面を開き、戻ると体重の画面に戻る。
+/// 体重の画面の「目標 ›」から目標の画面を開き、戻ると体重の画面に戻る。目標の画面の「体重の記録 ›」から体重の画面を開き、戻ると目標の画面に戻る。
 ///
-/// 目標の行の小さな文と次の目標の行、目標までの道のりの中身は NuToriCore の単体テスト（DaySummaryGoalTests・WeightGoalPathTests）が見る。
-/// ここで見るのは、シートを閉じてから押して進むことと、体重の画面の上に積んだ目標の画面の行き来
+/// 目標の行の小さな文と次の目標の行、「目標 ›」の目標体重は NuToriCore の単体テスト（DaySummaryGoalTests・WeightTrendChartTests）が見る。
+/// ここで見るのは、シートを閉じてから押して進むことと、体重の画面と目標の画面を互いの上に積んだときの行き来
 @MainActor
 final class OpenGoalFromDaySummaryAndWeightScreenUITests: XCTestCase {
     private var app = XCUIApplication()
@@ -49,7 +49,7 @@ final class OpenGoalFromDaySummaryAndWeightScreenUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["体重"].waitForExistence(timeout: 5))
         let goalLink = app.buttons["weight-goal-link"]
         XCTAssertTrue(app.scrollUntilExists(goalLink))
-        attachScreenshot(of: app, named: "達成した目標までの道のり")
+        attachScreenshot(of: app, named: "体重の画面の目標の行")
 
         goalLink.tap()
         XCTAssertTrue(app.navigationBars["目標"].waitForExistence(timeout: 5))
@@ -59,6 +59,25 @@ final class OpenGoalFromDaySummaryAndWeightScreenUITests: XCTestCase {
 
         back.tap()
         XCTAssertTrue(app.navigationBars["体重"].waitForExistence(timeout: 5))
+    }
+
+    func test_目標の画面の体重の記録から体重の画面を開き戻ると目標の画面に戻ること() {
+        app.buttons["goal-link"].tap()
+        XCTAssertTrue(app.navigationBars["目標"].waitForExistence(timeout: 5))
+        let weightLink = app.buttons["goal-weight-record-link"]
+        XCTAssertTrue(app.scrollUntilExists(weightLink))
+        attachScreenshot(of: app, named: "目標の画面の体重の傾向のカード")
+
+        weightLink.tap()
+        XCTAssertTrue(app.navigationBars["体重"].waitForExistence(timeout: 5))
+        // 今日の体重の画面を開く
+        XCTAssertTrue(app.staticText(containing: "10月5日").waitForExistence(timeout: 5))
+        let back = app.navigationBars["体重"].buttons["目標"]
+        XCTAssertTrue(back.exists)
+        attachScreenshot(of: app, named: "目標の画面から開いた体重の画面")
+
+        back.tap()
+        XCTAssertTrue(app.navigationBars["目標"].waitForExistence(timeout: 5))
     }
 
     private func openTodaySummary() {
