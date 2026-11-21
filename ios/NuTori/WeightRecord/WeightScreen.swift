@@ -29,7 +29,6 @@ struct WeightScreen: View {
                 WeightTrendChartView(chart: trendChart)
                     .padding(.vertical, 8)
             }
-            // 値は傾向のグラフの目標体重の線と同じ目標体重
             if let target = trendChart.target {
                 goalSection(target.kilograms)
             }
