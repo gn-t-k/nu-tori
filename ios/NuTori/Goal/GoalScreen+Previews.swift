@@ -8,7 +8,8 @@
             GoalScreen(
                 overview: sample.overview, entry: .goalLink, goalSetupFlow: .notStarted,
                 timeZone: DeviceClock.live.timeZone, recapTitle: { _ in "9月14日〜20日" },
-                capture: { _ in }, openGoalSetup: { _ in }, openWeeklyReview: { _ in })
+                capture: { _ in }, openGoalSetup: { _ in }, openWeeklyReview: { _ in },
+                openWeightScreen: {})
         }
     }
 

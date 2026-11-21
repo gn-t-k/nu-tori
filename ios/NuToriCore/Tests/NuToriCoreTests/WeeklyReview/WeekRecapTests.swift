@@ -65,6 +65,11 @@ struct WeekRecapTests {
                 #expect(recap.weekNumber == 3)
                 #expect(recap.title == "10月12日〜18日")
             }
+
+            @Test("体重の画面を日曜で開くこと")
+            func opensWeightScreenOnSunday() {
+                #expect(recap.weightScreenDay == WeekRecapTests.day(10, 18))
+            }
         }
 
         @Suite("月をまたぐ週")
@@ -100,6 +105,11 @@ struct WeekRecapTests {
                     recap.days.map(\.day)
                         == Array(WeekRecapTests.day(10, 12)...WeekRecapTests.day(10, 14)))
                 #expect(recap.title == "10月12日〜18日（途中）")
+            }
+
+            @Test("体重の画面を今日で開くこと")
+            func opensWeightScreenToday() {
+                #expect(recap.weightScreenDay == WeekRecapTests.day(10, 14))
             }
         }
 

@@ -139,9 +139,9 @@ public struct TimelineSnapshot: Sendable {
         WeekRecap(weekOf: monday, today: today, records: goalRecords, meals: meals)
     }
 
-    /// 体重の画面の目標までの道のり。目標がなければ nil
-    public var weightGoalPath: WeightGoalPath? {
-        WeightGoalPath(status: goalStatus, today: today, records: goalRecords)
+    /// 体重の画面の「目標 70.0 kg ›」の目標体重。傾向のグラフの目標体重の線と同じ、今の目標の目標体重。目標がなければ nil
+    public var weightScreenGoalKilograms: Double? {
+        currentGoal?.goal.targetWeightKilograms
     }
 
     /// 体重の画面の、最近4週の傾向のグラフ

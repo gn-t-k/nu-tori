@@ -8,17 +8,21 @@ struct WeeklyReviewScreen: View {
     /// その週の月曜から、キャッシュの記録で週の振り返りを組む。目標を立てる前の週は nil
     let recap: (CalendarDay) -> WeekRecap?
     let capture: (ClientUsageEvent) async -> Void
+    /// 「体重」の節の「体重の記録 ›」。その日の体重の画面を、この画面の上に押して進む
+    let openWeightScreen: (CalendarDay) -> Void
     let returnToTimeline: (CalendarDay) -> Void
 
     init(
         monday: CalendarDay, entry: ClientUsageEvent.WeeklyReviewEntry,
         recap: @escaping (CalendarDay) -> WeekRecap?,
         capture: @escaping (ClientUsageEvent) async -> Void,
+        openWeightScreen: @escaping (CalendarDay) -> Void,
         returnToTimeline: @escaping (CalendarDay) -> Void
     ) {
         self.entry = entry
         self.recap = recap
         self.capture = capture
+        self.openWeightScreen = openWeightScreen
         self.returnToTimeline = returnToTimeline
         _monday = State(initialValue: monday)
     }
@@ -85,6 +89,8 @@ struct WeeklyReviewScreen: View {
                     Text(trendText)
                         .monospacedDigit()
                 }
+                // グラフの点（概要）を確かめたい流れで、体重の画面（詳細）に潜る入口を同じまとまりの終わりに置く（#771）
+                weightRecordRow(shown.weightScreenDay)
             }
             foodSection(shown)
             nutrientSection(shown)
@@ -116,6 +122,24 @@ struct WeeklyReviewScreen: View {
                 }
             }
         }
+    }
+
+    /// 「体重の記録 ›」。日曜（今週は今日）の体重の画面を開く
+    private func weightRecordRow(_ day: CalendarDay) -> some View {
+        Button {
+            openWeightScreen(day)
+        } label: {
+            HStack(spacing: 12) {
+                Text("体重の記録")
+                    .foregroundStyle(Color.primary)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+            }
+            .contentShape(Rectangle())
+        }
+        .accessibilityIdentifier("weekly-review-weight-record-link")
     }
 
     private func nextWeekEnergy(_ next: WeekRecap.NextWeekGuide) -> some View {

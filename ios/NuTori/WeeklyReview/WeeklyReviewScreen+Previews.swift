@@ -6,7 +6,7 @@
         NavigationStack {
             WeeklyReviewScreen(
                 monday: sample.monday, entry: .weeklyReviewCard, recap: sample.recap(monday:),
-                capture: { _ in }, returnToTimeline: { _ in })
+                capture: { _ in }, openWeightScreen: { _ in }, returnToTimeline: { _ in })
         }
     }
 

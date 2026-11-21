@@ -1,6 +1,7 @@
 import XCTest
 
 /// 月曜のタイムラインに振り返りのカードと変更の知らせが出る → カードを押して週の振り返りを開く → 戻って左上の入口から目標の画面を開く。
+/// 週の振り返りの「体重の記録 ›」から、その週の日曜の体重の画面を開く。
 ///
 /// カードと知らせを出す時刻と中身、週の振り返りと目標の画面の中身は NuToriCore の単体テスト（TimelineTests・WeekRecapTests・GoalOverviewTests）が見る。
 /// ここで見るのは、同期で届いた週の見直しの記録がキャッシュに書かれてタイムラインに届くことと、押して進む2つの画面の行き来
@@ -41,5 +42,21 @@ final class OpenWeeklyReviewAndGoalFromMondayTimelineUITests: XCTestCase {
         XCTAssertTrue(app.scrollUntilExists(app.descendants(matching: .any)["goal-energy-chart"]))
         XCTAssertTrue(app.scrollUntilExists(app.buttons["goal-weekly-review"]))
         attachScreenshot(of: app, named: "目標の画面")
+    }
+
+    func test_週の振り返りの体重の記録からその週の日曜の体重の画面を開くこと() {
+        app.buttons["weekly-review-card"].tap()
+        XCTAssertTrue(app.navigationBars["週の振り返り"].waitForExistence(timeout: 5))
+        let weightLink = app.buttons["weekly-review-weight-record-link"]
+        XCTAssertTrue(app.scrollUntilExists(weightLink))
+        attachScreenshot(of: app, named: "週の振り返りの体重の節")
+
+        weightLink.tap()
+        XCTAssertTrue(app.navigationBars["体重"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticText(containing: "10月4日").waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "週の振り返りから開いた体重の画面")
+
+        app.tapBack(from: "体重")
+        XCTAssertTrue(app.navigationBars["週の振り返り"].waitForExistence(timeout: 5))
     }
 }

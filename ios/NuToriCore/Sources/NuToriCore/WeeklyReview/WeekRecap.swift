@@ -11,6 +11,8 @@ public struct WeekRecap: Hashable, Sendable {
     public let isInProgress: Bool
     /// 並べる日。目標を立てた週は立てた日から、今週は今日まで
     public let days: [Day]
+    /// 「体重」の節の「体重の記録 ›」で開く体重の画面の日。並べる日の最後（日曜、今週は今日）
+    public let weightScreenDay: CalendarDay
     /// その週に当たっていた1日の目安（日曜の1日の目安）。まだ届いていなければ nil
     public let dailyGuide: DailyGuide?
     /// 食べた量が分かった日の平均。そういう日が無ければ nil
@@ -67,6 +69,7 @@ public struct WeekRecap: Hashable, Sendable {
             uniquingKeysWith: { first, _ in first })
         let firstShownDay = max(monday, goal.startedDay)
         let lastShownDay = max(firstShownDay, min(sunday, today))
+        weightScreenDay = lastShownDay
         days = (firstShownDay...lastShownDay).map {
             Day(
                 day: $0, food: DayFood(meals: mealsByDay[$0] ?? []),

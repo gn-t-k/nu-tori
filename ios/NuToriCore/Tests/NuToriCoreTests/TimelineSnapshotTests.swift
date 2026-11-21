@@ -110,6 +110,27 @@ struct TimelineSnapshotTests {
         }
     }
 
+    @Suite("体重の画面の「目標 ›」の目標体重")
+    struct WeightScreenGoal {
+        @Test("減量の目標があれば、その目標体重にすること")
+        func losingTarget() throws {
+            let snapshot = try TimelineSnapshot.fixture(goals: [try Goal.losing()])
+            #expect(snapshot.weightScreenGoalKilograms == 68.0)
+        }
+
+        @Test("維持の目標があれば、保つ体重にすること")
+        func maintainingTarget() throws {
+            let snapshot = try TimelineSnapshot.fixture(goals: [try Goal.maintaining()])
+            #expect(snapshot.weightScreenGoalKilograms == 65.0)
+        }
+
+        @Test("目標がなければ nil にすること")
+        func noGoal() throws {
+            let snapshot = try TimelineSnapshot.fixture()
+            #expect(snapshot.weightScreenGoalKilograms == nil)
+        }
+    }
+
     @Suite("無料体験とサブスクリプション")
     struct Subscription {
         @Suite("昨日で無料体験が終わったとき")

@@ -27,7 +27,7 @@ Preconditions:
 - **目標を決める。** `$S/ui-test.sh DecideGoalFromNoticeBackCalculatedUITests` の `test_知らせから減量の標準の案で目標を決めると決めたカードと目安と比べる丸になること`。目標案のあと「目標を決めました」と 69.2 kg のカードが出て、今日の丸の読み上げに「1日の目安 1,850 kcal」が付き、食べた日の日のまとめが「/ 1,850 kcal」と比べる
 - **維持を選ぶ。** 同じクラスの `test_知らせから維持を選ぶと保つ体重と1日の目安の値の行が出ること`。「72.0 kg を保つ」と「1日の目安」2,250 kcal の行が出る
 - **週の振り返りと目標の画面。** `$S/ui-test.sh OpenWeeklyReviewAndGoalFromMondayTimelineUITests`。振り返りのカード（9月28日〜10月4日）と変更の知らせが出て、カードから週の振り返り（P・F・C の平均の「C 炭水化物」まで）が開き、戻って左上から目標の画面（今のカード、推移のグラフ、週の振り返りへの入口）が開く
-- **目標の画面へのほかの入口。** `$S/ui-test.sh OpenGoalFromDaySummaryAndWeightScreenUITests`。目標を達成した月曜に、日のまとめの目標の行から目標の画面が開く。タイムラインに戻って日のまとめを開き直し、「次の目標を選ぶ」（`day-summary-next-goal`）を押すと、タイムラインに目標の設定のカード（`goal-setup-flow`）が広がる。体重の画面の「目標 ›」から開いた目標の画面は、戻ると体重の画面に戻る
+- **目標の画面へのほかの入口。** `$S/ui-test.sh OpenGoalFromDaySummaryAndWeightScreenUITests`。目標を達成した月曜に、日のまとめの目標の行から目標の画面が開く。タイムラインに戻って日のまとめを開き直し、「次の目標を選ぶ」（`day-summary-next-goal`）を押すと、タイムラインに目標の設定のカード（`goal-setup-flow`）が広がる。体重の画面の「目標 70.1 kg ›」から開いた目標の画面は、戻ると体重の画面に戻る
 - **目標を切り替える。** `$S/ui-test.sh SwitchGoalOnGoalScreenUITests`。目標の設定のカード（`goal-setup-flow`）が目標の画面に広がり、タイムラインには描かれず、目標の画面を開き直すと広げたまま
 - **手で見るとき。** 目標を決める流れは `$S/launch.sh "$run" signed-in goal-setup`、週の振り返りと目標の画面は `$S/launch.sh "$run" signed-in weekly-review UI_TEST_NOW=2026-10-05T09:00`
 
