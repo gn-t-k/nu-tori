@@ -58,23 +58,26 @@ struct TimelineComposer: View {
                 } else if draft.showsPresets {
                     presets
                 }
-                if dynamicTypeSize.isAccessibilitySize {
-                    HStack(spacing: 12) {
-                        circleButtons
-                        Spacer(minLength: 0)
+                Group {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        HStack(spacing: 12) {
+                            circleButtons
+                            Spacer(minLength: 0)
+                        }
+                    } else {
+                        HStack(alignment: .bottom, spacing: 12) {
+                            circleButtons
+                            field
+                                // 1行のとき、丸のボタンと縦の中心をそろえる（行は下端でそろえ、伸びた欄は上へ広がる）
+                                .padding(.bottom, max(0, (buttonSize - Self.fieldMinHeight) / 2))
+                        }
                     }
-                } else {
-                    HStack(alignment: .bottom, spacing: 12) {
-                        circleButtons
+                    // DESIGN.md の入力欄（書く欄は丸の右の残りの幅）に従わない。大きな文字では丸が大きく、丸の右には1文字ぶんの幅しか残らないため（#447）
+                    if dynamicTypeSize.isAccessibilitySize {
                         field
-                            // 1行のとき、丸のボタンと縦の中心をそろえる（行は下端でそろえ、伸びた欄は上へ広がる）
-                            .padding(.bottom, max(0, (buttonSize - Self.fieldMinHeight) / 2))
                     }
                 }
-                // DESIGN.md の入力欄（書く欄は丸の右の残りの幅）に従わない。大きな文字では丸が大きく、丸の右には1文字ぶんの幅しか残らないため（#447）
-                if dynamicTypeSize.isAccessibilitySize {
-                    field
-                }
+                .modifier(ButtonsMotion(writing: writing, hasText: !draft.text.isEmpty))
                 if let notice = draft.lengthNotice {
                     lengthNoticeText(notice)
                         .font(.footnote)
@@ -96,6 +99,13 @@ struct TimelineComposer: View {
 
     /// 書いているあいだ（欄を選んでいるか、文字がある）は、「体重」を隠して書く欄を広げる。「撮る」「写真」は残す
     private var writing: Bool { fieldFocused || !draft.text.isEmpty }
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// 「体重」の丸と「送る」の出入り。「視差効果を減らす」では薄れだけにする
+    private var buttonTransition: AnyTransition {
+        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.9))
+    }
 
     /// 文字を大きくしたとき、アイコンに合わせて丸も大きくする。3つの丸が画面の幅に収まるところで止める（大きな文字では書く欄を別の行に置く）
     @ScaledMetric private var scaledButtonSize: CGFloat = 44
@@ -129,6 +139,7 @@ struct TimelineComposer: View {
             .disabled(preparingWeightEntry)
             .accessibilityLabel("体重")
             .accessibilityIdentifier("composer-weight")
+            .transition(buttonTransition)
         }
     }
 
@@ -216,6 +227,7 @@ struct TimelineComposer: View {
                 .disabled(!canSend)
                 .accessibilityLabel("送る")
                 .accessibilityIdentifier("composer-send")
+                .transition(buttonTransition)
             }
         }
         // 文字を角の丸み（18）の内側に収める。標準の .padding()（16）は角の丸みと合わないので数値で決める
@@ -328,5 +340,18 @@ private struct CircleButtonLabel<Icon: View>: View {
     private var foreground: Color {
         if !isEnabled { return Color(.tertiaryLabel) }
         return filled ? Color.white : Color.accentColor
+    }
+}
+
+/// 「体重」の丸と「送る」の出入りと、書く欄の幅の替わり目。1日に何度も触るので、気づかない程度の短さにする（DESIGN.md の Motion）。
+/// プリセットの行の出入りは動かさないよう、丸と書く欄の並びにだけ付ける
+private struct ButtonsMotion: ViewModifier {
+    let writing: Bool
+    let hasText: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .animation(.smooth(duration: 0.2), value: writing)
+            .animation(.smooth(duration: 0.2), value: hasText)
     }
 }
