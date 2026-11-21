@@ -183,7 +183,7 @@ struct TimelineScreen: View {
     /// 選んだ写真を読んで記録し終えるまで、タイムラインの一番下に出す仮のカード。読み終える前に選び直したら、選んだ回ごとに並べる
     @State private var loadingPickedPhotos: [PickedPhotosLoading] = []
     /// 仮のカードを外した回数。外すときだけタイムラインの中身を動かす合図。
-    /// withAnimation で包むと、同じときに変わった帯の1日の丸（Swift Charts）まで動き、Charts の中でアプリが落ちる
+    /// withAnimation で包むと、同じときに変わったほかのもの（帯の1日の丸など）まで、この動きで動く
     @State private var finishedPickedPhotosLoadings = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// 見える範囲の規則は NuToriCore の TimelineViewport が持つ。規則は前の出来事を覚えて決めるので、描き直しをまたいで持つために @State に置く。

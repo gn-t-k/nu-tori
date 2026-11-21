@@ -1,4 +1,3 @@
-import Charts
 import NuToriCore
 import SwiftUI
 
@@ -17,16 +16,15 @@ struct DayRingView: View {
         ZStack {
             Circle()
                 .strokeBorder(Color(.systemGray5), lineWidth: lineWidth)
-            if let arcs {
-                Chart(sectors(arcs), id: \.self) { sector in
-                    SectorMark(
-                        angle: .value("一周のうちの長さ", sector.length),
-                        innerRadius: .ratio(1 - 2 * lineWidth / diameter),
-                        angularInset: lineWidth / 6
-                    )
-                    .foregroundStyle(sector.pfc?.color ?? Color.clear)
-                }
-                .chartLegend(.hidden)
+            // 塗りの長さが変わったときに伸び縮みさせるため、Swift Charts でなく、長さを動かせる形で描く。
+            // Charts の扇を動かすと、Charts の中でアプリが落ちた（#325）
+            ForEach(PFC.allCases, id: \.self) { pfc in
+                let span = span(of: pfc)
+                RingArc(
+                    start: span.start, end: span.end, lineWidth: lineWidth,
+                    inset: span.isWhole ? 0 : lineWidth / 6
+                )
+                .fill(pfc.color)
             }
         }
         .frame(width: diameter, height: diameter)
@@ -48,19 +46,45 @@ struct DayRingView: View {
         2 * max(2, lineWidth * 0.6)
     }
 
-    /// 塗る P・F・C と、一周に届かない残り（塗らない）
-    private func sectors(_ arcs: DayRing.Arcs) -> [Sector] {
-        let painted = PFC.allCases
-            .map { Sector(pfc: $0, length: $0.length(in: arcs)) }
-            .filter { $0.length > 0 }
-        let rest = 1 - painted.reduce(0) { $0 + $1.length }
-        // 一周に届いた日に、足し算の誤差で細い残りを作らない
-        return rest > 1e-9 ? painted + [Sector(pfc: nil, length: rest)] : painted
+    /// 起点（上）から時計回りに P・F・C の順で塗る、この栄養の始まりと終わり（一周を 1 とする）。
+    /// 塗る長さが無い日は長さ 0 にして、その日の最初の食事でも 0 から伸びるようにする
+    private func span(of pfc: PFC) -> (start: Double, end: Double, isWhole: Bool) {
+        guard let arcs else { return (0, 0, false) }
+        let before = PFC.allCases.prefix { $0 != pfc }.reduce(0) { $0 + $1.length(in: arcs) }
+        let length = pfc.length(in: arcs)
+        // 1つの栄養だけで一周に届いた日は、すき間を空けずに輪を閉じる
+        return (before, before + length, length >= 1 - 1e-9)
+    }
+}
+
+/// 1日の丸の1色ぶんの弧。始まりと終わりを動かせるので、塗りの長さが変わると伸び縮みする。
+/// 色の間のすき間は、両端を `inset`（線の真ん中での長さ）ずつ削って作る（Swift Charts の `angularInset` と同じ見た目）
+private struct RingArc: Shape {
+    var start: Double
+    var end: Double
+    let lineWidth: CGFloat
+    let inset: CGFloat
+
+    var animatableData: AnimatablePair<Double, Double> {
+        get { AnimatablePair(start, end) }
+        set {
+            start = newValue.first
+            end = newValue.second
+        }
     }
 
-    private struct Sector: Hashable {
-        /// 塗らない残りは nil
-        let pfc: PFC?
-        let length: Double
+    func path(in rect: CGRect) -> Path {
+        let radius = min(rect.width, rect.height) / 2 - lineWidth / 2
+        guard radius > 0 else { return Path() }
+        let insetTurns = Double(inset / (2 * .pi * radius))
+        let from = start + insetTurns
+        let to = end - insetTurns
+        guard to > from else { return Path() }
+        var arc = Path()
+        arc.addArc(
+            center: CGPoint(x: rect.midX, y: rect.midY), radius: radius,
+            startAngle: .degrees(from * 360 - 90), endAngle: .degrees(to * 360 - 90),
+            clockwise: false)
+        return arc.strokedPath(StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
     }
 }
