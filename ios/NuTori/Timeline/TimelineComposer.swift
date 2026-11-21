@@ -63,6 +63,7 @@ struct TimelineComposer: View {
                         circleButtons
                         Spacer(minLength: 0)
                     }
+                    .modifier(ButtonsMotion(writing: writing, hasText: !draft.text.isEmpty))
                 } else {
                     HStack(alignment: .bottom, spacing: 12) {
                         circleButtons
@@ -70,10 +71,12 @@ struct TimelineComposer: View {
                             // 1行のとき、丸のボタンと縦の中心をそろえる（行は下端でそろえ、伸びた欄は上へ広がる）
                             .padding(.bottom, max(0, (buttonSize - Self.fieldMinHeight) / 2))
                     }
+                    .modifier(ButtonsMotion(writing: writing, hasText: !draft.text.isEmpty))
                 }
                 // DESIGN.md の入力欄（書く欄は丸の右の残りの幅）に従わない。大きな文字では丸が大きく、丸の右には1文字ぶんの幅しか残らないため（#447）
                 if dynamicTypeSize.isAccessibilitySize {
                     field
+                        .modifier(ButtonsMotion(writing: writing, hasText: !draft.text.isEmpty))
                 }
                 if let notice = draft.lengthNotice {
                     lengthNoticeText(notice)
@@ -87,9 +90,6 @@ struct TimelineComposer: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-            // 「体重」の丸と「送る」の出入りと、書く欄の幅の替わり目。1日に何度も触るので、気づかない程度の短さにする（DESIGN.md の Motion）
-            .animation(Self.motion, value: writing)
-            .animation(Self.motion, value: draft.text.isEmpty)
             .background(.bar)
         }
     }
@@ -99,8 +99,6 @@ struct TimelineComposer: View {
 
     /// 書いているあいだ（欄を選んでいるか、文字がある）は、「体重」を隠して書く欄を広げる。「撮る」「写真」は残す
     private var writing: Bool { fieldFocused || !draft.text.isEmpty }
-
-    private static let motion: Animation = .smooth(duration: 0.2)
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -342,5 +340,18 @@ private struct CircleButtonLabel<Icon: View>: View {
     private var foreground: Color {
         if !isEnabled { return Color(.tertiaryLabel) }
         return filled ? Color.white : Color.accentColor
+    }
+}
+
+/// 「体重」の丸と「送る」の出入りと、書く欄の幅の替わり目。1日に何度も触るので、気づかない程度の短さにする（DESIGN.md の Motion）。
+/// プリセットの行の出入りは動かさないよう、丸と書く欄の並びにだけ付ける
+private struct ButtonsMotion: ViewModifier {
+    let writing: Bool
+    let hasText: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .animation(.smooth(duration: 0.2), value: writing)
+            .animation(.smooth(duration: 0.2), value: hasText)
     }
 }

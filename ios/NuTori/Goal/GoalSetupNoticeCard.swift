@@ -78,9 +78,13 @@ struct GoalSetupNoticeCard: View {
         reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96))
     }
 
-    /// 「視差効果を減らす」では、カードの広がりをフェードにする
+    /// 「視差効果を減らす」では、カードの広がりをフェードにする。
+    /// 抜けるときは薄れるだけにし、目標が決まったときに弾むのを決まったカードだけにする
     private var expansion: AnyTransition {
-        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
+        .asymmetric(
+            insertion: reduceMotion
+                ? .opacity : .opacity.combined(with: .scale(scale: 0.98, anchor: .top)),
+            removal: .opacity)
     }
 
     private var closedCard: some View {

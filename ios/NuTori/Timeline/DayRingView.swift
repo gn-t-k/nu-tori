@@ -17,18 +17,17 @@ struct DayRingView: View {
         ZStack {
             Circle()
                 .strokeBorder(Color(.systemGray5), lineWidth: lineWidth)
-            if let arcs {
-                // 塗りの長さが変わったとき、同じ色の扇が伸びるよう、扇は色で見分ける
-                Chart(sectors(arcs), id: \.pfc) { sector in
-                    SectorMark(
-                        angle: .value("一周のうちの長さ", sector.length),
-                        innerRadius: .ratio(1 - 2 * lineWidth / diameter),
-                        angularInset: lineWidth / 6
-                    )
-                    .foregroundStyle(sector.pfc?.color ?? Color.clear)
-                }
-                .chartLegend(.hidden)
+            // 塗りの長さが変わったとき、同じ色の扇が伸びるよう、扇は色で見分ける。
+            // 塗る長さが無い日も塗らない残りだけの輪を置き、その日の最初の食事でも 0 から伸びるようにする
+            Chart(arcs.map(sectors) ?? [Sector(pfc: nil, length: 1)], id: \.pfc) { sector in
+                SectorMark(
+                    angle: .value("一周のうちの長さ", sector.length),
+                    innerRadius: .ratio(1 - 2 * lineWidth / diameter),
+                    angularInset: lineWidth / 6
+                )
+                .foregroundStyle(sector.pfc?.color ?? Color.clear)
             }
+            .chartLegend(.hidden)
         }
         .frame(width: diameter, height: diameter)
         .overlay(alignment: .top) {
@@ -59,7 +58,7 @@ struct DayRingView: View {
         return rest > 1e-9 ? painted + [Sector(pfc: nil, length: rest)] : painted
     }
 
-    private struct Sector: Hashable {
+    private struct Sector {
         /// 塗らない残りは nil
         let pfc: PFC?
         let length: Double
