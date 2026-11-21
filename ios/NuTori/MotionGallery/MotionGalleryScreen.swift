@@ -32,6 +32,8 @@ struct MotionGalleryScreen: View {
                 goalScreenGoalSetupFlow: .notStarted,
                 openGoalSetupFlow: { _, _ in }
             )
+            // 見本の中でアカウントを開いたときに、見本の上に見本を重ねない
+            .environment(\.isInMotionGallery, true)
         }
     }
 
@@ -95,7 +97,7 @@ struct MotionGalleryScreen: View {
     }
 
     private func play(_ scenario: Scenario) {
-        let today = CalendarDay(containing: clock.now(), in: clock.timeZone())
+        let today = clock.today()
         switch scenario {
         case .weightNotice:
             records.showWeightNotice(today: today)
@@ -198,9 +200,9 @@ struct MotionGalleryScreen: View {
         )
     }
 
-    private let clock = DeviceClock.live
-    @State private var records = MotionGalleryRecords(
-        today: CalendarDay(containing: DeviceClock.live.now(), in: DeviceClock.live.timeZone()))
+    private let clock = Self.clock
+    private static let clock = DeviceClock.live
+    @State private var records = MotionGalleryRecords(today: Self.clock.today())
     @State private var photos: [UUID: UIImage] = [:]
     /// 「最初から」を押した回数。押す前に始めた変更を当てないための印
     @State private var generation = 0

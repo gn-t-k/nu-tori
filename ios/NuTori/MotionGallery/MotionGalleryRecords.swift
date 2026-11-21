@@ -108,7 +108,7 @@ struct MotionGalleryRecords {
             id: UUID(), startedDay: today, startingWeightTrendKilograms: 72.0,
             targetWeightKilograms: 69.5, decidedAt: instant, timeZone: timeZone,
             direction: .lose(
-                WeightChange(deadlineDay: today.advanced(by: 90), pacePlan: .standard)),
+                Goal.WeightChange(deadlineDay: today.advanced(by: 90), pacePlan: .standard)),
             achievement: nil, deadlineConfirmation: nil, closure: nil)
         goals = [goal]
         dailyGuides = [.sample(for: goal)]

@@ -39,9 +39,11 @@ struct AccountScreenContainer: View {
             appVersion: Bundle.main.appVersion,
             appBuild: Bundle.main.appBuild,
             actions: actions,
-            openMotionGallery: installedFromTestFlight ? { showsMotionGallery = true } : nil,
+            openMotionGallery: installedFromTestFlight && !isInMotionGallery
+                ? { showsMotionGallery = true } : nil,
             onClose: onClose
         )
+        // TestFlight で入れた版かは、締め出しの画面の更新先と同じ見分け方（`AppTransaction` の環境）で決める。更新先の決め方を変えたら、ここも見直す
         .task {
             if case .testFlight = await AppUpdateDestination.forThisInstall() {
                 installedFromTestFlight = true
@@ -77,4 +79,5 @@ struct AccountScreenContainer: View {
     /// 読み終えるまでは、App Store から入れた版と同じく「動きの見本」を出さない
     @State private var installedFromTestFlight = false
     @State private var showsMotionGallery = false
+    @Environment(\.isInMotionGallery) private var isInMotionGallery
 }

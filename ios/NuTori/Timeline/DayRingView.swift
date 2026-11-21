@@ -19,10 +19,10 @@ struct DayRingView: View {
             // 塗りの長さが変わったときに伸び縮みさせるため、Swift Charts でなく、長さを動かせる形で描く。
             // Charts の扇を動かすと、Charts の中でアプリが落ちた（#325）
             ForEach(PFC.allCases, id: \.self) { pfc in
-                let span = span(of: pfc)
+                let arcSpan = span(of: pfc)
                 RingArc(
-                    start: span.start, end: span.end, lineWidth: lineWidth,
-                    inset: span.isWhole ? 0 : lineWidth / 6
+                    start: arcSpan.start, end: arcSpan.end, lineWidth: lineWidth,
+                    inset: arcSpan.isWhole ? 0 : lineWidth / 6
                 )
                 .fill(pfc.color)
             }
