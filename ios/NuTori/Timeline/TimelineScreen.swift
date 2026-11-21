@@ -182,6 +182,7 @@ struct TimelineScreen: View {
     @State private var pickedPhotos: [PhotosPickerItem] = []
     /// 選んだ写真を読んで記録し終えるまで、タイムラインの一番下に出す仮のカード。読み終える前に選び直したら、選んだ回ごとに並べる
     @State private var loadingPickedPhotos: [PickedPhotosLoading] = []
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// 見える範囲の規則は NuToriCore の TimelineViewport が持つ。規則は前の出来事を覚えて決めるので、描き直しをまたいで持つために @State に置く。
     /// 次に描いたあとで実行する指示（`waitingInstructions`）も持ち、変わったら動かす口（ScrollViewProxy）のある ScrollViewReader の中で実行する
     @State private var viewport = TimelineViewport()
@@ -303,11 +304,15 @@ struct TimelineScreen: View {
                                     .frame(maxWidth: .infinity, alignment: .trailing)
                                     .padding(.top, 8)
                                     .accessibilityIdentifier("picked-photos-loading")
+                                    // 食事のカードと入れ替わるよう、薄れて抜ける（DESIGN.md の Motion）
+                                    .transition(.opacity)
                             }
                             restartGoalSetupCard
                         }
                         .padding()
                         .id(Self.contentId)
+                        // 日の中だけでなく、日の高さとタイムラインの下端もいっしょに動かすよう、中身の全体に掛ける
+                        .animation(TimelineMotion.animation, value: TimelineMotion.key(of: timeline.days))
                     }
                     .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                     // 余白や文を押したら、キーボードを下げる。押せるもの（記録の行、カード、知らせの中の欄）は自分の動きをする
@@ -419,6 +424,7 @@ struct TimelineScreen: View {
             ForEach(day.items) { item in
                 itemView(item, in: timeline)
                     .padding(.top, Self.gap(day.spacing(before: item)))
+                    .transition(TimelineMotion.transition(for: item, reduceMotion: reduceMotion))
             }
         }
         // 中の行が自分の識別子を保つよう、区切りは入れ物にしてから名前を付ける
@@ -744,7 +750,9 @@ struct TimelineScreen: View {
         viewport.pickedPhotosLoadingStarted()
         Task {
             await record()
-            loadingPickedPhotos.removeAll { $0.id == loading.id }
+            withAnimation(TimelineMotion.animation) {
+                loadingPickedPhotos.removeAll { $0.id == loading.id }
+            }
         }
     }
 
