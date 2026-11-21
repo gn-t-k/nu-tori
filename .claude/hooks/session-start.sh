@@ -1,5 +1,5 @@
 #!/bin/bash
-# クラウドセッション開始時に、浅い clone の履歴を全部取り、Swift とサーバーの依存を入れ、mattpocock/skills の更新を確かめる（更新があれば別の PR にするよう伝える）。
+# クラウドセッション開始時に、浅い clone の履歴を全部取り、Swift とサーバーの依存を入れ、skills-lock.json の skill の更新を確かめる（更新があれば別の PR にするよう伝える）。
 # settings.json で async 実行しているので、結果は次のターンでClaudeに届く。
 set -euo pipefail
 
@@ -55,9 +55,9 @@ else
   if [ -z "$changed" ]; then
     git worktree remove --force "$skills_tree" >/dev/null 2>&1 || true
   else
-    contexts+=("mattpocock/skills に更新がありました。更新は ${skills_tree}（origin/main から作った worktree）に当ててあり、作業ツリーは変わっていません。作業中のブランチとは別の PR にしてください。
-1. 開いている PR に、ブランチ名が claude/update-mattpocock-skills で始まるものがあれば、PR を作らずに git worktree remove --force ${skills_tree} で消す
-2. 無ければ、その worktree でブランチ claude/update-mattpocock-skills-<今日の日付> を作り、「mattpocock/skills を更新」のコミットにして push し、PR を出してユーザーに伝える。終わったら worktree を消す
+    contexts+=("skills-lock.json の skill に更新がありました。更新は ${skills_tree}（origin/main から作った worktree）に当ててあり、作業ツリーは変わっていません。作業中のブランチとは別の PR にしてください。
+1. 開いている PR に、ブランチ名が claude/update-skills で始まるものがあれば、PR を作らずに git worktree remove --force ${skills_tree} で消す
+2. 無ければ、その worktree でブランチ claude/update-skills-<今日の日付> を作り、「skill を更新」のコミットにして push し、PR を出してユーザーに伝える。終わったら worktree を消す
 変わったファイル:
 $changed")
   fi

@@ -1106,7 +1106,7 @@ check_scripts() {
     step "Lint（ShellCheck ${shellcheck_version}）"
     install_shellcheck
     local files=() file
-    # node のスクリプトも同じフォルダにあるので、シバンで選ぶ。.agents/skills/ は mattpocock/skills のファイルなので、nu-tori の検証スキル（verify-<アプリ>）の道具だけに当てる
+    # node のスクリプトも同じフォルダにあるので、シバンで選ぶ。.agents/skills/ の多くは skills-lock.json で入れた外のファイルなので、nu-tori の検証スキル（verify-<アプリ>）の道具だけに当てる
     for file in "$root"/scripts/* "$root"/.claude/hooks/* "$root"/.agents/skills/verify-*/scripts/* "$root"/ios/ci_scripts/*; do
         if [ -f "$file" ] && head -n 1 "$file" | grep -qE '^#!.*[/ ](ba)?sh$'; then
             files+=("${file#"$root"/}")
