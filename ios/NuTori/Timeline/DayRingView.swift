@@ -18,7 +18,8 @@ struct DayRingView: View {
             Circle()
                 .strokeBorder(Color(.systemGray5), lineWidth: lineWidth)
             if let arcs {
-                Chart(sectors(arcs), id: \.self) { sector in
+                // 塗りの長さが変わったとき、同じ色の扇が伸びるよう、扇は色で見分ける
+                Chart(sectors(arcs), id: \.pfc) { sector in
                     SectorMark(
                         angle: .value("一周のうちの長さ", sector.length),
                         innerRadius: .ratio(1 - 2 * lineWidth / diameter),

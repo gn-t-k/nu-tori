@@ -145,6 +145,8 @@ struct DayRingStrip: View {
                 }
             }
             .animation(TimelineMotion.animation, value: hasWeightRecord)
+            // 推定が済んで食べた量が変わったとき、塗りを伸ばす。週を送ったときは日ごとに別の丸になるので動かない（DESIGN.md の Motion）
+            .animation(TimelineMotion.animation, value: arcs)
         }
     }
 

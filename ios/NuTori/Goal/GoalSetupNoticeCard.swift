@@ -16,6 +16,7 @@ struct GoalSetupNoticeCard: View {
         Group {
             if let currentGoal {
                 GoalDecidedCard(goal: currentGoal.goal, dailyGuide: currentGoal.dailyGuide)
+                    .transition(decided)
             } else if case .expanded(let content, let actions) = flow {
                 GoalSetupFlowCard(content: content, actions: actions, timeZone: timeZone)
                     .transition(expansion)
@@ -24,7 +25,11 @@ struct GoalSetupNoticeCard: View {
                     .transition(expansion)
             }
         }
-        .animation(reduceMotion ? .easeInOut : .default, value: form)
+        .animation(animation(to: form), value: form)
+        // 目標が決まった瞬間に、決まったカードが入るのと同時に鳴らす。開いたときにもう決まっていれば、形が変わらないので鳴らない
+        .sensoryFeedback(.success, trigger: form) { old, new in
+            old != .decided && new == .decided
+        }
     }
 
     /// 目標の設定の流れの形。外側が流れ（`GoalSetupFlow`）から読んで渡す
@@ -60,6 +65,17 @@ struct GoalSetupNoticeCard: View {
     private var form: Form {
         if currentGoal != nil { return .decided }
         return flow.expandedPage == nil ? .closed : .expanded
+    }
+
+    /// 目標が決まったときだけ、少し弾ませる。数か月に1回の気持ちが動く場面なので、弾みはここにだけ使う（DESIGN.md の Motion）
+    private func animation(to form: Form) -> Animation {
+        if reduceMotion { return .easeInOut }
+        return form == .decided ? .spring(duration: 0.4, bounce: 0.15) : .default
+    }
+
+    /// 決まったカードは 96% から入る。「視差効果を減らす」ではフェードにする
+    private var decided: AnyTransition {
+        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96))
     }
 
     /// 「視差効果を減らす」では、カードの広がりをフェードにする

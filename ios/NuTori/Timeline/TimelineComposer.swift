@@ -87,6 +87,9 @@ struct TimelineComposer: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
+            // 「体重」の丸と「送る」の出入りと、書く欄の幅の替わり目。1日に何度も触るので、気づかない程度の短さにする（DESIGN.md の Motion）
+            .animation(Self.motion, value: writing)
+            .animation(Self.motion, value: draft.text.isEmpty)
             .background(.bar)
         }
     }
@@ -96,6 +99,15 @@ struct TimelineComposer: View {
 
     /// 書いているあいだ（欄を選んでいるか、文字がある）は、「体重」を隠して書く欄を広げる。「撮る」「写真」は残す
     private var writing: Bool { fieldFocused || !draft.text.isEmpty }
+
+    private static let motion: Animation = .smooth(duration: 0.2)
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// 「体重」の丸と「送る」の出入り。「視差効果を減らす」では薄れだけにする
+    private var buttonTransition: AnyTransition {
+        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.9))
+    }
 
     /// 文字を大きくしたとき、アイコンに合わせて丸も大きくする。3つの丸が画面の幅に収まるところで止める（大きな文字では書く欄を別の行に置く）
     @ScaledMetric private var scaledButtonSize: CGFloat = 44
@@ -129,6 +141,7 @@ struct TimelineComposer: View {
             .disabled(preparingWeightEntry)
             .accessibilityLabel("体重")
             .accessibilityIdentifier("composer-weight")
+            .transition(buttonTransition)
         }
     }
 
@@ -216,6 +229,7 @@ struct TimelineComposer: View {
                 .disabled(!canSend)
                 .accessibilityLabel("送る")
                 .accessibilityIdentifier("composer-send")
+                .transition(buttonTransition)
             }
         }
         // 文字を角の丸み（18）の内側に収める。標準の .padding()（16）は角の丸みと合わないので数値で決める
