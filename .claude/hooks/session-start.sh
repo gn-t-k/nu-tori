@@ -1,5 +1,5 @@
 #!/bin/bash
-# クラウドセッション開始時に、浅い clone の履歴を全部取り、Swift とサーバーの依存を入れ、skills-lock.json の skill（mattpocock/skills と emilkowalski/skills）の更新を確かめる（更新があれば別の PR にするよう伝える）。
+# クラウドセッション開始時に、浅い clone の履歴を全部取り、Swift とサーバーの依存を入れ、skills-lock.json の skill の更新を確かめる（更新があれば別の PR にするよう伝える）。
 # settings.json で async 実行しているので、結果は次のターンでClaudeに届く。
 set -euo pipefail
 

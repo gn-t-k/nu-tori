@@ -155,13 +155,6 @@
       "computedHash": "f0820b18426a7d9a6c823a890988ba0ac70bf0fd596d30d7ef07c88558728c23",
       "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa"
     },
-    "learn-taste": {
-      "source": "emilkowalski/skills",
-      "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
-      "sourceType": "github",
-      "skillPath": "skills/learn-taste/SKILL.md",
-      "computedHash": "edaec540d02abdad48727b7d769574d0ee42e79304826c899a7aba90ef0197c1"
-    },
     "pr": {
       "source": "mattpocock/skills",
       "sourceType": "github",
