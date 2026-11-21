@@ -140,8 +140,15 @@ struct DayRingStrip: View {
                     Circle()
                         .fill(Color.secondary)
                         .frame(width: 7, height: 7)
+                        // タイムラインに体重の行が出入りするのと同時に、薄れで付け外しする（DESIGN.md の Motion）
+                        .transition(.opacity)
                 }
             }
+            .animation(TimelineMotion.animation, value: hasWeightRecord)
+            // 食事を記録して塗りが変わったとき、塗りを伸ばし、丸に目を向けさせる（DESIGN.md の Motion）。
+            // 週を送ったときは日ごとに別の丸になるので動かない
+            .animation(TimelineMotion.animation, value: arcs)
+            .modifier(RingChangeEmphasis(arcs: arcs, diameter: diameter))
         }
     }
 

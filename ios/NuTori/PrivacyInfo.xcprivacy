@@ -6,7 +6,7 @@
 回答の表の置き場と、集めるもの・送り先・使い道を変えるときの直し方は docs/agents/privacy.md。
 Sentry と PostHog の SDK のマニフェストは、それぞれのデータを「ユーザーに結びつかない」と宣言するが、
 nu-tori はアカウント ID を付けて送るので、ここでは「結びつく」と宣言する。
-UserDefaults は、サインインの端末の記憶（UserDefaultsSignInDeviceStore）と締め出しの記憶（UserDefaultsAppLockoutStore）に使う。
+UserDefaults は、サインインの端末の記憶（UserDefaultsSignInDeviceStore）と締め出しの記憶（UserDefaultsAppLockoutStore）と、帯の1日の丸の強調の案（RingEmphasis の @AppStorage）に使う。
 -->
 <dict>
 	<key>NSPrivacyTracking</key>

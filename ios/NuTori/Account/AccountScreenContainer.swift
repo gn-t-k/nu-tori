@@ -39,8 +39,22 @@ struct AccountScreenContainer: View {
             appVersion: Bundle.main.appVersion,
             appBuild: Bundle.main.appBuild,
             actions: actions,
+            openMotionGallery: installedFromTestFlight && !isInMotionGallery
+                ? { showsMotionGallery = true } : nil,
             onClose: onClose
         )
+        // TestFlight で入れた版かは、締め出しの画面の更新先と同じ見分け方（`AppTransaction` の環境）で決める。更新先の決め方を変えたら、ここも見直す
+        .task {
+            if case .testFlight = await AppUpdateDestination.forThisInstall() {
+                installedFromTestFlight = true
+            }
+        }
+        // タイムラインごと見本に替えるので、アカウントのシートに重ねず画面全体に出す
+        .fullScreenCover(isPresented: $showsMotionGallery) {
+            MotionGalleryScreen(accountActions: actions, paywallActions: paywallActions) {
+                showsMotionGallery = false
+            }
+        }
         // 通知の許可を設定で変えても、カメラと違ってアプリは終わらないので、前面に戻ったときに読み直す
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
@@ -62,4 +76,8 @@ struct AccountScreenContainer: View {
     /// 読み終えるまでは、自動更新がオンのときと同じ形で描く
     @State private var autoRenewal = SubscriptionPurchases.AutoRenewal.unknown
     @State private var paywallRequest: PaywallRequest?
+    /// 読み終えるまでは、App Store から入れた版と同じく「動きの見本」を出さない
+    @State private var installedFromTestFlight = false
+    @State private var showsMotionGallery = false
+    @Environment(\.isInMotionGallery) private var isInMotionGallery
 }
