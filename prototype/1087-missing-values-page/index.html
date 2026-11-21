@@ -145,6 +145,7 @@ const VARIANTS = {
     ['A', '抜けたら知らせる', '空の欄には何も出さない。範囲の外のまま欄から抜けると（「完了」・ほかの欄を押す）、欄の下に赤で範囲を1行出す。「次へ」はそろうまで灰色。'],
     ['B', '範囲を先に見せる', '空の欄には何も出さない。欄の下に受け付ける範囲をいつも灰色で出し、範囲の外のまま抜けると同じ行が赤になる。「次へ」はそろうまで灰色。'],
     ['C', '押してから知らせる', '空の欄に「例: 170」と出す。「次へ」はいつも押せ、押したときに足りない欄と範囲の外の欄を赤くして、最初の欄へ送る。'],
+    ['D', 'ホイールで選ぶ', '打たせずに選ばせる（HIG の Entering data）。行を押すと行の下にホイールが開き、受け付ける範囲の値だけが並ぶ。始めは 170 cm・65.0 kg の位置だが、「これにする」を押すまでは入っていない。テンキーは出ない。'],
   ],
   2: [
     ['P', '年代から選ぶ', '行のどこを押してもメニューが開く。まず年代（1990年代など）を選び、次にその年代の10年から選ぶ。2回押すが送らずに届く。'],
@@ -170,7 +171,26 @@ function reset() {
   else { S.birth = 1990; }
 }
 
+function wheelList(id, values, start, fmt) {
+  return `<div class="wheel-wrap" style="flex:1"><div class="wheel" id="${id}" data-start="${start}"><div class="wheel-pad"></div>${values.map(x => `<div data-y="${x}">${fmt(x)}</div>`).join('')}<div class="wheel-pad"></div></div></div>`;
+}
+function range(lo, hi) { const a = []; for (let x = lo; x <= hi; x++) a.push(x); return a; }
+function wheelRow(f, label) {
+  const raw = S[f], unit = RANGE[f][2], open = S.wheel === f;
+  const text = raw === '' ? '選ぶ' : `${Number(raw).toLocaleString('ja-JP', { minimumFractionDigits: f === 'weight' ? 1 : 0 })} ${unit}`;
+  let extra = '';
+  if (open) {
+    const wheels = f === 'height'
+      ? wheelList('wh-height', range(100, 250), 170, x => `${x} cm`)
+      : wheelList('wh-weight-i', range(20, 300), 65, x => `${x}`) + wheelList('wh-weight-d', range(0, 9), 0, x => `.${x} kg`);
+    extra = `<div style="display:flex;gap:6px">${wheels}</div><div class="wheel-act"><button data-act="wheel-set" data-f="${f}">これにする</button></div>`;
+  }
+  return `<div class="row" id="row-${f}"><div class="line" data-act="wheel-open" data-f="${f}" style="cursor:pointer"><span>${label}</span>
+    <span class="menu-btn" style="${raw === '' ? '' : 'color:var(--fg)'}">${text} ⌃⌄</span></div>${extra}</div>`;
+}
+
 function numberRow(f, label) {
+  if (variant() === 'D' && f !== 'birth') return wheelRow(f, label);
   const v = variant(), raw = f === 'birth' ? S.birthText : S[f], n = num(f), focused = S.focus === f;
   const out = n != null && !inRange(f, n);
   const showErr = out && ((v === 'C' && S.submitted) || (v !== 'C' && S.left[f] && !focused));
@@ -234,13 +254,16 @@ function render() {
     $('phone').appendChild(el);
   }
   if (S.toast) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = S.toast; $('phone').appendChild(t); setTimeout(() => { t.remove(); S.toast = ''; }, 1600); }
-  if (v === 'Q' && S.wheel) { const w = $('wheel'); const target = w.querySelector('[data-y="1990"]'); w.scrollTop = target.offsetTop - 72; markWheel(); w.onscroll = markWheel; }
+  if (v === 'Q' && S.wheel) { const w = $('wheel'); w.dataset.start = '1990'; }
+  document.querySelectorAll('.wheel').forEach(w => {
+    const target = w.querySelector(`[data-y="${w.dataset.start}"]`); w.scrollTop = target.offsetTop - 72; markWheel(w); w.onscroll = () => markWheel(w);
+  });
   $('kb').classList.toggle('open', !!S.focus);
   $('state').textContent = `状態  身長: ${S.height || '空'} / 生まれた年: ${birthValue() ?? '空'} / 今の体重: ${S.weight || '空'}\n欄: ${S.focus ?? 'なし'} / そろって範囲内: ${ok ? 'はい' : 'いいえ'} / 「次へ」: ${disabled ? '押せない' : '押せる'}`;
 }
 let wheelMoved = false;
-function markWheel() {
-  const w = $('wheel'); const mid = w.scrollTop + 90;
+function markWheel(w) {
+  const mid = w.scrollTop + 90;
   w.querySelectorAll('[data-y]').forEach(d => d.classList.toggle('mid', Math.abs(d.offsetTop + 18 - mid) < 18));
 }
 
@@ -274,7 +297,13 @@ $('phone').addEventListener('click', e => {
   if (t.closest('[data-year]')) { S.birth = Number(t.closest('[data-year]').dataset.year); S.pop = null; render(); return; }
   if (t.dataset.act === 'pop-back') { S.pop = 'decade'; render(); return; }
   if (t.dataset.act === 'wheel-ok') { const m = document.querySelector('#wheel .mid'); if (m) S.birth = Number(m.dataset.y); S.wheel = false; render(); return; }
-  if (t.closest('#wheel')) return;
+  if (t.dataset.act === 'wheel-set') {
+    const mid = id => document.querySelector(`#${id} .mid`)?.dataset.y;
+    S[t.dataset.f] = t.dataset.f === 'height' ? mid('wh-height') : `${mid('wh-weight-i')}.${mid('wh-weight-d')}`;
+    S.wheel = false; render(); return;
+  }
+  if (t.closest('[data-act="wheel-open"]')) { const f = t.closest('[data-act="wheel-open"]').dataset.f; S.wheel = S.wheel === f ? false : f; render(); scrollToField(f); return; }
+  if (t.closest('.wheel')) return;
   if (t.closest('[data-act="birth-open"]')) { if (S.focus) S.left[S.focus] = true; S.focus = null;
     if (variant() === 'P') S.pop = S.pop ? null : 'decade'; else S.wheel = !S.wheel; render(); return; }
   const row = t.closest('[data-focus]');
@@ -288,7 +317,7 @@ $('phone').addEventListener('click', e => {
   if (S.pop) { S.pop = null; render(); }
 });
 $('scroll').addEventListener('wheel', () => {}, { passive: true });
-function go(q, i) { S.q = q; S.i = (i + 3) % 3; reset(); render(); }
+function go(q, i) { const n = VARIANTS[q].length; S.q = q; S.i = (i + n) % n; reset(); render(); }
 $('q1').onclick = () => go(1, 0); $('q2').onclick = () => go(2, 0);
 $('prev').onclick = () => go(S.q, S.i - 1); $('nextv').onclick = () => go(S.q, S.i + 1);
 document.addEventListener('keydown', e => { if (e.key === 'ArrowLeft') go(S.q, S.i - 1); if (e.key === 'ArrowRight') go(S.q, S.i + 1); });
