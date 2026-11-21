@@ -14,15 +14,17 @@ struct MotionGalleryRecords {
     private let startedDay: CalendarDay
 
     /// 先週から使っていて、昨日までの体重と食事がある。今日はまだ何も記録していない
-    init(today: CalendarDay) {
-        startedDay = today.advanced(by: -6)
-        weightRecords = (1...6).map { daysAgo in
-            .sample(
-                72.0 + Double(daysAgo) * 0.1, on: today.advanced(by: -daysAgo), at: 7, 0,
-                from: .manual)
+    init(now: Date, timeZone: TimeZone) {
+        startedDay = CalendarDay(containing: now, in: timeZone).advanced(by: -6)
+        let daysAgo = { (days: Int) in now.addingTimeInterval(-Double(days) * 24 * 60 * 60) }
+        weightRecords = (1...6).map { days in
+            MotionGallerySample.weightRecord(
+                72.0 + Double(days) * 0.1, at: daysAgo(days), timeZone: timeZone)
         }
-        meals = (1...2).map { daysAgo in
-            .sampleEstimated(.sample(on: today.advanced(by: -daysAgo), at: 12, 10))
+        meals = (1...2).map { days in
+            MotionGallerySample.estimated(
+                MotionGallerySample.meal(
+                    .captured, photoIds: [UUID()], at: daysAgo(days), timeZone: timeZone))
         }
         notices = []
     }
@@ -41,10 +43,11 @@ struct MotionGalleryRecords {
     // MARK: 体重
 
     /// 今日の体重の知らせを、答えていない形で出す。今日の体重の記録は消す
-    mutating func showWeightNotice(today: CalendarDay) {
+    mutating func showWeightNotice(now: Date, timeZone: TimeZone) {
+        let today = CalendarDay(containing: now, in: timeZone)
         weightRecords.removeAll { $0.day == today }
         notices.removeAll { $0.kind == .missedWeightRecord(targetDay: today) }
-        notices.append(.sampleMissedWeightRecord(on: today, respondedAt: nil))
+        notices.append(MotionGallerySample.weightNotice(on: today, at: now, timeZone: timeZone))
     }
 
     mutating func save(_ write: WeightEntry.Write) {
@@ -95,23 +98,20 @@ struct MotionGalleryRecords {
     // MARK: 目標
 
     /// 目標を立てる知らせを、答えていない形で出す。立てた目標は消す
-    mutating func showGoalSetupNotice(today: CalendarDay) {
+    mutating func showGoalSetupNotice(now: Date, timeZone: TimeZone) {
         goals = []
         dailyGuides = []
         notices.removeAll { $0.kind == .goalSetup }
-        notices.append(.sampleGoalSetup(on: today, answered: false))
+        notices.append(MotionGallerySample.goalSetupNotice(at: now, timeZone: timeZone))
     }
 
     /// 今日から 90 日で減らす目標を立て、目標を立てる知らせに答える
-    mutating func decideGoal(today: CalendarDay, at instant: Date, timeZone: TimeZone) {
-        let goal = Goal(
-            id: UUID(), startedDay: today, startingWeightTrendKilograms: 72.0,
-            targetWeightKilograms: 69.5, decidedAt: instant, timeZone: timeZone,
-            direction: .lose(
-                Goal.WeightChange(deadlineDay: today.advanced(by: 90), pacePlan: .standard)),
-            achievement: nil, deadlineConfirmation: nil, closure: nil)
+    mutating func decideGoal(at instant: Date, timeZone: TimeZone) {
+        let goal = MotionGallerySample.goal(
+            startedOn: CalendarDay(containing: instant, in: timeZone), at: instant,
+            timeZone: timeZone)
         goals = [goal]
-        dailyGuides = [.sample(for: goal)]
+        dailyGuides = [MotionGallerySample.dailyGuide(for: goal)]
         notices = notices.map { notice in
             notice.kind == .goalSetup && notice.response == nil
                 ? notice.answered(at: instant, timeZone: timeZone) : notice

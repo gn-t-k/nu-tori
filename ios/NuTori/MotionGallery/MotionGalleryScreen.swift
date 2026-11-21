@@ -97,23 +97,22 @@ struct MotionGalleryScreen: View {
     }
 
     private func play(_ scenario: Scenario) {
-        let today = clock.today()
         switch scenario {
         case .weightNotice:
-            records.showWeightNotice(today: today)
+            records.showWeightNotice(now: clock.now(), timeZone: clock.timeZone())
         case .photoMeal:
             estimate(meal(.captured, photoIds: [UUID()], at: clock.now()))
         case .sentText:
             send("昼は親子丼と味噌汁")
         case .goalDecided:
-            records.showGoalSetupNotice(today: today)
+            records.showGoalSetupNotice(now: clock.now(), timeZone: clock.timeZone())
             later(seconds: 1.5) {
-                records.decideGoal(today: today, at: clock.now(), timeZone: clock.timeZone())
+                records.decideGoal(at: clock.now(), timeZone: clock.timeZone())
             }
         case .reset:
             generation += 1
             photos = [:]
-            records = MotionGalleryRecords(today: today)
+            records = MotionGalleryRecords(now: clock.now(), timeZone: clock.timeZone())
         }
     }
 
@@ -146,7 +145,7 @@ struct MotionGalleryScreen: View {
             records.put(MealCard(meal: meal, status: .estimating, recordedOnThisDevice: true))
         }
         later(seconds: 3) {
-            records.put(.sampleEstimated(meal))
+            records.put(MotionGallerySample.estimated(meal))
         }
     }
 
@@ -160,16 +159,12 @@ struct MotionGalleryScreen: View {
             records.readAsMeal(sentText, meal: writtenMeal)
         }
         later(seconds: 4) {
-            records.put(.sampleEstimated(writtenMeal))
+            records.put(MotionGallerySample.estimated(writtenMeal))
         }
     }
 
     private func meal(_ entry: Meal.Entry, photoIds: [UUID], at instant: Date) -> Meal {
-        let timeZone = clock.timeZone()
-        return Meal(
-            id: UUID(), eatenAt: instant,
-            eatenUtcOffsetSeconds: timeZone.secondsFromGMT(for: instant), sentAt: instant,
-            sentTimeZone: timeZone, entry: entry, photoIds: photoIds)
+        MotionGallerySample.meal(entry, photoIds: photoIds, at: instant, timeZone: clock.timeZone())
     }
 
     /// 撮った・選んだ写真を、カードに出すために画面の中だけに持つ
@@ -196,13 +191,16 @@ struct MotionGalleryScreen: View {
         MealActions(
             prepareCamera: CameraReadiness.prepare,
             photoSelection: .picker,
-            loadPhoto: { [photos] _, photoId in photos[photoId] ?? .sampleMealPhoto(for: photoId) }
+            loadPhoto: { [photos] _, photoId in
+                photos[photoId] ?? MotionGallerySample.photo(for: photoId)
+            }
         )
     }
 
     private let clock = Self.clock
     private static let clock = DeviceClock.live
-    @State private var records = MotionGalleryRecords(today: Self.clock.today())
+    @State private var records = MotionGalleryRecords(
+        now: Self.clock.now(), timeZone: Self.clock.timeZone())
     @State private var photos: [UUID: UIImage] = [:]
     /// 「最初から」を押した回数。押す前に始めた変更を当てないための印
     @State private var generation = 0

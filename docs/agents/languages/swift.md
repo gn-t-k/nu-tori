@@ -69,7 +69,6 @@ enum WeightRecordsState {
 
 - 状態の見本（ある状態の画面を描くのに渡す値一式）を、`<View>+Previews.swift` の `extension <View>` の中の `fileprivate enum Sample: CaseIterable` にし、`#Preview("状態ごと", arguments: <View>.Sample.allCases)` で並べる。描く View が受け取る状態の型の場合を、すべて見本に入れる。状態を持たない画面は `#Preview` を1つ置く
 - 見本の日は `CalendarDay.sampleToday` に固定する。複数の画面の見本で使う値は、`<型>+PreviewSample.swift` に置く
-- TestFlight の版の「動きの見本」（`MotionGalleryScreen`）が使う `<型>+PreviewSample.swift` は、Release のビルドにも入れる（`#if DEBUG` の外に置く）
 - ダーク・大きい文字・向きはコードに書かず、キャンバスの Variants（RenderPreview の `previewVariantOverrides`）で見る
 - シートで出す画面は、シートに載せず中身を直接描く。載せると、出てくる途中の動きが描かれる
 - 見本は画面に渡す値で、`UITestLaunch` はアプリ全体の場面なので、まとめない
