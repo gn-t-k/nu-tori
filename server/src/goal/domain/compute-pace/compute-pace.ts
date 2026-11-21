@@ -18,7 +18,7 @@ export type PaceGoal =
     }
   | { direction: "maintain"; targetWeightKg: number };
 
-// 速さと届かない kg は 0.1 kg に丸める。期限に間に合うペースは週の振り返りの文だけが使う
+// 速さと届かない kg は 0.1 kg に丸める。期限に間に合うペースは週の振り返りの値の行だけが使う
 export type Pace =
   // 間に合う
   | { status: "onTrack"; actualKgPerWeek: number; requiredKgPerWeek: number }
