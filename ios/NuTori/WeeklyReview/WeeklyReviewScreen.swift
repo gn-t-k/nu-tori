@@ -129,15 +129,7 @@ struct WeeklyReviewScreen: View {
         Button {
             openWeightScreen(day)
         } label: {
-            HStack(spacing: 12) {
-                Text("体重の記録")
-                    .foregroundStyle(Color.primary)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
-            }
-            .contentShape(Rectangle())
+            WeightRecordLinkLabel()
         }
         .accessibilityIdentifier("weekly-review-weight-record-link")
     }

@@ -3,7 +3,7 @@ import XCTest
 /// 目標を達成した月曜に、日のまとめの目標の行から目標の画面を開く → 「次の目標を選ぶ」でタイムラインの一番下に目標の設定のカードを広げる。
 /// 体重の画面の「目標 ›」から目標の画面を開き、戻ると体重の画面に戻る。目標の画面の「体重の記録 ›」から体重の画面を開き、戻ると目標の画面に戻る。
 ///
-/// 目標の行の小さな文と次の目標の行、「目標 ›」の目標体重は NuToriCore の単体テスト（DaySummaryGoalTests・TimelineSnapshotTests）が見る。
+/// 目標の行の小さな文と次の目標の行、「目標 ›」の目標体重は NuToriCore の単体テスト（DaySummaryGoalTests・WeightTrendChartTests）が見る。
 /// ここで見るのは、シートを閉じてから押して進むことと、体重の画面と目標の画面を互いの上に積んだときの行き来
 @MainActor
 final class OpenGoalFromDaySummaryAndWeightScreenUITests: XCTestCase {
@@ -49,7 +49,6 @@ final class OpenGoalFromDaySummaryAndWeightScreenUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["体重"].waitForExistence(timeout: 5))
         let goalLink = app.buttons["weight-goal-link"]
         XCTAssertTrue(app.scrollUntilExists(goalLink))
-        XCTAssertTrue(goalLink.label.contains("70.1 kg"))
         attachScreenshot(of: app, named: "体重の画面の目標の行")
 
         goalLink.tap()

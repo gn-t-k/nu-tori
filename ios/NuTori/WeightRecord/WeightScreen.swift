@@ -14,8 +14,6 @@ struct WeightScreen: View {
     let performEdit: (UserEdit) async -> Void
     /// 目標が無いときの「目標を立てる」。タイムラインまで戻り、知らせのカードまで送って広げる。目標があれば nil
     let startGoalSetup: (() -> Void)?
-    /// 「目標 70.0 kg ›」の目標体重。目標がなければ nil
-    let goalKilograms: Double?
     /// 「目標 ›」。この画面の上に目標の画面を押して進む（戻るは「‹ 体重」）
     let openGoalScreen: () -> Void
 
@@ -31,8 +29,9 @@ struct WeightScreen: View {
                 WeightTrendChartView(chart: trendChart)
                     .padding(.vertical, 8)
             }
-            if let goalKilograms {
-                goalSection(goalKilograms)
+            // 値は傾向のグラフの目標体重の線と同じ目標体重
+            if let target = trendChart.target {
+                goalSection(target.kilograms)
             }
             // 目標が無いあいだは、目標の行の場所に立てる入口を置く
             if let startGoalSetup {
@@ -86,7 +85,7 @@ struct WeightScreen: View {
     private func goalSection(_ kilograms: Double) -> some View {
         Section {
             Button(action: openGoalScreen) {
-                HStack(spacing: 12) {
+                HStack {
                     Text("目標")
                         .foregroundStyle(Color.primary)
                     Spacer(minLength: 0)

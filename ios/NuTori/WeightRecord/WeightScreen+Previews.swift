@@ -20,7 +20,6 @@
                 capture: { _ in },
                 performEdit: { _ in },
                 startGoalSetup: sample.startsGoalSetup ? {} : nil,
-                goalKilograms: sample.goal?.targetWeightKilograms,
                 openGoalScreen: {}
             )
         }

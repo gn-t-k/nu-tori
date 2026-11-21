@@ -151,17 +151,10 @@ struct GoalScreen: View {
         VStack(spacing: 0) {
             Divider()
             Button(action: openWeightScreen) {
-                HStack(spacing: 12) {
-                    Text("体重の記録")
-                        .foregroundStyle(Color.primary)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color(.tertiaryLabel))
-                }
-                .padding(.horizontal)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
+                WeightRecordLinkLabel()
+                    .padding(.horizontal)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("goal-weight-record-link")

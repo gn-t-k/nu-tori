@@ -877,7 +877,6 @@ struct TimelineScreen: View {
             capture: capture,
             performEdit: performEdit,
             startGoalSetup: startGoalSetup,
-            goalKilograms: snapshot.weightScreenGoalKilograms,
             // 体重の画面の上に積むので、戻るは「‹ 体重」
             openGoalScreen: { send(.goalScreenRequested(.weightScreen)) }
         )
