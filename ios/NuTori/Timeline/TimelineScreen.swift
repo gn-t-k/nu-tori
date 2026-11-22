@@ -43,6 +43,7 @@ struct TimelineScreen: View {
                     today: snapshot.today,
                     openableDays: loaded?.dayRange
                 ) { day in
+                    pressHaptic.fire(.dayTapped)
                     send(.dayRingTapped(day))
                 }
                 Divider()
@@ -161,6 +162,7 @@ struct TimelineScreen: View {
         )
         .onChange(of: pickedPhotos) { _, items in
             guard !items.isEmpty else { return }
+            pressHaptic.fire(.photosPicked)
             let pickedAt = now()
             pickedPhotos = []
             showPickedPhotosLoadingWhileRecording(count: items.count) {
@@ -174,7 +176,7 @@ struct TimelineScreen: View {
 
     /// 開いているシートと潜った画面の並び。移り方の規則は NuToriCore の TimelineNavigation が持つ
     @State private var navigation = TimelineNavigation()
-    /// 押した操作（「写真を使用」、体重の記録、「送る」）の触覚を鳴らす合図
+    /// 押した操作（「写真を使用」、体重の記録、「送る」など）の触覚を鳴らす合図
     @State private var pressHaptic = HapticPulse()
     /// 答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
@@ -666,6 +668,7 @@ struct TimelineScreen: View {
             },
             onWeight: { send(.weightEntryTapped) },
             onPresetTapped: { preset in
+                pressHaptic.fire(.presetTapped)
                 send(.composerTapped)
                 Task { await capture(.presetTapped(preset)) }
             },
@@ -848,6 +851,7 @@ struct TimelineScreen: View {
                 actions: mealActions,
                 performEdit: performEdit,
                 returnToTimeline: {
+                    pressHaptic.fire(.mealDeleted)
                     send(.returnedToTimeline)
                 },
                 openPaywall: { send(.paywallRequested(.awaitingMeal)) },
@@ -873,7 +877,11 @@ struct TimelineScreen: View {
                 performEdit: performEdit,
                 deleteMeal: {
                     MealScreen.deleteMealAndReturn(
-                        card, now: now, returnToTimeline: { send(.returnedToTimeline) },
+                        card, now: now,
+                        returnToTimeline: {
+                            pressHaptic.fire(.mealDeleted)
+                            send(.returnedToTimeline)
+                        },
                         performEdit: performEdit)
                 },
                 confirmsMealDeletion: false)

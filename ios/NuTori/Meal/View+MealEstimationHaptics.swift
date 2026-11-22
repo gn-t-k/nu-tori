@@ -8,7 +8,7 @@ extension View {
         let progress = MealEstimationProgress(meals: meals)
         return
             haptic(.mealEstimated, trigger: progress) { old, new in
-                new.hasFinished(since: old)
+                new.hasEstimated(since: old)
             }
             .haptic(.mealEstimationFailed, trigger: progress) { old, new in
                 new.hasFailed(since: old)

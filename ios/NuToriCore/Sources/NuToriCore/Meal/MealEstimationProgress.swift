@@ -11,7 +11,7 @@ public struct MealEstimationProgress: Equatable, Sendable {
     }
 
     /// 前に待っていた食事のうち、推定できたものがあるか。いくつ済んでも1回の合図にする
-    public func hasFinished(since earlier: MealEstimationProgress) -> Bool {
+    public func hasEstimated(since earlier: MealEstimationProgress) -> Bool {
         !earlier.waiting.isDisjoint(with: estimated)
     }
 

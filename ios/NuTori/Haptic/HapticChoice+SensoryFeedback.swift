@@ -10,6 +10,8 @@ extension HapticChoice {
         case .warning: .warning
         case .error: .error
         case .selection: .selection
+        case .increase: .increase
+        case .decrease: .decrease
         case .lightImpact: .impact(weight: .light)
         case .mediumImpact: .impact(weight: .medium)
         case .heavyImpact: .impact(weight: .heavy)

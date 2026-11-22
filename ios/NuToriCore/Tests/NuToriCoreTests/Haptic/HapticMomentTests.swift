@@ -28,6 +28,26 @@ struct HapticMomentTests {
 
     @Suite("「動きの見本」で試すだけのとき")
     struct TrialOnly {
+        @Test("写真を選んで記録しても、鳴らさないこと")
+        func photosPicked() {
+            #expect(HapticMoment.photosPicked.standard == .silent)
+        }
+
+        @Test("プリセットを押しても、鳴らさないこと")
+        func presetTapped() {
+            #expect(HapticMoment.presetTapped.standard == .silent)
+        }
+
+        @Test("帯の1日の丸を押しても、鳴らさないこと")
+        func dayTapped() {
+            #expect(HapticMoment.dayTapped.standard == .silent)
+        }
+
+        @Test("食事を削除しても、鳴らさないこと")
+        func mealDeleted() {
+            #expect(HapticMoment.mealDeleted.standard == .silent)
+        }
+
         @Test("体重のシートで記録しても、鳴らさないこと")
         func weightRecordedInSheet() {
             #expect(HapticMoment.weightRecordedInSheet.standard == .silent)

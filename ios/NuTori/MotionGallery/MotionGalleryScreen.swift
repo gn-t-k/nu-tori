@@ -44,11 +44,12 @@ struct MotionGalleryScreen: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            // 枠のない文字のボタンが隣り合うので、間を 24 空ける
+            HStack(spacing: 24) {
                 Text("動きの見本")
                     .font(.headline)
                 Spacer()
-                Button("触覚") {
+                Button("触覚を試す") {
                     showsHapticTrial = true
                 }
                 Button("閉じる", action: onClose)
