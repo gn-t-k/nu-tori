@@ -4,6 +4,7 @@ import SwiftUI
 import UIKit
 
 /// TestFlight で入れた版だけに出す「動きの見本」（#325）。本物のタイムラインに見本の記録を流し、記録の出入りの動き（`TimelineMotion`）と帯の1日の丸の動きを、場面を作り直さずに実機で見る。
+/// 触覚は、鳴らすときごとに型を選び直して試せる（`HapticTrialSheet`）。選んだ型は見本の中だけで効く
 /// 上の場面のボタンで記録を流すほか、下の入力欄（体重・写真・文章）もそのまま使える。記録は画面の中だけに持ち、保存も送信もしない
 struct MotionGalleryScreen: View {
     /// タイムラインの右上のアカウントと課金画面に渡す。見本の記録には使わない
@@ -34,15 +35,27 @@ struct MotionGalleryScreen: View {
             )
             // 見本の中でアカウントを開いたときに、見本の上に見本を重ねない
             .environment(\.isInMotionGallery, true)
+            .environment(\.hapticTrial, hapticTrial)
+        }
+        .sheet(isPresented: $showsHapticTrial) {
+            HapticTrialSheet(trial: $hapticTrial)
         }
     }
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            // 枠のない文字のボタンが隣り合うので、間を 24 空ける
+            HStack(spacing: 24) {
                 Text("動きの見本")
                     .font(.headline)
                 Spacer()
+                Button {
+                    showsHapticTrial = true
+                } label: {
+                    Text("触覚を試す")
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
                 Button("閉じる", action: onClose)
             }
             ScrollView(.horizontal) {
@@ -70,6 +83,10 @@ struct MotionGalleryScreen: View {
         case weightNotice
         /// 写真を撮った食事が入り、推定が終わって料理の名前と kcal が出て、帯の丸が塗られる
         case photoMeal
+        /// 写真を撮った食事が入り、推定できずに終わる
+        case photoMealFailed
+        /// 写真を撮った食事が入り、写真に料理が見つからずに終わる
+        case photoMealWithoutDishes
         /// 文章を送り、「読んでいます…」のあとに文章の食事が出て、推定が終わる
         case sentText
         /// 目標を立てる知らせを出し、少しして目標が決まる
@@ -83,6 +100,8 @@ struct MotionGalleryScreen: View {
             switch self {
             case .weightNotice: "体重の知らせ"
             case .photoMeal: "写真の食事"
+            case .photoMealFailed: "推定できない"
+            case .photoMealWithoutDishes: "料理なし"
             case .sentText: "文章の食事"
             case .goalDecided: "目標が決まる"
             case .reset: "最初から"
@@ -96,6 +115,10 @@ struct MotionGalleryScreen: View {
             records.showWeightNotice(now: clock.now(), timeZone: clock.timeZone())
         case .photoMeal:
             estimate(meal(.captured, photoIds: [UUID()], at: clock.now()))
+        case .photoMealFailed:
+            estimate(meal(.captured, photoIds: [UUID()], at: clock.now()), endingAs: .failed)
+        case .photoMealWithoutDishes:
+            estimate(meal(.captured, photoIds: [UUID()], at: clock.now()), endingAs: .noDishes)
         case .sentText:
             send("昼は親子丼と味噌汁")
         case .goalDecided:
@@ -132,14 +155,24 @@ struct MotionGalleryScreen: View {
         }
     }
 
-    /// まだ送っていない食事のカードを置き、送って推定の途中になり、推定が終わる
+    /// まだ送っていない食事のカードを置き、送って推定の途中になり、推定できて終わる
     private func estimate(_ meal: Meal) {
+        estimate(meal, endingWith: MotionGallerySample.estimated(meal))
+    }
+
+    /// 推定の途中まで同じに進み、料理の無い結果（推定できなかった、料理なし）で終わる
+    private func estimate(_ meal: Meal, endingAs status: MealEstimationStatus) {
+        estimate(
+            meal, endingWith: MealCard(meal: meal, status: status, recordedOnThisDevice: true))
+    }
+
+    private func estimate(_ meal: Meal, endingWith card: MealCard) {
         records.put(MealCard(meal: meal, status: nil, recordedOnThisDevice: true))
         later(seconds: 0.8) {
             records.put(MealCard(meal: meal, status: .estimating, recordedOnThisDevice: true))
         }
         later(seconds: 3) {
-            records.put(MotionGallerySample.estimated(meal))
+            records.put(card)
         }
     }
 
@@ -198,4 +231,7 @@ struct MotionGalleryScreen: View {
     @State private var photos: [UUID: UIImage] = [:]
     /// 「最初から」を押した回数。押す前に始めた変更を当てないための印
     @State private var generation = 0
+    /// 見本の中だけで効く、選び直した触覚の型。見本を閉じると捨てる
+    @State private var hapticTrial = HapticTrial.standard
+    @State private var showsHapticTrial = false
 }

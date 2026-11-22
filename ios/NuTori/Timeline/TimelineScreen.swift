@@ -43,6 +43,7 @@ struct TimelineScreen: View {
                     today: snapshot.today,
                     openableDays: loaded?.dayRange
                 ) { day in
+                    pressHaptic.fire(.dayTapped)
                     send(.dayRingTapped(day))
                 }
                 Divider()
@@ -124,6 +125,7 @@ struct TimelineScreen: View {
                 timeZone: timeZone,
                 capture: capture,
                 onRecord: { write in
+                    pressHaptic.fire(.weightRecordedInSheet)
                     send(.weightRecordedInEntry)
                     Task { await performEdit(.saveWeight(write)) }
                 }
@@ -133,7 +135,7 @@ struct TimelineScreen: View {
             MealCamera(
                 onUse: { original, exif in
                     let sentAt = now()
-                    capturedCount += 1
+                    pressHaptic.fire(.photoUsed)
                     send(.photoTaken)
                     Task {
                         await performEdit(
@@ -147,13 +149,9 @@ struct TimelineScreen: View {
             )
             .ignoresSafeArea()
         }
-        // 「写真を使用」で、カメラを閉じながら触覚で知らせる
-        .sensoryFeedback(.success, trigger: capturedCount)
-        .sensoryFeedback(.success, trigger: noticeRecordedCount)
-        // 待っていた食事の推定が済んだ瞬間に、帯の丸がふくらむのと同時に鳴らす。推定は待ち時間があり、そのあいだ画面から目を離しがちなので、済んだことを手に伝える（#325）
-        .sensoryFeedback(.success, trigger: MealEstimationProgress(meals: snapshot.meals)) {
-            old, new in new.hasFinished(since: old)
-        }
+        // 「写真を使用」は、カメラを閉じながら触覚で知らせる
+        .haptic(pressHaptic)
+        .mealEstimationHaptics(for: snapshot.meals)
         .photosPicker(
             isPresented: isPresenting(.photoPicker),
             selection: $pickedPhotos,
@@ -164,6 +162,7 @@ struct TimelineScreen: View {
         )
         .onChange(of: pickedPhotos) { _, items in
             guard !items.isEmpty else { return }
+            pressHaptic.fire(.photosPicked)
             let pickedAt = now()
             pickedPhotos = []
             showPickedPhotosLoadingWhileRecording(count: items.count) {
@@ -177,10 +176,8 @@ struct TimelineScreen: View {
 
     /// 開いているシートと潜った画面の並び。移り方の規則は NuToriCore の TimelineNavigation が持つ
     @State private var navigation = TimelineNavigation()
-    /// 「写真を使用」を押した回数。触覚を鳴らす合図
-    @State private var capturedCount = 0
-    /// 体重の知らせの中で記録した回数。触覚を鳴らす合図
-    @State private var noticeRecordedCount = 0
+    /// 押した操作（「写真を使用」、体重の記録、「送る」など）の触覚を鳴らす合図
+    @State private var pressHaptic = HapticPulse()
     /// 答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
@@ -531,7 +528,7 @@ struct TimelineScreen: View {
                 timeZone: timeZone,
                 capture: capture,
                 onRecord: { write in
-                    noticeRecordedCount += 1
+                    pressHaptic.fire(.weightRecordedInNotice)
                     Task {
                         await performEdit(.saveWeight(write))
                         // 知らせの中で記録したときは、記録した直後に通知の許可を求める
@@ -671,10 +668,12 @@ struct TimelineScreen: View {
             },
             onWeight: { send(.weightEntryTapped) },
             onPresetTapped: { preset in
+                pressHaptic.fire(.presetTapped)
                 send(.composerTapped)
                 Task { await capture(.presetTapped(preset)) }
             },
             onSendText: { draft in
+                pressHaptic.fire(.textSent)
                 send(.composerTapped)
                 Task { await performEdit(.sendText(draft)) }
             },
@@ -851,9 +850,7 @@ struct TimelineScreen: View {
                 capture: capture,
                 actions: mealActions,
                 performEdit: performEdit,
-                returnToTimeline: {
-                    send(.returnedToTimeline)
-                },
+                returnToTimeline: returnToTimelineAfterMealDeletion,
                 openPaywall: { send(.paywallRequested(.awaitingMeal)) },
                 rejectedLines: snapshot.rejectedLines,
                 confirmsDeletion: false,
@@ -877,11 +874,17 @@ struct TimelineScreen: View {
                 performEdit: performEdit,
                 deleteMeal: {
                     MealScreen.deleteMealAndReturn(
-                        card, now: now, returnToTimeline: { send(.returnedToTimeline) },
+                        card, now: now, returnToTimeline: returnToTimelineAfterMealDeletion,
                         performEdit: performEdit)
                 },
                 confirmsMealDeletion: false)
         }
+    }
+
+    /// 食事の画面と料理の画面で食事を削除したとき。食事が消えるので、タイムラインへ戻す
+    private func returnToTimelineAfterMealDeletion() {
+        pressHaptic.fire(.mealDeleted)
+        send(.returnedToTimeline)
     }
 
     /// 体重の画面。タイムラインの体重のカード、日のまとめの体重の行、目標の画面と週の振り返りの「体重の記録 ›」から潜る

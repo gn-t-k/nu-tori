@@ -2,7 +2,7 @@ import Foundation
 import NuToriCore
 import Testing
 
-@Suite("推定を待っていた食事の推定が済んだか")
+@Suite("推定を待っていた食事の結果が出たか")
 struct MealEstimationProgressTests {
     static func progress(_ meal: Meal, _ status: MealEstimationStatus?) -> MealEstimationProgress {
         MealEstimationProgress(meals: [
@@ -21,16 +21,41 @@ struct MealEstimationProgressTests {
             earlier = MealEstimationProgressTests.progress(meal, .estimating)
         }
 
-        @Test("推定できたら、済んだとすること")
+        @Test("推定できたら、推定できたとすること")
         func estimated() {
             #expect(
-                MealEstimationProgressTests.progress(meal, .estimated).hasFinished(since: earlier))
+                MealEstimationProgressTests.progress(meal, .estimated).hasEstimated(since: earlier))
         }
 
-        @Test("推定できなかったら、済んだとしないこと")
+        @Test("推定できなかったら、推定できたとしないこと")
         func failed() {
             #expect(
-                !MealEstimationProgressTests.progress(meal, .failed).hasFinished(since: earlier))
+                !MealEstimationProgressTests.progress(meal, .failed).hasEstimated(since: earlier))
+        }
+
+        @Test("推定できなかったら、推定できなかったとすること")
+        func failedIsFailure() {
+            #expect(MealEstimationProgressTests.progress(meal, .failed).hasFailed(since: earlier))
+        }
+
+        @Test("料理が見つからなかったら、料理が見つからなかったとすること")
+        func noDishes() {
+            #expect(
+                MealEstimationProgressTests.progress(meal, .noDishes)
+                    .hasFoundNoDishes(since: earlier))
+        }
+
+        @Test("料理が見つからなかったら、推定できなかったとしないこと")
+        func noDishesIsNotFailure() {
+            #expect(
+                !MealEstimationProgressTests.progress(meal, .noDishes).hasFailed(since: earlier))
+        }
+
+        @Test("推定できたら、推定できなかったとも料理が見つからなかったともしないこと")
+        func estimatedIsNeither() {
+            let later = MealEstimationProgressTests.progress(meal, .estimated)
+            #expect(!later.hasFailed(since: earlier))
+            #expect(!later.hasFoundNoDishes(since: earlier))
         }
     }
 
@@ -45,10 +70,10 @@ struct MealEstimationProgressTests {
             earlier = MealEstimationProgressTests.progress(meal, nil)
         }
 
-        @Test("推定できたら、済んだとすること")
+        @Test("推定できたら、推定できたとすること")
         func estimated() {
             #expect(
-                MealEstimationProgressTests.progress(meal, .estimated).hasFinished(since: earlier))
+                MealEstimationProgressTests.progress(meal, .estimated).hasEstimated(since: earlier))
         }
     }
 
@@ -63,10 +88,23 @@ struct MealEstimationProgressTests {
             earlier = MealEstimationProgress(meals: [])
         }
 
-        @Test("推定できた形で届いても、済んだとしないこと")
+        @Test("推定できた形で届いても、推定できたとしないこと")
         func estimated() {
             #expect(
-                !MealEstimationProgressTests.progress(meal, .estimated).hasFinished(since: earlier))
+                !MealEstimationProgressTests.progress(meal, .estimated).hasEstimated(since: earlier)
+            )
+        }
+
+        @Test("推定できなかった形で届いても、推定できなかったとしないこと")
+        func failed() {
+            #expect(!MealEstimationProgressTests.progress(meal, .failed).hasFailed(since: earlier))
+        }
+
+        @Test("料理が見つからなかった形で届いても、料理が見つからなかったとしないこと")
+        func noDishes() {
+            #expect(
+                !MealEstimationProgressTests.progress(meal, .noDishes)
+                    .hasFoundNoDishes(since: earlier))
         }
     }
 
@@ -81,10 +119,11 @@ struct MealEstimationProgressTests {
             earlier = MealEstimationProgressTests.progress(meal, .estimated)
         }
 
-        @Test("推定できたままなら、済んだとしないこと")
+        @Test("推定できたままなら、推定できたとしないこと")
         func staysEstimated() {
             #expect(
-                !MealEstimationProgressTests.progress(meal, .estimated).hasFinished(since: earlier))
+                !MealEstimationProgressTests.progress(meal, .estimated).hasEstimated(since: earlier)
+            )
         }
     }
 }
