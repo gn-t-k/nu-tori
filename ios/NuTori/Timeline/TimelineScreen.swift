@@ -146,7 +146,7 @@ struct TimelineScreen: View {
             )
             .ignoresSafeArea()
         }
-        // 待っていた食事の推定が済んだ瞬間に、帯の丸がふくらむのと同時に鳴らす。体重の記録や撮影のように押した指の先で結果が見える操作では鳴らさない（#325）
+        // 待っていた食事の推定が済んだ瞬間に、帯の丸がふくらむのと同時に鳴らす（DESIGN.md の Motion の「触覚」）
         .sensoryFeedback(.success, trigger: MealEstimationProgress(meals: snapshot.meals)) {
             old, new in new.hasFinished(since: old)
         }

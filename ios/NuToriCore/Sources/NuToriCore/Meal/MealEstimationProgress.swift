@@ -1,13 +1,12 @@
 public import Foundation
 
-/// 推定の結果を待っている食事と、推定できた食事。待っていた食事の推定が済んだ瞬間に触覚で知らせる合図にする（#325）。
-/// 推定は待ち時間があり、そのあいだ画面から目を離しがちなので、済んだことを手に伝える
+/// 推定の結果を待っている食事と、推定できた食事。待っていた食事の推定が済んだ瞬間に触覚で知らせる合図にする（#325、基準は DESIGN.md の Motion の「触覚」）
 public struct MealEstimationProgress: Equatable, Sendable {
     private let waiting: Set<UUID>
     private let estimated: Set<UUID>
 
     public init(meals: [MealCard]) {
-        waiting = Set(meals.filter { Self.isWaiting($0.state) }.map(\.meal.id))
+        waiting = Set(meals.filter(\.state.isAwaitingEstimateNow).map(\.meal.id))
         estimated = Set(meals.filter { $0.state == .estimated }.map(\.meal.id))
     }
 
@@ -15,12 +14,5 @@ public struct MealEstimationProgress: Equatable, Sendable {
     /// 前に持っていなかった食事（開いたときに最初から済んでいた、ほかの端末から済んで届いた）では合図にしない
     public func hasFinished(since earlier: MealEstimationProgress) -> Bool {
         !earlier.waiting.isDisjoint(with: estimated)
-    }
-
-    private static func isWaiting(_ state: MealCardState) -> Bool {
-        switch state {
-        case .notSent, .awaitingPhotos, .estimating: true
-        case .estimated, .noDishes, .deferredToNextDay, .awaitingSubscription, .failed: false
-        }
     }
 }
