@@ -6,10 +6,13 @@ import SwiftUI
 enum TimelineMotion {
     static let animation: Animation = .smooth(duration: 0.35)
 
-    /// 出入りと中身の替わり目。自分の記録（体重の行、食事のカード、送った文章）と答えている体重の知らせの ID、食事の状態、送った文章の応答の1行だけを見る。
+    /// 出入りと中身の替わり目。自分の記録（体重の行、食事のカード、送った文章）の ID、食事の状態、送った文章の応答の1行と、目標が決まったかだけを見る。
+    /// 答えた体重の知らせは体重の行と同時に抜ける（`Timeline` が、体重記録のある日の知らせを並べない）ので、知らせは見ない。
     /// 返事の文字が伸びるたびと、開いたときに届く返事や知らせのカード（体重の知らせ、週の振り返りなど）では変えず、まわりも動かさない
     struct Key: Equatable {
         fileprivate let items: [ItemKey]
+        /// 目標を立てる知らせのカードが、決まったカードに替わって高さが変わるのに、まわりをついていかせる
+        fileprivate let hasGoal: Bool
     }
 
     fileprivate struct ItemKey: Equatable {
@@ -25,23 +28,16 @@ enum TimelineMotion {
 
     /// 新しいほうの2日（今日と、前の日の体重の知らせを置く昨日）だけを見る。
     /// さかのぼって古い日を並べたときに動かさないため、並べる日（`drawnDays`）でなく、終わりの日から数える
-    static func key(of days: [Timeline.Day]) -> Key {
-        Key(items: days.suffix(2).flatMap(itemKeys))
+    static func key(of days: [Timeline.Day], hasGoal: Bool) -> Key {
+        Key(items: days.suffix(2).flatMap(itemKeys), hasGoal: hasGoal)
     }
 
     private static func itemKeys(of day: Timeline.Day) -> [ItemKey] {
-        // 体重の知らせは、答えて抜けるときだけ動かす。答えると、先に体重の行が同じ日に入り、知らせはそのあと別の保存で抜ける。
-        // 体重の行がある日の知らせだけを見れば、知らせが届いたときには変わらず、抜けたときに変わる
-        let isAnswering = day.items.contains {
-            if case .ownRecord(.weight) = role(of: $0) { true } else { false }
-        }
-        return day.items.compactMap { item in
+        day.items.compactMap { item in
             switch role(of: item) {
             case .ownRecord(let record):
                 ItemKey(id: item.id, meals: meals(of: record), replyLine: replyLine(of: record))
-            case .answerableNotice:
-                isAnswering ? ItemKey(id: item.id, meals: [], replyLine: nil) : nil
-            case .still:
+            case .answerableNotice, .still:
                 nil
             }
         }

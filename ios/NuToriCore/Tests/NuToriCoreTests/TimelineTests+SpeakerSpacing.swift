@@ -33,7 +33,11 @@ extension TimelineTests {
                 id: UUID(), body: "ナッツはどうでしょう。", sentTextId: snackQuestion.id, mealIds: [])
             snack = try .fixture(eatenAt: "2026-09-24T15:30:00+09:00", status: .estimated)
             evening = try .manual(72.8, at: "2026-09-24T20:00:00+09:00", in: "Asia/Tokyo")
-            notice = try .missedWeightRecord(issuedAt: "2026-09-24T21:00:00+09:00")
+            // 体重の知らせは体重記録のある日には並ばないので、記録のあいだに置ける目標を立てる知らせで確かめる
+            notice = Notice(
+                id: Notice.id(of: .goalSetup), kind: .goalSetup,
+                issuedAt: try Date("2026-09-24T21:00:00+09:00", strategy: .iso8601),
+                timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")), response: nil)
             night = try .manual(72.6, at: "2026-09-24T22:00:00+09:00", in: "Asia/Tokyo")
             afterWeight = try .fixture("体重が減った", sentAt: "2026-09-24T22:10:00+09:00")
             let replied = SentTextStatus(classification: .conversation, reply: .replied)
@@ -122,7 +126,7 @@ extension TimelineTests {
 
         /// 知らせの項目の ID
         private func itemId(of notice: Notice) -> String {
-            Timeline.Item.notice(NoticeCard(notice: notice, form: .awaitingAnswer)).id
+            Timeline.Item.goalSetupNotice(notice).id
         }
     }
 }

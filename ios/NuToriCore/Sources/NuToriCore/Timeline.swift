@@ -12,11 +12,12 @@ public struct Timeline: Sendable {
         let mealsByEatenDay = Dictionary(
             grouping: input.meals.filter { $0.meal.day >= firstDay }, by: \.meal.day)
         // 答えた体重の知らせは並べない。記録したことは体重の行で分かるため。
+        // 対象の日の体重記録があれば、答える書き込みがまだ届いていなくても並べない。答えは体重記録のあとの別の保存で届くので、待つと体重の行が入ってから知らせが抜け、入れ替わりが2回に見える（#325）。
         // 対象の日付を持たない知らせ（目標を立てる）は、下で出した日に置く
         let noticesByDay = Dictionary(
             grouping: input.notices.compactMap { notice -> (day: CalendarDay, notice: Notice)? in
                 guard notice.response == nil, let targetDay = notice.targetDay,
-                    targetDay >= firstDay
+                    targetDay >= firstDay, weightRecordsByDay[targetDay] == nil
                 else { return nil }
                 return (targetDay, notice)
             },

@@ -54,6 +54,30 @@ extension TimelineTests {
             }
         }
 
+        @Suite("今日の体重を記録して、知らせに答える書き込みがまだ届いていないとき")
+        struct RecordedBeforeAnswer {
+            let record: WeightRecord
+            let timeline: Timeline
+
+            init() throws {
+                record = try .imported(72.4, at: "2026-09-24T09:00:00+09:00", in: "Asia/Tokyo")
+                let notice = try Notice.missedWeightRecord(issuedAt: "2026-09-24T08:15:00+09:00")
+                timeline = Timeline(
+                    input: Timeline.Input(
+                        goalRecords: .fixture(weightRecords: [record]), rejectedLines: [],
+                        meals: [], notices: [notice], undelivered: .none, conversation: .none,
+                        subscriptionNotices: []),
+                    firstDay: PlacingNotices.today,
+                    today: PlacingNotices.today
+                )
+            }
+
+            @Test("知らせを並べず、体重の行だけを置くこと")
+            func placesOnlyWeightRecord() {
+                #expect(timeline.days.last?.items == [.weightRecord(record)])
+            }
+        }
+
         @Suite("今日の知らせに答えたとき")
         struct AnsweredToday {
             let notice: Notice

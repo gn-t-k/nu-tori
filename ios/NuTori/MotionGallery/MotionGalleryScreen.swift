@@ -43,12 +43,6 @@ struct MotionGalleryScreen: View {
                 Text("動きの見本")
                     .font(.headline)
                 Spacer()
-                Picker("丸の強調", selection: $ringEmphasis) {
-                    ForEach(RingEmphasis.allCases) { emphasis in
-                        Text(emphasis.title).tag(emphasis)
-                    }
-                }
-                .pickerStyle(.menu)
                 Button("閉じる", action: onClose)
             }
             ScrollView(.horizontal) {
@@ -204,5 +198,4 @@ struct MotionGalleryScreen: View {
     @State private var photos: [UUID: UIImage] = [:]
     /// 「最初から」を押した回数。押す前に始めた変更を当てないための印
     @State private var generation = 0
-    @AppStorage(RingEmphasis.storageKey) private var ringEmphasis = RingEmphasis.defaultValue
 }

@@ -314,11 +314,6 @@ struct TimelineScreen: View {
                         }
                         .padding()
                         .id(Self.contentId)
-                        // 日の中だけでなく、日の高さとタイムラインの下端もいっしょに動かすよう、中身の全体に掛ける
-                        .animation(
-                            TimelineMotion.animation, value: TimelineMotion.key(of: timeline.days)
-                        )
-                        .animation(TimelineMotion.animation, value: finishedPickedPhotosLoadings)
                     }
                     .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .bottom)
                     // 余白や文を押したら、キーボードを下げる。押せるもの（記録の行、カード、知らせの中の欄）は自分の動きをする
@@ -327,6 +322,14 @@ struct TimelineScreen: View {
                         dismissKeyboard()
                     }
                 }
+                // 日の中だけでなく、中身を下に寄せる余白と、下端に合わせるスクロールの位置もいっしょに動かすよう、ScrollView ごと掛ける。
+                // 中身にだけ掛けると、まわりが先に新しい高さへ跳び、中身があとから動いてピクつく
+                .animation(
+                    TimelineMotion.animation,
+                    value: TimelineMotion.key(
+                        of: timeline.days, hasGoal: snapshot.currentGoal != nil)
+                )
+                .animation(TimelineMotion.animation, value: finishedPickedPhotosLoadings)
                 // 送ったあともキーボードを残すので、下げる手立てはタイムラインを動かすか押すこと。動かしたときに下げるかは見える範囲の指示で決まるので、ScrollView には下げさせない
                 .scrollDismissesKeyboard(.never)
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
