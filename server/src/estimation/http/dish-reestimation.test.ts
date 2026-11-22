@@ -336,6 +336,56 @@ describe("名前を直したときの推定し直し", () => {
     });
   });
 
+  describe("材料に栄養成分表示とそうでないものが混じった料理の名前を直したとき", () => {
+    beforeEach(async () => {
+      // 推定し直しで、親子丼をご飯（成分表）とレトルトカレー（表示）の料理にしてから、もう一度名前を直す
+      provider = mockCreateEstimationProviderOk({
+        identifiedDishes: ({ target }) => ({
+          dishes: [
+            {
+              name: target.type === "dish" ? target.dish.name : "",
+              quantity: 1,
+              unit: "皿",
+              ingredients: [
+                {
+                  name: "ご飯",
+                  quantity: 200,
+                  unit: "g",
+                  edibleGrams: 200,
+                  foodCompositionQuery: "こめ 水稲めし 精白米",
+                  nutritionLabel: undefined,
+                },
+                {
+                  name: "レトルトカレー",
+                  quantity: 1,
+                  unit: "袋",
+                  edibleGrams: 200,
+                  foodCompositionQuery: "カレー",
+                  nutritionLabel: {
+                    basisGrams: 200,
+                    basisGramsEstimated: false,
+                    nutrients: { energy_kcal: 200 },
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      });
+      await rename("カレーライス");
+      await runEstimationAlarm(accountId);
+      await rename("ビーフカレーライス");
+    });
+
+    test("今までどおり推定し直すこと", async () => {
+      expect(
+        (await pullDishChanges())
+          .filter(({ kind }) => kind === "dish_estimation_status")
+          .map(({ status }) => status),
+      ).toEqual(["estimating"]);
+    });
+  });
+
   // 推定を待っている食事には料理を足せないので、料理が対象の予定は食事の写真を待たない
   describe("推定できた食事に料理を足す書き込みを当てたとき", () => {
     let receivedAt: number;

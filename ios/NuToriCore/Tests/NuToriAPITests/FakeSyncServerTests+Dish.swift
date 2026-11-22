@@ -254,7 +254,7 @@ extension FakeSyncServerTests {
             }
 
             @Test("直した名前だけを返し、推定し直さないこと")
-            func keepsLabeledIngredients() async throws {
+            func renamesWithoutReestimating() async throws {
                 let first = try await client.pullSyncChanges(
                     afterSequence: 2, clientState: .fixture())
                 let second = try await client.pullSyncChanges(
