@@ -75,7 +75,12 @@
                     records: [todaysManualWeight], startedOn: today,
                     estimatedDishes: Self.oyakodon(mealId:),
                     answerSentText: Self.answer(sentText:),
-                    goalSetup: goalSetupAnswers(today: today))
+                    goalSetup: goalSetupAnswers(today: today, expenditureSource: .backCalculated))
+            case .goalSetupMissingValues:
+                // 体重の記録が無く逆算できないので、足りない値のページに今の体重の欄も出る
+                return .init(
+                    records: [], startedOn: today,
+                    goalSetup: goalSetupAnswers(today: today, expenditureSource: .formula))
             case .weeklyReview:
                 return weeklyReview(.reviewed)
             case .goalAchieved:
@@ -170,13 +175,19 @@
         /// 逆算できる人の初めての目標の、推定消費カロリー
         nonisolated private static let goalSetupExpenditureKilocalories = 2250
 
-        /// 逆算できる人の初めての目標。開始の日は今日。
-        /// 案の値は期限によらず同じにする（計算はサーバーのテストで確かめる）
-        private func goalSetupAnswers(today: String) -> FakeSyncServer.GoalSetupAnswers {
+        /// 初めての目標。開始の日は今日。逆算できない人（`.formula`）は、下見が逆算できないと答える。
+        /// 案の値は期限と身体データによらず同じにする（計算はサーバーのテストで確かめる）
+        private func goalSetupAnswers(
+            today: String, expenditureSource: GoalProposals.ExpenditureSource
+        ) -> FakeSyncServer.GoalSetupAnswers {
             let clock = clock
             return FakeSyncServer.GoalSetupAnswers(
-                preview: GoalSetupPreview(canBackCalculate: true, canOfferLoseProposals: true),
-                proposals: { plan in Self.goalProposals(plan, today: today) },
+                preview: GoalSetupPreview(
+                    canBackCalculate: expenditureSource == .backCalculated,
+                    canOfferLoseProposals: true),
+                proposals: { plan in
+                    Self.goalProposals(plan, today: today, expenditureSource: expenditureSource)
+                },
                 assessCustomTargetWeight: { _, kilograms in
                     // 体重の傾向から離れるほど、1日の目安を推定消費カロリーから離す
                     let trend = Self.goalSetupWeightTrendKilograms
@@ -195,7 +206,8 @@
         }
 
         nonisolated private static func goalProposals(
-            _ requested: GoalProposalsPlan, today: String
+            _ requested: GoalProposalsPlan, today: String,
+            expenditureSource: GoalProposals.ExpenditureSource
         ) -> GoalProposals {
             let plan: GoalProposals.Plan
             switch requested {
@@ -229,7 +241,7 @@
             }
             return GoalProposals(
                 startedOn: today, expenditureKilocalories: goalSetupExpenditureKilocalories,
-                expenditureSource: .backCalculated,
+                expenditureSource: expenditureSource,
                 startingWeightTrendKilograms: goalSetupWeightTrendKilograms,
                 lastWeightRecordedOn: today, plan: plan)
         }
@@ -546,7 +558,7 @@
                             })),
                 ] + weights,
                 startedOn: day(goalStart),
-                goalSetup: goalSetupAnswers(today: day(today)))
+                goalSetup: goalSetupAnswers(today: day(today), expenditureSource: .backCalculated))
         }
 
         /// 見直したあとの目標の進み具合
