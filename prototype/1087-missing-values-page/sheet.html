@@ -1,0 +1,215 @@
+<title>足りない値のホイールの出し方の試作</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  試作（#1087）。捨てる前提。main には入れない。
+  問い3: 身長・今の体重・生まれた年のホイールをどこに出すか。
+    今 = カードの中の行の下に開く（実装した形） / S = ボトムシート（上に取消と確定） / T = ボトムシート（下に大きな確定）
+  問い4: 確定のボタンの文字。下の切り替えで、どの案にも当てて見比べる。
+-->
+<style>
+  :root {
+    --page: #e9e9ee; --bg: #f2f2f7; --surface: #ffffff; --fill: rgba(118,118,128,.12);
+    --fg: #000000; --fg2: rgba(60,60,67,.6); --fg3: rgba(60,60,67,.3);
+    --primary: #2f7d5b; --sep: rgba(60,60,67,.18); --dim: rgba(0,0,0,.25);
+    --bar: #1c1c1e; --bar-fg: #ffffff;
+    --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root {
+    --page: #0b0b0d; --bg: #000000; --surface: #1c1c1e; --fill: rgba(118,118,128,.24);
+    --fg: #ffffff; --fg2: rgba(235,235,245,.6); --fg3: rgba(235,235,245,.3);
+    --primary: #4cb488; --sep: rgba(84,84,88,.6); --dim: rgba(0,0,0,.5);
+    --bar: #f2f2f7; --bar-fg: #000000; color-scheme: dark } }
+  body { background: var(--page); color: var(--fg); font-family: var(--font); margin: 0;
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) 150px max(16px, env(safe-area-inset-left, 0px)); }
+  .wrap { max-width: 390px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .about { font-size: 13px; line-height: 1.6; color: var(--fg2); margin: 0; }
+  .about b { color: var(--fg); }
+
+  .phone { position: relative; height: 760px; border-radius: 40px; overflow: hidden; background: var(--bg); border: 8px solid var(--bar); }
+  .nav { height: 44px; display: grid; place-items: center; font-weight: 600; font-size: 17px; }
+  .band { position: absolute; top: 44px; left: 0; right: 0; height: 64px; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 0 16px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); border-bottom: .5px solid var(--sep); }
+  .ring { width: 40px; height: 40px; border-radius: 50%; border: 5px solid var(--fill); flex: none; }
+  .band small { font-size: 12px; color: var(--fg2); }
+  .scroll { position: absolute; top: 44px; bottom: 0; left: 0; right: 0; overflow-y: auto; padding: 76px 12px 90px; scroll-behavior: smooth; }
+  .card { background: var(--surface); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .card h2 { font-size: 17px; font-weight: 600; margin: 0; line-height: 1.35; }
+  .dots { display: flex; gap: 4px; } .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--fill); } .dots i.on { background: var(--primary); }
+  .line { display: flex; align-items: center; justify-content: space-between; min-height: 44px; font-size: 17px; cursor: pointer; }
+  .line .v { color: var(--fg); font-variant-numeric: tabular-nums; }
+  .line .v.empty, .line .v.open { color: var(--primary); }
+  .seg { display: inline-flex; background: var(--fill); border-radius: 9px; padding: 2px; }
+  .seg span { padding: 6px 16px; border-radius: 7px; font-size: 14px; cursor: pointer; }
+  .seg span.on { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .act { display: flex; justify-content: space-between; padding: 12px; border-radius: 10px; background: var(--fill); font-size: 15px; cursor: pointer; }
+  .act b { color: var(--primary); }
+  .foot { display: flex; justify-content: space-between; align-items: center; }
+  .back { color: var(--primary); font: inherit; font-size: 17px; background: var(--fill); border: 0; border-radius: 999px; padding: 8px 16px; }
+  .next { font: inherit; font-size: 17px; font-weight: 600; padding: 8px 20px; border-radius: 999px; border: 0; background: var(--primary); color: #fff; }
+  .next:disabled { background: var(--fill); color: var(--fg3); }
+  .composer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 8px 12px 22px; display: flex; gap: 8px; background: var(--bg); border-top: .5px solid var(--sep); }
+  .composer i { width: 36px; height: 36px; border-radius: 50%; background: var(--fill); } .composer i:first-child { background: var(--primary); }
+  .composer span { flex: 1; height: 36px; border-radius: 18px; border: 1px solid var(--sep); }
+
+  .wheels { display: flex; gap: 0; position: relative; }
+  .wheels::after { content: ""; position: absolute; left: 8px; right: 8px; top: 72px; height: 36px; border-radius: 8px; background: var(--fill); pointer-events: none; }
+  .wheel { flex: 1; height: 180px; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none;
+    mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); }
+  .wheel::-webkit-scrollbar { display: none; }
+  .wheel div { height: 36px; display: grid; place-items: center; scroll-snap-align: center; font-size: 21px; font-variant-numeric: tabular-nums; }
+  .wheel .pad { height: 72px; }
+  .confirm-inline { align-self: flex-end; font: inherit; font-size: 17px; color: var(--primary); background: none; border: 0; padding: 10px 0; cursor: pointer; }
+
+  .dimmer { position: absolute; inset: 0; z-index: 6; background: var(--dim); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .dimmer.on { opacity: 1; pointer-events: auto; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 7; background: var(--surface); border-radius: 16px 16px 0 0;
+    padding: 6px 16px 34px; transform: translateY(100%); transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+  .sheet.on { transform: none; }
+  @media (prefers-reduced-motion: reduce) { .sheet, .dimmer { transition: none; } .scroll { scroll-behavior: auto; } }
+  .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--fg3); margin: 0 auto 6px; }
+  .bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 44px; }
+  .bar b { font-size: 17px; }
+  .bar button { font: inherit; font-size: 17px; background: none; border: 0; color: var(--primary); padding: 8px 0; cursor: pointer; }
+  .bar .r { justify-self: end; font-weight: 600; } .bar .l { justify-self: start; }
+  .title { text-align: center; font-size: 17px; font-weight: 600; min-height: 36px; display: grid; place-items: center; }
+  .big { width: 100%; font: inherit; font-size: 17px; font-weight: 600; padding: 14px; border-radius: 14px; border: 0; background: var(--primary); color: #fff; margin-top: 12px; cursor: pointer; }
+
+  .state { font: 12px/1.5 ui-monospace, Menlo, monospace; color: var(--fg2); background: var(--surface); border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; margin: 0; }
+  .switcher { position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .pill { display: flex; align-items: center; gap: 4px; background: var(--bar); color: var(--bar-fg); border-radius: 999px; padding: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.3); }
+  .pill button { font: inherit; font-size: 18px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent; color: inherit; cursor: pointer; }
+  .pill span { font-size: 14px; padding: 0 8px; min-width: 210px; text-align: center; }
+  button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <p class="about" id="about"></p>
+  <div class="phone">
+    <div class="nav">10月5日（月）</div>
+    <div class="band"><div class="ring"></div><div><div>0 kcal</div><small>1日の丸の帯</small></div></div>
+    <div class="scroll" id="scroll"></div>
+    <div class="composer"><i></i><i></i><i></i><span></span></div>
+    <div class="dimmer" id="dimmer"></div>
+    <div class="sheet" id="sheet"></div>
+  </div>
+  <pre class="state" id="state"></pre>
+</div>
+<div class="switcher">
+  <div class="pill"><button id="pv" aria-label="前の案">‹</button><span id="vlabel"></span><button id="nv" aria-label="次の案">›</button></div>
+  <div class="pill"><button id="pl" aria-label="前の文字">‹</button><span id="llabel"></span><button id="nl" aria-label="次の文字">›</button></div>
+</div>
+
+<script>
+const VARIANTS = [
+  ['今', 'カードの中に開く', '実装した形。行を押すと行の下にホイールが開き、もう一度押すと入れずに閉じる。カードが伸びるので、下の行では画面を送って見せる。'],
+  ['S', 'ボトムシート（上に確定）', '行を押すと下からシートが出る。上の左に「キャンセル」、右に確定。シートを下げるか、外を押すか、キャンセルで入れずに閉じる。iOS の標準のシートの形。カードは伸びない。'],
+  ['T', 'ボトムシート（下に大きな確定）', '行を押すと下からシートが出る。上に名前、下に幅いっぱいの確定のボタン。下げるか外を押すと入れずに閉じる。カードは伸びない。'],
+];
+const LABELS = ['完了', '決定', 'OK', '入れる', 'これにする'];
+const FIELDS = {
+  height: { label: '身長', wheels: [range(100, 250).map(x => [x, `${x} cm`])], start: [170], text: v => `${v[0]} cm` },
+  birth: { label: '生まれた年', wheels: [range(1906, 2016).reverse().map(x => [x, `${x}年`])], start: [1990], text: v => `${v[0]}年` },
+  weight: { label: '今の体重', wheels: [range(20, 300).map(x => [x, `${x}`]), range(0, 9).map(x => [x, `.${x} kg`])], start: [65, 0], text: v => `${v[0]}.${v[1]} kg` },
+};
+const ORDER = ['height', 'birth', 'sex', 'activity', 'weight'];
+const params = new URLSearchParams(location.search);
+const S = { v: Math.max(0, VARIANTS.findIndex(x => x[0] === params.get('variant'))), l: Math.max(0, LABELS.indexOf(params.get('label'))),
+  values: {}, sex: null, activity: null, open: null, draft: null };
+const $ = id => document.getElementById(id);
+function range(a, b) { const r = []; for (let x = a; x <= b; x++) r.push(x); return r; }
+const variant = () => VARIANTS[S.v][0];
+const label = () => LABELS[S.l];
+
+function wheelsHtml(f) {
+  const d = FIELDS[f];
+  return `<div class="wheels">${d.wheels.map((items, i) => `<div class="wheel" data-i="${i}"><div class="pad"></div>${items.map(([k, t]) => `<div data-k="${k}">${t}</div>`).join('')}<div class="pad"></div></div>`).join('')}</div>`;
+}
+function row(f) {
+  const d = FIELDS[f], v = S.values[f], open = S.open === f;
+  const text = v ? d.text(v) : '選ぶ';
+  let html = `<div class="line" data-open="${f}"><span>${d.label}</span><span class="v ${v ? '' : 'empty'} ${open ? 'open' : ''}">${text}</span></div>`;
+  if (open && variant() === '今') html += wheelsHtml(f) + `<button class="confirm-inline" data-confirm>${label()}</button>`;
+  return `<div id="row-${f}" style="display:flex;flex-direction:column">${html}</div>`;
+}
+function card() {
+  const complete = ['height', 'birth', 'weight'].every(f => S.values[f]) && S.sex && S.activity;
+  const parts = ORDER.map(f => {
+    if (f === 'sex') return `<div class="line" style="cursor:default"><span>性別</span><span class="seg">${['男性', '女性'].map(x => `<span data-sex="${x}" class="${S.sex === x ? 'on' : ''}">${x}</span>`).join('')}</span></div>`;
+    if (f === 'activity') return `<div>活動量</div>${['ほぼ座り仕事', '立ち仕事が多い', 'よく動く'].map(x => `<div class="act" data-act="${x}">${x}${S.activity === x ? '<b>✓</b>' : ''}</div>`).join('')}`;
+    return row(f);
+  }).join('');
+  return `<div class="card"><div class="dots"><i></i><i></i><i class="on"></i><i></i></div>
+    <h2>1日の目安の計算に使う値を入れてください</h2>${parts}
+    <div class="foot"><button class="back">戻る</button><button class="next" ${complete ? '' : 'disabled'}>次へ</button></div></div>`;
+}
+function sheetHtml() {
+  const f = S.open, d = FIELDS[f];
+  if (variant() === 'S') return `<div class="grab"></div><div class="bar"><button class="l" data-cancel>キャンセル</button><b>${d.label}</b><button class="r" data-confirm>${label()}</button></div>${wheelsHtml(f)}`;
+  return `<div class="grab"></div><div class="title">${d.label}</div>${wheelsHtml(f)}<button class="big" data-confirm>${label()}</button>`;
+}
+function positionWheels(root) {
+  root.querySelectorAll('.wheel').forEach(w => {
+    const i = Number(w.dataset.i), k = S.draft[i];
+    const el = w.querySelector(`[data-k="${k}"]`);
+    w.style.scrollBehavior = 'auto'; w.scrollTop = el.offsetTop - 72; w.style.scrollBehavior = '';
+    w.addEventListener('scroll', () => {
+      const idx = Math.round(w.scrollTop / 36); const items = w.querySelectorAll('[data-k]');
+      if (items[idx]) { S.draft[i] = Number(items[idx].dataset.k); clampWeight(root); showState(); }
+    }, { passive: true });
+  });
+}
+function clampWeight(root) {
+  // 300 kg のときは小数を 0 にする（実装と同じ）
+  if (S.open === 'weight' && S.draft[0] === 300 && S.draft[1] !== 0) {
+    S.draft[1] = 0; const w = root.querySelector('.wheel[data-i="1"]'); if (w) w.scrollTop = 0;
+  }
+}
+function render() {
+  const [k, name, about] = VARIANTS[S.v];
+  $('vlabel').textContent = `案 ${k}: ${name}`;
+  $('llabel').textContent = `確定の文字: ${label()}`;
+  $('about').innerHTML = `<b>問い3（ホイールの出し方）</b> ${about}<br><b>問い4（確定の文字）</b> 下の2本目のバーで替える。`;
+  const top = $('scroll').scrollTop;
+  $('scroll').innerHTML = card();
+  $('scroll').scrollTop = top;
+  const sheetOn = S.open && variant() !== '今';
+  $('sheet').classList.toggle('on', !!sheetOn); $('dimmer').classList.toggle('on', !!sheetOn);
+  if (sheetOn) { $('sheet').innerHTML = sheetHtml(); positionWheels($('sheet')); }
+  if (S.open && variant() === '今') positionWheels($(`row-${S.open}`));
+  const url = new URL(location); url.searchParams.set('variant', k); url.searchParams.set('label', label()); history.replaceState(null, '', url);
+  showState();
+}
+function showState() {
+  $('state').textContent = JSON.stringify({ 案: variant(), 確定の文字: label(), 開いている: S.open, 回している位置: S.draft, 入れた値: S.values, 性別: S.sex, 活動量: S.activity }, null, 1);
+}
+function openField(f) {
+  if (S.open === f && variant() === '今') { S.open = null; render(); return; }
+  S.open = f; S.draft = (S.values[f] || FIELDS[f].start).slice(); render();
+  if (variant() === '今') {
+    const el = $(`row-${f}`), sc = $('scroll');
+    const bottom = el.offsetTop + el.offsetHeight - sc.clientHeight + 90, topLimit = el.offsetTop - 76;
+    if (sc.scrollTop < bottom) sc.scrollTop = Math.min(bottom, topLimit);
+    else if (sc.scrollTop > topLimit) sc.scrollTop = topLimit;
+  }
+}
+function close(confirm) { if (confirm) S.values[S.open] = S.draft.slice(); S.open = null; S.draft = null; render(); }
+document.addEventListener('click', e => {
+  const t = e.target;
+  const o = t.closest('[data-open]'); if (o) return openField(o.dataset.open);
+  if (t.closest('[data-confirm]')) return close(true);
+  if (t.closest('[data-cancel]') || t === $('dimmer')) return close(false);
+  if (t.dataset.sex) { S.sex = t.dataset.sex; return render(); }
+  const a = t.closest('[data-act]'); if (a) { S.activity = a.dataset.act; return render(); }
+});
+// シートを下へ引くと閉じる（つまみのあたりを下へドラッグ）
+let drag = null;
+$('sheet').addEventListener('pointerdown', e => { if (!e.target.closest('.wheel')) drag = { y: e.clientY }; });
+addEventListener('pointermove', e => { if (drag) $('sheet').style.transform = `translateY(${Math.max(0, e.clientY - drag.y)}px)`; });
+addEventListener('pointerup', e => { if (!drag) return; const dy = e.clientY - drag.y; drag = null; $('sheet').style.transform = ''; if (dy > 80) close(false); });
+$('pv').onclick = () => { S.v = (S.v + VARIANTS.length - 1) % VARIANTS.length; S.open = null; render(); };
+$('nv').onclick = () => { S.v = (S.v + 1) % VARIANTS.length; S.open = null; render(); };
+$('pl').onclick = () => { S.l = (S.l + LABELS.length - 1) % LABELS.length; render(); };
+$('nl').onclick = () => { S.l = (S.l + 1) % LABELS.length; render(); };
+render();
+</script>
