@@ -11,8 +11,9 @@ struct GoalSetupWheelRow: View {
     var body: some View {
         Button(action: open) {
             GoalSetupLabeledRow(label) {
+                // 押してシートで直せる値なので、入れたあとも Primary で描く（DESIGN.md の list-row-editable-value）
                 Text(value ?? "選ぶ")
-                    .foregroundStyle(value == nil ? Color.accentColor : .primary)
+                    .foregroundStyle(Color.accentColor)
                     .monospacedDigit()
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)

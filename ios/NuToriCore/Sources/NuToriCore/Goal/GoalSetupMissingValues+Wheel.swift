@@ -12,6 +12,21 @@ extension GoalSetupMissingValues {
         max(0, weightTenths.lowerBound - whole * 10)...min(9, weightTenths.upperBound - whole * 10)
     }
 
+    /// 今の体重の整数と小数の位を、0.1 kg を1とした値にまとめる。整数を範囲の端に回して小数の位が並べる値の外になったら、端に寄せる
+    public static func weightTenths(whole: Int, tenth: Int) -> Int {
+        let tenths = weightTenthChoices(whole: whole)
+        return whole * 10 + min(max(tenth, tenths.lowerBound), tenths.upperBound)
+    }
+
+    /// kg を、0.1 kg を1とした値にする。ホイールの整数は `/ 10`、小数の位は `% 10`
+    public static func weightTenths(kilograms: Double) -> Int {
+        Int((kilograms * 10).rounded())
+    }
+
+    public static func weightKilograms(tenths: Int) -> Double {
+        Double(tenths) / 10
+    }
+
     /// 身長のホイールを開いたときの位置。開いただけでは入れない
     public static let initialHeightCentimeters = 170
     /// 今の体重のホイールを開いたときの位置

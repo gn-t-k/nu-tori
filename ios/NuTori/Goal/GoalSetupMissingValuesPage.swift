@@ -11,14 +11,8 @@ struct GoalSetupMissingValuesPage: View {
     let content: GoalSetupFlowContent
     let actions: GoalSetupFlowActions
 
-    /// 出しているホイールのシート
-    @State private var openWheel: WheelField?
-    /// 回しているあいだのホイールの位置。回すと選択が変わるので、「完了」まで流れに渡さない。
-    /// 開くときに入れた値か開いたときの位置に合わせる。シートは合わせる前の値で描かれることがあるので、初めから並べる値の中に置く
-    @State private var heightDraft = GoalSetupMissingValues.initialHeightCentimeters
-    @State private var weightWholeDraft = Int(GoalSetupMissingValues.initialWeightKilograms)
-    @State private var weightTenthDraft = 0
-    @State private var birthYearDraft = 0
+    /// 出しているホイールのシートと、回しているあいだの位置。回すと選択が変わるので、「完了」まで流れに渡さない
+    @State private var openWheel: OpenWheel?
 
     var body: some View {
         if let values = content.missingValues {
@@ -42,13 +36,21 @@ struct GoalSetupMissingValuesPage: View {
         }
     }
 
-    /// ホイールで選ぶ値。シートを出す印にする
-    private enum WheelField: Identifiable {
-        case height
-        case birthYear
-        case currentWeight
+    /// 出しているホイールのシートと、回しているあいだの位置
+    private enum OpenWheel: Identifiable {
+        case height(centimeters: Int)
+        case birthYear(Int)
+        /// 0.1 kg を1とした値
+        case currentWeight(tenths: Int)
 
-        var id: Self { self }
+        /// 回しても同じシートのまま描き直すよう、どの値のホイールかだけで見分ける
+        var id: GoalSetupMissingValues.Field {
+            switch self {
+            case .height: .height
+            case .birthYear: .birthYear
+            case .currentWeight: .currentWeight
+            }
+        }
     }
 
     @ViewBuilder
@@ -92,10 +94,9 @@ struct GoalSetupMissingValuesPage: View {
             value: entry.heightCentimeters.map { NutritionText.quantity($0, unit: "cm") },
             identifier: "goal-setup-height"
         ) {
-            heightDraft =
-                entry.heightCentimeters.map { Int($0.rounded()) }
-                ?? GoalSetupMissingValues.initialHeightCentimeters
-            openWheel = .height
+            openWheel = .height(
+                centimeters: entry.heightCentimeters.map { Int($0.rounded()) }
+                    ?? GoalSetupMissingValues.initialHeightCentimeters)
         }
     }
 
@@ -104,8 +105,7 @@ struct GoalSetupMissingValuesPage: View {
             label: "生まれた年", value: values.entry.birthYear.map(Self.yearText),
             identifier: "goal-setup-birth-year"
         ) {
-            birthYearDraft = values.entry.birthYear ?? values.initialBirthYear
-            openWheel = .birthYear
+            openWheel = .birthYear(values.entry.birthYear ?? values.initialBirthYear)
         }
     }
 
@@ -114,36 +114,40 @@ struct GoalSetupMissingValuesPage: View {
             label: "今の体重", value: entry.currentWeightKilograms.map(WeightAmountText.kilograms),
             identifier: "goal-setup-current-weight"
         ) {
-            let kilograms =
-                entry.currentWeightKilograms ?? GoalSetupMissingValues.initialWeightKilograms
-            let tenths = Int((kilograms * 10).rounded())
-            weightWholeDraft = tenths / 10
-            weightTenthDraft = tenths % 10
-            openWheel = .currentWeight
+            openWheel = .currentWeight(
+                tenths: GoalSetupMissingValues.weightTenths(
+                    kilograms: entry.currentWeightKilograms
+                        ?? GoalSetupMissingValues.initialWeightKilograms))
         }
     }
 
     @ViewBuilder
-    private func wheelSheet(_ field: WheelField, values: GoalSetupMissingValues) -> some View {
+    private func wheelSheet(_ wheel: OpenWheel, values: GoalSetupMissingValues) -> some View {
         let entry = values.entry
-        switch field {
-        case .height:
+        switch wheel {
+        case .height(let centimeters):
             GoalSetupWheelSheet(
                 title: "身長",
-                confirm: { enter(entry.with(heightCentimeters: Double(heightDraft))) },
+                confirm: { enter(entry.with(heightCentimeters: Double(centimeters))) },
                 wheels: {
-                    wheel("身長", selection: $heightDraft, identifier: "goal-setup-height-wheel") {
+                    GoalSetupWheel(
+                        "身長",
+                        selection: Binding(
+                            get: { centimeters }, set: { openWheel = .height(centimeters: $0) }),
+                        identifier: "goal-setup-height-wheel"
+                    ) {
                         ForEach(GoalSetupMissingValues.heightChoices, id: \.self) { height in
                             Text(verbatim: "\(height) cm").tag(height)
                         }
                     }
                 })
-        case .birthYear:
+        case .birthYear(let year):
             GoalSetupWheelSheet(
-                title: "生まれた年", confirm: { enter(entry.with(birthYear: birthYearDraft)) },
+                title: "生まれた年", confirm: { enter(entry.with(birthYear: year)) },
                 wheels: {
-                    wheel(
-                        "生まれた年", selection: $birthYearDraft,
+                    GoalSetupWheel(
+                        "生まれた年",
+                        selection: Binding(get: { year }, set: { openWheel = .birthYear($0) }),
                         identifier: "goal-setup-birth-year-wheel"
                     ) {
                         // 古い年を下、新しい年を上に並べる
@@ -152,54 +156,51 @@ struct GoalSetupMissingValuesPage: View {
                         }
                     }
                 })
-        case .currentWeight:
+        case .currentWeight(let tenths):
             GoalSetupWheelSheet(
                 title: "今の体重",
                 confirm: {
-                    let tenths = weightWholeDraft * 10 + weightTenthDraft
-                    enter(entry.with(currentWeightKilograms: Double(tenths) / 10))
+                    enter(
+                        entry.with(
+                            currentWeightKilograms: GoalSetupMissingValues.weightKilograms(
+                                tenths: tenths)))
                 },
                 wheels: {
-                    wheel(
-                        "今の体重の整数", selection: $weightWholeDraft,
+                    GoalSetupWheel(
+                        "今の体重の整数",
+                        selection: Binding(
+                            get: { tenths / 10 },
+                            set: { whole in
+                                openWheel = .currentWeight(
+                                    tenths: GoalSetupMissingValues.weightTenths(
+                                        whole: whole, tenth: tenths % 10))
+                            }),
                         identifier: "goal-setup-current-weight-whole-wheel"
                     ) {
                         ForEach(GoalSetupMissingValues.weightWholeChoices, id: \.self) { whole in
                             Text(verbatim: "\(whole)").tag(whole)
                         }
                     }
-                    wheel(
-                        "今の体重の小数", selection: $weightTenthDraft,
+                    GoalSetupWheel(
+                        "今の体重の小数",
+                        selection: Binding(
+                            get: { tenths % 10 },
+                            set: { tenth in
+                                openWheel = .currentWeight(
+                                    tenths: GoalSetupMissingValues.weightTenths(
+                                        whole: tenths / 10, tenth: tenth))
+                            }),
                         identifier: "goal-setup-current-weight-tenth-wheel"
                     ) {
                         ForEach(
-                            GoalSetupMissingValues.weightTenthChoices(whole: weightWholeDraft),
+                            GoalSetupMissingValues.weightTenthChoices(whole: tenths / 10),
                             id: \.self
                         ) { tenth in
                             Text(verbatim: ".\(tenth) kg").tag(tenth)
                         }
                     }
-                    .onChange(of: weightWholeDraft) { _, whole in
-                        // 300 kg に回すと、小数の位は 0 だけになる
-                        let tenths = GoalSetupMissingValues.weightTenthChoices(whole: whole)
-                        weightTenthDraft = min(
-                            max(weightTenthDraft, tenths.lowerBound), tenths.upperBound)
-                    }
                 })
         }
-    }
-
-    private func wheel<Choices: View>(
-        _ label: String, selection: Binding<Int>, identifier: String,
-        @ViewBuilder choices: () -> Choices
-    ) -> some View {
-        Picker(label, selection: selection, content: choices)
-            .pickerStyle(.wheel)
-            .labelsHidden()
-            // 2本並べたとき、互いの押せる範囲が重ならないよう、幅を分けて切る
-            .frame(maxWidth: .infinity)
-            .clipped()
-            .accessibilityIdentifier(identifier)
     }
 
     /// 年は桁区切りを付けない
