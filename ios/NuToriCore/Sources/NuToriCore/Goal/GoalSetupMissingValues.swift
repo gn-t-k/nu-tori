@@ -48,7 +48,8 @@ public struct GoalSetupMissingValues: Sendable, Equatable {
         self.entry = entry
     }
 
-    func entering(_ entry: Entry) -> GoalSetupMissingValues {
+    /// 入れた値を差し替えたもの。尋ねる値と選べる年は変えない
+    public func entering(_ entry: Entry) -> GoalSetupMissingValues {
         GoalSetupMissingValues(replacing: self, entry: entry)
     }
 

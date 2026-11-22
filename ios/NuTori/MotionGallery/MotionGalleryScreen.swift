@@ -1,4 +1,5 @@
 import Foundation
+import NuToriAPI
 import NuToriCore
 import SwiftUI
 import UIKit
@@ -29,7 +30,7 @@ struct MotionGalleryScreen: View {
                 accountActions: accountActions,
                 paywallActions: paywallActions,
                 mealActions: mealActions,
-                goalSetupFlow: .notStarted,
+                goalSetupFlow: goalSetupFlow,
                 goalScreenGoalSetupFlow: .notStarted,
                 openGoalSetupFlow: { _, _ in }
             )
@@ -91,6 +92,8 @@ struct MotionGalleryScreen: View {
         case sentText
         /// 目標を立てる知らせを出し、少しして目標が決まる
         case goalDecided
+        /// 目標を立てる知らせを出し、足りない値のページまで広げる。身長・今の体重・生まれた年はホイールのシートで選ぶ。「次へ」で目標が決まる
+        case missingValues
         /// 今日の記録をすべて消して、昨日までの記録だけにする
         case reset
 
@@ -104,6 +107,7 @@ struct MotionGalleryScreen: View {
             case .photoMealWithoutDishes: "料理なし"
             case .sentText: "文章の食事"
             case .goalDecided: "目標が決まる"
+            case .missingValues: "足りない値"
             case .reset: "最初から"
             }
         }
@@ -122,12 +126,21 @@ struct MotionGalleryScreen: View {
         case .sentText:
             send("昼は親子丼と味噌汁")
         case .goalDecided:
+            missingValues = nil
             records.showGoalSetupNotice(now: clock.now(), timeZone: clock.timeZone())
             later(seconds: 1.5) {
                 records.decideGoal(at: clock.now(), timeZone: clock.timeZone())
             }
+        case .missingValues:
+            records.showGoalSetupNotice(now: clock.now(), timeZone: clock.timeZone())
+            // ヘルスケアから何も読めず、体重の記録も無い人。5つの欄がすべて出る
+            missingValues = GoalSetupMissingValues(
+                health: HealthBodyData(heightCentimeters: nil, age: nil, sex: nil, dailySteps: [:]),
+                asksCurrentWeight: true,
+                today: CalendarDay(containing: clock.now(), in: clock.timeZone()))
         case .reset:
             generation += 1
+            missingValues = nil
             photos = [:]
             records = MotionGalleryRecords(now: clock.now(), timeZone: clock.timeZone())
         }
@@ -213,6 +226,33 @@ struct MotionGalleryScreen: View {
         }
     }
 
+    /// 「足りない値」の場面で、目標を立てる知らせのカードを足りない値のページまで広げる。ほかのページへは進まない
+    private var goalSetupFlow: GoalSetupNoticeCard.Flow {
+        guard let missingValues else { return .notStarted }
+        let today = CalendarDay(containing: clock.now(), in: clock.timeZone())
+        let deadlineChoices = GoalDeadlineChoices(startDay: today)
+        let content = GoalSetupFlowContent(
+            page: .missingValues, progress: .init(count: 4, index: 2), direction: .lose,
+            deadline: deadlineChoices.initialDay, deadlineChoices: deadlineChoices,
+            missingValues: missingValues, proposals: nil, selectedPace: nil,
+            customTargetWeight: nil, decision: .idle, unreachableRequest: nil,
+            showsRecalculated: false, usedValues: nil, pastWeightRecordDay: nil)
+        let close = { self.missingValues = nil }
+        let actions = GoalSetupFlowActions(
+            close: close, chooseDirection: { _ in }, chooseDeadline: { _ in },
+            proceedFromDeadline: {},
+            enterMissingValues: { entry in self.missingValues = self.missingValues?.entering(entry)
+            },
+            proceedFromMissingValues: {
+                close()
+                records.decideGoal(at: clock.now(), timeZone: clock.timeZone())
+            },
+            goBack: close, reviseMissingValues: {}, retry: {}, selectPace: { _ in },
+            openCustomTargetWeight: {}, setCustomTargetWeight: { _ in },
+            chooseMaintainInstead: {}, decide: {})
+        return .expanded(content, actions)
+    }
+
     /// 写真は撮った・選んだものを出し、場面のボタンで入れた食事は無地の見本にする
     private var mealActions: MealActions {
         MealActions(
@@ -234,4 +274,6 @@ struct MotionGalleryScreen: View {
     /// 見本の中だけで効く、選び直した触覚の型。見本を閉じると捨てる
     @State private var hapticTrial = HapticTrial.standard
     @State private var showsHapticTrial = false
+    /// 「足りない値」の場面で入れている値。場面を始めていなければ nil
+    @State private var missingValues: GoalSetupMissingValues?
 }
