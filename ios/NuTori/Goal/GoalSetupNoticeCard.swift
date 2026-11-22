@@ -13,7 +13,7 @@ struct GoalSetupNoticeCard: View {
     let open: (GoalSetupObservation.Entry) -> Void
 
     var body: some View {
-        // Group に付けた修飾子は中の形ごとに付き、形が替わると新しい形の修飾子が最初の値から始まって、弾みが起きない。入れ物1つに付ける
+        // Group に付けた修飾子は中の形ごとに付き、形が替わると新しい形の修飾子が最初の値から始まって、弾みも触覚も起きない。入れ物1つに付ける
         ZStack {
             if let currentGoal {
                 GoalDecidedCard(goal: currentGoal.goal, dailyGuide: currentGoal.dailyGuide)
@@ -27,6 +27,10 @@ struct GoalSetupNoticeCard: View {
             }
         }
         .animation(animation(to: form), value: form)
+        // 目標が決まった瞬間に、決まったカードが入るのと同時に鳴らす。開いたときにもう決まっていれば、形が変わらないので鳴らない
+        .sensoryFeedback(.success, trigger: form) { old, new in
+            old != .decided && new == .decided
+        }
     }
 
     /// 目標の設定の流れの形。外側が流れ（`GoalSetupFlow`）から読んで渡す

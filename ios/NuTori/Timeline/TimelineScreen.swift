@@ -133,6 +133,7 @@ struct TimelineScreen: View {
             MealCamera(
                 onUse: { original, exif in
                     let sentAt = now()
+                    capturedCount += 1
                     send(.photoTaken)
                     Task {
                         await performEdit(
@@ -146,7 +147,10 @@ struct TimelineScreen: View {
             )
             .ignoresSafeArea()
         }
-        // 待っていた食事の推定が済んだ瞬間に、帯の丸がふくらむのと同時に鳴らす（DESIGN.md の Motion の「触覚」）
+        // 「写真を使用」で、カメラを閉じながら触覚で知らせる
+        .sensoryFeedback(.success, trigger: capturedCount)
+        .sensoryFeedback(.success, trigger: noticeRecordedCount)
+        // 待っていた食事の推定が済んだ瞬間に、帯の丸がふくらむのと同時に鳴らす。推定は待ち時間があり、そのあいだ画面から目を離しがちなので、済んだことを手に伝える（#325）
         .sensoryFeedback(.success, trigger: MealEstimationProgress(meals: snapshot.meals)) {
             old, new in new.hasFinished(since: old)
         }
@@ -173,6 +177,10 @@ struct TimelineScreen: View {
 
     /// 開いているシートと潜った画面の並び。移り方の規則は NuToriCore の TimelineNavigation が持つ
     @State private var navigation = TimelineNavigation()
+    /// 「写真を使用」を押した回数。触覚を鳴らす合図
+    @State private var capturedCount = 0
+    /// 体重の知らせの中で記録した回数。触覚を鳴らす合図
+    @State private var noticeRecordedCount = 0
     /// 答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
@@ -523,6 +531,7 @@ struct TimelineScreen: View {
                 timeZone: timeZone,
                 capture: capture,
                 onRecord: { write in
+                    noticeRecordedCount += 1
                     Task {
                         await performEdit(.saveWeight(write))
                         // 知らせの中で記録したときは、記録した直後に通知の許可を求める

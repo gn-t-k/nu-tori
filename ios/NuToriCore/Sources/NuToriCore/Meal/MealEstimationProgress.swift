@@ -1,6 +1,6 @@
 public import Foundation
 
-/// 推定の結果を待っている食事と、推定できた食事。待っていた食事の推定が済んだ瞬間に触覚で知らせる合図にする（#325、基準は DESIGN.md の Motion の「触覚」）
+/// 推定の結果を待っている食事と、推定できた食事。待っていた食事の推定が済んだ瞬間に触覚で知らせる合図にする（#325）
 public struct MealEstimationProgress: Equatable, Sendable {
     private let waiting: Set<UUID>
     private let estimated: Set<UUID>
