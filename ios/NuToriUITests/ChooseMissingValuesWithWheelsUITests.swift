@@ -2,8 +2,8 @@ import XCTest
 
 /// 逆算できず、ヘルスケアから身長・生まれた年・性別を読めず、体重の記録も無い人が、目標を立てる知らせから向き・期限と進み、足りない値のページで身長・今の体重・生まれた年をホイールで選ぶ。
 ///
-/// 身長と今の体重の並べる値と、生まれた年の開いたときの位置は NuToriCore の単体テスト（GoalSetupMissingValuesTests）が見る。
-/// ここで見るのは、行を押すとホイールのシートが出て、「完了」で入って閉じ、「キャンセル」で入れずに閉じる移り変わりと、テンキーが出ないこと
+/// 身長と今の体重の並べる値と、生まれた年の開いたときの位置が選べる年に無いときは、NuToriCore の単体テスト（GoalSetupMissingValuesTests）が見る。
+/// ここで見るのは、行を押すとホイールのシートが出て、「完了」で入って閉じ、「キャンセル」で入れずに閉じる移り変わり、テンキーが出ないこと、開いたときの位置（170 cm、65.0 kg、1990年）、生まれた年のホイールの両端と回した年が入ること
 @MainActor
 final class ChooseMissingValuesWithWheelsUITests: XCTestCase {
     private var app = XCUIApplication()

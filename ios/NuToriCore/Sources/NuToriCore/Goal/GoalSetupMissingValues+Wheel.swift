@@ -5,11 +5,13 @@ extension GoalSetupMissingValues {
 
     /// 今の体重の整数のホイールに並べる値（kg）
     public static let weightWholeChoices =
-        weightTenths.lowerBound / 10...weightTenths.upperBound / 10
+        acceptedWeightTenths.lowerBound / 10...acceptedWeightTenths.upperBound / 10
 
     /// 今の体重の小数のホイールに並べる値（0.1 kg の位）。範囲の端の整数では、範囲に入る位だけにする
     public static func weightTenthChoices(whole: Int) -> ClosedRange<Int> {
-        max(0, weightTenths.lowerBound - whole * 10)...min(9, weightTenths.upperBound - whole * 10)
+        max(
+            0, acceptedWeightTenths.lowerBound - whole * 10)...min(
+                9, acceptedWeightTenths.upperBound - whole * 10)
     }
 
     /// 今の体重の整数と小数の位を、0.1 kg を1とした値にまとめる。整数を範囲の端に回して小数の位が並べる値の外になったら、端に寄せる
@@ -18,13 +20,23 @@ extension GoalSetupMissingValues {
         return whole * 10 + min(max(tenth, tenths.lowerBound), tenths.upperBound)
     }
 
-    /// kg を、0.1 kg を1とした値にする。ホイールの整数は `/ 10`、小数の位は `% 10`
+    /// kg を、0.1 kg を1とした値にする
     public static func weightTenths(kilograms: Double) -> Int {
         Int((kilograms * 10).rounded())
     }
 
     public static func weightKilograms(tenths: Int) -> Double {
         Double(tenths) / 10
+    }
+
+    /// 0.1 kg を1とした値の、整数のホイールの位置
+    public static func weightWhole(tenths: Int) -> Int {
+        tenths / 10
+    }
+
+    /// 0.1 kg を1とした値の、小数のホイールの位置
+    public static func weightTenth(tenths: Int) -> Int {
+        tenths % 10
     }
 
     /// 身長のホイールを開いたときの位置。開いただけでは入れない
@@ -38,7 +50,7 @@ extension GoalSetupMissingValues {
     }
 
     /// 受け付ける今の体重を、0.1 kg を1とした整数で
-    private static let weightTenths = wholeNumbers(
+    private static let acceptedWeightTenths = wholeNumbers(
         in: AcceptedRange.weightKilograms.bounds, scale: 10)
 
     private static func wholeNumbers(in bounds: AcceptedBounds, scale: Double = 1)

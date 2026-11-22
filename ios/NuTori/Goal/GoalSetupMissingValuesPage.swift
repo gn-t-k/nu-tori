@@ -169,11 +169,12 @@ struct GoalSetupMissingValuesPage: View {
                     GoalSetupWheel(
                         "今の体重の整数",
                         selection: Binding(
-                            get: { tenths / 10 },
+                            get: { GoalSetupMissingValues.weightWhole(tenths: tenths) },
                             set: { whole in
                                 openWheel = .currentWeight(
                                     tenths: GoalSetupMissingValues.weightTenths(
-                                        whole: whole, tenth: tenths % 10))
+                                        whole: whole,
+                                        tenth: GoalSetupMissingValues.weightTenth(tenths: tenths)))
                             }),
                         identifier: "goal-setup-current-weight-whole-wheel"
                     ) {
@@ -184,16 +185,18 @@ struct GoalSetupMissingValuesPage: View {
                     GoalSetupWheel(
                         "今の体重の小数",
                         selection: Binding(
-                            get: { tenths % 10 },
+                            get: { GoalSetupMissingValues.weightTenth(tenths: tenths) },
                             set: { tenth in
                                 openWheel = .currentWeight(
                                     tenths: GoalSetupMissingValues.weightTenths(
-                                        whole: tenths / 10, tenth: tenth))
+                                        whole: GoalSetupMissingValues.weightWhole(tenths: tenths),
+                                        tenth: tenth))
                             }),
                         identifier: "goal-setup-current-weight-tenth-wheel"
                     ) {
                         ForEach(
-                            GoalSetupMissingValues.weightTenthChoices(whole: tenths / 10),
+                            GoalSetupMissingValues.weightTenthChoices(
+                                whole: GoalSetupMissingValues.weightWhole(tenths: tenths)),
                             id: \.self
                         ) { tenth in
                             Text(verbatim: ".\(tenth) kg").tag(tenth)
