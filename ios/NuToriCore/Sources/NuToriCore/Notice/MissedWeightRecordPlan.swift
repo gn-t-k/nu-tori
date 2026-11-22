@@ -20,8 +20,7 @@ public struct MissedWeightRecordPlan: Sendable {
         let unrecordedWeek = week.filter { !recordedDays.contains($0.day) }
 
         noticesToRespond = notices.filter {
-            guard $0.response == nil, let targetDay = $0.targetDay else { return false }
-            return recordedDays.contains(targetDay)
+            Self.isToRespond($0, recordedDays: recordedDays)
         }
         // 過ぎた日の分は作らない（アプリを開かなかった日の知らせを、あとから出さない）
         if let todays = unrecordedWeek.first(where: { $0.day == today }),
@@ -44,6 +43,13 @@ public struct MissedWeightRecordPlan: Sendable {
 
     /// 答えていない記録忘れの知らせのうち、対象の日付の体重記録があるもの。目標を立てる知らせは入らない
     public let noticesToRespond: [Notice]
+
+    /// 答えていない体重の知らせのうち、対象の日に体重記録があって答えることになるものか。
+    /// タイムラインは、答える書き込みが届く前でも、これに当たる知らせを並べない
+    public static func isToRespond(_ notice: Notice, recordedDays: Set<CalendarDay>) -> Bool {
+        guard notice.response == nil, let targetDay = notice.targetDay else { return false }
+        return recordedDays.contains(targetDay)
+    }
 
     /// 今日の通知の時刻を過ぎていて、今日の日付の体重記録も今日の知らせも無ければ、今日の知らせ
     public let noticeToIssue: Notice?

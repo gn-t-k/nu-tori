@@ -76,7 +76,7 @@ struct TimelineNavigationTests {
             init() throws {
                 day = CalendarDay(year: 2026, month: 10, day: 29)
                 snapshot = try .fixture(notices: [
-                    try UnansweredNoticeLineTests.goalSetup(issuedAt: "2026-10-01T09:00:00+09:00")
+                    try Notice.goalSetup(issuedAt: "2026-10-01T09:00:00+09:00")
                 ])
                 navigation = TimelineNavigation()
                 _ = navigation.receive(.dayRingTapped(day), on: snapshot)

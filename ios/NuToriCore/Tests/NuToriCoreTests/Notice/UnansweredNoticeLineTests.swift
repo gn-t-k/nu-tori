@@ -7,14 +7,6 @@ import Testing
 struct UnansweredNoticeLineTests {
     static let today = CalendarDay(year: 2026, month: 9, day: 24)
 
-    /// 東京で出した、答えていない目標を立てる知らせ。issuedAt は ISO 8601 の時刻
-    static func goalSetup(issuedAt: String) throws -> Notice {
-        Notice(
-            id: Notice.id(of: .goalSetup), kind: .goalSetup,
-            issuedAt: try Date(issuedAt, strategy: .iso8601),
-            timeZone: try #require(TimeZone(identifier: "Asia/Tokyo")), response: nil)
-    }
-
     static func timeline(notices: [Notice]) -> Timeline {
         Timeline(
             input: Timeline.Input(
@@ -29,7 +21,7 @@ struct UnansweredNoticeLineTests {
         let timeline: Timeline
 
         init() throws {
-            notice = try UnansweredNoticeLineTests.goalSetup(issuedAt: "2026-09-22T19:00:00+09:00")
+            notice = try Notice.goalSetup(issuedAt: "2026-09-22T19:00:00+09:00")
             timeline = UnansweredNoticeLineTests.timeline(notices: [notice])
         }
 
@@ -51,7 +43,7 @@ struct UnansweredNoticeLineTests {
             let visibility: UnansweredNoticeLineVisibility
 
             init() throws {
-                let notice = try UnansweredNoticeLineTests.goalSetup(
+                let notice = try Notice.goalSetup(
                     issuedAt: "2026-09-22T19:00:00+09:00")
                 line = .goalSetup(notice)
                 days = UnansweredNoticeLineTests.timeline(notices: [notice]).days
@@ -88,7 +80,7 @@ struct UnansweredNoticeLineTests {
             let listedDays: ArraySlice<Timeline.Day>
 
             init() throws {
-                notice = try UnansweredNoticeLineTests.goalSetup(
+                notice = try Notice.goalSetup(
                     issuedAt: "2026-09-22T19:00:00+09:00")
                 listedDays = UnansweredNoticeLineTests.timeline(notices: [notice]).days.suffix(2)
                 try #require(
@@ -111,7 +103,7 @@ struct UnansweredNoticeLineTests {
             let listedDays: ArraySlice<Timeline.Day>
 
             init() throws {
-                notice = try UnansweredNoticeLineTests.goalSetup(
+                notice = try Notice.goalSetup(
                     issuedAt: "2026-09-22T19:00:00+09:00")
                 listedDays = UnansweredNoticeLineTests.timeline(notices: [notice]).days[...]
             }
@@ -131,7 +123,7 @@ struct UnansweredNoticeLineTests {
 
         init() throws {
             let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
-            let notice = try UnansweredNoticeLineTests.goalSetup(
+            let notice = try Notice.goalSetup(
                 issuedAt: "2026-09-22T19:00:00+09:00"
             ).responded(
                 Notice.Response(
@@ -154,7 +146,7 @@ struct UnansweredNoticeLineTests {
 
         init() throws {
             weightNotice = try .missedWeightRecord(issuedAt: "2026-09-24T08:15:00+09:00")
-            goalSetup = try UnansweredNoticeLineTests.goalSetup(
+            goalSetup = try Notice.goalSetup(
                 issuedAt: "2026-09-24T12:00:00+09:00")
             timeline = UnansweredNoticeLineTests.timeline(notices: [goalSetup, weightNotice])
         }

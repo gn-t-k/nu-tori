@@ -13,7 +13,8 @@ struct GoalSetupNoticeCard: View {
     let open: (GoalSetupObservation.Entry) -> Void
 
     var body: some View {
-        Group {
+        // Group に付けた修飾子は中の形ごとに付き、形が替わると新しい形の修飾子が最初の値から始まって、弾みも触覚も起きない。入れ物1つに付ける
+        ZStack {
             if let currentGoal {
                 GoalDecidedCard(goal: currentGoal.goal, dailyGuide: currentGoal.dailyGuide)
                     .transition(decided)
