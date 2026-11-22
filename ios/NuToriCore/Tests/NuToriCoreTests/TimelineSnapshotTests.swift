@@ -66,7 +66,7 @@ struct TimelineSnapshotTests {
 
             init() throws {
                 snapshot = try .fixture(notices: [
-                    try UnansweredNoticeLineTests.goalSetup(issuedAt: "2026-10-01T09:00:00+09:00")
+                    try Notice.goalSetup(issuedAt: "2026-10-01T09:00:00+09:00")
                 ])
             }
 
@@ -97,7 +97,7 @@ struct TimelineSnapshotTests {
             init() throws {
                 snapshot = try .fixture(
                     notices: [
-                        try UnansweredNoticeLineTests.goalSetup(
+                        try Notice.goalSetup(
                             issuedAt: "2026-10-01T09:00:00+09:00")
                     ],
                     goals: [try Goal.losing()])

@@ -29,7 +29,7 @@ extension TimelineTests {
             let timeline: Timeline
 
             init() throws {
-                notice = try UnansweredNoticeLineTests.goalSetup(
+                notice = try Notice.goalSetup(
                     issuedAt: "2026-09-22T07:00:00+09:00")
                 meal = MealCard(
                     meal: try .fixture(
@@ -62,7 +62,7 @@ extension TimelineTests {
             let timeline: Timeline
 
             init() throws {
-                notice = try UnansweredNoticeLineTests.goalSetup(
+                notice = try Notice.goalSetup(
                     issuedAt: "2026-09-22T07:00:00+09:00"
                 ).responded(
                     Notice.Response(
@@ -88,7 +88,7 @@ extension TimelineTests {
         struct BeforeFirstDay {
             @Test("使い始めた日に置くこと")
             func placesOnFirstDay() throws {
-                let notice = try UnansweredNoticeLineTests.goalSetup(
+                let notice = try Notice.goalSetup(
                     issuedAt: "2026-09-18T07:00:00+09:00")
                 let timeline = PlacingGoalSetupNotice.timeline(notices: [notice])
 

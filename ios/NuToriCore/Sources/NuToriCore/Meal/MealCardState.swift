@@ -36,6 +36,15 @@ extension MealCardState {
         }
     }
 
+    /// 推定の結果を今まさに待っている（まだ送れていない・写真を待っている・推定中）か。
+    /// 翌日に推定とサブスクリプションを待っているは、すぐには済まず、ユーザーが画面で待つものではないので入れない
+    public var isAwaitingEstimateNow: Bool {
+        switch self {
+        case .notSent, .awaitingPhotos, .estimating: true
+        case .estimated, .noDishes, .deferredToNextDay, .awaitingSubscription, .failed: false
+        }
+    }
+
     /// カードの名前の場所に置く、状態の1行。推定できた食事は料理の名前を置くので、1行を持たない
     public var statusLine: String? {
         switch self {
