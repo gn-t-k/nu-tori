@@ -373,11 +373,17 @@ describe("名前を直したときの推定し直し", () => {
         }),
       });
       await rename("カレーライス");
-      await runEstimationAlarm(accountId);
+      if (!(await runEstimationAlarm(accountId))) {
+        throw new Error("推定し直しのアラームが動かなかった");
+      }
+      const ingredients = await currentIngredientNamesOfDish();
+      if (JSON.stringify(ingredients) !== JSON.stringify(["ご飯 200", "レトルトカレー 1"])) {
+        throw new Error(`混じった料理になっていない: ${JSON.stringify(ingredients)}`);
+      }
       await rename("ビーフカレーライス");
     });
 
-    test("今までどおり推定し直すこと", async () => {
+    test("推定し直しを始め、料理ごとの推定の状態を推定中にすること", async () => {
       expect(
         (await pullDishChanges())
           .filter(({ kind }) => kind === "dish_estimation_status")
