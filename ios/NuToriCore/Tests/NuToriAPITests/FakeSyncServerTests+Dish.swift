@@ -11,11 +11,13 @@ extension FakeSyncServerTests {
 
     static func ingredient(
         _ id: UUID, dishId: UUID, name: String, quantity: Double,
-        source: SyncedQuantitySource = .estimated, position: Int = 0
+        source: SyncedQuantitySource = .estimated, position: Int = 0,
+        nutrientSource: SyncedIngredient.NutrientSource = .estimated
     ) -> SyncedIngredient {
         SyncedIngredient(
             id: id, dishId: dishId, name: name, quantity: quantity, quantitySource: source,
-            unit: "g", edibleGramsPerUnit: 1, positionInDish: position, nutrientSource: .estimated,
+            unit: "g", edibleGramsPerUnit: 1, positionInDish: position,
+            nutrientSource: nutrientSource,
             nutrients: ["energy_kcal": 1.5])
     }
 
@@ -224,6 +226,50 @@ extension FakeSyncServerTests {
                                 .ingredientDeletion(ingredientId: rice.id),
                                 .dishEstimationStatus(.init(dishId: dish.id, status: .noDishes)),
                             ], next: 6))
+            }
+        }
+
+        @Suite("材料がすべて栄養成分表示の料理の名前を直したとき")
+        struct LabeledRenamed {
+            let dish: SyncedDish
+            let client: NuToriAPIClient
+
+            init() async throws {
+                let dish = try SyncedDish.fixture(mealId: try SyncedMeal.fixture().id)
+                let tea = FakeSyncServerTests.ingredient(
+                    FakeSyncServerTests.riceId, dishId: dish.id, name: "緑茶", quantity: 1,
+                    nutrientSource: .nutritionLabel(basisGrams: 100))
+                self.dish = dish
+                client = FakeSyncServerTests.client(
+                    .init(
+                        records: [.dish(dish), .ingredient(tea)],
+                        startedOn: FakeSyncServerTests.startedOn,
+                        estimateDish: FakeSyncServerTests.estimate))
+                _ = try await client.pushSyncWrites(
+                    [
+                        .updateDish(
+                            writeId: UUID(),
+                            correction: DishCorrection(id: dish.id, name: "〇〇の緑茶", quantity: nil))
+                    ], isFinalBatch: true, clientState: .fixture())
+            }
+
+            @Test("直した名前だけを返し、推定し直さないこと")
+            func renamesWithoutReestimating() async throws {
+                let first = try await client.pullSyncChanges(
+                    afterSequence: 2, clientState: .fixture())
+                let second = try await client.pullSyncChanges(
+                    afterSequence: 3, clientState: .fixture())
+
+                #expect(
+                    first
+                        == FakeSyncServerTests.page(
+                            [
+                                .dish(
+                                    SyncedDish(
+                                        id: dish.id, mealId: dish.mealId, name: "〇〇の緑茶",
+                                        quantity: dish.quantity, positionInMeal: 0, version: 2))
+                            ], next: 3))
+                #expect(second == FakeSyncServerTests.page([], next: 3))
             }
         }
 

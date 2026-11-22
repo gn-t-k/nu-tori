@@ -16,7 +16,8 @@ import { deleteDishes } from "./delete-dishes";
 import type { Dish } from "./dish";
 import { type DishQuantityCorrection, type DishWrite, dishWriteTypes } from "./dish-write";
 
-// 料理の種類。サーバーが推定の完了で作り、端末が足し、名前と量を直し、消す。足したときと名前を直したときは、サーバーがその料理だけを推定し直す。
+// 料理の種類。サーバーが推定の完了で作り、端末が足し、名前と量を直し、消す。足したときと名前を直したときは、サーバーがその料理だけを推定し直す
+// （材料がすべて栄養成分表示の料理は、名前を直しても推定し直さない）。
 // receivedAt は要求を受け取った時刻。推定し直しの予定の時刻と数える日に使う
 export const createDishKind = (
   stores: DishKindStores,
@@ -147,7 +148,8 @@ const decideDelete = (
 };
 
 // 名前と量は、今の値と違う分だけ修正の出来事として足す。比例させた材料の量は端末が出したものを書き、計算し直さない。
-// 名前が変わったら、その料理の推定し直しを予定に入れる。
+// 名前が変わったら、その料理の推定し直しを予定に入れる。ただし材料がすべて栄養成分表示の料理は、名前だけを変える。
+// 推定し直すと、表示の値が残るかが ① の読み直しに任され、推定の値に置き換わりうるため。
 // 食事が推定を待っているときと、料理が推定し直しを待っているときは断る
 const decideUpdate = (
   stores: DishKindStores,
@@ -191,6 +193,7 @@ const decideUpdate = (
   if (!renamed && quantityCorrection === undefined) {
     return { result: "unchanged", writeKind: "update", recordId: dishId };
   }
+  const reestimates = renamed && !hasOnlyNutritionLabelIngredients(stores, currentIngredientIds);
   return {
     result: "applied",
     writeKind: "update",
@@ -201,7 +204,7 @@ const decideUpdate = (
         recordId: ingredientId,
       })),
       // 名前を直した予定は、受け取った時刻が来ているので推定中になる。推定し直しを待っている料理の直しは上で断るので、前から推定中のことは無い
-      ...(renamed ? [{ recordType: "dish_estimation_status" as const, recordId: dishId }] : []),
+      ...(reestimates ? [{ recordType: "dish_estimation_status" as const, recordId: dishId }] : []),
     ],
     usageEvents: [
       // 比例させた材料は、使う人が直した量でないので送らない。直してある量をもう一度直したときも送らない
@@ -223,6 +226,8 @@ const decideUpdate = (
       }
       if (renamed) {
         stores.dish.insertNameCorrection(receiptId, name);
+      }
+      if (reestimates) {
         const meal = stores.meal.find(current.mealId);
         if (meal === undefined) {
           throw new Error(`料理の食事が無い: ${current.mealId}`);
@@ -237,6 +242,16 @@ const decideUpdate = (
     },
   };
 };
+
+// 材料の無い料理（量を持つ当てた推定が無い料理）は、推定し直して材料を入れる
+const hasOnlyNutritionLabelIngredients = (
+  stores: DishKindStores,
+  currentIngredientIds: readonly RecordId[],
+): boolean =>
+  currentIngredientIds.length > 0 &&
+  currentIngredientIds.every(
+    (id) => stores.ingredient.find(id)?.nutrientSource.type === "nutrition_label",
+  );
 
 // 推定の書き込みの口が足す推定の状態の変更は、addedChanges で足した変更と同じ記録なら、帳簿が1つにまとめる
 const scheduleReestimation = (

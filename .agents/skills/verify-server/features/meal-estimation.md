@@ -11,7 +11,7 @@
 - `meal-photo-backup` 写真の控えを送り、ほかの端末から取りに行ける
 - `meal-rename-dish` 推定でできた料理の名前を直す
 - `meal-nutrition-label` 栄養成分表示が写った食事が、表示の値で記録される
-- `meal-nutrition-label-reestimate` 箱だけを撮って料理の名前を直すと、表示の材料と成分表の材料の料理になる
+- `meal-nutrition-label-rename` 材料がすべて栄養成分表示の料理の名前を直すと、推定し直さず、表示の材料がそのまま残る
 - `meal-delete` 食事を消す
 
 ## How to get to it (user POV)
@@ -41,9 +41,9 @@ Preconditions:
 - **上限より長い名前に直す。** 推定できた料理の ID を `d`、`long=$(printf 'あ%.0s' $(seq 101))` として、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"$long\"}]"` を送る。`rejected` で理由が `out_of_range`、取りに行っても `$d` の名前は変わらない
 - **料理の名前を直す。** `$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"親子丼（大盛り）\"}]"` を送る。`applied` で、取りに行くと `$d` の最後の `dish` の名前が変わっている
 - **栄養成分表示の写った食事。** 評価のケース（`server/.scratch/nutrition-label/<ケース>/`。無ければ `scripts/cloudflare evals get` で落とす。リポジトリには入れない）のうち、`expected.json` の `target.type` が `meal` で `expected.type` が `labeled` のものを選ぶ。フォルダの `photo-*.jpg` をすべて `create_meal` の `photos` に並べ、それぞれ写真の控えを送る。推定できたら `$D pull "$run" meal | jq -c --arg m "$m" '[.[] | select(.kind=="dish" and .record.mealId==$m) | .record.id] as $ds | [.[] | select(.kind=="ingredient" and (.record.dishId | IN($ds[]))) | .record | {name, quantity, edibleGramsPerUnit, nutrientSource, nutrients}]'` を読む。表示の材料の `nutrientSource.type` が `nutrition_label` で、その材料の栄養を `docs/agents/shared-rules.md` の「栄養の合計」の数え方で出した値と `expected.json` の値の差が、kcal・P・F・C で 1、食塩相当量で 0.1 以内（評価の `judge-nutrition-label-run.ts` の `allowedDifferences` と同じ）で、料理の名前に `nameIncludes` のどれかが入っている
-- **箱だけを撮って名前を直す。** `target.type` が `dish` のケースの写真で、上と同じく撮った食事を送る。推定できた料理を `d` とし、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"<target.name>\"}]"` を送る。5 秒おきに `$D pull "$run" meal | jq -c --arg d "$d" '[.[] | select(.kind=="dish_estimation_status" and .record.dishId==$d) | .record.status] | last'` を読み、`estimated` になったら（`failed`・`no_dishes` なら外れ）、上の jq を `$m` をこの食事にして読む。`$d` の材料に、`nutrientSource.type` が `nutrition_label` のものと、そうでないもの（成分表）が並ぶ
+- **表示の料理の名前を直す。** 上の栄養成分表示の写った食事のうち、材料が表示の材料1つだけになった料理を `d` とし、`$D push "$run" meal "[{\"type\":\"update_dish\",\"dishId\":\"$d\",\"name\":\"〇〇の商品\"}]"` を送る。`applied` で、取りに行くと `$d` の最後の `dish` の名前が変わり、`$d` の `dish_estimation_status` は届かず、材料は名前を直す前と同じ ID で `nutrientSource.type` が `nutrition_label` のまま
 - **サブスクリプションを待っている。** `$D sign-in "$run" expired --as-of "$(date -u -d '-60 days' +%FT%TZ)"` のアカウントで撮った食事を送る。写真の控えを送ったあと、`meal_estimation_status` が `awaiting_subscription`（鍵が無くても確かめられる）
-- **消す。** `$D push "$run" meal "[{\"type\":\"delete_meal\",\"mealId\":\"$m\"}]"` を送る。`applied` で、取りに行くと `$m` の変更が `meal_deletion` と `meal_estimation_status_deletion`（どちらも `record` は空）になる。推定できた食事なら、その料理の `dish_deletion` と材料の `ingredient_deletion` も届く。名前を直した料理なら `dish_estimation_status_deletion` も届く（直していない料理には届かない）
+- **消す。** `$D push "$run" meal "[{\"type\":\"delete_meal\",\"mealId\":\"$m\"}]"` を送る。`applied` で、取りに行くと `$m` の変更が `meal_deletion` と `meal_estimation_status_deletion`（どちらも `record` は空）になる。推定できた食事なら、その料理の `dish_deletion` と材料の `ingredient_deletion` も届く。名前を直して推定し直しを始めた料理なら `dish_estimation_status_deletion` も届く（材料がすべて栄養成分表示で推定し直さなかった料理と、直していない料理には届かない）
 
 ## Gotchas
 
@@ -54,4 +54,4 @@ Preconditions:
 - 推定は Durable Object のアラームで進むので、送った直後の取りに行く要求にはまだ出ない。固定の時間でなく、状態が変わるまで読む
 - 栄養成分表示の項目は、本物のモデルの読み取りに頼るので、1回の外れで壊れたと読まない。読み取りの揺れは `server/evals/nutrition-label/` の評価で見る
 - 料理の名前を直すのは推定できた料理だけ。鍵の無い回では料理ができない。この入口と「上限より長い名前に直す」に触れた変更で鍵が読めなければ、`SKILL.md` の「確かめられないとき」のとおり止まる
-- 「上限より長い名前に直す」は「料理の名前を直す」より先に送る。名前を直した料理は、推定し直しが終わるまで `awaiting_estimation` で断られ、`out_of_range` まで届かない
+- 「上限より長い名前に直す」は「料理の名前を直す」より先に送る。名前を直して推定し直しを始めた料理（材料がすべて栄養成分表示の料理は始めない）は、推定し直しが終わるまで `awaiting_estimation` で断られ、`out_of_range` まで届かない
