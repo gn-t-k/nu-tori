@@ -1,0 +1,256 @@
+<title>入門の入口</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- 試作（#1092）。捨てるコード。タイムラインのヘッダーに置く入門のページの入口を4案、?variant=A|B|C|D で切り替えて見比べる。隠す操作は右の切り替えで2案。?all=1 で4案を並べる -->
+<style>
+/* スマホの枠の中にタイムラインを模す。色と大きさは DESIGN.md のトークン */
+:root {
+  --bg: #F2F2F7; --surface: #FFFFFF; --fg: #000000;
+  --fg2: rgba(60,60,67,.6); --sep: rgba(60,60,67,.29);
+  --tint: #6155F5; --on-tint: #FFFFFF; --own: color-mix(in srgb, #6155F5 22%, #FFFFFF);
+  --track: #E5E5EA; --p: #F07F1A; --f: #15803D; --c: #2C7BE5;
+  --page: #E4E3EC; --bar: #1C1C1E; --bar-fg: #FFFFFF; --glass: rgba(255,255,255,.75);
+  --font: -apple-system, "SF Pro Text", "Hiragino Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,.6); --sep: rgba(84,84,88,.6);
+  --tint: #6D7CFF; --own: color-mix(in srgb, #6D7CFF 30%, #1C1C1E);
+  --track: #2C2C2E; --p: #E8903A; --f: #228C48; --c: #4290F4;
+  --page: #111114; --bar: #F2F2F7; --bar-fg: #000000; --glass: rgba(44,44,46,.8); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1C1C1E; --fg: #FFFFFF;
+  --fg2: rgba(235,235,245,.6); --sep: rgba(84,84,88,.6);
+  --tint: #6D7CFF; --own: color-mix(in srgb, #6D7CFF 30%, #1C1C1E);
+  --track: #2C2C2E; --p: #E8903A; --f: #228C48; --c: #4290F4;
+  --page: #111114; --bar: #F2F2F7; --bar-fg: #000000; --glass: rgba(44,44,46,.8); color-scheme: dark }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--fg); font-family: var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 96px; }
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 20px; grid-template-columns: minmax(0, 390px) minmax(0, 1fr); align-items: start; }
+.wrap.all { max-width: none; grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+.phones { display: grid; gap: 16px; }
+.wrap.all .phones { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
+.cap { font-size: 14px; font-weight: 600; margin: 0 0 6px 4px; }
+.cap span { font-weight: 400; color: var(--fg2); }
+
+/* 画面 */
+.phone { background: var(--bg); border-radius: 36px; border: 1px solid var(--sep); overflow: hidden; display: flex; flex-direction: column; height: 720px; position: relative; }
+.top { padding: 14px 12px 8px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; border-bottom: .5px solid var(--sep); }
+.top .title { font-size: 17px; font-weight: 600; white-space: nowrap; }
+.top .lead, .top .trail { display: flex; align-items: center; gap: 6px; }
+.top .trail { justify-content: flex-end; }
+.goalcap { background: var(--track); border-radius: 999px; padding: 6px 10px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.glassgrp { display: flex; background: var(--glass); border-radius: 999px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.tb { width: 40px; height: 40px; display: grid; place-items: center; background: none; border: 0; color: var(--fg); cursor: pointer; border-radius: 999px; font: inherit; -webkit-user-select: none; user-select: none; }
+.tb svg { width: 22px; height: 22px; }
+.tb.text { width: auto; padding: 0 12px; white-space: nowrap; font-size: 15px; font-weight: 600; color: var(--tint); }
+.tb:active { background: var(--track); }
+.scroll { flex: 1; overflow-y: auto; }
+.content { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.notice { background: var(--surface); border-radius: 12px; padding: 16px; font-size: 15px; line-height: 20px; }
+.notice .h { font-weight: 600; margin-bottom: 4px; font-size: 17px; }
+.notice .sub { color: var(--fg2); }
+.notice .lnk { display: inline-block; margin-top: 10px; color: var(--tint); font-size: 15px; cursor: pointer; }
+.notice .btn { margin-top: 12px; display: block; width: fit-content; background: var(--tint); color: var(--on-tint); border-radius: 999px; padding: 8px 16px; font-weight: 600; }
+.composer { border-top: .5px solid var(--sep); padding: 8px 16px 20px; display: flex; gap: 8px; align-items: center; }
+.composer i { width: 36px; height: 36px; border-radius: 50%; background: var(--track); flex: none; }
+.composer i:first-child { background: var(--tint); }
+.composer span { flex: 1; height: 36px; border-radius: 18px; border: .5px solid var(--sep); padding: 8px 14px; font-size: 15px; color: var(--fg2); }
+
+/* 長押しのメニューと、開いたページと、アカウントの画面 */
+.overlay { position: absolute; inset: 0; background: rgba(0,0,0,.25); display: none; }
+.overlay.on { display: block; }
+.menu { position: absolute; right: 16px; top: 60px; width: 250px; background: var(--glass); backdrop-filter: blur(20px); border-radius: 14px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.2); }
+.menu div { padding: 12px 16px; font-size: 17px; border-bottom: .5px solid var(--sep); cursor: pointer; display: flex; justify-content: space-between; }
+.menu div:last-child { border: 0; }
+.menu small { display: block; padding: 8px 16px; font-size: 13px; color: var(--fg2); border-bottom: .5px solid var(--sep); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 40px; background: var(--bg); border-radius: 14px 14px 0 0; padding: 16px; overflow-y: auto; }
+.sheet .bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.sheet .bar b { font-size: 17px; }
+.sheet .bar button { background: none; border: 0; color: var(--tint); font: inherit; font-size: 17px; cursor: pointer; }
+.group { background: var(--surface); border-radius: 12px; overflow: hidden; margin-bottom: 8px; }
+.group .row { padding: 12px 16px; font-size: 17px; display: flex; justify-content: space-between; align-items: center; border-bottom: .5px solid var(--sep); }
+.group .row:last-child { border: 0; }
+.foot2 { font-size: 13px; color: var(--fg2); margin: 0 16px 20px; }
+.sw { width: 51px; height: 31px; border-radius: 999px; background: var(--track); position: relative; cursor: pointer; flex: none; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: left .2s; }
+.sw.on { background: #34C759; }
+.sw.on::after { left: 22px; }
+.web { padding: 20px; font-size: 15px; line-height: 1.7; }
+.web .url { font-size: 12px; color: var(--fg2); text-align: center; margin-bottom: 12px; }
+.web h2 { font-size: 22px; margin: 0 0 8px; }
+.web li { margin: 4px 0; color: var(--tint); }
+.toast { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); background: var(--bar); color: var(--bar-fg); padding: 8px 14px; border-radius: 999px; font-size: 13px; white-space: nowrap; display: none; }
+.toast.on { display: block; }
+
+/* 右の説明 */
+.notes { display: grid; gap: 14px; font-size: 15px; line-height: 1.6; min-width: 0; }
+.notes h1 { font-size: 20px; margin: 0; text-wrap: balance; }
+.notes h3 { font-size: 13px; letter-spacing: .04em; color: var(--fg2); margin: 6px 0 0; }
+.notes p { margin: 0; }
+.ctrl { display: flex; flex-wrap: wrap; gap: 8px; }
+.ctrl label { display: flex; gap: 6px; align-items: center; background: var(--surface); border-radius: 8px; padding: 6px 10px; font-size: 14px; cursor: pointer; }
+.state { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--surface); border-radius: 8px; padding: 10px; white-space: pre-wrap; overflow-x: auto; }
+.wrap.all .notes { max-width: 760px; }
+
+/* 切り替えのバー（試作の外側） */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--bar); color: var(--bar-fg); border-radius: 999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.25); font-size: 14px; max-width: calc(100% - 32px); z-index: 10; }
+.switcher button { background: none; border: 0; color: inherit; font: inherit; font-size: 18px; padding: 6px 12px; cursor: pointer; border-radius: 999px; }
+.switcher .all-btn { font-size: 13px; border: 1px solid currentColor; padding: 4px 10px; opacity: .8; }
+.switcher span { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+
+<div class="wrap" id="wrap">
+  <div class="phones" id="phones"></div>
+  <div class="notes">
+    <h1 id="vtitle"></h1>
+    <p id="vdesc"></p>
+    <h3>触ってみる</h3>
+    <p>ヘッダーの新しいアイコンを押すと、入門のページ（一覧）が開いたところを見せます。長押しすると、隠す操作が「長押し」の案ではメニューが出ます。右上の人のアイコンでアカウントの画面が開きます。知らせのカードの「痩せる仕組みの基本 ›」も押せます。</p>
+    <h3>試す条件</h3>
+    <div class="ctrl">
+      <label><input type="radio" name="place" value="same"> 置き場：アカウントと同じガラス</label>
+      <label><input type="radio" name="place" value="split" checked> 置き場：右、ガラスを分ける</label>
+      <label><input type="radio" name="place" value="lead"> 置き場：左（目標のカプセルの隣）</label>
+      <label><input type="radio" name="hide" value="menu" checked> 隠す：アイコンの長押しのメニュー（戻すのはアカウントの画面）</label>
+      <label><input type="radio" name="hide" value="account"> 隠す：アカウントの画面のスイッチだけ</label>
+      <label><input type="checkbox" id="hasGoal"> 目標を立てたあと（左上に目標のカプセル、知らせのカードは消える）</label>
+      <label><input type="checkbox" id="bigText"> 文字を大きく（1.25 倍）</label>
+    </div>
+    <h3>今の値</h3>
+    <div class="state" id="state"></div>
+    <p style="font-size:13px;color:var(--fg2)">DESIGN.md では、アイコンは SF Symbols を使い、自前で持つのは体重計のアイコンなどに限っている。A（🔰）はその例外になり、アセットを持つことになる。B・C は SF Symbols（<code>book.closed</code>・<code>leaf</code>）の形をまねて描いた絵で、実機の見た目とは少し違う。</p>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="案の切り替え">
+  <button id="prev" aria-label="前の案">‹</button>
+  <span id="label"></span>
+  <button id="next" aria-label="次の案">›</button>
+  <button id="all" class="all-btn">4案を並べる</button>
+</div>
+
+<script>
+const ICONS = {
+  person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3.5"/><path d="M5.5 18.5c1.5-2.5 4-3.5 6.5-3.5s5 1 6.5 3.5"/></svg>',
+  wakaba: '<svg viewBox="0 0 24 24"><path d="M12 6 L4 2 V16 L12 22 Z" fill="#F5C400"/><path d="M12 6 L20 2 V16 L12 22 Z" fill="#00A040"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/></svg>',
+  leaf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 19C5 10 11 4 20 4c0 9-6 15-15 15z"/><path d="M5 19 13 11"/></svg>',
+};
+const VARIANTS = {
+  A: { name: '🔰 初心者マーク', icon: 'wakaba', label: '入門',
+       desc: '日本で「はじめて」を表す記号をそのまま使う。意味は一目で伝わる。色が付くので、ヘッダーで唯一の色付きのアイコンになり、目立つ。DESIGN.md の「アイコンは SF Symbols」の例外になる。' },
+  B: { name: '本のアイコン', icon: 'book', label: '入門',
+       desc: 'SF Symbols の book.closed。「読むもの」とは伝わるが、「はじめての人向け」とまでは伝わらない。アカウントのアイコンと同じ灰色の線で、目立たない。' },
+  C: { name: '葉っぱのアイコン', icon: 'leaf', label: '入門',
+       desc: 'SF Symbols の leaf。若葉マークを連想させつつ SF Symbols の中で収まる。ただ、葉っぱだけでは「自然・エコ」と読まれることもある。' },
+  D: { name: '文字で「はじめて」', icon: null, label: 'はじめて',
+       desc: 'アイコンでなく文字のボタン。何の入口かは一番はっきりする。ヘッダーの幅を一番使い、目標のカプセルと日付のあいだが詰まる。' },
+};
+const KEYS = Object.keys(VARIANTS);
+const params = new URLSearchParams(location.search);
+let cur = KEYS.includes(params.get('variant')) ? params.get('variant') : 'A';
+let showAll = params.get('all') === '1';
+const st = { place: 'split', hide: 'menu', hasGoal: false, hidden: false, screen: null, bigText: false };
+
+function phone(k) {
+  const v = VARIANTS[k];
+  const entry = st.hidden ? '' : (v.icon
+    ? `<button class="tb" data-act="learn" aria-label="${v.label}">${ICONS[v.icon]}</button>`
+    : `<button class="tb text" data-act="learn">${v.label}</button>`);
+  const lead = st.hasGoal ? '<span class="goalcap">-3.2kg まで 6週</span>' : '';
+  const notice = st.hasGoal ? `
+      <div class="notice"><div class="h">今日の体重</div><div class="sub">まだ記録していません。</div><span class="btn">記録</span></div>` : `
+      <div class="notice">
+        <div class="h">目標を立てる</div>
+        <div class="sub">目標を立てると、1日に食べる量の目安が出ます。</div>
+        <span class="lnk" data-act="learn">痩せる仕組みの基本 ›</span>
+        <span class="btn">目標を立てる</span>
+      </div>`;
+  let over = '';
+  if (st.screen === 'menu') over = `
+    <div class="overlay on" data-act="close"><div class="menu">
+      <div data-act="learn">入門を開く <span>›</span></div>
+      <div data-act="hideIt">ヘッダーから隠す</div>
+      <small>アカウントの画面で、また出せます</small>
+    </div></div>`;
+  if (st.screen === 'account') over = `
+    <div class="overlay on"><div class="sheet">
+      <div class="bar"><span></span><b>アカウント</b><button data-act="close">完了</button></div>
+      <div class="group"><div class="row">サブスクリプション <span style="color:var(--fg2)">›</span></div><div class="row">利用状況を送る <span class="sw on"></span></div></div>
+      <div class="group"><div class="row">ヘッダーに「入門」を出す <span class="sw ${st.hidden ? '' : 'on'}" data-act="toggle"></span></div></div>
+      <p class="foot2">入門は、栄養とボディメイクの基本を読む順に並べたページです。</p>
+      <div class="group"><div class="row">入門を開く <span style="color:var(--fg2)">›</span></div><div class="row">サインアウト</div></div>
+    </div></div>`;
+  if (st.screen === 'web') over = `
+    <div class="overlay on"><div class="sheet">
+      <div class="bar"><span></span><b>Safari</b><button data-act="close">完了</button></div>
+      <div class="web"><div class="url">nu-tori.app/learn（仮）</div>
+        <h2>入門</h2><p>何を食べるかより、まずどれだけ食べるか。</p>
+        <p style="color:var(--fg2);font-size:13px;margin-top:12px">1 基本</p>
+        <ol><li>体重の増減はカロリーの収支で決まる</li><li>使う量の内訳</li><li>食べる量の内訳</li></ol>
+        <p style="color:var(--fg2);font-size:13px">1日の目安が、あなたの体に合っていく仕組み ›</p></div>
+    </div></div>`;
+  return `<div><p class="cap">${k}　${v.name}</p>
+  <div class="phone" data-k="${k}" style="${st.bigText ? 'zoom:1.25' : ''}">
+    <div class="top">
+      <div class="lead">${lead}${st.place === 'lead' && entry ? `<div class="glassgrp">${entry}</div>` : ''}</div>
+      <div class="title">11月22日(日)</div>
+      <div class="trail">${st.place === 'split' && entry ? `<div class="glassgrp">${entry}</div>` : ''}<div class="glassgrp">${st.place === 'same' ? entry : ''}<button class="tb" data-act="account" aria-label="アカウント">${ICONS.person}</button></div></div>
+    </div>
+    <div class="scroll"><div class="content">${notice}</div></div>
+    <div class="composer"><i></i><i></i><i></i><span>話しかける</span></div>
+    ${over}
+    <div class="toast ${st.toast ? 'on' : ''}">隠しました。アカウントの画面で戻せます</div>
+  </div></div>`;
+}
+
+function render() {
+  const keys = showAll ? KEYS : [cur];
+  document.getElementById('wrap').classList.toggle('all', showAll);
+  document.getElementById('phones').innerHTML = keys.map(phone).join('');
+  const v = VARIANTS[cur];
+  document.getElementById('vtitle').textContent = showAll ? '4案を並べて' : `${cur}：${v.name}`;
+  document.getElementById('vdesc').textContent = showAll ? KEYS.map(k => `${k}：${VARIANTS[k].desc}`).join(' ／ ') : v.desc;
+  document.getElementById('label').textContent = showAll ? '4案' : `${cur}：${v.name}`;
+  document.getElementById('all').textContent = showAll ? '1案ずつ' : '4案を並べる';
+  document.getElementById('state').textContent = JSON.stringify({ variant: showAll ? 'all' : cur, 置き場: { same: 'アカウントと同じガラス', split: '右、ガラスを分ける', lead: '左' }[st.place], 隠す操作: st.hide === 'menu' ? '長押しのメニュー' : 'アカウントの画面', 目標: st.hasGoal ? 'あり' : 'なし', 入口: st.hidden ? '隠れている' : '出ている', 開いているもの: st.screen ?? 'なし' }, null, 1);
+  const u = new URL(location); u.searchParams.set('variant', cur); showAll ? u.searchParams.set('all', '1') : u.searchParams.delete('all');
+  try { history.replaceState(null, '', u); } catch (e) {}
+}
+
+let pressTimer = null, longPressed = false;
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-act="learn"].tb');
+  if (!b) return;
+  longPressed = false;
+  pressTimer = setTimeout(() => { longPressed = true; if (st.hide === 'menu') { st.screen = 'menu'; render(); } }, 500);
+});
+document.addEventListener('pointerup', () => clearTimeout(pressTimer));
+document.addEventListener('contextmenu', e => { if (e.target.closest('.tb')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (!t) return;
+  const act = t.dataset.act;
+  if (act === 'learn' && t.classList.contains('tb') && longPressed) return;
+  if (act === 'close' && e.target !== t && !e.target.closest('button')) return;
+  st.toast = false;
+  if (act === 'learn') st.screen = 'web';
+  if (act === 'account') st.screen = 'account';
+  if (act === 'close') st.screen = null;
+  if (act === 'hideIt') { st.hidden = true; st.screen = null; st.toast = true; setTimeout(() => { st.toast = false; render(); }, 2200); }
+  if (act === 'toggle') st.hidden = !st.hidden;
+  e.stopPropagation();
+  render();
+});
+document.querySelectorAll('input[name="place"]').forEach(r => r.onchange = () => { st.place = r.value; render(); });
+document.querySelectorAll('input[name="hide"]').forEach(r => r.onchange = () => { st.hide = r.value; st.screen = null; render(); });
+document.getElementById('hasGoal').onchange = e => { st.hasGoal = e.target.checked; render(); };
+document.getElementById('bigText').onchange = e => { st.bigText = e.target.checked; render(); };
+document.getElementById('prev').onclick = () => { cur = KEYS[(KEYS.indexOf(cur) + KEYS.length - 1) % KEYS.length]; showAll = false; render(); };
+document.getElementById('next').onclick = () => { cur = KEYS[(KEYS.indexOf(cur) + 1) % KEYS.length]; showAll = false; render(); };
+document.getElementById('all').onclick = () => { showAll = !showAll; render(); };
+render();
+</script>
