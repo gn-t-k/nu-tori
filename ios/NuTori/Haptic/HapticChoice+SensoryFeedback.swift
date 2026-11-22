@@ -16,6 +16,7 @@ extension HapticChoice {
         case .mediumImpact: .impact(weight: .medium)
         case .heavyImpact: .impact(weight: .heavy)
         case .softImpact: .impact(flexibility: .soft)
+        case .solidImpact: .impact(flexibility: .solid)
         case .rigidImpact: .impact(flexibility: .rigid)
         }
     }

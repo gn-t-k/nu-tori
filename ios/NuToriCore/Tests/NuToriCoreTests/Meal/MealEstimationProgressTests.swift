@@ -21,13 +21,13 @@ struct MealEstimationProgressTests {
             earlier = MealEstimationProgressTests.progress(meal, .estimating)
         }
 
-        @Test("推定できたら、済んだとすること")
+        @Test("推定できたら、推定できたとすること")
         func estimated() {
             #expect(
                 MealEstimationProgressTests.progress(meal, .estimated).hasEstimated(since: earlier))
         }
 
-        @Test("推定できなかったら、済んだとしないこと")
+        @Test("推定できなかったら、推定できたとしないこと")
         func failed() {
             #expect(
                 !MealEstimationProgressTests.progress(meal, .failed).hasEstimated(since: earlier))
@@ -70,7 +70,7 @@ struct MealEstimationProgressTests {
             earlier = MealEstimationProgressTests.progress(meal, nil)
         }
 
-        @Test("推定できたら、済んだとすること")
+        @Test("推定できたら、推定できたとすること")
         func estimated() {
             #expect(
                 MealEstimationProgressTests.progress(meal, .estimated).hasEstimated(since: earlier))
@@ -88,7 +88,7 @@ struct MealEstimationProgressTests {
             earlier = MealEstimationProgress(meals: [])
         }
 
-        @Test("推定できた形で届いても、済んだとしないこと")
+        @Test("推定できた形で届いても、推定できたとしないこと")
         func estimated() {
             #expect(
                 !MealEstimationProgressTests.progress(meal, .estimated).hasEstimated(since: earlier)
@@ -119,7 +119,7 @@ struct MealEstimationProgressTests {
             earlier = MealEstimationProgressTests.progress(meal, .estimated)
         }
 
-        @Test("推定できたままなら、済んだとしないこと")
+        @Test("推定できたままなら、推定できたとしないこと")
         func staysEstimated() {
             #expect(
                 !MealEstimationProgressTests.progress(meal, .estimated).hasEstimated(since: earlier)

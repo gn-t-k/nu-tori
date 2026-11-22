@@ -49,8 +49,12 @@ struct MotionGalleryScreen: View {
                 Text("動きの見本")
                     .font(.headline)
                 Spacer()
-                Button("触覚を試す") {
+                Button {
                     showsHapticTrial = true
+                } label: {
+                    Text("触覚を試す")
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 Button("閉じる", action: onClose)
             }

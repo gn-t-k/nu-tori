@@ -11,5 +11,6 @@ public enum HapticChoice: CaseIterable, Sendable {
     case mediumImpact
     case heavyImpact
     case softImpact
+    case solidImpact
     case rigidImpact
 }

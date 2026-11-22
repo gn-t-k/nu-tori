@@ -850,10 +850,7 @@ struct TimelineScreen: View {
                 capture: capture,
                 actions: mealActions,
                 performEdit: performEdit,
-                returnToTimeline: {
-                    pressHaptic.fire(.mealDeleted)
-                    send(.returnedToTimeline)
-                },
+                returnToTimeline: returnToTimelineAfterMealDeletion,
                 openPaywall: { send(.paywallRequested(.awaitingMeal)) },
                 rejectedLines: snapshot.rejectedLines,
                 confirmsDeletion: false,
@@ -877,15 +874,17 @@ struct TimelineScreen: View {
                 performEdit: performEdit,
                 deleteMeal: {
                     MealScreen.deleteMealAndReturn(
-                        card, now: now,
-                        returnToTimeline: {
-                            pressHaptic.fire(.mealDeleted)
-                            send(.returnedToTimeline)
-                        },
+                        card, now: now, returnToTimeline: returnToTimelineAfterMealDeletion,
                         performEdit: performEdit)
                 },
                 confirmsMealDeletion: false)
         }
+    }
+
+    /// 食事の画面と料理の画面で食事を削除したとき。食事が消えるので、タイムラインへ戻す
+    private func returnToTimelineAfterMealDeletion() {
+        pressHaptic.fire(.mealDeleted)
+        send(.returnedToTimeline)
     }
 
     /// 体重の画面。タイムラインの体重のカード、日のまとめの体重の行、目標の画面と週の振り返りの「体重の記録 ›」から潜る
