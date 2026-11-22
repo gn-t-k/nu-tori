@@ -129,6 +129,8 @@ struct MotionGalleryScreen: View {
             missingValues = nil
             records.showGoalSetupNotice(now: clock.now(), timeZone: clock.timeZone())
             later(seconds: 1.5) {
+                // 待つあいだに「足りない値」でページを開いていたら、決めない
+                guard missingValues == nil else { return }
                 records.decideGoal(at: clock.now(), timeZone: clock.timeZone())
             }
         case .missingValues:
@@ -232,6 +234,7 @@ struct MotionGalleryScreen: View {
         let today = CalendarDay(containing: clock.now(), in: clock.timeZone())
         let deadlineChoices = GoalDeadlineChoices(startDay: today)
         let content = GoalSetupFlowContent(
+            // 減らす向きで逆算できない人の手順（向き・期限・足りない値・目標案）の3つ目
             page: .missingValues, progress: .init(count: 4, index: 2), direction: .lose,
             deadline: deadlineChoices.initialDay, deadlineChoices: deadlineChoices,
             missingValues: missingValues, proposals: nil, selectedPace: nil,
