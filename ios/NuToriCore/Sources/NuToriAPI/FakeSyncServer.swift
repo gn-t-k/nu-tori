@@ -497,6 +497,14 @@
                 put(.dishEstimationStatus(.init(dishId: dishId, status: .estimated)))
             }
 
+            private func hasOnlyNutritionLabelIngredients(dishId: UUID) -> Bool {
+                let current = ingredients(ofDish: dishId)
+                return !current.isEmpty
+                    && current.allSatisfy {
+                        if case .nutritionLabel = $0.nutrientSource { true } else { false }
+                    }
+            }
+
             /// 料理の今の材料（削除の印を除く）を、置いた順に
             private func ingredients(ofDish dishId: UUID) -> [SyncedIngredient] {
                 entries.values.sorted { $0.sequence < $1.sequence }.compactMap {
@@ -518,7 +526,8 @@
                 }
             }
 
-            /// 量が今と違えば直した量にし、比例させた材料の量を当てる。名前が今と違えば、推定し直しを始める
+            /// 量が今と違えば直した量にし、比例させた材料の量を当てる。名前が今と違えば、推定し直しを始める。
+            /// 材料がすべて栄養成分表示の料理は、サーバーと同じく推定し直さない（`server/src/dish/domain/create-dish-kind.ts`）
             private mutating func apply(_ correction: DishCorrection) {
                 guard
                     case .dish(let dish) = entries[.init(kind: .dish, id: correction.id)]?.change
@@ -546,7 +555,7 @@
                                 quantity: proportioned.quantity, source: ingredient.quantitySource)
                         ))
                 }
-                if renamed {
+                if renamed && !hasOnlyNutritionLabelIngredients(dishId: dish.id) {
                     put(.dishEstimationStatus(.init(dishId: dish.id, status: .estimating)))
                 }
             }
