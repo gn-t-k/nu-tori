@@ -31,7 +31,7 @@ import { useFakeClock } from "./testing/use-fake-clock";
 import { waitForEstimationAttempts } from "./testing/wait-for-estimation-attempts";
 import { beforeEach, describe, expect, test } from "vitest";
 
-// 名前を直したときの推定し直し（#332 の「推定し直し」）。写真の推定で、親子丼（1 杯。鶏もも肉 80 g・ご飯 200 g）と緑茶ができた食事から始める
+// 名前を直したときの推定し直し（#332 の「推定し直し」）。写真の推定で、親子丼（1 杯。鶏もも肉 80 g・ご飯 200 g）と緑茶（材料は栄養成分表示の緑茶）ができた食事から始める
 describe("名前を直したときの推定し直し", () => {
   let accountId: string;
   let sessionToken: string;
@@ -39,6 +39,7 @@ describe("名前を直したときの推定し直し", () => {
   let provider: ReturnType<typeof mockCreateEstimationProviderOk>;
   let mealId: string;
   let dishId: string;
+  let greenTeaId: string;
   let chickenId: string;
   let riceId: string;
   let lastSequence: number;
@@ -55,6 +56,7 @@ describe("名前を直したときの推定し直し", () => {
     const estimated = await recordEstimatedMeal(accountId, sessionToken);
     ({ mealId, lastSequence } = estimated);
     dishId = estimated.dishId("親子丼");
+    greenTeaId = estimated.dishId("緑茶");
     chickenId = estimated.ingredientId("鶏もも肉");
     riceId = estimated.ingredientId("ご飯");
     pullChangesAfter = async (afterSequence) =>
@@ -300,6 +302,36 @@ describe("名前を直したときの推定し直し", () => {
             });
           });
         });
+      });
+    });
+  });
+
+  // 推定し直すと、表示の値が LLM の読み直しに任され、推定の値に変わりうる。名前だけを変える
+  describe("材料がすべて栄養成分表示の料理の名前を直したとき", () => {
+    beforeEach(async () => {
+      clock.advance(1000);
+      await pushSyncWrites(sessionToken, {
+        writes: [updateDishWrite(greenTeaId, { name: "〇〇の緑茶" })],
+      });
+      await runEstimationAlarm(accountId);
+    });
+
+    test("推定し直さず、名前だけを変え、表示の材料をそのまま残すこと", async () => {
+      expect({
+        identifyRequestCount: readIdentifyDishesRequests(provider).length,
+        changes: (await pullDishChanges()).map(({ kind, name }) => ({ kind, name })),
+        ingredients: (await pullChangesAfter(0))
+          .filter(({ kind, record }) => kind === "ingredient" && record["dishId"] === greenTeaId)
+          .map(({ record }) => ({
+            name: record["name"],
+            nutrientSource: record["nutrientSource"],
+          })),
+      }).toEqual({
+        identifyRequestCount: 1,
+        changes: [{ kind: "dish", name: "〇〇の緑茶" }],
+        ingredients: [
+          { name: "緑茶", nutrientSource: { type: "nutrition_label", labelBasisGrams: 100 } },
+        ],
       });
     });
   });
