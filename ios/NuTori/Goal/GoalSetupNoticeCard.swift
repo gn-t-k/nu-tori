@@ -28,7 +28,7 @@ struct GoalSetupNoticeCard: View {
         }
         .animation(animation(to: form), value: form)
         // 目標が決まった瞬間に、決まったカードが入るのと同時に鳴らす。開いたときにもう決まっていれば、形が変わらないので鳴らない
-        .sensoryFeedback(.success, trigger: form) { old, new in
+        .haptic(.goalDecided, trigger: form) { old, new in
             old != .decided && new == .decided
         }
     }
