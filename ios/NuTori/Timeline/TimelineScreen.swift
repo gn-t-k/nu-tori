@@ -148,6 +148,7 @@ struct TimelineScreen: View {
         }
         .haptic(writeHaptic)
         .mealEstimationHaptics(for: snapshot.meals)
+        .replyHaptics(for: loaded?.days.flatMap(\.items) ?? [])
         // 書き込みの失敗は、押したときでなく、送ったあとに受け付けなかった1行として届く
         .haptic(.writeRejected, trigger: snapshot.rejectedLines) { old, new in
             !Set(new).isSubset(of: old)

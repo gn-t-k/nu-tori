@@ -13,21 +13,25 @@ public enum HapticMoment: Sendable {
     case mealEstimationFailed
     /// 待っていた食事の写真に料理が見つからなかった
     case mealHadNoDishes
+    /// 待っていた返事が届いた（送り直した返事を含む）
+    case replyArrived
+    /// 待っていた返事を作れなかった・止めた
+    case replyFailed
     /// 目標が決まった
     case goalDecided
 
     /// 鳴らす型
     public var feedback: HapticFeedback {
         switch self {
-        case .recordWritten, .mealEstimated, .goalDecided: .success
-        case .writeRejected, .mealEstimationFailed: .error
+        case .recordWritten, .mealEstimated, .replyArrived, .goalDecided: .success
+        case .writeRejected, .mealEstimationFailed, .replyFailed: .error
         case .mealHadNoDishes: .warning
         case .dayScrolled: .selection
         }
     }
 
     /// 編集を書いた結果のとき。記録を作る・直す・消す編集が書けたら `recordWritten`。「会話として送り直す」は、その文章の食事が消えるので、消す編集に数える。
-    /// 書いたものが無いとき（今と同じ値、空の名前、範囲の外）と、記録が変わらない返事の送り直しは nil
+    /// 書いたものが無いとき（今と同じ値、空の名前、範囲の外）と、記録が変わらない返事の送り直しは nil（返事の結果が出たときに知らせる）
     public init?(_ edit: UserEdit, outcome: UserEdit.Outcome) {
         guard case .written = outcome else { return nil }
         switch edit {

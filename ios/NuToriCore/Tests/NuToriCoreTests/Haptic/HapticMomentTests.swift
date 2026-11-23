@@ -35,6 +35,16 @@ struct HapticMomentTests {
             #expect(HapticMoment.mealHadNoDishes.feedback == .warning)
         }
 
+        @Test("待っていた返事が届いたら、success を鳴らすこと")
+        func replyArrived() {
+            #expect(HapticMoment.replyArrived.feedback == .success)
+        }
+
+        @Test("待っていた返事を作れなかったら、error を鳴らすこと")
+        func replyFailed() {
+            #expect(HapticMoment.replyFailed.feedback == .error)
+        }
+
         @Test("目標が決まったら、success を鳴らすこと")
         func goalDecided() {
             #expect(HapticMoment.goalDecided.feedback == .success)
