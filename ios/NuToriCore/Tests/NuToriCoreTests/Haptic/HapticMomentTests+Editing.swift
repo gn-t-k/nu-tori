@@ -8,17 +8,20 @@ extension HapticMomentTests {
         let card: MealCard
         let dish: Dish
         let editedAt: Date
+        let record: WeightRecord
+        let ingredient: Ingredient
 
         init() throws {
+            record = try WeightRecord.manual(
+                72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
             card = try MealCard.fixture(status: .estimated)
             dish = Dish.fixture(mealId: card.meal.id)
+            ingredient = Ingredient.fixture(dishId: dish.id)
             editedAt = try Date("2026-09-24T13:00:00+09:00", strategy: .iso8601)
         }
 
         @Test("体重を直したら、記録を直したときになること")
-        func weightCorrected() throws {
-            let record = try WeightRecord.manual(
-                72.4, at: "2026-09-24T07:12:00+09:00", in: "Asia/Tokyo")
+        func weightCorrected() {
             #expect(HapticMoment(editing: .saveWeight(.correct(record))) == .recordCorrected)
         }
 
@@ -41,9 +44,9 @@ extension HapticMomentTests {
 
         @Test("材料の量を直したら、記録を直したときになること")
         func ingredientQuantityCorrected() {
-            let edit = UserEdit.correctIngredientQuantity(
-                Ingredient.fixture(dishId: dish.id), to: 150)
-            #expect(HapticMoment(editing: edit) == .recordCorrected)
+            #expect(
+                HapticMoment(editing: .correctIngredientQuantity(ingredient, to: 150))
+                    == .recordCorrected)
         }
 
         @Test("料理を足したら、料理を足したときになること")
@@ -64,15 +67,19 @@ extension HapticMomentTests {
 
         @Test("体重を記録する編集は、押した場所ごとにときが違うので、ここでは決めないこと")
         func weightCreated() {
-            let edit = UserEdit.saveWeight(
-                .create(kilograms: 72.4, instant: editedAt, timeZone: .gmt))
-            #expect(HapticMoment(editing: edit) == nil)
+            #expect(
+                HapticMoment(
+                    editing: .saveWeight(
+                        .create(
+                            kilograms: record.kilograms, instant: record.instant,
+                            timeZone: record.timeZone))) == nil)
         }
 
         @Test("返事を送り直す編集は、記録を直す編集でないので、ここでは決めないこと")
         func replyResent() {
-            let edit = UserEdit.resendReply(sentTextId: UUID(), reason: .halted)
-            #expect(HapticMoment(editing: edit) == nil)
+            #expect(
+                HapticMoment(editing: .resendReply(sentTextId: card.meal.id, reason: .halted))
+                    == nil)
         }
     }
 }

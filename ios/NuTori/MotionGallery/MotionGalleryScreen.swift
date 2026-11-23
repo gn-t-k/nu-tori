@@ -129,7 +129,7 @@ struct MotionGalleryScreen: View {
         case .weightRejected:
             let record = MotionGallerySample.weightRecord(
                 71.8, at: clock.now(), timeZone: clock.timeZone())
-            records.save(.correct(record))
+            records.put(record)
             later(seconds: 1.5) {
                 records.reject(record)
             }

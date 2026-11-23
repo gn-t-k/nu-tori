@@ -65,6 +65,11 @@ struct MotionGalleryRecords {
         }
     }
 
+    /// 体重の記録をそのまま足す。あとで `reject(_:)` に渡せるよう、ID を振った記録を受け取る
+    mutating func put(_ record: WeightRecord) {
+        weightRecords.append(record)
+    }
+
     /// 今記録した体重を、サーバーが受け付けなかった。記録が外れ、その位置に受け付けなかった1行が出る
     mutating func reject(_ record: WeightRecord) {
         weightRecords.removeAll { $0.id == record.id }
@@ -101,8 +106,10 @@ struct MotionGalleryRecords {
         }
     }
 
-    /// 料理を足す。見本では推定し直さず、材料の無い1皿として足す
-    mutating func addDish(named name: String, to card: MealCard) {
+    /// 料理を足す。見本では推定し直さず、材料の無い1皿として足す。空の名前は足さない
+    mutating func addDish(named typed: String, to card: MealCard) {
+        let name = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
         rebuild(mealId: card.meal.id) { _, dishes, _ in
             dishes.append(
                 Dish(
@@ -112,28 +119,22 @@ struct MotionGalleryRecords {
         }
     }
 
-    /// 料理の名前を直す。見本では推定し直さず、材料はそのままにする
+    /// 料理の名前を直す。見本では推定し直さず、材料はそのままにする。空の名前と今と同じ名前は直さない
     mutating func rename(_ dish: Dish, to name: String) {
-        replace(dish) { old in
-            Dish(
-                id: old.id, mealId: old.mealId, name: name, quantity: old.quantity,
-                positionInMeal: old.positionInMeal, version: old.version)
-        }
+        guard let edit = DishEdit.renaming(dish, to: name) else { return }
+        apply(edit)
     }
 
-    /// 料理の量を直す。見本では材料の量を同じ割合で変えず、そのままにする
+    /// 料理の量を直す。材料の量も同じ割合で変わる。範囲の外の量と今と同じ量は直さない
     mutating func correctQuantity(of dish: Dish, to value: Double) {
-        replace(dish) { old in
-            Dish(
-                id: old.id, mealId: old.mealId, name: old.name,
-                quantity: old.quantity.map {
-                    Dish.Quantity(value: value, unit: $0.unit, source: $0.source)
-                },
-                positionInMeal: old.positionInMeal, version: old.version)
-        }
+        guard let card = meals.first(where: { $0.meal.id == dish.mealId }),
+            let edit = DishEdit.correctingQuantity(
+                of: dish, ingredients: card.contents.dishes.flatMap(\.ingredients), to: value)
+        else { return }
+        apply(edit)
     }
 
-    /// 材料の量を直す
+    /// 材料の量を直す。量の出どころは「直した」になる
     mutating func correctQuantity(of ingredient: Ingredient, to quantity: Double) {
         guard
             let mealId = meals.first(where: { card in
@@ -145,7 +146,7 @@ struct MotionGalleryRecords {
                 guard old.id == ingredient.id else { return old }
                 return Ingredient(
                     id: old.id, dishId: old.dishId, name: old.name, quantity: quantity,
-                    quantitySource: old.quantitySource, unit: old.unit,
+                    quantitySource: .corrected, unit: old.unit,
                     edibleGramsPerUnit: old.edibleGramsPerUnit,
                     positionInDish: old.positionInDish, nutrientSource: old.nutrientSource,
                     nutrients: old.nutrients)
@@ -160,9 +161,13 @@ struct MotionGalleryRecords {
         }
     }
 
-    private mutating func replace(_ dish: Dish, with corrected: (Dish) -> Dish) {
-        rebuild(mealId: dish.mealId) { _, dishes, _ in
-            dishes = dishes.map { $0.id == dish.id ? corrected($0) : $0 }
+    /// 直した料理と、量を変えた材料を当てる
+    private mutating func apply(_ edit: DishEdit) {
+        rebuild(mealId: edit.dish.mealId) { _, dishes, ingredients in
+            dishes = dishes.map { $0.id == edit.dish.id ? edit.dish : $0 }
+            ingredients = ingredients.map { old in
+                edit.ingredients.first { $0.id == old.id } ?? old
+            }
         }
     }
 
