@@ -11,6 +11,7 @@ struct MotionGalleryRecords {
     private(set) var dailyGuides: [DailyGuide] = []
     private(set) var sentTexts: [SentText] = []
     private(set) var statuses: [UUID: SentTextStatus] = [:]
+    private(set) var rejectedLines: [RejectedLine] = []
     private let startedDay: CalendarDay
 
     /// 先週から使っていて、昨日までの体重と食事がある。今日はまだ何も記録していない
@@ -32,7 +33,8 @@ struct MotionGalleryRecords {
     func snapshot(now: Date, timeZone: TimeZone) -> TimelineSnapshot {
         TimelineSnapshot(
             weightRecords: weightRecords, weightTrend: nil,
-            initialPull: .completed(startedDay: startedDay), rejectedLines: [], meals: meals,
+            initialPull: .completed(startedDay: startedDay), rejectedLines: rejectedLines,
+            meals: meals,
             notices: notices, goals: goals, dailyGuides: dailyGuides, weeklyReviews: [],
             expenditureEstimates: [], subscriptionStatus: nil, undelivered: .none,
             conversation: Timeline.Conversation(
@@ -63,6 +65,12 @@ struct MotionGalleryRecords {
         }
     }
 
+    /// 今記録した体重を、サーバーが受け付けなかった。記録が外れ、その位置に受け付けなかった1行が出る
+    mutating func reject(_ record: WeightRecord) {
+        weightRecords.removeAll { $0.id == record.id }
+        rejectedLines.append(.weight(RejectedWeightLine(record: record, serverHasValue: false)))
+    }
+
     /// 答えていない体重の知らせに、答えた時刻を付ける。サーバーと同じく、体重の記録とは別の保存で届く
     mutating func answerWeightNotices(at instant: Date, timeZone: TimeZone) {
         notices = notices.map { notice in
@@ -81,6 +89,97 @@ struct MotionGalleryRecords {
 
     mutating func delete(mealId: UUID) {
         meals.removeAll { $0.meal.id == mealId }
+    }
+
+    /// 食事の時刻を直す
+    mutating func correctTime(of card: MealCard, to eatenAt: Date) {
+        rebuild(mealId: card.meal.id) { meal, _, _ in
+            meal = Meal(
+                id: meal.id, eatenAt: eatenAt,
+                eatenUtcOffsetSeconds: meal.eatenUtcOffsetSeconds, sentAt: meal.sentAt,
+                sentTimeZone: meal.sentTimeZone, entry: meal.entry, photoIds: meal.photoIds)
+        }
+    }
+
+    /// 料理を足す。見本では推定し直さず、材料の無い1皿として足す
+    mutating func addDish(named name: String, to card: MealCard) {
+        rebuild(mealId: card.meal.id) { _, dishes, _ in
+            dishes.append(
+                Dish(
+                    id: UUID(), mealId: card.meal.id, name: name,
+                    quantity: Dish.Quantity(value: 1, unit: "皿", source: .estimated),
+                    positionInMeal: (dishes.map(\.positionInMeal).max() ?? -1) + 1, version: 1))
+        }
+    }
+
+    /// 料理の名前を直す。見本では推定し直さず、材料はそのままにする
+    mutating func rename(_ dish: Dish, to name: String) {
+        replace(dish) { old in
+            Dish(
+                id: old.id, mealId: old.mealId, name: name, quantity: old.quantity,
+                positionInMeal: old.positionInMeal, version: old.version)
+        }
+    }
+
+    /// 料理の量を直す。見本では材料の量を同じ割合で変えず、そのままにする
+    mutating func correctQuantity(of dish: Dish, to value: Double) {
+        replace(dish) { old in
+            Dish(
+                id: old.id, mealId: old.mealId, name: old.name,
+                quantity: old.quantity.map {
+                    Dish.Quantity(value: value, unit: $0.unit, source: $0.source)
+                },
+                positionInMeal: old.positionInMeal, version: old.version)
+        }
+    }
+
+    /// 材料の量を直す
+    mutating func correctQuantity(of ingredient: Ingredient, to quantity: Double) {
+        guard
+            let mealId = meals.first(where: { card in
+                card.contents.dishes.contains { $0.dish.id == ingredient.dishId }
+            })?.meal.id
+        else { return }
+        rebuild(mealId: mealId) { _, _, ingredients in
+            ingredients = ingredients.map { old in
+                guard old.id == ingredient.id else { return old }
+                return Ingredient(
+                    id: old.id, dishId: old.dishId, name: old.name, quantity: quantity,
+                    quantitySource: old.quantitySource, unit: old.unit,
+                    edibleGramsPerUnit: old.edibleGramsPerUnit,
+                    positionInDish: old.positionInDish, nutrientSource: old.nutrientSource,
+                    nutrients: old.nutrients)
+            }
+        }
+    }
+
+    mutating func delete(_ dish: Dish) {
+        rebuild(mealId: dish.mealId) { _, dishes, ingredients in
+            dishes.removeAll { $0.id == dish.id }
+            ingredients.removeAll { $0.dishId == dish.id }
+        }
+    }
+
+    private mutating func replace(_ dish: Dish, with corrected: (Dish) -> Dish) {
+        rebuild(mealId: dish.mealId) { _, dishes, _ in
+            dishes = dishes.map { $0.id == dish.id ? corrected($0) : $0 }
+        }
+    }
+
+    /// 食事のカードを、食事と料理と材料を変えて作り直す
+    private mutating func rebuild(
+        mealId: UUID, _ change: (inout Meal, inout [Dish], inout [Ingredient]) -> Void
+    ) {
+        guard let card = meals.first(where: { $0.meal.id == mealId }) else { return }
+        var meal = card.meal
+        var dishes = card.contents.dishes.map(\.dish)
+        var ingredients = card.contents.dishes.flatMap(\.ingredients)
+        change(&meal, &dishes, &ingredients)
+        put(
+            MealCard(
+                meal: meal, status: card.status, recordedOnThisDevice: card.recordedOnThisDevice,
+                dishes: dishes, ingredients: ingredients, dishEstimationStatuses: [:],
+                unsentDishIds: []))
     }
 
     // MARK: 文章

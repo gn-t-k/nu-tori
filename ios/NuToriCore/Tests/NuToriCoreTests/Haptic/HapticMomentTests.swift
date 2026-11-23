@@ -43,6 +43,31 @@ struct HapticMomentTests {
             #expect(HapticMoment.dayTapped.standard == .silent)
         }
 
+        @Test("スクロールして日が変わっても、鳴らさないこと")
+        func dayScrolled() {
+            #expect(HapticMoment.dayScrolled.standard == .silent)
+        }
+
+        @Test("記録を直しても、鳴らさないこと")
+        func recordCorrected() {
+            #expect(HapticMoment.recordCorrected.standard == .silent)
+        }
+
+        @Test("料理を足しても、鳴らさないこと")
+        func dishAdded() {
+            #expect(HapticMoment.dishAdded.standard == .silent)
+        }
+
+        @Test("料理を削除しても、鳴らさないこと")
+        func dishDeleted() {
+            #expect(HapticMoment.dishDeleted.standard == .silent)
+        }
+
+        @Test("受け付けなかった1行が届いても、鳴らさないこと")
+        func writeRejected() {
+            #expect(HapticMoment.writeRejected.standard == .silent)
+        }
+
         @Test("食事を削除しても、鳴らさないこと")
         func mealDeleted() {
             #expect(HapticMoment.mealDeleted.standard == .silent)
