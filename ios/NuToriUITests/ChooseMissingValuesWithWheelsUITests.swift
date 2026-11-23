@@ -88,7 +88,7 @@ final class ChooseMissingValuesWithWheelsUITests: XCTestCase {
         app.buttons["goal-setup-wheel-cancel"].tap()
 
         XCTAssertTrue(wheel.waitForNonExistence(timeout: 5))
-        XCTAssertEqual(height.value as? String, "選ぶ")
+        XCTAssertEqual(height.value as? String, "入力する")
         let next = app.buttons["goal-setup-next"]
         XCTAssertTrue(app.scrollUntilExists(next))
         XCTAssertFalse(next.isEnabled)
@@ -102,7 +102,7 @@ final class ChooseMissingValuesWithWheelsUITests: XCTestCase {
         app.pickers[identifier].pickerWheels.firstMatch
     }
 
-    /// 行を押してホイールのシートを出し、開いたときの位置を確かめ、行の右が「選ぶ」のまま「完了」で入れる
+    /// 行を押してホイールのシートを出し、開いたときの位置を確かめ、行の右が「入力する」のまま「完了」で入れる
     private func choose(row identifier: String, wheels initials: KeyValuePairs<String, String>) {
         let row = row(identifier)
         XCTAssertTrue(app.scrollUntilExists(row))
@@ -112,7 +112,7 @@ final class ChooseMissingValuesWithWheelsUITests: XCTestCase {
             XCTAssertTrue(wheel.waitForExistence(timeout: 5))
             XCTAssertEqual(wheel.value as? String, initial)
         }
-        XCTAssertEqual(row.value as? String, "選ぶ")
+        XCTAssertEqual(row.value as? String, "入力する")
         XCTAssertFalse(app.keyboards.element.exists)
         app.buttons["goal-setup-wheel-confirm"].tap()
         XCTAssertTrue(wheels[0].waitForNonExistence(timeout: 5))
