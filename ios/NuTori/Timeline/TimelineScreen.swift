@@ -152,6 +152,14 @@ struct TimelineScreen: View {
         // 「写真を使用」は、カメラを閉じながら触覚で知らせる
         .haptic(pressHaptic)
         .mealEstimationHaptics(for: snapshot.meals)
+        // 書き込みの失敗は、押したときでなく、送ったあとに受け付けなかった1行として届く
+        .haptic(.writeRejected, trigger: snapshot.rejectedLines) { old, new in
+            !Set(new).isSubset(of: old)
+        }
+        // 日を選んで着いたときと、一番下へ戻ったときは数えず、指で動かして日が変わったときだけ
+        .haptic(.dayScrolled, trigger: shownDay) { [movedByHand = viewport.isMovedByHand] _, _ in
+            movedByHand
+        }
         .photosPicker(
             isPresented: isPresenting(.photoPicker),
             selection: $pickedPhotos,
@@ -849,7 +857,7 @@ struct TimelineScreen: View {
                 now: now,
                 capture: capture,
                 actions: mealActions,
-                performEdit: performEdit,
+                performEdit: performDetailEdit,
                 returnToTimeline: returnToTimelineAfterMealDeletion,
                 openPaywall: { send(.paywallRequested(.awaitingMeal)) },
                 rejectedLines: snapshot.rejectedLines,
@@ -871,11 +879,11 @@ struct TimelineScreen: View {
         return DishDestination(opened: opened) { card, offer in
             DishScreen(
                 offer: offer,
-                performEdit: performEdit,
+                performEdit: performDetailEdit,
                 deleteMeal: {
                     MealScreen.deleteMealAndReturn(
                         card, now: now, returnToTimeline: returnToTimelineAfterMealDeletion,
-                        performEdit: performEdit)
+                        performEdit: performDetailEdit)
                 },
                 confirmsMealDeletion: false)
         }
@@ -883,8 +891,15 @@ struct TimelineScreen: View {
 
     /// 食事の画面と料理の画面で食事を削除したとき。食事が消えるので、タイムラインへ戻す
     private func returnToTimelineAfterMealDeletion() {
-        pressHaptic.fire(.mealDeleted)
         send(.returnedToTimeline)
+    }
+
+    /// 体重・食事・料理の画面から送る編集。記録を直す・消す、料理を足すときの触覚を鳴らしてから送る
+    private func performDetailEdit(_ edit: UserEdit) async {
+        if let moment = HapticMoment(editing: edit) {
+            pressHaptic.fire(moment)
+        }
+        await performEdit(edit)
     }
 
     /// 体重の画面。タイムラインの体重のカード、日のまとめの体重の行、目標の画面と週の振り返りの「体重の記録 ›」から潜る
@@ -898,7 +913,7 @@ struct TimelineScreen: View {
             trendChart: snapshot.weightTrendChart,
             rejectedLines: snapshot.rejectedLines,
             capture: capture,
-            performEdit: performEdit,
+            performEdit: performDetailEdit,
             startGoalSetup: startGoalSetup,
             // 体重の画面の上に積むので、戻るは「‹ 体重」
             openGoalScreen: { send(.goalScreenRequested(.weightScreen)) }

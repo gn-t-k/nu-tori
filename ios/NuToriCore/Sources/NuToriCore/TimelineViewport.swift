@@ -39,6 +39,10 @@ public struct TimelineViewport: Equatable, Sendable {
         endPosition == .shown ? newestDay : dayInView ?? newestDay
     }
 
+    /// 使う人が指で動かしているか（指を離したあとの惰性を含む）。アプリが動かしたとき（日を選んだ、一番下へ戻した）は false。
+    /// 「動きの見本」で、指で動かして日が変わったときの触覚を試すのに使う
+    public private(set) var isMovedByHand = false
+
     // MARK: 出来事
 
     /// 描き直したので、待っていた指示を受け取る。受け取った指示は、もう待たない
@@ -51,6 +55,11 @@ public struct TimelineViewport: Equatable, Sendable {
     public mutating func scrollPhaseChanged(
         from oldPhase: ScrollPhase, to phase: ScrollPhase, in days: [Timeline.Day]
     ) -> [Instruction] {
+        switch phase {
+        case .interacting, .decelerating: isMovedByHand = true
+        case .idle, .animating: isMovedByHand = false
+        case .tracking: break
+        }
         switch phase {
         case .interacting:
             // 触っているあいだは追わない

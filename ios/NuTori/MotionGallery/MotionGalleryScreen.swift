@@ -88,6 +88,8 @@ struct MotionGalleryScreen: View {
         case photoMealFailed
         /// 写真を撮った食事が入り、写真に料理が見つからずに終わる
         case photoMealWithoutDishes
+        /// 今日の体重を記録し、少しして、サーバーが受け付けなかった1行に変わる
+        case weightRejected
         /// 文章を送り、「読んでいます…」のあとに文章の食事が出て、推定が終わる
         case sentText
         /// 目標を立てる知らせを出し、少しして目標が決まる
@@ -105,6 +107,7 @@ struct MotionGalleryScreen: View {
             case .photoMeal: "写真の食事"
             case .photoMealFailed: "推定できない"
             case .photoMealWithoutDishes: "料理なし"
+            case .weightRejected: "受け付けない"
             case .sentText: "文章の食事"
             case .goalDecided: "目標が決まる"
             case .missingValues: "足りない値"
@@ -123,6 +126,13 @@ struct MotionGalleryScreen: View {
             estimate(meal(.captured, photoIds: [UUID()], at: clock.now()), endingAs: .failed)
         case .photoMealWithoutDishes:
             estimate(meal(.captured, photoIds: [UUID()], at: clock.now()), endingAs: .noDishes)
+        case .weightRejected:
+            let record = MotionGallerySample.weightRecord(
+                71.8, at: clock.now(), timeZone: clock.timeZone())
+            records.add(record)
+            later(seconds: 1.5) {
+                records.reject(record)
+            }
         case .sentText:
             send("昼は親子丼と味噌汁")
         case .goalDecided:
@@ -148,7 +158,7 @@ struct MotionGalleryScreen: View {
         }
     }
 
-    /// タイムラインが渡す編集を、見本の記録に当てる。食事の中身を直す編集は見本では受けない
+    /// タイムラインが渡す編集を、見本の記録に当てる。料理を足す・直す編集は、推定し直さずに値だけを変える。送り直す編集は見本では受けない
     private func perform(_ edit: UserEdit) async {
         switch edit {
         case .saveWeight(let write):
@@ -164,8 +174,19 @@ struct MotionGalleryScreen: View {
             records.delete(mealId: card.meal.id)
         case .sendText(let draft):
             send(draft.text.trimmingCharacters(in: .whitespacesAndNewlines))
-        case .correctMealTime, .addDish, .renameDish, .correctDishQuantity,
-            .correctIngredientQuantity, .deleteDish, .resendAsConversation, .resendReply:
+        case .correctMealTime(let card, let eatenAt):
+            records.correctTime(of: card, to: eatenAt)
+        case .addDish(let name, let card):
+            records.addDish(named: name, to: card)
+        case .renameDish(let dish, let name):
+            records.rename(dish, to: name)
+        case .correctDishQuantity(let dish, let quantity):
+            records.correctQuantity(of: dish, to: quantity)
+        case .correctIngredientQuantity(let ingredient, let quantity):
+            records.correctQuantity(of: ingredient, to: quantity)
+        case .deleteDish(let dish):
+            records.delete(dish)
+        case .resendAsConversation, .resendReply:
             break
         }
     }
