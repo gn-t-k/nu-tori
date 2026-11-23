@@ -5,11 +5,17 @@ public import Foundation
 public struct ReplyProgress: Equatable, Sendable {
     /// `items` はタイムラインに置くもの。送った文章の吹き出しと返事だけを見る
     public init(items: [Timeline.Item]) {
-        let bubbles = items.compactMap { item in
-            if case .sentText(let bubble) = item { bubble } else { nil }
+        var waiting: Set<UUID> = []
+        var failed: Set<UUID> = []
+        for case .sentText(let bubble) in items {
+            switch bubble.replyLine {
+            case .reading: waiting.insert(bubble.sentText.id)
+            case .halted, .failed: failed.insert(bubble.sentText.id)
+            case nil: break
+            }
         }
-        waiting = Set(bubbles.filter { $0.replyLine == .reading }.map(\.sentText.id))
-        failed = Set(bubbles.filter { $0.replyLine?.resendReason != nil }.map(\.sentText.id))
+        self.waiting = waiting
+        self.failed = failed
         replied = Set(
             items.compactMap { item in
                 if case .reply(let reply) = item, !reply.body.isEmpty {

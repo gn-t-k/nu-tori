@@ -106,22 +106,23 @@ struct ReplyProgressTests {
         }
     }
 
-    @Suite("作れなかった返事を送り直して、また待っている文章")
-    struct Resent {
+    @Suite("返事を作れなかった文章")
+    struct HadFailed {
         let sentText: SentText
         let earlier: ReplyProgress
 
         init() throws {
             sentText = try .fixture("今日の夕食は何がいい？", sentAt: "2026-09-24T12:10:00+09:00")
-            earlier = ReplyProgress(items: [ReplyProgressTests.bubble(sentText, .reading)])
+            earlier = ReplyProgress(items: [
+                ReplyProgressTests.bubble(sentText, .failed(.retriesExhausted))
+            ])
         }
 
-        @Test("また作れなかったら、作れなかったとすること")
-        func failedAgain() {
-            let now = ReplyProgress(items: [
-                ReplyProgressTests.bubble(sentText, .failed(.badRequest))
-            ])
-            #expect(now.hasFailed(since: earlier))
+        @Test("送り直してまた待っているあいだは、返事が届いたとも作れなかったともしないこと")
+        func resent() {
+            let now = ReplyProgress(items: [ReplyProgressTests.bubble(sentText, .reading)])
+            #expect(!now.hasReplied(since: earlier))
+            #expect(!now.hasFailed(since: earlier))
         }
     }
 }
