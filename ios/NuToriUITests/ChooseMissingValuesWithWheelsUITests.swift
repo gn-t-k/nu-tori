@@ -102,7 +102,7 @@ final class ChooseMissingValuesWithWheelsUITests: XCTestCase {
         app.pickers[identifier].pickerWheels.firstMatch
     }
 
-    /// 行を押してホイールのシートを出し、開いたときの位置を確かめ、行の右が「入力する」のまま「完了」で入れる
+    /// 行を押してホイールのシートを出し、開いたときの位置を確かめ、値を入れる前の表示のまま「完了」で入れる
     private func choose(row identifier: String, wheels initials: KeyValuePairs<String, String>) {
         let row = row(identifier)
         XCTAssertTrue(app.scrollUntilExists(row))
