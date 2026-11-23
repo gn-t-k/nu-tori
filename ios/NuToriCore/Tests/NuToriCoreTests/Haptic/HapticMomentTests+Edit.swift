@@ -12,6 +12,7 @@ extension HapticMomentTests {
         let photo: MealPhotoOriginal
         let editedAt: Date
         let sentTextId: UUID
+        let draft: TextDraft
         let written = UserEdit.Outcome.written(recordCount: 1)
 
         init() throws {
@@ -24,6 +25,7 @@ extension HapticMomentTests {
                 data: Data([0xFF]), exif: PhotoExif(dateTimeOriginal: nil, offsetTimeOriginal: nil))
             editedAt = try Date("2026-09-24T13:00:00+09:00", strategy: .iso8601)
             sentTextId = UUID()
+            draft = TextDraft(text: "昼は親子丼")
         }
 
         @Test("体重を記録して書けたら、記録が書けたときになること")
@@ -114,12 +116,17 @@ extension HapticMomentTests {
                     == nil)
         }
 
-        @Test("会話として送り直す編集は、書けても、鳴らすときにならないこと")
+        @Test("会話として送り直して書けたら、文章の食事が消えるので、記録が書けたときになること")
         func resentAsConversation() {
             #expect(
                 HapticMoment(
                     .resendAsConversation(sentTextId: sentTextId, deletedMealCount: 1),
-                    outcome: written) == nil)
+                    outcome: written) == .recordWritten)
+        }
+
+        @Test("文章を送って書けたら、記録が書けたときになること")
+        func textSent() {
+            #expect(HapticMoment(.sendText(draft), outcome: written) == .recordWritten)
         }
     }
 }

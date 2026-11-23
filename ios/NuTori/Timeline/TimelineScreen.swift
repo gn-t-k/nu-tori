@@ -18,8 +18,7 @@ struct TimelineScreen: View {
     /// 体重を記録したあと。この端末でまだ通知の許可を求めていなければ求める
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
-    /// 記録を作る・直す・消す編集を渡す。文章は、送れるかを書く欄が決め、送れるときだけ渡す
-    /// 編集を書き、書いた結果を返す
+    /// 記録を作る・直す・消す編集を渡す。文章は、送れるかを書く欄が決め、送れるときだけ渡す。返る結果で、書けたときの触覚を鳴らすかを決める
     let performEdit: (UserEdit) async -> UserEdit.Outcome
     let accountActions: AccountActions
     /// 課金画面を開く（`paywallSheet`）ときに渡す

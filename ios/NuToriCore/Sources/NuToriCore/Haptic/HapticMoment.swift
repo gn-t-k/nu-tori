@@ -1,6 +1,6 @@
 /// 触覚を鳴らすとき。基準は DESIGN.md の「Haptics」。
 /// 記録が変わらない操作（プリセット、体重の − と ＋、帯の1日の丸）は鳴らさないので、ここに無い
-public enum HapticMoment: CaseIterable, Sendable {
+public enum HapticMoment: Sendable {
     /// 記録を作った・直した・消した編集が書けた
     case recordWritten
     /// 受け付けなかった1行が届いた（書き込みがサーバーで失敗した）
@@ -26,16 +26,16 @@ public enum HapticMoment: CaseIterable, Sendable {
         }
     }
 
-    /// 編集を書いた結果のとき。記録を作る・直す・消す編集が書けたら `recordWritten`。
-    /// 書いたものが無いとき（今と同じ値、空の名前、範囲の外）と、返事や文章を送り直す編集は nil
+    /// 編集を書いた結果のとき。記録を作る・直す・消す編集が書けたら `recordWritten`。「会話として送り直す」は、その文章の食事が消えるので、消す編集に数える。
+    /// 書いたものが無いとき（今と同じ値、空の名前、範囲の外）と、記録が変わらない返事の送り直しは nil
     public init?(_ edit: UserEdit, outcome: UserEdit.Outcome) {
         guard case .written = outcome else { return nil }
         switch edit {
         case .saveWeight, .recordCapturedMeal, .recordPickedMeals, .correctMealTime, .deleteMeal,
             .addDish, .renameDish, .correctDishQuantity, .correctIngredientQuantity, .deleteDish,
-            .sendText:
+            .sendText, .resendAsConversation:
             self = .recordWritten
-        case .resendAsConversation, .resendReply:
+        case .resendReply:
             return nil
         }
     }
