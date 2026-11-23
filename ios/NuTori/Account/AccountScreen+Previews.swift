@@ -18,7 +18,6 @@
                 appVersion: "1.0",
                 appBuild: 53,
                 actions: .noop,
-                openMotionGallery: nil,
                 onClose: {}
             )
         }
@@ -39,7 +38,6 @@
                 appVersion: "1.0",
                 appBuild: 53,
                 actions: .noop,
-                openMotionGallery: nil,
                 onClose: {}
             )
         }

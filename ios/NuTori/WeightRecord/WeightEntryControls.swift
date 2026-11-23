@@ -44,7 +44,6 @@ struct WeightEntryControls: View {
                 showsField = true
             }
         }
-        .haptic(.weightStepped, trigger: observation.stepperPressCount)
     }
 
     /// 値の欄を入れる欄にしているか。フォーカスは欄が出てから当てる（欄が無いうちに当てると、すぐ外れて欄が出ない）

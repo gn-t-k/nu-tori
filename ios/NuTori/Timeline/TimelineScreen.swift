@@ -18,8 +18,8 @@ struct TimelineScreen: View {
     /// 体重を記録したあと。この端末でまだ通知の許可を求めていなければ求める
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
-    /// 記録を作る・直す・消す編集を渡す。文章は、送れるかを書く欄が決め、送れるときだけ渡す
-    let performEdit: (UserEdit) async -> Void
+    /// 記録を作る・直す・消す編集を渡す。文章は、送れるかを書く欄が決め、送れるときだけ渡す。返る結果で、書けたときの触覚を鳴らすかを決める
+    let performEdit: (UserEdit) async -> UserEdit.Outcome
     let accountActions: AccountActions
     /// 課金画面を開く（`paywallSheet`）ときに渡す
     let paywallActions: PaywallActions
@@ -43,7 +43,6 @@ struct TimelineScreen: View {
                     today: snapshot.today,
                     openableDays: loaded?.dayRange
                 ) { day in
-                    pressHaptic.fire(.dayTapped)
                     send(.dayRingTapped(day))
                 }
                 Divider()
@@ -125,9 +124,8 @@ struct TimelineScreen: View {
                 timeZone: timeZone,
                 capture: capture,
                 onRecord: { write in
-                    pressHaptic.fire(.weightRecordedInSheet)
                     send(.weightRecordedInEntry)
-                    Task { await performEdit(.saveWeight(write)) }
+                    Task { await commit(.saveWeight(write)) }
                 }
             )
         }
@@ -135,10 +133,9 @@ struct TimelineScreen: View {
             MealCamera(
                 onUse: { original, exif in
                     let sentAt = now()
-                    pressHaptic.fire(.photoUsed)
                     send(.photoTaken)
                     Task {
-                        await performEdit(
+                        await commit(
                             .recordCapturedMeal(
                                 MealPhotoOriginal(data: original, exif: exif), sentAt: sentAt))
                     }
@@ -149,9 +146,9 @@ struct TimelineScreen: View {
             )
             .ignoresSafeArea()
         }
-        // 「写真を使用」は、カメラを閉じながら触覚で知らせる
-        .haptic(pressHaptic)
+        .haptic(writeHaptic)
         .mealEstimationHaptics(for: snapshot.meals)
+        .replyHaptics(for: loaded?.days.flatMap(\.items) ?? [])
         // 書き込みの失敗は、押したときでなく、送ったあとに受け付けなかった1行として届く
         .haptic(.writeRejected, trigger: snapshot.rejectedLines) { old, new in
             !Set(new).isSubset(of: old)
@@ -170,12 +167,11 @@ struct TimelineScreen: View {
         )
         .onChange(of: pickedPhotos) { _, items in
             guard !items.isEmpty else { return }
-            pressHaptic.fire(.photosPicked)
             let pickedAt = now()
             pickedPhotos = []
             showPickedPhotosLoadingWhileRecording(count: items.count) {
                 let originals = await PickedMealPhotos.originals(of: items)
-                await performEdit(.recordPickedMeals(originals, pickedAt: pickedAt))
+                await commit(.recordPickedMeals(originals, pickedAt: pickedAt))
             }
         }
         .accessibilityElement(children: .contain)
@@ -184,8 +180,8 @@ struct TimelineScreen: View {
 
     /// 開いているシートと潜った画面の並び。移り方の規則は NuToriCore の TimelineNavigation が持つ
     @State private var navigation = TimelineNavigation()
-    /// 押した操作（「写真を使用」、体重の記録、「送る」など）の触覚を鳴らす合図
-    @State private var pressHaptic = HapticPulse()
+    /// 編集が書けたときの触覚を鳴らす合図
+    @State private var writeHaptic = HapticPulse()
     /// 答えていない知らせの1行を帯の下に出すかを、カードの最後に届いた位置で覚える
     @State private var unansweredNoticeLineVisibility = UnansweredNoticeLineVisibility()
     @State private var pickedPhotos: [PhotosPickerItem] = []
@@ -536,9 +532,8 @@ struct TimelineScreen: View {
                 timeZone: timeZone,
                 capture: capture,
                 onRecord: { write in
-                    pressHaptic.fire(.weightRecordedInNotice)
                     Task {
-                        await performEdit(.saveWeight(write))
+                        await commit(.saveWeight(write))
                         // 知らせの中で記録したときは、記録した直後に通知の許可を求める
                         await requestNotificationPermission()
                     }
@@ -676,14 +671,12 @@ struct TimelineScreen: View {
             },
             onWeight: { send(.weightEntryTapped) },
             onPresetTapped: { preset in
-                pressHaptic.fire(.presetTapped)
                 send(.composerTapped)
                 Task { await capture(.presetTapped(preset)) }
             },
             onSendText: { draft in
-                pressHaptic.fire(.textSent)
                 send(.composerTapped)
-                Task { await performEdit(.sendText(draft)) }
+                Task { await commit(.sendText(draft)) }
             },
             onOpenPaywall: { send(.paywallRequested(.composerChip)) }
         )
@@ -698,13 +691,13 @@ struct TimelineScreen: View {
             resend: { reason in
                 viewport.textResent()
                 Task {
-                    await performEdit(.resendReply(sentTextId: bubble.sentText.id, reason: reason))
+                    await commit(.resendReply(sentTextId: bubble.sentText.id, reason: reason))
                 }
             },
             resendAsConversation: {
                 viewport.textResent()
                 Task {
-                    await performEdit(
+                    await commit(
                         .resendAsConversation(
                             sentTextId: bubble.sentText.id,
                             deletedMealCount: bubble.meals.count))
@@ -857,7 +850,7 @@ struct TimelineScreen: View {
                 now: now,
                 capture: capture,
                 actions: mealActions,
-                performEdit: performDetailEdit,
+                performEdit: commit,
                 returnToTimeline: returnToTimelineAfterMealDeletion,
                 openPaywall: { send(.paywallRequested(.awaitingMeal)) },
                 rejectedLines: snapshot.rejectedLines,
@@ -879,11 +872,11 @@ struct TimelineScreen: View {
         return DishDestination(opened: opened) { card, offer in
             DishScreen(
                 offer: offer,
-                performEdit: performDetailEdit,
+                performEdit: commit,
                 deleteMeal: {
                     MealScreen.deleteMealAndReturn(
                         card, now: now, returnToTimeline: returnToTimelineAfterMealDeletion,
-                        performEdit: performDetailEdit)
+                        performEdit: commit)
                 },
                 confirmsMealDeletion: false)
         }
@@ -894,12 +887,12 @@ struct TimelineScreen: View {
         send(.returnedToTimeline)
     }
 
-    /// 体重・食事・料理の画面から送る編集。記録を直す・消す、料理を足すときの触覚を鳴らしてから送る
-    private func performDetailEdit(_ edit: UserEdit) async {
-        if let moment = HapticMoment(editing: edit) {
-            pressHaptic.fire(moment)
+    /// 編集を書き、記録を作る・直す・消す編集が書けたら触覚を鳴らす。タイムラインと、そこから潜る画面の編集は、どれもここを通す
+    private func commit(_ edit: UserEdit) async {
+        let outcome = await performEdit(edit)
+        if let moment = HapticMoment(edit, outcome: outcome) {
+            writeHaptic.fire(moment)
         }
-        await performEdit(edit)
     }
 
     /// 体重の画面。タイムラインの体重のカード、日のまとめの体重の行、目標の画面と週の振り返りの「体重の記録 ›」から潜る
@@ -913,7 +906,7 @@ struct TimelineScreen: View {
             trendChart: snapshot.weightTrendChart,
             rejectedLines: snapshot.rejectedLines,
             capture: capture,
-            performEdit: performDetailEdit,
+            performEdit: commit,
             startGoalSetup: startGoalSetup,
             // 体重の画面の上に積むので、戻るは「‹ 体重」
             openGoalScreen: { send(.goalScreenRequested(.weightScreen)) }

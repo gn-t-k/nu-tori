@@ -15,7 +15,7 @@ struct TimelineScreenContainer: View {
     let requestNotificationPermission: () async -> Void
     let prepareWeightEntry: () async -> Void
     /// 記録を作る・直す・消す編集を渡す（`RootModel.perform(_:)`）
-    let performEdit: (UserEdit) async -> Void
+    let performEdit: (UserEdit) async -> UserEdit.Outcome
     /// 送った文章の ID ごとの、見守る要求で受け取っている途中の返事
     let replyStreams: [UUID: ReplyStream]
     let goalSetup: GoalSetupSession

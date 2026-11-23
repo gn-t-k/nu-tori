@@ -1,20 +1,18 @@
 import NuToriCore
 import SwiftUI
 
-/// 値が変わったときに、その「とき」の触覚を鳴らす。型は環境の `hapticTrial` から引く
+/// 値が変わったときに、その「とき」の触覚を鳴らす
 struct HapticOnChange<Trigger: Equatable>: ViewModifier {
     let moment: HapticMoment
     let trigger: Trigger
     let condition: (Trigger, Trigger) -> Bool
 
     func body(content: Content) -> some View {
-        let feedback = trial[moment].feedback
+        let feedback = moment.feedback.sensoryFeedback
         return content.sensoryFeedback(trigger: trigger) { [condition] old, new in
             condition(old, new) ? feedback : nil
         }
     }
-
-    @Environment(\.hapticTrial) private var trial
 }
 
 extension View {
@@ -24,10 +22,5 @@ extension View {
         when condition: @escaping (_ old: Trigger, _ new: Trigger) -> Bool
     ) -> some View {
         modifier(HapticOnChange(moment: moment, trigger: trigger, condition: condition))
-    }
-
-    /// trigger が変わるたびに、その「とき」の触覚を鳴らす
-    func haptic<Trigger: Equatable>(_ moment: HapticMoment, trigger: Trigger) -> some View {
-        haptic(moment, trigger: trigger) { _, _ in true }
     }
 }

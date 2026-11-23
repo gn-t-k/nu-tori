@@ -29,7 +29,7 @@
             noteReminderLanded: {},
             requestNotificationPermission: {},
             prepareWeightEntry: {},
-            performEdit: { _ in },
+            performEdit: { _ in .unwritten },
             accountActions: .noop,
             paywallActions: .noop,
             mealActions: .noop,

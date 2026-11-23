@@ -18,8 +18,6 @@ struct AccountScreen: View {
     let appVersion: String
     let appBuild: Int
     let actions: AccountActions
-    /// 「動きの見本」を開く。TestFlight で入れた版だけにあり、nil なら行を出さない
-    let openMotionGallery: (() -> Void)?
     let onClose: () -> Void
 
     var body: some View {
@@ -96,13 +94,6 @@ struct AccountScreen: View {
                 }
             } footer: {
                 Text("エラーの報告と利用状況のデータは、最長 90 日で消えます。")
-            }
-            if let openMotionGallery {
-                Section {
-                    Button("動きの見本", action: openMotionGallery)
-                } footer: {
-                    Text("TestFlight の版だけに出ます。見本の記録で、タイムラインの動きを試せます。記録は保存しません。")
-                }
             }
             Section {
             } footer: {
@@ -182,7 +173,6 @@ struct AccountScreen: View {
         appVersion: String,
         appBuild: Int,
         actions: AccountActions,
-        openMotionGallery: (() -> Void)?,
         onClose: @escaping () -> Void
     ) {
         self.subscription = subscription
@@ -194,7 +184,6 @@ struct AccountScreen: View {
         self.appVersion = appVersion
         self.appBuild = appBuild
         self.actions = actions
-        self.openMotionGallery = openMotionGallery
         self.onClose = onClose
         _deletion = State(initialValue: deletion)
         _signOutStep = State(initialValue: signOutStep)
