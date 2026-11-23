@@ -1,9 +1,9 @@
 import NuToriCore
 import Testing
 
-@Suite("押した操作の触覚の合図")
+@Suite("触覚の合図")
 struct HapticPulseTests {
-    @Suite("まだ何も押していないとき")
+    @Suite("まだ何も鳴らしていないとき")
     struct NotFired {
         let pulse: HapticPulse
 
@@ -11,31 +11,31 @@ struct HapticPulseTests {
             pulse = HapticPulse()
         }
 
-        @Test("押した操作を持たないこと")
+        @Test("鳴らすときを持たないこと")
         func hasNoMoment() {
             #expect(pulse.moment == nil)
         }
     }
 
-    @Suite("「写真を使用」を押したあと")
+    @Suite("編集が書けたときを鳴らしたあと")
     struct Fired {
         let pulse: HapticPulse
 
         init() {
             var pulse = HapticPulse()
-            pulse.fire(.photoUsed)
+            pulse.fire(.recordWritten)
             self.pulse = pulse
         }
 
-        @Test("押した操作を持つこと")
+        @Test("鳴らしたときを持つこと")
         func hasMoment() {
-            #expect(pulse.moment == .photoUsed)
+            #expect(pulse.moment == .recordWritten)
         }
 
-        @Test("同じ操作をもう一度押すと、値が変わること")
+        @Test("同じときをもう一度鳴らすと、値が変わること")
         func changesOnSameMoment() {
             var again = pulse
-            again.fire(.photoUsed)
+            again.fire(.recordWritten)
             #expect(again != pulse)
         }
     }

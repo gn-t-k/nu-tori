@@ -40,7 +40,7 @@ public struct TimelineViewport: Equatable, Sendable {
     }
 
     /// 使う人が指で動かしているか（指を離したあとの惰性を含む）。アプリが動かしたとき（日を選んだ、一番下へ戻した）は false。
-    /// 「動きの見本」で、指で動かして日が変わったときの触覚を試すのに使う
+    /// 指で動かして日が変わったときだけ、触覚を鳴らすのに使う
     public private(set) var isMovedByHand = false
 
     // MARK: 出来事

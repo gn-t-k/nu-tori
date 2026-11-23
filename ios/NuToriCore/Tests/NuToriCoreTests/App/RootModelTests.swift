@@ -125,6 +125,20 @@ struct RootModelTests {
             #expect(device.analytics.captured.isEmpty)
         }
 
+        @Test("今と同じ名前なら、書いたものが無いと返すこと")
+        func returnsUnwrittenForSameName() async {
+            let outcome = await device.model.perform(.renameDish(dish, to: " 親子丼 "))
+
+            #expect(outcome == .unwritten)
+        }
+
+        @Test("違う名前なら、1件書いたと返すこと")
+        func returnsWrittenForRenamed() async {
+            let outcome = await device.model.perform(.renameDish(dish, to: "カツ丼"))
+
+            #expect(outcome == .written(recordCount: 1))
+        }
+
         @Test("違う名前なら、送り待ちに並べ、料理を直したことを PostHog に送ること")
         func capturesRenamed() async {
             await device.model.perform(.renameDish(dish, to: "カツ丼"))

@@ -159,12 +159,14 @@ public final class RootModel {
         }
     }
 
-    /// 画面からの編集を書き、書いたら PostHog に出来事を送る。後始末は `UserEdit.aftermath` に種類ごとに書いてある
-    public func perform(_ edit: UserEdit) async {
+    /// 画面からの編集を書き、書いたら PostHog に出来事を送る。後始末は `UserEdit.aftermath` に種類ごとに書いてある。
+    /// 書いた結果を返す（画面が、書けたときの触覚を鳴らす）。書くのに失敗したら、書いたものが無いとして返す
+    @discardableResult
+    public func perform(_ edit: UserEdit) async -> UserEdit.Outcome {
         guard
             case .written(let recordCount)? = try? await recordSync.perform(
                 edit, in: clock.timeZone())
-        else { return }
+        else { return .unwritten }
         let aftermath = edit.aftermath
         if let event = aftermath.usage.event(recordCount: recordCount) {
             await accountSession.capture(event)
@@ -174,6 +176,7 @@ public final class RootModel {
             // 許可の画面が閉じるまで待たずに返し、写真を読んでいるあいだの仮のカードを、食事のカードが出たらすぐ外せるようにする
             Task { await health.requestNutritionAuthorizationAfterMealRecorded() }
         }
+        return .written(recordCount: recordCount)
     }
 
     /// カードに出す写真のファイル。この端末に無ければ取りに行く。取れなければ nil

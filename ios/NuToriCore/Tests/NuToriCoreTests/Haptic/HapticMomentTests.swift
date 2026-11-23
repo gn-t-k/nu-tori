@@ -1,101 +1,43 @@
 import NuToriCore
 import Testing
 
-@Suite("触覚を鳴らすときの本番の型")
+@Suite("触覚を鳴らすとき")
 struct HapticMomentTests {
-    @Suite("今の本番で鳴らしているとき")
-    struct Sounding {
-        @Test("「写真を使用」を押したら、success を鳴らすこと")
-        func photoUsed() {
-            #expect(HapticMoment.photoUsed.standard == .success)
+    @Suite("鳴らす型")
+    struct Feedback {
+        @Test("記録を作る・直す・消す編集が書けたら、success を鳴らすこと")
+        func recordWritten() {
+            #expect(HapticMoment.recordWritten.feedback == .success)
         }
 
-        @Test("体重の知らせの中で記録したら、success を鳴らすこと")
-        func weightRecordedInNotice() {
-            #expect(HapticMoment.weightRecordedInNotice.standard == .success)
+        @Test("受け付けなかった1行が届いたら、error を鳴らすこと")
+        func writeRejected() {
+            #expect(HapticMoment.writeRejected.feedback == .error)
+        }
+
+        @Test("指でスクロールして日が変わったら、selection を鳴らすこと")
+        func dayScrolled() {
+            #expect(HapticMoment.dayScrolled.feedback == .selection)
         }
 
         @Test("待っていた食事の推定ができたら、success を鳴らすこと")
         func mealEstimated() {
-            #expect(HapticMoment.mealEstimated.standard == .success)
+            #expect(HapticMoment.mealEstimated.feedback == .success)
+        }
+
+        @Test("待っていた食事の推定ができなかったら、error を鳴らすこと")
+        func mealEstimationFailed() {
+            #expect(HapticMoment.mealEstimationFailed.feedback == .error)
+        }
+
+        @Test("待っていた食事の写真に料理が見つからなかったら、warning を鳴らすこと")
+        func mealHadNoDishes() {
+            #expect(HapticMoment.mealHadNoDishes.feedback == .warning)
         }
 
         @Test("目標が決まったら、success を鳴らすこと")
         func goalDecided() {
-            #expect(HapticMoment.goalDecided.standard == .success)
-        }
-    }
-
-    @Suite("「動きの見本」で試すだけのとき")
-    struct TrialOnly {
-        @Test("写真を選んで記録しても、鳴らさないこと")
-        func photosPicked() {
-            #expect(HapticMoment.photosPicked.standard == .silent)
-        }
-
-        @Test("プリセットを押しても、鳴らさないこと")
-        func presetTapped() {
-            #expect(HapticMoment.presetTapped.standard == .silent)
-        }
-
-        @Test("帯の1日の丸を押しても、鳴らさないこと")
-        func dayTapped() {
-            #expect(HapticMoment.dayTapped.standard == .silent)
-        }
-
-        @Test("スクロールして日が変わっても、鳴らさないこと")
-        func dayScrolled() {
-            #expect(HapticMoment.dayScrolled.standard == .silent)
-        }
-
-        @Test("記録を直しても、鳴らさないこと")
-        func recordCorrected() {
-            #expect(HapticMoment.recordCorrected.standard == .silent)
-        }
-
-        @Test("料理を足しても、鳴らさないこと")
-        func dishAdded() {
-            #expect(HapticMoment.dishAdded.standard == .silent)
-        }
-
-        @Test("料理を削除しても、鳴らさないこと")
-        func dishDeleted() {
-            #expect(HapticMoment.dishDeleted.standard == .silent)
-        }
-
-        @Test("受け付けなかった1行が届いても、鳴らさないこと")
-        func writeRejected() {
-            #expect(HapticMoment.writeRejected.standard == .silent)
-        }
-
-        @Test("食事を削除しても、鳴らさないこと")
-        func mealDeleted() {
-            #expect(HapticMoment.mealDeleted.standard == .silent)
-        }
-
-        @Test("体重のシートで記録しても、鳴らさないこと")
-        func weightRecordedInSheet() {
-            #expect(HapticMoment.weightRecordedInSheet.standard == .silent)
-        }
-
-        @Test("文章を送っても、鳴らさないこと")
-        func textSent() {
-            #expect(HapticMoment.textSent.standard == .silent)
-        }
-
-        @Test("体重の − ＋ で値が動いても、鳴らさないこと")
-        func weightStepped() {
-            #expect(HapticMoment.weightStepped.standard == .silent)
-        }
-
-        @Test("待っていた食事の推定ができなくても、鳴らさないこと")
-        func mealEstimationFailed() {
-            #expect(HapticMoment.mealEstimationFailed.standard == .silent)
-        }
-
-        @Test("待っていた食事の写真に料理が見つからなくても、鳴らさないこと")
-        func mealHadNoDishes() {
-            #expect(HapticMoment.mealHadNoDishes.standard == .silent)
+            #expect(HapticMoment.goalDecided.feedback == .success)
         }
     }
 }
