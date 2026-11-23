@@ -66,7 +66,7 @@ struct MotionGalleryRecords {
     }
 
     /// 体重の記録をそのまま足す。あとで `reject(_:)` に渡せるよう、ID を振った記録を受け取る
-    mutating func put(_ record: WeightRecord) {
+    mutating func add(_ record: WeightRecord) {
         weightRecords.append(record)
     }
 

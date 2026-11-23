@@ -10,6 +10,7 @@ extension HapticMomentTests {
         let editedAt: Date
         let record: WeightRecord
         let ingredient: Ingredient
+        let sentTextId: UUID
 
         init() throws {
             record = try WeightRecord.manual(
@@ -17,6 +18,7 @@ extension HapticMomentTests {
             card = try MealCard.fixture(status: .estimated)
             dish = Dish.fixture(mealId: card.meal.id)
             ingredient = Ingredient.fixture(dishId: dish.id)
+            sentTextId = UUID()
             editedAt = try Date("2026-09-24T13:00:00+09:00", strategy: .iso8601)
         }
 
@@ -78,7 +80,7 @@ extension HapticMomentTests {
         @Test("返事を送り直す編集は、記録を直す編集でないので、ここでは決めないこと")
         func replyResent() {
             #expect(
-                HapticMoment(editing: .resendReply(sentTextId: card.meal.id, reason: .halted))
+                HapticMoment(editing: .resendReply(sentTextId: sentTextId, reason: .halted))
                     == nil)
         }
     }
