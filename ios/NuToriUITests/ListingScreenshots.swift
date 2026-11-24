@@ -1,6 +1,6 @@
 import XCTest
 
-/// 掲載情報と LP の手順の絵と考え方のページの「nu-tori では」に使う生の画面を、見本の場面（`ListingScene`）ごとに撮る。撮るたびにアプリの時計の時刻が変わらないことも確かめる。
+/// 掲載情報、LP の手順の絵、考え方のページに使う生の画面を、見本の場面（`ListingScene`）ごとに撮る。撮るたびにアプリの時計の時刻が変わらないことも確かめる。
 ///
 /// ふつうの UI テストの回（`scripts/check ios-ui-test`）には入れず、`scripts/check ios-screenshots` だけが回す。
 /// 撮った画面は場面の名前の添付にし、`scripts/check ios-screenshots` が xcresult から名前で取り出す。

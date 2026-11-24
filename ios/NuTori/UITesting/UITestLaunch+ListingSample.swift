@@ -295,7 +295,7 @@
             }
 
             /// 目標を立てる日の目標案。期限は期限のページの初めの値（3か月後の 4月5日。開始の日から両端を含めて 91 日）で、見本の人が実際に選んだ期限（12 週）とは違う。
-            /// 値（推定消費カロリーとの差は 50 kcal 単位）は、サーバーの `computeGoalProposals`・`computeAcceptedTargetWeightRange`・`computeMaintenancePlan` に、
+            /// 減量の案だけを返す。値（推定消費カロリーとの差は 50 kcal 単位）は、サーバーの `computeGoalProposals`・`computeAcceptedTargetWeightRange` に、
             /// 推定消費カロリー 2,399 kcal（`initial.kcal`）と開始の日の体重の傾向（`initial.startingWeightTrendKg`）と 91 日を渡して出した。
             /// 期限を変えても同じ値を返す（この場面は期限を変えない）
             static func goalProposals(_ requested: GoalProposalsPlan) -> GoalProposals {
@@ -313,25 +313,9 @@
                             acceptedTargetWeightRange: .init(
                                 minimumKilograms: 70.8, maximumKilograms: 78.3,
                                 fastestEndReason: .paceTooFast)))
-                case .weightChange(.gain, let deadlineOn):
-                    plan = .weightChange(
-                        .init(
-                            direction: .gain, deadlineOn: deadlineOn,
-                            proposals: [
-                                offered(.gentle, 79.9, (2550, 130, 70, 350), difference: 150),
-                                offered(.standard, 81.4, (2650, 130, 75, 365), difference: 250),
-                                offered(.hard, 83.4, (2800, 135, 80, 385), difference: 400),
-                            ],
-                            acceptedTargetWeightRange: .init(
-                                minimumKilograms: 78.5, maximumKilograms: 83.4,
-                                fastestEndReason: .paceTooFast)))
-                case .maintain:
-                    plan = .maintenance(
-                        .init(
-                            targetWeightKilograms: 78.4,
-                            dailyGuide: DailyGuidePlan(
-                                energyKilocalories: 2400, proteinGrams: 125, fatGrams: 65,
-                                carbohydrateGrams: 330)))
+                case .weightChange(.gain, _), .maintain:
+                    // 場面（`ListingScene.goalProposals`）は減量だけを押す
+                    preconditionFailure("見本の人の目標を立てる場面は、減量だけを開く")
                 }
                 return GoalProposals(
                     startedOn: goalStartedOn,

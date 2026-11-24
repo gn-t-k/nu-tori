@@ -52,7 +52,7 @@ export type AppStoreScreenshot = {
 };
 
 // 生の画面の名前。撮る UI テストとの約束（仕様 #853 の「撮る画面」）。
-// goal-proposals から下は、考え方のページの「nu-tori では」に載せる画面（#1118）。どのページにどれを載せるかは #1118 の PR の本文
+// goal-proposals から下は、考え方のページに載せる画面（#1118）。どのページにどれを載せるかは ios/NuToriUITests/ListingScene.swift の case のコメント
 type RawScreenName =
   | "step-weigh"
   | "step-photo"

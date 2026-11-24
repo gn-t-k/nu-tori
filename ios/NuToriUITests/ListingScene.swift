@@ -1,8 +1,8 @@
 import XCTest
 
-/// 見本の場面と、撮る生の画面の対応。掲載情報と LP の手順の絵と考え方のページの「nu-tori では」の生の画面は、ここに並べた場面だけを撮る（`ListingScreenshots`）。
+/// 見本の場面と、撮る生の画面の対応。掲載情報、LP の手順の絵、考え方のページの生の画面は、ここに並べた場面だけを撮る（`ListingScreenshots`）。
 ///
-/// 名前（rawValue）は合成のコマンドとの約束で、生の画面のファイル名（`step-weigh.png`）になる。
+/// 名前（rawValue）は site の `RawScreenName`（`site/src/app-store-screenshots.ts`）との約束で、生の画面のファイル名（`step-weigh.png`）になる。
 /// 場面を足すときは case を足し、`launch()` と `prepare(_:)` に書く。見本の記録は作り物だけにし、値は LP の見本とそろえる（`ios/AGENTS.md` の「見本の場面」）
 enum ListingScene: String, CaseIterable {
     /// 朝、まだ量っていない体重を、タイムラインの体重の知らせのステッパーで 77.8 kg に合わせたところ（LP の手順1）
