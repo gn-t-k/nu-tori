@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, test } from "vitest";
+import type { LearnArticle } from "./learn/learn-article";
+import { learnArticles } from "./learn/learn-articles";
 import stepShots from "./pages/landing-a/step-shots.json";
 import { notFoundPage } from "./pages/not-found-page";
 import { securityHeaders } from "./security-headers";
+import { medicalDisclaimer } from "./medical-disclaimer";
 import { canonicalPathOf } from "./site-page";
 import { sitePages } from "./site-pages";
 import { subscriptionPrices } from "./subscription-prices";
 import { fetchSite } from "./testing/fetch-site";
 import { fetchSiteWithoutLandingVariants } from "./testing/fetch-site-without-landing-variants";
 import { fetchSiteWithLandingVariants } from "./testing/fetch-site-with-landing-variants";
+import { fetchSiteWithLearnPagesListed } from "./testing/fetch-site-with-learn-pages-listed";
 
 describe("nu-tori.app の配信", () => {
   describe("プライバシーポリシー", () => {
@@ -130,6 +134,119 @@ describe("nu-tori.app の配信", () => {
 
     test("出典の節の目印があること（審査への返事が #sources を指す。#900）", async () => {
       expect(await response.text()).toContain('id="sources"');
+    });
+  });
+
+  // 並びが6本にそろうまでは隠す（#1111）。隠すのを外した形は、テストの書き出しで確かめる（vitest.config.ts）
+  describe("考え方のページ", () => {
+    let articlePaths: string[];
+    beforeEach(() => {
+      articlePaths = learnArticles.map(learnArticlePath);
+    });
+
+    describe("一覧", () => {
+      let response: Response;
+      beforeEach(async () => {
+        response = await fetchSite("/learn");
+      });
+
+      test("/learn が 200 で返り、並びの順に各ページへリンクすること", async () => {
+        expect(response.status).toBe(200);
+        const body = await response.text();
+        const positions = articlePaths.map((path) => body.indexOf(`<a href="${path}">`));
+        expect(positions).not.toContain(-1);
+        expect(positions).toEqual(positions.toSorted((a, b) => a - b));
+      });
+
+      test("出典の節の目印があり、各ページの出典のリンクが全部あること", async () => {
+        const body = await response.text();
+        expect(body).toContain('id="sources"');
+        for (const link of learnArticles.flatMap(sourceLinksOf)) expect(body).toContain(link);
+      });
+    });
+
+    describe("1問ずつのページ", () => {
+      let pages: {
+        article: LearnArticle;
+        next: LearnArticle | undefined;
+        status: number;
+        body: string;
+      }[];
+      beforeEach(async () => {
+        pages = await Promise.all(
+          learnArticles.map(async (article, index) => {
+            const response = await fetchSite(learnArticlePath(article));
+            return {
+              article,
+              next: learnArticles[index + 1],
+              status: response.status,
+              body: await response.text(),
+            };
+          }),
+        );
+      });
+
+      test("どれも 200 で返り、一覧へ戻るリンクと、出典の目印と自分の出典のリンクと、医療の助言ではないことの一文を持つこと", () => {
+        for (const { article, status, body } of pages) {
+          expect(status).toBe(200);
+          expect(body).toContain('<a href="/learn">');
+          expect(body).toContain('id="sources"');
+          for (const link of sourceLinksOf(article)) expect(body).toContain(link);
+          expect(body).toContain(medicalDisclaimer);
+        }
+      });
+
+      test("最後でないページは並びの次のページへリンクし、最後のページには次のページへのリンクが無いこと", () => {
+        const nextLinks = pages.map(({ next, body }) =>
+          next === undefined
+            ? !body.includes('rel="next"')
+            : body.includes(`<a href="${learnArticlePath(next)}" rel="next">`),
+        );
+        expect(nextLinks).not.toContain(false);
+      });
+    });
+
+    describe("隠しているとき（本番の並びが6本に足りない）", () => {
+      test("外枠の足に、一覧へのリンクも1問ずつのページも無いこと", async () => {
+        const body = await (await fetchSite("/privacy")).text();
+        expect(body).not.toContain('href="/learn"');
+        for (const path of articlePaths) expect(body).not.toContain(`href="${path}"`);
+      });
+
+      test("sitemap.xml に考え方のページが無いこと", async () => {
+        expect(await (await fetchSite("/sitemap.xml")).text()).not.toContain("/learn");
+      });
+
+      test("一覧と各ページが noindex で、正規の URL を持たないこと", async () => {
+        for (const path of ["/learn", ...articlePaths]) {
+          const body = await (await fetchSite(path)).text();
+          expect(body).toContain('<meta name="robots" content="noindex"/>');
+          expect(body).not.toContain('rel="canonical"');
+        }
+      });
+    });
+
+    describe("隠すのを外したとき", () => {
+      test("外枠の足から一覧へリンクし、1問ずつのページは並ばないこと", async () => {
+        const body = await (await fetchSiteWithLearnPagesListed("/privacy")).text();
+        expect(body).toContain('<a href="/learn">');
+        for (const path of articlePaths) expect(body).not.toContain(`href="${path}"`);
+      });
+
+      test("sitemap.xml に一覧と各ページの正規の URL が並ぶこと", async () => {
+        const sitemap = await (await fetchSiteWithLearnPagesListed("/sitemap.xml")).text();
+        for (const path of ["/learn", ...articlePaths]) {
+          expect(sitemap).toContain(`<loc>https://nu-tori.app${path}</loc>`);
+        }
+      });
+
+      test("一覧と各ページの正規の URL が自分のパスで、noindex でないこと", async () => {
+        for (const path of ["/learn", ...articlePaths]) {
+          const body = await (await fetchSiteWithLearnPagesListed(path)).text();
+          expect(body).toContain(`<link rel="canonical" href="https://nu-tori.app${path}"/>`);
+          expect(body).not.toContain('content="noindex"');
+        }
+      });
     });
   });
 
@@ -474,3 +591,8 @@ const campaignLinkOfVariantB =
 
 const pickSecurityHeaders = (from: Response) =>
   Object.fromEntries(Object.keys(securityHeaders).map((name) => [name, from.headers.get(name)]));
+
+const learnArticlePath = (article: LearnArticle) => `/learn/${article.slug}`;
+
+const sourceLinksOf = (article: LearnArticle) =>
+  article.sources.map((source) => `<a href="${source.url}">`);

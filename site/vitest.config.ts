@@ -10,6 +10,7 @@ const {
   workerOptions: { modulesRules: _modulesRules, ...siteWorkerOptions },
 } = unstable_getMiniflareWorkerOptions("./wrangler.jsonc");
 
+// テストの書き出し（.wrangler/test-dist）は、本番のページにテストだけの LP の版 b を足し、考え方のページを隠すのを外した形にしたもの（src/testing/test-site-app.tsx）。
 // 本番の LP_VARIANTS は版 a だけなので、版の振り分けは、版を2つにした Worker で確かめる。
 // 2つめの版 b はテストだけの版で、vite build --mode test が本番のページに足して .wrangler/test-dist に書き出す（src/testing/test-site-app.tsx）。
 // Worker は、版を選ぶ乱数を b を引く値に決めたテストだけの入口（src/testing/landing-variants-test-worker.ts）を束ねたもの
@@ -28,6 +29,7 @@ export default defineConfig({
           SITE: "nu-tori-site-test",
           SITE_WITH_LANDING_VARIANTS: "nu-tori-site-with-landing-variants-test",
           SITE_WITHOUT_LANDING_VARIANTS: "nu-tori-site-without-landing-variants-test",
+          SITE_WITH_LEARN_PAGES_LISTED: "nu-tori-site-with-learn-pages-listed-test",
         },
         workers: [
           {
@@ -52,6 +54,13 @@ export default defineConfig({
             scriptPath: "./.wrangler/test-worker/worker.js",
             // wrangler.jsonc の vars は LP_VARIANTS だけなので、置き換える。vars を足したら、ここにも足す
             bindings: { LP_VARIANTS: [] },
+          },
+          // 考え方のページは、並びが6本にそろうまで隠す。そろったあとの形は、テストの書き出しを本番の Worker で配って確かめる
+          {
+            ...siteWithLandingVariantsOptions,
+            name: "nu-tori-site-with-learn-pages-listed-test",
+            modules: true,
+            scriptPath: "./.wrangler/test-worker/worker.js",
           },
         ],
       },

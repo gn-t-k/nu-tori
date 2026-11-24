@@ -4,5 +4,6 @@ declare namespace Cloudflare {
     SITE: Fetcher;
     SITE_WITH_LANDING_VARIANTS: Fetcher;
     SITE_WITHOUT_LANDING_VARIANTS: Fetcher;
+    SITE_WITH_LEARN_PAGES_LISTED: Fetcher;
   }
 }

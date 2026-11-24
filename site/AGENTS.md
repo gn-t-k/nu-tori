@@ -13,6 +13,17 @@
 - Cloudflare Web Analytics のビーコンは外枠（`src/site-layout.tsx`）が全ページに置く。サイトのトークンとビーコンの送り先は `src/web-analytics.ts` の1か所にあり、CSP もそこから作る。LP に PostHog・Sentry は入れない
 - セキュリティのヘッダーは `src/security-headers.ts` の1か所に置く。`vite build` がそこから `_headers` を書き出し、Worker も同じ定義を付ける（Worker の応答には `_headers` が効かない）
 
+### 考え方のページを足す
+
+考え方のページ（`/learn` と `/learn/<名前>`）は、モジュール `src/learn/` が一覧と1問ずつのページを作り、ページの一覧には `learnPages` を並べるだけにしてある。
+
+1. `src/learn/articles/<名前>.tsx` に、1問の形 `LearnArticle`（`src/learn/learn-article.ts`）を1つ書く。題（世の中の問い）・説明・「研究では」「nu-tori では」「nu-tori の計算の決まり」の中身・出典・資料に拠らず nu-tori が決めた決まりを置く。本文は一次の出典にあたって自分の言葉で書き、参考のページの文は写さない
+2. 並び（`src/learn/learn-articles.ts` の `learnArticles`）の、アプリで出会う順の位置に1行足す
+
+節の並び（題 → 研究では → nu-tori では → nu-tori の計算の決まり → 出典 → 医療の助言ではないことの一文）、一覧へ戻るリンク、次のページへのリンク、一覧の末の集めた出典は、`src/learn/create-learn-pages.tsx` が並びから作る。1問ずつのページは `kind` が `indexed`（検索に載せるが足に出さない）で、足には一覧だけが出る。
+
+- 並びが `learnArticleCountToList`（最初に出す6本）にそろうまで、一覧と各ページを隠す（足に出さず、`sitemap.xml` に載せず、`noindex`）。6本目を足すと自動で外れるので、外すための手順は要らない。テストは、隠した形を本番の書き出しで、外した形をテストの書き出し（`src/testing/test-site-app.tsx`）で確かめる
+
 ## LP の版を足す・外す
 
 振り分けの Worker が、`wrangler.jsonc` の `LP_VARIANTS` から訪問者ごとに版を等しい確率で選び、Cookie `nu_tori_lp`（版の名前だけ、30日）で覚えて、`/_lp/<版>/` を `/` で返す。`LP_VARIANTS` が空のあいだは仮のページを返す。
