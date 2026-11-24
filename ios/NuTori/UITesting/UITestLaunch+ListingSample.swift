@@ -86,11 +86,13 @@
         private struct ListingSample {
             let timeZone: TimeZone
 
-            static let goalStartedOn = "2026-01-05"
+            nonisolated static let goalStartedOn = "2026-01-05"
             /// `person.targetWeightKg`
             static let targetWeightKilograms = 74.4
             /// `initial.startingWeightTrendKg`
-            static let startingWeightTrendKilograms = 78.3804
+            nonisolated static let startingWeightTrendKilograms = 78.3804
+            /// `initial.kcal`。目標を立てたときの推定消費カロリー
+            nonisolated static let initialExpenditureKilocalories = 2399
             /// `person.daysFromStartToDeadline` 日後
             static let deadlineOn = "2026-03-30"
 
@@ -106,7 +108,8 @@
 
             static let weeks = [
                 Week(
-                    effectiveOn: "2026-01-05", expenditureKilocalories: 2399,
+                    effectiveOn: goalStartedOn,
+                    expenditureKilocalories: initialExpenditureKilocalories,
                     guide: (2050, 120, 55, 270), limitHits: [], mainReason: nil),
                 Week(
                     effectiveOn: "2026-01-12", expenditureKilocalories: 2287,
@@ -298,7 +301,7 @@
             /// 減量の案だけを返す。値（推定消費カロリーとの差は 50 kcal 単位）は、サーバーの `computeGoalProposals`・`computeAcceptedTargetWeightRange` に、
             /// 推定消費カロリー 2,399 kcal（`initial.kcal`）と開始の日の体重の傾向（`initial.startingWeightTrendKg`）と 91 日を渡して出した。
             /// 期限を変えても同じ値を返す（この場面は期限を変えない）
-            static func goalProposals(_ requested: GoalProposalsPlan) -> GoalProposals {
+            nonisolated static func goalProposals(_ requested: GoalProposalsPlan) -> GoalProposals {
                 let plan: GoalProposals.Plan
                 switch requested {
                 case .weightChange(.lose, let deadlineOn):
@@ -319,13 +322,13 @@
                 }
                 return GoalProposals(
                     startedOn: goalStartedOn,
-                    expenditureKilocalories: weeks[0].expenditureKilocalories,
+                    expenditureKilocalories: initialExpenditureKilocalories,
                     expenditureSource: .backCalculated,
                     startingWeightTrendKilograms: startingWeightTrendKilograms,
                     lastWeightRecordedOn: goalStartedOn, plan: plan)
             }
 
-            private static func offered(
+            nonisolated private static func offered(
                 _ pace: GoalProposals.Pace, _ kilograms: Double,
                 _ guide: (energy: Int, protein: Int, fat: Int, carbohydrate: Int),
                 difference: Int
