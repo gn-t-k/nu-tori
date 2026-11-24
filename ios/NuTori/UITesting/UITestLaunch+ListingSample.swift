@@ -53,6 +53,35 @@
                 answerSentText: estimation.answerSentText)
         }
 
+        /// 見本の人が目標を立てる日（1月5日（月））の朝。目標はまだ無く、7:00 に量った体重だけがある。
+        /// 目標を立てる知らせから減量へ進むと、目標案（ゆるめ・標準・ハード）が届く（考え方のページの「1ヶ月で何キロ減らすのがいい？」の画面）。
+        ///
+        /// 見本の人は推定消費カロリーを記録から逆算できず、身体データから出した（`initial.kcal`）。
+        /// 逆算できない人の流れは足りない値のページで身長・生まれた年・活動量をホイールで選ぶので、撮る場面を短く保つため、下見は逆算できると答えて足りない値のページを飛ばす。
+        /// 目標案の上の行は「推定消費カロリー　2,399 kcal」になり、出どころの違いは画面に出ない
+        func listingSampleBeforeGoalScenario() -> FakeSyncServer.Scenario {
+            let sample = ListingSample(timeZone: clock.timeZone())
+            let day = ListingSample.days[0]
+            let clock = clock
+            return .init(
+                records: [
+                    sample.weight(of: day, at: 0),
+                    .weightTrend(
+                        SyncedWeightTrend(days: [
+                            .init(calendarDay: day.calendarDay, trendKilograms: day.trendKilograms)
+                        ])),
+                ],
+                startedOn: ListingSample.goalStartedOn,
+                goalSetup: FakeSyncServer.GoalSetupAnswers(
+                    preview: GoalSetupPreview(canBackCalculate: true, canOfferLoseProposals: true),
+                    proposals: { ListingSample.goalProposals($0) },
+                    // この場面は「目標体重を自分で決める」を開かない
+                    assessCustomTargetWeight: { _, _ in
+                        .rejected(reason: .paceTooFast, nearestAcceptedTargetWeightKilograms: nil)
+                    },
+                    now: { clock.now() }))
+        }
+
         /// 見本の人の値。出どころは `UITestLaunch.listingSampleScenario()` のコメント
         private struct ListingSample {
             let timeZone: TimeZone
@@ -263,6 +292,68 @@
                     preconditionFailure("\(text) の \(hour):\(minute) を作れない")
                 }
                 return date
+            }
+
+            /// 目標を立てる日の目標案。期限は期限のページの初めの値（3か月後の 4月5日。開始の日から両端を含めて 91 日）で、見本の人が実際に選んだ期限（12 週）とは違う。
+            /// 値（推定消費カロリーとの差は 50 kcal 単位）は、サーバーの `computeGoalProposals`・`computeAcceptedTargetWeightRange`・`computeMaintenancePlan` に、
+            /// 推定消費カロリー 2,399 kcal（`initial.kcal`）と開始の日の体重の傾向（`initial.startingWeightTrendKg`）と 91 日を渡して出した。
+            /// 期限を変えても同じ値を返す（この場面は期限を変えない）
+            static func goalProposals(_ requested: GoalProposalsPlan) -> GoalProposals {
+                let plan: GoalProposals.Plan
+                switch requested {
+                case .weightChange(.lose, let deadlineOn):
+                    plan = .weightChange(
+                        .init(
+                            direction: .lose, deadlineOn: deadlineOn,
+                            proposals: [
+                                offered(.gentle, 75.9, (2200, 120, 60, 295), difference: -200),
+                                offered(.standard, 73.3, (1950, 115, 55, 250), difference: -450),
+                                offered(.hard, 70.8, (1750, 115, 50, 210), difference: -650),
+                            ],
+                            acceptedTargetWeightRange: .init(
+                                minimumKilograms: 70.8, maximumKilograms: 78.3,
+                                fastestEndReason: .paceTooFast)))
+                case .weightChange(.gain, let deadlineOn):
+                    plan = .weightChange(
+                        .init(
+                            direction: .gain, deadlineOn: deadlineOn,
+                            proposals: [
+                                offered(.gentle, 79.9, (2550, 130, 70, 350), difference: 150),
+                                offered(.standard, 81.4, (2650, 130, 75, 365), difference: 250),
+                                offered(.hard, 83.4, (2800, 135, 80, 385), difference: 400),
+                            ],
+                            acceptedTargetWeightRange: .init(
+                                minimumKilograms: 78.5, maximumKilograms: 83.4,
+                                fastestEndReason: .paceTooFast)))
+                case .maintain:
+                    plan = .maintenance(
+                        .init(
+                            targetWeightKilograms: 78.4,
+                            dailyGuide: DailyGuidePlan(
+                                energyKilocalories: 2400, proteinGrams: 125, fatGrams: 65,
+                                carbohydrateGrams: 330)))
+                }
+                return GoalProposals(
+                    startedOn: goalStartedOn,
+                    expenditureKilocalories: weeks[0].expenditureKilocalories,
+                    expenditureSource: .backCalculated,
+                    startingWeightTrendKilograms: startingWeightTrendKilograms,
+                    lastWeightRecordedOn: goalStartedOn, plan: plan)
+            }
+
+            private static func offered(
+                _ pace: GoalProposals.Pace, _ kilograms: Double,
+                _ guide: (energy: Int, protein: Int, fat: Int, carbohydrate: Int),
+                difference: Int
+            ) -> GoalProposals.Proposal {
+                .offered(
+                    .init(
+                        pace: pace, targetWeightKilograms: kilograms,
+                        dailyGuide: DailyGuidePlan(
+                            energyKilocalories: guide.energy, proteinGrams: guide.protein,
+                            fatGrams: guide.fat, carbohydrateGrams: guide.carbohydrate),
+                        difficulty: pace,
+                        dailyGuideDifferenceKilocalories: difference))
             }
 
             private static let goalId = id(0x70, 0)

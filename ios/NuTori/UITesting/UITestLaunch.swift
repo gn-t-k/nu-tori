@@ -351,6 +351,8 @@
             case listingSampleTextMeal = "listing-sample-text-meal"
             /// `listingSample` から今朝の体重を除いた。体重の知らせの時刻（8:00）を過ぎていれば、タイムラインにステッパーつきの知らせが出る
             case listingSampleBeforeWeighing = "listing-sample-before-weighing"
+            /// 見本の人が目標を立てる日の朝。目標はまだ無く、目標を立てる流れで見本の人の目標案が届く。記録と出どころは `listingSampleBeforeGoalScenario()`
+            case listingSampleBeforeGoal = "listing-sample-before-goal"
         }
 
         /// サインイン済みで始めるときのセッション。トークンとアカウントの ID は、同じつなぎ先のものをそろえて渡す

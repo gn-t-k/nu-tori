@@ -51,7 +51,8 @@ export type AppStoreScreenshot = {
   screen: RawScreenName;
 };
 
-// 生の画面の名前。撮る UI テストとの約束（仕様 #853 の「撮る画面」）
+// 生の画面の名前。撮る UI テストとの約束（仕様 #853 の「撮る画面」）。
+// goal-proposals から下は、考え方のページの「nu-tori では」に載せる画面（#1118）。どのページにどれを載せるかは #1118 の PR の本文
 type RawScreenName =
   | "step-weigh"
   | "step-photo"
@@ -59,4 +60,8 @@ type RawScreenName =
   | "photo-estimated"
   | "text-meal"
   | "dish"
-  | "weekly-review";
+  | "weekly-review"
+  | "goal-proposals"
+  | "day-summary"
+  | "week-food"
+  | "weight-trend";

@@ -100,7 +100,7 @@ nu-tori の iPhone アプリ（SwiftUI、ADR-0004）。
 
 ## 見本の場面
 
-掲載情報と LP の手順の絵に使う生の画面は、UI テストの起動の差し替えに足した見本の場面で撮る（撮り方は `docs/agents/ios-release.md` の「スクリーンショット」）。
+掲載情報と LP の手順の絵と考え方のページの「nu-tori では」に使う生の画面は、UI テストの起動の差し替えに足した見本の場面で撮る（撮り方は `docs/agents/ios-release.md` の「スクリーンショット」）。
 
 - 見本の場面と撮る生の画面の対応は `NuToriUITests/ListingScene.swift` の1か所に置く。場面を足すときは case を足し、開き方と撮る前に待つものを書く。名前は合成のコマンドとの約束なので変えない
 - 記録は偽の同期サーバーの場面（`UITestLaunch.API` の `listingSample` など）に置き、アプリのコードに撮るためだけの道を足さない

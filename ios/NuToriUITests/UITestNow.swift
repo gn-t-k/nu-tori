@@ -11,6 +11,8 @@ enum UITestNow: String {
     case listingSampleWednesday = "2026-01-21T09:41"
     /// 見本の人の、2回めの見直しをした月曜の、体重を量る 7:00 より前の朝。なぜこの時刻かは `ListingScene.launch()`
     case listingSampleMondayBeforeWeighing = "2026-01-19T06:30"
+    /// 見本の人が目標を立てる月曜（使い始めた日）。撮る画面の状態の表示（9:41）とそろえる
+    case listingSampleGoalSetupDay = "2026-01-05T09:41"
 
     /// 止めた時刻を、そのタイムゾーンの時刻として読む。テストの側で、アプリと同じ「今日」を数えるため。
     /// アプリの側の `DeviceClock.frozen(atLaunchValue:in:elapsed:)` と同じ形で読む

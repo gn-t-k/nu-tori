@@ -1,6 +1,6 @@
 import XCTest
 
-/// 見本の場面と、撮る生の画面の対応。掲載情報と LP の手順の絵の生の画面は、ここに並べた場面だけを撮る（`ListingScreenshots`）。
+/// 見本の場面と、撮る生の画面の対応。掲載情報と LP の手順の絵と考え方のページの「nu-tori では」の生の画面は、ここに並べた場面だけを撮る（`ListingScreenshots`）。
 ///
 /// 名前（rawValue）は合成のコマンドとの約束で、生の画面のファイル名（`step-weigh.png`）になる。
 /// 場面を足すときは case を足し、`launch()` と `prepare(_:)` に書く。見本の記録は作り物だけにし、値は LP の見本とそろえる（`ios/AGENTS.md` の「見本の場面」）
@@ -19,18 +19,30 @@ enum ListingScene: String, CaseIterable {
     case dish = "dish"
     /// 週の見直しと目標の経過。目標の画面（体重の傾向、見直しで変わった1日の目安、週の振り返りへの1行）
     case weeklyReview = "weekly-review"
+    /// 目標を立てる流れで、減量の目標案（ゆるめ・標準・ハード）が届いたところ。タイムラインの目標を立てる知らせのカードを広げた中（考え方のページの `pace`）
+    case goalProposals = "goal-proposals"
+    /// 昨日の日のまとめ。1日の丸に食べた kcal と1日の目安の残り、P・F・C を目安と比べるバー（考え方のページの `pfc`）
+    case daySummary = "day-summary"
+    /// 先週（1月12日〜18日）の週の振り返りの「食べた量」。日ごとの kcal の棒と、1日の平均と1日の目安（考え方のページの `calorie-balance`）
+    case weekFood = "week-food"
+    /// 今日の体重の画面。毎朝の体重の点と、体重の傾向の線（考え方のページの `weight-trend`）
+    case weightTrend = "weight-trend"
 
     /// 場面の記録と時計で開く。記録は、アプリの UI テストの差し替えの見本の人（`UITestLaunch.listingSampleScenario(_:)`）。
     /// アプリの時計は、撮る画面の状態の表示（9:41）とそろえ、タイムゾーンは日本に固める。
     /// `stepGuide` だけ例外で、月曜の 6:30 にする。1日の目安が変わった知らせと週の振り返りのカードは見直した月曜の日に置くので、水曜には火曜と水曜の記録の上へ流れて見えない。
-    /// 9:41 だと今朝 7:00 の体重が知らせの下に写るので、その前の朝にして、見せたい知らせをタイムラインの一番下にする。状態の表示は 9:41 のままで、時刻のずれは画面に出ない
+    /// 9:41 だと今朝 7:00 の体重が知らせの下に写るので、その前の朝にして、見せたい知らせをタイムラインの一番下にする。状態の表示は 9:41 のままで、時刻のずれは画面に出ない。
+    /// `goalProposals` は目標を立てる前を撮るので、見本の人が目標を立てた月曜（1月5日）の 9:41 にする
     @MainActor func launch() -> XCUIApplication {
         switch self {
         case .stepWeigh:
             // 今朝の体重がまだ無く、体重の知らせの時刻（8:00）を過ぎた朝
             open(api: "listing-sample-before-weighing")
-        case .weeklyReview:
+        case .weeklyReview, .daySummary, .weekFood, .weightTrend:
             open(api: "listing-sample")
+        case .goalProposals:
+            // 見本の人が目標を立てた月曜の朝。目標はまだ無い
+            open(api: "listing-sample-before-goal", now: .listingSampleGoalSetupDay)
         case .stepGuide:
             open(api: "listing-sample-before-weighing", now: .listingSampleMondayBeforeWeighing)
         case .stepPhoto:
@@ -92,6 +104,14 @@ enum ListingScene: String, CaseIterable {
             // グラフが描き終えるまで少し待つ
             Thread.sleep(forTimeInterval: 1)
             return ready
+        case .goalProposals:
+            return Self.openGoalProposals(app)
+        case .daySummary:
+            return Self.openYesterdaysSummary(app)
+        case .weekFood:
+            return Self.openLastWeeksFood(app)
+        case .weightTrend:
+            return Self.openTodaysWeightScreen(app)
         case .textMeal:
             guard Self.waitForTodaysWeight(app), app.composerField.waitForExistence(timeout: 5)
             else { return false }
@@ -116,7 +136,7 @@ enum ListingScene: String, CaseIterable {
         case .textMeal: 8
         case .stepWeigh, .photoEstimated: 5
         case .stepPhoto, .stepGuide: 2
-        case .dish, .weeklyReview: 0
+        case .dish, .weeklyReview, .goalProposals, .daySummary, .weekFood, .weightTrend: 0
         }
     }
 
@@ -154,6 +174,98 @@ enum ListingScene: String, CaseIterable {
         // ステッパーの値の動きが終わるまで少し待つ
         Thread.sleep(forTimeInterval: 1)
         return !app.keyboards.firstMatch.exists
+    }
+
+    /// 目標を立てる知らせのカードを広げ、減量 → 期限はそのまま「次へ」と進み、目標案が届くまで待つ。
+    /// 案の値は `UITestLaunch.listingSampleBeforeGoalScenario()`。開いたときに選ばれている案（標準）のまま撮る
+    @MainActor private static func openGoalProposals(_ app: XCUIApplication) -> Bool {
+        // 今朝 7:00 の体重（daily-guide-example.json の 2026-01-05 の weightKg）
+        guard app.staticText(containing: "78.1 kg").waitForExistence(timeout: 10) else {
+            return false
+        }
+        let start = app.buttons["goal-setup-start"]
+        guard app.scrollUntilExists(start) else { return false }
+        start.tap()
+        let lose = app.buttons["goal-setup-direction-lose"]
+        guard lose.waitForExistence(timeout: 5) else { return false }
+        lose.tap()
+        let next = app.buttons["goal-setup-next"]
+        guard next.waitForExistence(timeout: 5) else { return false }
+        next.tap()
+        let standard = app.buttons["goal-setup-proposal-standard"]
+        guard standard.waitForExistence(timeout: 10),
+            app.buttons["goal-setup-proposal-hard"].exists,
+            app.buttons["goal-setup-proposal-start"].exists
+        else { return false }
+        // カードが広がる動きが終わるまで少し待つ
+        Thread.sleep(forTimeInterval: 1)
+        return standard.isHittable && app.buttons["goal-setup-proposal-start"].isHittable
+    }
+
+    /// 1日の丸の帯で昨日（1月20日）の丸を押し、日のまとめを開く。昨日は3食を書いて送った日で、1日の目安（1,750 kcal）と比べる
+    @MainActor private static func openYesterdaysSummary(_ app: XCUIApplication) -> Bool {
+        guard waitForTodaysWeight(app) else { return false }
+        let ring = app.buttons["ring-2026-01-20"]
+        guard ring.waitForExistence(timeout: 5) else { return false }
+        ring.tap()
+        guard app.otherElements["day-summary"].waitForExistence(timeout: 5) else { return false }
+        let food = app.descendants(matching: .any)["day-food"]
+        guard food.waitForExistence(timeout: 5),
+            food.label.contains("/ 1,750 kcal")
+        else { return false }
+        // シートが上がる動きが終わるまで少し待つ
+        Thread.sleep(forTimeInterval: 1)
+        return true
+    }
+
+    /// 昨日の日のまとめの「週の振り返り」から今週を開き、‹ で先週（7日とも3食を送った週）へ送って、「食べた量」のまとまりを画面の上に寄せる
+    @MainActor private static func openLastWeeksFood(_ app: XCUIApplication) -> Bool {
+        guard openYesterdaysSummary(app) else { return false }
+        let weekRow = app.buttons["day-summary-weekly-review"]
+        guard weekRow.waitForExistence(timeout: 5) else { return false }
+        weekRow.tap()
+        let previous = app.buttons["weekly-review-previous-week"]
+        guard previous.waitForExistence(timeout: 5) else { return false }
+        previous.tap()
+        // 週の区切りの題は、週の名前（減量の2週目）と1つの読み上げにまとめてある
+        let lastWeek = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS %@", "1月12日〜18日")
+        ).firstMatch
+        guard lastWeek.waitForExistence(timeout: 5) else { return false }
+        let heading = app.staticTexts["食べた量"]
+        guard app.scrollUntilExists(heading, maxSwipes: 2), heading.isHittable else {
+            return false
+        }
+        // 見出しを、題の帯のすぐ下までゆっくり引き上げる。指を止めてから離すので、勢いで流れず、毎回同じ所に止まる
+        let navigationBar = app.navigationBars["週の振り返り"]
+        guard navigationBar.exists else { return false }
+        let destination = app.coordinate(withNormalizedOffset: .zero).withOffset(
+            CGVector(dx: heading.frame.midX, dy: navigationBar.frame.maxY + 24))
+        heading.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
+            forDuration: 0.1, thenDragTo: destination, withVelocity: .slow,
+            thenHoldForDuration: 0.5)
+        // 日ごとの棒と、1日の平均・1日の目安の行が出ている
+        let guide = app.staticText(containing: "1日の目安")
+        let shown = guide.waitForExistence(timeout: 5) && guide.isHittable
+        Thread.sleep(forTimeInterval: 1)
+        return shown
+    }
+
+    /// 1日の丸の帯で今日の丸を押し、日のまとめの体重の行から今日の体重の画面を開く
+    @MainActor private static func openTodaysWeightScreen(_ app: XCUIApplication) -> Bool {
+        guard waitForTodaysWeight(app) else { return false }
+        let ring = app.buttons["ring-2026-01-21"]
+        guard ring.waitForExistence(timeout: 5) else { return false }
+        ring.tap()
+        let weightRow = app.buttons["day-summary-weight"]
+        guard weightRow.waitForExistence(timeout: 5) else { return false }
+        weightRow.tap()
+        guard app.descendants(matching: .any)["weight-screen"].waitForExistence(timeout: 5),
+            app.navigationBars["体重"].waitForExistence(timeout: 5)
+        else { return false }
+        // プッシュで潜る動きとグラフを描き終えるまで少し待つ
+        Thread.sleep(forTimeInterval: 1)
+        return true
     }
 
     /// 「写真」で選び、今日の写真の食事のカードに、この文が出るまで待つ
