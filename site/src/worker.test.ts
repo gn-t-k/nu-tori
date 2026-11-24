@@ -168,12 +168,13 @@ describe("nu-tori.app の配信", () => {
     });
 
     describe("1問ずつのページ", () => {
-      let pages: { path: string; status: number; body: string }[];
+      let pages: { path: string; article: LearnArticle; status: number; body: string }[];
       beforeEach(async () => {
         pages = await Promise.all(
-          articlePaths.map(async (path) => {
+          learnArticles.map(async (article) => {
+            const path = learnArticlePath(article);
             const response = await fetchSite(path);
-            return { path, status: response.status, body: await response.text() };
+            return { path, article, status: response.status, body: await response.text() };
           }),
         );
       });
@@ -196,11 +197,9 @@ describe("nu-tori.app の配信", () => {
 
       test("どれも自分の出典のリンクを全部持つこと", () => {
         expect(
-          pages.map(({ path, body }, index) => ({
+          pages.map(({ path, article, body }) => ({
             path,
-            missingSourceLinks: sourceLinksOf(learnArticles[index]).filter(
-              (link) => !body.includes(link),
-            ),
+            missingSourceLinks: sourceLinksOf(article).filter((link) => !body.includes(link)),
           })),
         ).toEqual(articlePaths.map((path) => ({ path, missingSourceLinks: [] })));
       });
@@ -228,7 +227,9 @@ describe("nu-tori.app の配信", () => {
 
       describe("並びの最後のページ", () => {
         test("次のページへのリンクが無いこと", () => {
-          expect(pages.at(-1)?.body).not.toContain('rel="next"');
+          const last = pages.at(-1);
+          if (last === undefined) throw new Error("learnArticles is empty");
+          expect(last.body).not.toContain('rel="next"');
         });
       });
     });
@@ -644,5 +645,5 @@ const pickSecurityHeaders = (from: Response) =>
 
 const learnArticlePath = (article: LearnArticle) => `/learn/${article.slug}`;
 
-const sourceLinksOf = (article: LearnArticle | undefined) =>
-  (article?.sources ?? []).map((source) => `<a href="${source.url}">`);
+const sourceLinksOf = (article: LearnArticle) =>
+  article.sources.map((source) => `<a href="${source.url}">`);
