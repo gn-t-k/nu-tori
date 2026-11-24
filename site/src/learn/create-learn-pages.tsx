@@ -112,7 +112,7 @@ const Sources = ({
       nu-tori は、次の資料をもとに書き、決まりを決めました。資料の値をどう当てはめるかは nu-tori
       が決めています。
     </p>
-    <ul>
+    <ul class="learn-sources">
       {sources.map(({ claim, citation, url, linkLabel }) => (
         <li>
           {claim}: {citation} <a href={url}>{linkLabel}</a>
