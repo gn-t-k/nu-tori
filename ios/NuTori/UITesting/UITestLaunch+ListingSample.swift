@@ -298,8 +298,7 @@
             }
 
             /// 目標を立てる日の目標案。期限は期限のページの初めの値（3か月後の 4月5日。開始の日から両端を含めて 91 日）で、見本の人が実際に選んだ期限（12 週）とは違う。
-            /// 減量の案だけを返す。値（推定消費カロリーとの差は 50 kcal 単位）は、サーバーの `computeGoalProposals`・`computeAcceptedTargetWeightRange` に、
-            /// 推定消費カロリー 2,399 kcal（`initial.kcal`）と開始の日の体重の傾向（`initial.startingWeightTrendKg`）と 91 日を渡して出した。
+            /// 減量の案だけを返す。値（推定消費カロリーとの差は 50 kcal 単位）は、サーバーの `computeGoalProposals`・`computeAcceptedTargetWeightRange` に、推定消費カロリー 2,399 kcal（`initial.kcal`）と開始の日の体重の傾向（`initial.startingWeightTrendKg`）と 91 日を渡して出した。
             /// 期限を変えても同じ値を返す（この場面は期限を変えない）
             nonisolated static func goalProposals(_ requested: GoalProposalsPlan) -> GoalProposals {
                 let plan: GoalProposals.Plan
