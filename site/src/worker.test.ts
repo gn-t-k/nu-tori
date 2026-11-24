@@ -161,56 +161,84 @@ describe("nu-tori.app の配信", () => {
       test("出典の節の目印があり、各ページの出典のリンクが全部あること", async () => {
         const body = await response.text();
         expect(body).toContain('id="sources"');
-        for (const link of learnArticles.flatMap(sourceLinksOf)) expect(body).toContain(link);
+        expect(learnArticles.flatMap(sourceLinksOf).filter((link) => !body.includes(link))).toEqual(
+          [],
+        );
       });
     });
 
     describe("1問ずつのページ", () => {
-      let pages: {
-        article: LearnArticle;
-        next: LearnArticle | undefined;
-        status: number;
-        body: string;
-      }[];
+      let pages: { path: string; status: number; body: string }[];
       beforeEach(async () => {
         pages = await Promise.all(
-          learnArticles.map(async (article, index) => {
-            const response = await fetchSite(learnArticlePath(article));
-            return {
-              article,
-              next: learnArticles[index + 1],
-              status: response.status,
-              body: await response.text(),
-            };
+          articlePaths.map(async (path) => {
+            const response = await fetchSite(path);
+            return { path, status: response.status, body: await response.text() };
           }),
         );
       });
 
-      test("どれも 200 で返り、一覧へ戻るリンクと、出典の目印と自分の出典のリンクと、医療の助言ではないことの一文を持つこと", () => {
-        for (const { article, status, body } of pages) {
-          expect(status).toBe(200);
-          expect(body).toContain('<a href="/learn">');
-          expect(body).toContain('id="sources"');
-          for (const link of sourceLinksOf(article)) expect(body).toContain(link);
-          expect(body).toContain(medicalDisclaimer);
-        }
+      test("どれも 200 で返ること", () => {
+        expect(pages.map(({ path, status }) => ({ path, status }))).toEqual(
+          articlePaths.map((path) => ({ path, status: 200 })),
+        );
       });
 
-      test("最後でないページは並びの次のページへリンクし、最後のページには次のページへのリンクが無いこと", () => {
-        const nextLinks = pages.map(({ next, body }) =>
-          next === undefined
-            ? !body.includes('rel="next"')
-            : body.includes(`<a href="${learnArticlePath(next)}" rel="next">`),
-        );
-        expect(nextLinks).not.toContain(false);
+      test("どれも一覧へ戻るリンクと出典の節の目印を持つこと", () => {
+        expect(
+          pages.map(({ path, body }) => ({
+            path,
+            hasIndexLink: body.includes('<a href="/learn">'),
+            hasSources: body.includes('id="sources"'),
+          })),
+        ).toEqual(articlePaths.map((path) => ({ path, hasIndexLink: true, hasSources: true })));
+      });
+
+      test("どれも自分の出典のリンクを全部持つこと", () => {
+        expect(
+          pages.map(({ path, body }, index) => ({
+            path,
+            missingSourceLinks: sourceLinksOf(learnArticles[index]).filter(
+              (link) => !body.includes(link),
+            ),
+          })),
+        ).toEqual(articlePaths.map((path) => ({ path, missingSourceLinks: [] })));
+      });
+
+      test("どれも医療の助言ではないことの一文を持つこと", () => {
+        expect(
+          pages.map(({ path, body }) => ({
+            path,
+            hasDisclaimer: body.includes(medicalDisclaimer),
+          })),
+        ).toEqual(articlePaths.map((path) => ({ path, hasDisclaimer: true })));
+      });
+
+      describe("最後でないページ", () => {
+        test("並びの次のページへリンクすること", () => {
+          const notLast = pages.slice(0, -1);
+          expect(
+            notLast.map(({ path, body }, index) => ({
+              path,
+              hasNextLink: body.includes(`<a href="${articlePaths[index + 1]}" rel="next">`),
+            })),
+          ).toEqual(notLast.map(({ path }) => ({ path, hasNextLink: true })));
+        });
+      });
+
+      describe("並びの最後のページ", () => {
+        test("次のページへのリンクが無いこと", () => {
+          expect(pages.at(-1)?.body).not.toContain('rel="next"');
+        });
       });
     });
 
     describe("隠しているとき（本番の並びが6本に足りない）", () => {
       test("外枠の足に、一覧へのリンクも1問ずつのページも無いこと", async () => {
         const body = await (await fetchSite("/privacy")).text();
-        expect(body).not.toContain('href="/learn"');
-        for (const path of articlePaths) expect(body).not.toContain(`href="${path}"`);
+        expect(
+          ["/learn", ...articlePaths].filter((path) => body.includes(`href="${path}"`)),
+        ).toEqual([]);
       });
 
       test("sitemap.xml に考え方のページが無いこと", async () => {
@@ -218,11 +246,20 @@ describe("nu-tori.app の配信", () => {
       });
 
       test("一覧と各ページが noindex で、正規の URL を持たないこと", async () => {
-        for (const path of ["/learn", ...articlePaths]) {
-          const body = await (await fetchSite(path)).text();
-          expect(body).toContain('<meta name="robots" content="noindex"/>');
-          expect(body).not.toContain('rel="canonical"');
-        }
+        const paths = ["/learn", ...articlePaths];
+        const results = await Promise.all(
+          paths.map(async (path) => {
+            const body = await (await fetchSite(path)).text();
+            return {
+              path,
+              noindex: body.includes('<meta name="robots" content="noindex"/>'),
+              hasCanonical: body.includes('rel="canonical"'),
+            };
+          }),
+        );
+        expect(results).toEqual(
+          paths.map((path) => ({ path, noindex: true, hasCanonical: false })),
+        );
       });
     });
 
@@ -230,22 +267,35 @@ describe("nu-tori.app の配信", () => {
       test("外枠の足から一覧へリンクし、1問ずつのページは並ばないこと", async () => {
         const body = await (await fetchSiteWithLearnPagesListed("/privacy")).text();
         expect(body).toContain('<a href="/learn">');
-        for (const path of articlePaths) expect(body).not.toContain(`href="${path}"`);
+        expect(articlePaths.filter((path) => body.includes(`href="${path}"`))).toEqual([]);
       });
 
       test("sitemap.xml に一覧と各ページの正規の URL が並ぶこと", async () => {
         const sitemap = await (await fetchSiteWithLearnPagesListed("/sitemap.xml")).text();
-        for (const path of ["/learn", ...articlePaths]) {
-          expect(sitemap).toContain(`<loc>https://nu-tori.app${path}</loc>`);
-        }
+        expect(
+          ["/learn", ...articlePaths].filter(
+            (path) => !sitemap.includes(`<loc>https://nu-tori.app${path}</loc>`),
+          ),
+        ).toEqual([]);
       });
 
       test("一覧と各ページの正規の URL が自分のパスで、noindex でないこと", async () => {
-        for (const path of ["/learn", ...articlePaths]) {
-          const body = await (await fetchSiteWithLearnPagesListed(path)).text();
-          expect(body).toContain(`<link rel="canonical" href="https://nu-tori.app${path}"/>`);
-          expect(body).not.toContain('content="noindex"');
-        }
+        const paths = ["/learn", ...articlePaths];
+        const results = await Promise.all(
+          paths.map(async (path) => {
+            const body = await (await fetchSiteWithLearnPagesListed(path)).text();
+            return {
+              path,
+              hasOwnCanonical: body.includes(
+                `<link rel="canonical" href="https://nu-tori.app${path}"/>`,
+              ),
+              noindex: body.includes('content="noindex"'),
+            };
+          }),
+        );
+        expect(results).toEqual(
+          paths.map((path) => ({ path, hasOwnCanonical: true, noindex: false })),
+        );
       });
     });
   });
@@ -594,5 +644,5 @@ const pickSecurityHeaders = (from: Response) =>
 
 const learnArticlePath = (article: LearnArticle) => `/learn/${article.slug}`;
 
-const sourceLinksOf = (article: LearnArticle) =>
-  article.sources.map((source) => `<a href="${source.url}">`);
+const sourceLinksOf = (article: LearnArticle | undefined) =>
+  (article?.sources ?? []).map((source) => `<a href="${source.url}">`);

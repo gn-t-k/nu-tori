@@ -10,12 +10,9 @@ const {
   workerOptions: { modulesRules: _modulesRules, ...siteWorkerOptions },
 } = unstable_getMiniflareWorkerOptions("./wrangler.jsonc");
 
-// テストの書き出し（.wrangler/test-dist）は、本番のページにテストだけの LP の版 b を足し、考え方のページを隠すのを外した形にしたもの（src/testing/test-site-app.tsx）。
-// 本番の LP_VARIANTS は版 a だけなので、版の振り分けは、版を2つにした Worker で確かめる。
-// 2つめの版 b はテストだけの版で、vite build --mode test が本番のページに足して .wrangler/test-dist に書き出す（src/testing/test-site-app.tsx）。
-// Worker は、版を選ぶ乱数を b を引く値に決めたテストだけの入口（src/testing/landing-variants-test-worker.ts）を束ねたもの
+// テストの書き出し（.wrangler/test-dist）を配る設定。vite build --mode test が、本番のページにテストだけの LP の版 b を足し、考え方のページを隠すのを外した形に置き換えて書き出す（src/testing/test-site-app.tsx）
 const {
-  workerOptions: { modulesRules: _variantsModulesRules, ...siteWithLandingVariantsOptions },
+  workerOptions: { modulesRules: _testDistModulesRules, ...testDistWorkerOptions },
 } = unstable_getMiniflareWorkerOptions("./wrangler.jsonc", undefined, {
   overrides: { assets: { directory: "./.wrangler/test-dist" } },
 });
@@ -38,8 +35,10 @@ export default defineConfig({
             modules: true,
             scriptPath: "./.wrangler/test-worker/worker.js",
           },
+          // 本番の LP_VARIANTS は版 a だけなので、版の振り分けは、テストの書き出しの版 b を足して版を2つにした Worker で確かめる。
+          // Worker は、版を選ぶ乱数を b を引く値に決めたテストだけの入口（src/testing/landing-variants-test-worker.ts）を束ねたもの
           {
-            ...siteWithLandingVariantsOptions,
+            ...testDistWorkerOptions,
             name: "nu-tori-site-with-landing-variants-test",
             modules: true,
             scriptPath: "./.wrangler/test-landing-variants-worker/landing-variants-test-worker.js",
@@ -57,7 +56,7 @@ export default defineConfig({
           },
           // 考え方のページは、並びが6本にそろうまで隠す。そろったあとの形は、テストの書き出しを本番の Worker で配って確かめる
           {
-            ...siteWithLandingVariantsOptions,
+            ...testDistWorkerOptions,
             name: "nu-tori-site-with-learn-pages-listed-test",
             modules: true,
             scriptPath: "./.wrangler/test-worker/worker.js",

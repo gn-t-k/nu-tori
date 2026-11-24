@@ -1,19 +1,9 @@
 import type { LearnArticle } from "../learn-article";
 
-// 量の感覚の例の値。食品は日本食品標準成分表（八訂）増補2023年の可食部 100 g あたり、ジョギングは 2024 Adult Compendium のコード 12020
-const croissantKcalPer100g = 406; // 01209 クロワッサン レギュラータイプ
-const breadKcalPer100g = 248; // 01026 角形食パン 食パン
-const onigiriKcalPer100g = 170; // 01111 おにぎり
+// ジョギングの METs（2024 Adult Compendium のコード 12020）。出典の claim がトップレベルで読むので、calorieBalance より上に置く
 const joggingMets = 7.5;
-const exampleBodyWeightsKg = [60, 80] as const;
-const joggingHours = 0.5;
 
-// 1 MET を、体重 1 kg・1時間あたり 1 kcal とみなす。安静にしていても使う 1 MET の分を除いた、ジョギングで増える分
-const joggingKcal = (bodyWeightKg: number) =>
-  Math.round(((joggingMets - 1) * bodyWeightKg * joggingHours) / 5) * 5;
-const [lighterKg, heavierKg] = exampleBodyWeightsKg;
-
-// 決まりの文は、書いたときのサーバーのドメイン層のコードに合わせた（server/src/domain/kilocalories-per-kilogram.ts、server/src/weekly-review/domain/compute-reviewed-expenditure/compute-reviewed-expenditure.ts）。サーバーで値や決まりを変えたら、同じ PR でここを直す
+// 決まりの文は、書いたときのサーバーのドメイン層のコードに合わせた（server/src/domain/kilocalories-per-kilogram.ts、server/src/weekly-review/domain/compute-reviewed-expenditure/compute-reviewed-expenditure.ts、server/src/weekly-review/domain/judge-review-week/judge-review-week.ts）。サーバーで値や決まりを変えたら、同じ PR でここを直す
 export const calorieBalance: LearnArticle = {
   slug: "calorie-balance",
   question: "摂取カロリーと消費カロリーで、体重はどう決まる？",
@@ -51,8 +41,7 @@ export const calorieBalance: LearnArticle = {
         運動で使うカロリーは、体重で変わります。ジョギングは、安静にしているときの約 {joggingMets}{" "}
         倍のカロリーを使う運動です。体重 {lighterKg} kg
         の人が30分ジョギングすると、安静にしていても使う分のほかに、約 {joggingKcal(lighterKg)} kcal
-        を使います。おにぎりにすると約{" "}
-        {Math.round(((joggingKcal(lighterKg) / onigiriKcalPer100g) * 100) / 5) * 5}{" "}
+        を使います。おにぎりにすると約 {onigiriGramsFor(joggingKcal(lighterKg))}{" "}
         g、だいたい1個分です。体重 {heavierKg} kg の人なら、同じ30分で約 {joggingKcal(heavierKg)}{" "}
         kcal です。
       </p>
@@ -86,8 +75,8 @@ export const calorieBalance: LearnArticle = {
       </li>
       <li>1日に食べた量は、その日に記録した食事のカロリーの合計です</li>
       <li>
-        毎週月曜の見直しでは、前の週（月曜から日曜）に食べた量の1日の平均を使います。体重 1 kg
-        の増減を 7,700 kcal とみなす目安のずれは、この見直しで直します
+        毎週月曜の見直しでは、前の週（月曜から日曜）のうち食事を記録した日の、食べた量の平均を使います。1食だけ記録した日のような、記録の途中の日は外します。体重
+        1 kg の増減を 7,700 kcal とみなす目安のずれは、この見直しで直します
       </li>
     </ul>
   ),
@@ -142,7 +131,7 @@ export const calorieBalance: LearnArticle = {
       linkLabel: "文部科学省のページ",
     },
     {
-      claim: "ジョギングが安静にしているときの約 7.5 倍のカロリーを使うこと",
+      claim: `ジョギングが安静にしているときの約 ${joggingMets} 倍のカロリーを使うこと`,
       citation:
         "Herrmann SD, Willis EA, Ainsworth BE, et al. 2024 Adult Compendium of Physical Activities: a third update of the energy costs of human activities. J Sport Health Sci. 2024;13(1):6-12（コード 12020、7.5 METs）。運動で使うカロリーは、1 MET を体重 1 kg・1時間あたり 1 kcal とみなして nu-tori が計算しました。",
       url: "https://pacompendium.com/running/",
@@ -151,3 +140,18 @@ export const calorieBalance: LearnArticle = {
   ],
   decidedByNuTori: ["食べた量を、毎週の見直しで1週間の平均で見ること"],
 };
+
+// 量の感覚の例の値。食品は日本食品標準成分表（八訂）増補2023年の可食部 100 g あたり
+const croissantKcalPer100g = 406; // 01209 クロワッサン レギュラータイプ
+const breadKcalPer100g = 248; // 01026 角形食パン 食パン
+const onigiriKcalPer100g = 170; // 01111 おにぎり
+const joggingHours = 0.5;
+const [lighterKg, heavierKg] = [60, 80] as const;
+
+// 1 MET を、体重 1 kg・1時間あたり 1 kcal とみなす。安静にしていても使う 1 MET の分を除いた、ジョギングで増える分
+const joggingKcal = (bodyWeightKg: number) =>
+  roundToNearestFive((joggingMets - 1) * bodyWeightKg * joggingHours);
+
+const onigiriGramsFor = (kcal: number) => roundToNearestFive((kcal / onigiriKcalPer100g) * 100);
+
+const roundToNearestFive = (value: number) => Math.round(value / 5) * 5;

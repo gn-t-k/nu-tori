@@ -2,9 +2,6 @@ import { medicalDisclaimer } from "../medical-disclaimer";
 import type { SitePage } from "../site-page";
 import type { LearnArticle, LearnSource } from "./learn-article";
 
-const indexPath = "/learn";
-const indexLabel = "nu-tori の考え方";
-
 // 並び（出会う順）から、一覧と1問ずつのページを作る。
 // listed が false のあいだは、どのページも検索に載せず（noindex、sitemap.xml に載らない）、外枠の足にも出さない
 export const createLearnPages = (
@@ -27,6 +24,9 @@ export const createLearnPages = (
     Content: () => <LearnArticlePage article={article} next={articles[index + 1]} />,
   })),
 ];
+
+const indexPath = "/learn";
+const indexLabel = "nu-tori の考え方";
 
 const articlePath = (article: LearnArticle) => `${indexPath}/${article.slug}`;
 
