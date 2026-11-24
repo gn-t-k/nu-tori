@@ -138,7 +138,7 @@ export const calorieBalance: LearnArticle = {
       linkLabel: "Compendium のランニングの表",
     },
   ],
-  decidedByNuTori: ["食べた量を、毎週の見直しで1週間の平均で見ること"],
+  decidedByNuTori: [],
 };
 
 // 量の感覚の例の値。食品は日本食品標準成分表（八訂）増補2023年の可食部 100 g あたり
