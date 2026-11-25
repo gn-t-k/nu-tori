@@ -12,7 +12,7 @@ export const createLearnPages = (
     outputPath: indexPath,
     title: `${indexLabel} | nu-tori`,
     description:
-      "何を食べたらいい？プロテインは要る？と迷う前に。体重が何で決まり、1日にどれだけ食べればいいかを、研究で分かっていることから1問ずつ説明します。",
+      "「何を食べればいい？」「プロテインを飲めばいいの？」と考える前に知っておきたい、ダイエットの基本。科学的な根拠にもとづく説明と、nu-tori があなたのダイエットをどう助けるかをまとめました。",
     ...(listed ? { kind: "public", footerLabel: indexLabel } : { kind: "unindexed" }),
     Content: () => <LearnIndex articles={articles} />,
   },
