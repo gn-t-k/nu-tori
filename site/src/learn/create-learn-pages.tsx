@@ -1,6 +1,6 @@
 import { medicalDisclaimer } from "../medical-disclaimer";
 import type { SitePage } from "../site-page";
-import type { LearnArticle, LearnSource } from "./learn-article";
+import type { LearnArticle, LearnClaim, LearnSource } from "./learn-article";
 
 // 並び（出会う順）から、一覧と1問ずつのページを作る。
 // listed が false のあいだは、どのページも検索に載せず（noindex、sitemap.xml に載らない）、外枠の足にも出さない
@@ -31,7 +31,7 @@ const indexLabel = "遠回りしないためのダイエットの基本";
 const articlePath = (article: LearnArticle) => `${indexPath}/${article.slug}`;
 
 const LearnArticlePage = ({
-  article: { question, Lead, Research, NuTori, Rules, sources, decidedByNuTori },
+  article: { question, Lead, claims, Rules, sources, decidedByNuTori },
   next,
 }: {
   article: LearnArticle;
@@ -43,10 +43,9 @@ const LearnArticlePage = ({
     </p>
     <h1>{question}</h1>
     <Lead />
-    <h2>研究では</h2>
-    <Research />
-    <h2>nu-tori では</h2>
-    <NuTori />
+    {claims.map((claim) => (
+      <Claim claim={claim} />
+    ))}
     <h2>nu-tori の計算の決まり</h2>
     <Rules />
     <h2 id="sources">出典</h2>
@@ -67,6 +66,29 @@ const LearnArticlePage = ({
         </li>
       </ul>
     </nav>
+  </>
+);
+
+const Claim = ({ claim: { heading, Research, figure, NuTori } }: { claim: LearnClaim }) => (
+  <>
+    <h2>{heading}</h2>
+    <Research />
+    {figure === undefined ? null : (
+      <img
+        class="learn-figure"
+        src={figure.src}
+        alt={figure.alt}
+        width={figure.width}
+        height={figure.height}
+        loading="lazy"
+      />
+    )}
+    {NuTori === undefined ? null : (
+      <>
+        <h3>nu-tori では</h3>
+        <NuTori />
+      </>
+    )}
   </>
 );
 

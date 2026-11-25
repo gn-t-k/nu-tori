@@ -3,6 +3,14 @@ import type { LearnArticle } from "../learn-article";
 // ジョギングの METs（2024 Adult Compendium のコード 12020）。出典の claim がトップレベルで読むので、calorieBalance より上に置く
 const joggingMets = 7.5;
 
+// 図は ChatGPT で描いた挿絵（文字なし）。site/public/learn/calorie-balance に 1200×800 の WebP で置いた。主張の figure がトップレベルで読むので、calorieBalance より上に置く
+const figure = (name: string, alt: string) => ({
+  src: `/learn/calorie-balance/${name}.webp`,
+  alt,
+  width: 1200,
+  height: 800,
+});
+
 // 決まりの文は、書いたときのサーバーのドメイン層のコードに合わせた（server/src/domain/kilocalories-per-kilogram.ts、server/src/weekly-review/domain/compute-reviewed-expenditure/compute-reviewed-expenditure.ts、server/src/weekly-review/domain/judge-review-week/judge-review-week.ts）。サーバーで値や決まりを変えたら、同じ PR でここを直す
 export const calorieBalance: LearnArticle = {
   slug: "calorie-balance",
@@ -26,59 +34,106 @@ export const calorieBalance: LearnArticle = {
       </p>
     </>
   ),
-  Research: () => (
-    <>
-      <h3>体重はカロリーの差で決まる</h3>
-      <p>
-        食べたカロリー（摂取カロリー）が体が使ったカロリー（消費カロリー）より多いと、体重は増えます。少ないと、体重は減ります。多く食べた分は脂肪などとして体にたくわえられ、足りない分はそのたくわえから補われます。
-      </p>
-      <p>
-        差を広げる方法は2つです。食べる量を減らすか、運動などで使う量を増やすかです。どちらで広げても、体重の変わり方は差の大きさで決まります。
-      </p>
-      <h3>差が約 7,700 kcal たまると体重は約 1 kg 変わる</h3>
-      <p>
-        体重 1 kg の増減は約 7,700 kcal の差にあたるとみなされています。たとえば、1日に 500 kcal
-        の差を続けると、2週間で約 7,000 kcal。体重にして 1 kg 弱です。
-      </p>
-      <p>
-        ただし、これは始めのうちの目安です。体重が減ると、体が使うカロリーも減ります。そのため、同じ量を食べ続けると、体重の減り方はだんだん遅くなります。
-      </p>
-      <h3>同じ重さでもカロリーは大きく違う</h3>
-      <p>
-        100 g あたりで比べると、おにぎりは {onigiriKcalPer100g} kcal、食パンは {breadKcalPer100g}{" "}
-        kcal、クロワッサンは {croissantKcalPer100g} kcal
-        です。ふんわり軽く見えるクロワッサンは、食パンの約{" "}
-        {(croissantKcalPer100g / breadKcalPer100g).toFixed(1)} 倍、おにぎりの約{" "}
-        {(croissantKcalPer100g / onigiriKcalPer100g).toFixed(1)} 倍です。
-      </p>
-      <h3>30分のジョギングで使うのはおにぎり1個分ほど</h3>
-      <p>
-        ジョギングは、安静にしているときの約 {joggingMets} 倍のカロリーを使います。体重 {lighterKg}{" "}
-        kg の人が30分走ると、安静にしていても使う分のほかに約 {joggingKcal(lighterKg)}{" "}
-        kcal。おにぎりにすると約 {onigiriGramsFor(joggingKcal(lighterKg))}{" "}
-        g、だいたい1個分です。体重 {heavierKg} kg の人でも約 {joggingKcal(heavierKg)} kcal です。
-      </p>
-      <h3>1日ぴったりでなくてよい</h3>
-      <p>
-        体重の変化は、何日も何週間も、カロリーの差が積み重なって決まります。1日に多く食べても、体のたくわえから見ればわずかです。次の数日で控えれば、積み重ねはほとんど変わりません。1日の目安は、1週間の平均で近ければ十分です。
-      </p>
-    </>
-  ),
-  NuTori: () => (
-    <>
-      <p>
-        nu-tori
-        はこの考え方のとおりに作っています。撮った食事や書いた食事のカロリーを1日ごとに足し、1日の目安と並べて見せます。
-      </p>
-      <p>
-        1日の目安は、あなたの体が1日に使うカロリー（推定消費カロリー）より少なくします。推定消費カロリーは、nu-tori
-        が推定します。
-      </p>
-      <p>
-        毎週月曜には、前の週に食べた量の平均と体重の変わり方を見て、推定消費カロリーと1日の目安を見直します。運動を続けて使う量が増えれば、体重の変わり方に表れるので、この見直しで推定消費カロリーにも反映されます。1週間で見るので、ある日に目安を超えても、その週のほかの日で近づければ大丈夫です。
-      </p>
-    </>
-  ),
+  claims: [
+    {
+      heading: "体重はカロリーの差で決まる",
+      Research: () => (
+        <>
+          <p>
+            食べたカロリー（摂取カロリー）が体が使ったカロリー（消費カロリー）より多いと、体重は増えます。少ないと、体重は減ります。多く食べた分は脂肪などとして体にたくわえられ、足りない分はそのたくわえから補われます。
+          </p>
+          <p>
+            差を広げる方法は2つです。食べる量を減らすか、運動などで使う量を増やすかです。どちらで広げても、体重の変わり方は差の大きさで決まります。
+          </p>
+        </>
+      ),
+      figure: figure(
+        "energy-balance",
+        "天秤の左の皿に食べ物、右の皿に走る人と炎が乗り、右に少し傾いている",
+      ),
+      NuTori: () => (
+        <>
+          <p>
+            nu-tori
+            はこの考え方のとおりに作っています。撮った食事や書いた食事のカロリーを1日ごとに足し、1日の目安と並べて見せます。
+          </p>
+          <p>
+            1日の目安は、あなたの体が1日に使うカロリー（推定消費カロリー）より少なくします。推定消費カロリーは、nu-tori
+            が推定します。
+          </p>
+        </>
+      ),
+    },
+    {
+      heading: "差が約 7,700 kcal たまると体重は約 1 kg 変わる",
+      Research: () => (
+        <>
+          <p>
+            体重 1 kg の増減は約 7,700 kcal の差にあたるとみなされています。たとえば、1日に 500 kcal
+            の差を続けると、2週間で約 7,000 kcal。体重にして 1 kg 弱です。
+          </p>
+          <p>
+            ただし、これは始めのうちの目安です。体重が減ると、体が使うカロリーも減ります。そのため、同じ量を食べ続けると、体重の減り方はだんだん遅くなります。
+          </p>
+        </>
+      ),
+      figure: figure(
+        "kcal-per-kilogram",
+        "積み重なった炎が、矢印の先で体重計の上の四角いかたまりに変わる",
+      ),
+    },
+    {
+      heading: "同じ重さでもカロリーは大きく違う",
+      Research: () => (
+        <>
+          <p>
+            100 g あたりで比べると、おにぎりは {onigiriKcalPer100g} kcal、食パンは{" "}
+            {breadKcalPer100g} kcal、クロワッサンは {croissantKcalPer100g} kcal
+            です。ふんわり軽く見えるクロワッサンは、食パンの約{" "}
+            {(croissantKcalPer100g / breadKcalPer100g).toFixed(1)} 倍、おにぎりの約{" "}
+            {(croissantKcalPer100g / onigiriKcalPer100g).toFixed(1)} 倍です。
+          </p>
+        </>
+      ),
+      figure: figure(
+        "same-weight-different-kcal",
+        "同じはかりに乗ったおにぎり、食パン、クロワッサン。上の炎は右ほど大きい",
+      ),
+    },
+    {
+      heading: "30分のジョギングで使うのはおにぎり1個分ほど",
+      Research: () => (
+        <>
+          <p>
+            ジョギングは、安静にしているときの約 {joggingMets} 倍のカロリーを使います。体重{" "}
+            {lighterKg} kg の人が30分走ると、安静にしていても使う分のほかに約{" "}
+            {joggingKcal(lighterKg)} kcal。おにぎりにすると約{" "}
+            {onigiriGramsFor(joggingKcal(lighterKg))} g、だいたい1個分です。体重 {heavierKg} kg
+            の人でも約 {joggingKcal(heavierKg)} kcal です。
+          </p>
+        </>
+      ),
+      figure: figure("jogging-and-onigiri", "走る人と30分を示す時計が、おにぎり1個と等しい"),
+    },
+    {
+      heading: "1日ぴったりでなくてよい",
+      Research: () => (
+        <>
+          <p>
+            体重の変化は、何日も何週間も、カロリーの差が積み重なって決まります。1日に多く食べても、体のたくわえから見ればわずかです。次の数日で控えれば、積み重ねはほとんど変わりません。1日の目安は、1週間の平均で近ければ十分です。
+          </p>
+        </>
+      ),
+      figure: figure("weekly-average", "高さの違う7本の棒と、その平均の高さを通る紫の点線"),
+      NuTori: () => (
+        <>
+          <p>
+            毎週月曜には、前の週に食べた量の平均と体重の変わり方を見て、推定消費カロリーと1日の目安を見直します。運動を続けて使う量が増えれば、体重の変わり方に表れるので、この見直しで推定消費カロリーにも反映されます。1週間で見るので、ある日に目安を超えても、その週のほかの日で近づければ大丈夫です。
+          </p>
+        </>
+      ),
+    },
+  ],
   Rules: () => (
     <ul>
       <li>

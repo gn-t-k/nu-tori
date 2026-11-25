@@ -981,3 +981,10 @@ body:has(.lp) .site-footer {
     font-size: 30px;
   }
 }
+.learn-figure {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: 12px;
+}
