@@ -4,9 +4,9 @@ import { LearnFigure } from "../learn-figure";
 // ジョギングの METs（2024 Adult Compendium のコード 12020）。出典の claim がトップレベルで読むので、calorieBalance より上に置く
 const joggingMets = 7.5;
 
-// 図は ChatGPT で描いた挿絵（文字なし）。site/public/learn/calorie-balance に 1200×800 の WebP で置いた
-const Figure = ({ name, alt }: { name: string; alt: string }) => (
-  <LearnFigure src={`/learn/calorie-balance/${name}.webp`} alt={alt} width={1200} height={800} />
+// 図は ChatGPT で描いた挿絵（文字なし）。site/public/learn/calorie-balance に幅 1200 の WebP で置いた。高さはふつう 800 で、横長の3コマの図だけ 400
+const Figure = ({ name, alt, height = 800 }: { name: string; alt: string; height?: number }) => (
+  <LearnFigure src={`/learn/calorie-balance/${name}.webp`} alt={alt} width={1200} height={height} />
 );
 
 // 「nu-tori では」の決まりの文は、書いたときのサーバーのドメイン層のコードに合わせた（server/src/domain/kilocalories-per-kilogram.ts、server/src/weekly-review/domain/compute-reviewed-expenditure/compute-reviewed-expenditure.ts、server/src/weekly-review/domain/judge-review-week/judge-review-week.ts）。サーバーで値や決まりを変えたら、同じ PR でここを直す
@@ -41,8 +41,9 @@ export const calorieBalance: LearnArticle = {
             体重の変化は、食べたカロリー（摂取カロリー）と体が使ったカロリー（消費カロリー）の差で決まります。体が使うカロリーが食べたカロリーより多いと、体は脂肪や筋肉を燃やして足りない分を補います。これが体重が減る仕組みです。
           </p>
           <Figure
-            name="energy-balance"
-            alt="天秤の左の皿に食べ物、右の皿に走る人と炎が乗り、右に少し傾いている"
+            name="energy-flow"
+            height={400}
+            alt="3コマの図。おにぎりを食べると電池のゲージが目印の線より上まで増え、走ると目印より下まで減って空きができ、お腹の脂肪が小さくなった分で紫のゲージが目印まで戻る"
           />
           <p>体重 1 kg の増減は約 7,700 kcal の差にあたるとみなされています。</p>
           <p>
