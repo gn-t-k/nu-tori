@@ -82,17 +82,18 @@
 
         /// 460.5 kcal
         static let karaage = single(
-            "鶏の唐揚げ", 1, "皿", "鶏の唐揚げ", grams: 150, "11289",
-            nutrients(307, 20.5, 17.2, 13))
+            "鶏の唐揚げ", quantity: 1, unit: "皿", ingredient: "鶏の唐揚げ", grams: 150,
+            foodNumber: "11289", nutrients(307, 20.5, 17.2, 13))
 
         /// 313.5 kcal
         static let gyoza = single(
-            "ぎょうざ", 6, "個", "ぎょうざ", grams: 150, "18002", nutrients(209, 5.8, 10, 19.7))
+            "ぎょうざ", quantity: 6, unit: "個", ingredient: "ぎょうざ", grams: 150,
+            foodNumber: "18002", nutrients(209, 5.8, 10, 19.7))
 
         /// 229 kcal
         static let fries = single(
-            "フライドポテト", 1, "皿", "フライドポテト", grams: 100, "02020",
-            nutrients(229, 2.3, 10.3, 25))
+            "フライドポテト", quantity: 1, unit: "皿", ingredient: "フライドポテト", grams: 100,
+            foodNumber: "02020", nutrients(229, 2.3, 10.3, 25))
 
         /// 273 kcal
         static let beer = ListingSampleDish(
@@ -106,11 +107,11 @@
 
         /// 275 kcal
         static let chocolate = single(
-            "チョコレート", 1, "枚", "ミルクチョコレート", grams: 50, "15116",
-            nutrients(550, 5.8, 32.8, 56.5))
+            "チョコレート", quantity: 1, unit: "枚", ingredient: "ミルクチョコレート", grams: 50,
+            foodNumber: "15116", nutrients(550, 5.8, 32.8, 56.5))
 
         /// 推定を終えた食事の料理と材料。`position` は食事の中の料理の並び。`id` は、0 に料理の、1 からは材料の並びの ID を返す
-        func changes(mealId: UUID, position: Int = 0, id: (Int) -> UUID) -> [SyncChange] {
+        func changes(mealId: UUID, position: Int, id: (Int) -> UUID) -> [SyncChange] {
             let dishId = id(0)
             return [
                 .dish(
@@ -133,13 +134,12 @@
         }
 
         private static func single(
-            _ name: String, _ quantityValue: Double, _ quantityUnit: String,
-            _ ingredientName: String, grams: Double, _ foodNumber: String,
-            _ nutrients: [String: Double]
+            _ name: String, quantity: Double, unit: String, ingredient: String, grams: Double,
+            foodNumber: String, _ nutrients: [String: Double]
         ) -> ListingSampleDish {
             ListingSampleDish(
-                name: name, quantityValue: quantityValue, quantityUnit: quantityUnit,
-                ingredients: [composition(ingredientName, grams: grams, foodNumber, nutrients)])
+                name: name, quantityValue: quantity, quantityUnit: unit,
+                ingredients: [composition(ingredient, grams: grams, foodNumber, nutrients)])
         }
 
         private static func rice(grams: Double) -> Ingredient {

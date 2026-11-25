@@ -94,9 +94,7 @@ enum ListingScene: String, CaseIterable {
         case .weeklyReview:
             guard Self.openGoalScreen(app) else { return false }
             // 見直した点が3つ（目標を立てたときと、2回の見直し）あるので、1日の目安のカードに推定消費カロリーと目安の階段のグラフが出る
-            let ready =
-                app.descendants(matching: .any)["goal-weight-chart"].waitForExistence(timeout: 5)
-                && app.descendants(matching: .any)["goal-energy-chart"].exists
+            let ready = Self.goalChartsShown(app, onScreen: false)
             // グラフが描き終えるまで少し待つ
             Thread.sleep(forTimeInterval: 1)
             return ready
@@ -270,14 +268,18 @@ enum ListingScene: String, CaseIterable {
         guard openGoalScreen(app) else { return false }
         let heading = app.staticTexts["体重の傾向"]
         guard pullUp(heading, below: app.navigationBars["目標"], in: app) else { return false }
-        // 目標の線と体重の傾向の線のグラフと、推定消費カロリーと目安の階段のグラフが、どちらも出ている
-        let weightChart = app.descendants(matching: .any)["goal-weight-chart"]
-        let energyChart = app.descendants(matching: .any)["goal-energy-chart"]
-        let shown =
-            weightChart.waitForExistence(timeout: 5) && weightChart.isHittable
-            && energyChart.exists && energyChart.isHittable
+        let shown = goalChartsShown(app, onScreen: true)
         Thread.sleep(forTimeInterval: 1)
         return shown
+    }
+
+    /// 目標の画面の、目標の線と体重の傾向の線のグラフと、推定消費カロリーと目安の階段のグラフが、どちらも出ている。
+    /// `onScreen` なら、どちらも画面の中に入っている
+    @MainActor private static func goalChartsShown(_ app: XCUIApplication, onScreen: Bool) -> Bool {
+        let weightChart = app.descendants(matching: .any)["goal-weight-chart"]
+        let energyChart = app.descendants(matching: .any)["goal-energy-chart"]
+        guard weightChart.waitForExistence(timeout: 5), energyChart.exists else { return false }
+        return !onScreen || (weightChart.isHittable && energyChart.isHittable)
     }
 
     /// 見出しを、題の帯のすぐ下までゆっくり引き上げる。指を止めてから離すので、勢いで流れず、毎回同じ所に止まる

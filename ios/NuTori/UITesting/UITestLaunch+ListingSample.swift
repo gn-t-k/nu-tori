@@ -211,20 +211,21 @@
             static let breakfast = Meal(hour: 7, minute: 30, text: "朝はおにぎり", dishes: [.onigiri])
             static let lunch = Meal(hour: 12, minute: 30, text: "昼は親子丼", dishes: [.oyakodon])
             static let dinner = Meal(hour: 19, minute: 0, text: "夜はカレーライス", dishes: [.curry])
+            static let snack = Meal(hour: 15, minute: 0, text: "おやつにチョコ", dishes: [.chocolate])
+            static let curryAndGyoza = Meal(
+                hour: 19, minute: 0, text: "夜はカレーとぎょうざ", dishes: [.curry, .gyoza])
 
             /// LP の版 a の見本の3食。1,440 kcal
             static let dailyMeals = [breakfast, lunch, dinner]
 
-            /// 見直しの済んだ週（1月18日まで）の、曜日ごとの食事。月曜から順におよそ 1,715・1,754・1,374・1,715・2,162・1,122・2,029 kcal で、
-            /// 1月12日〜18日の週は1日の目安 1,900 kcal を金曜と日曜に超え、平均は 1,696 kcal
+            /// 見直しの済んだ週（1月18日まで）の、曜日ごとの食事。月曜から順におよそ 1,715・1,754・1,374・2,029・2,162・1,122・1,440 kcal。
+            /// 1月12日〜18日の週は、1日の目安 1,900 kcal を木曜と金曜に超え、平均はおよそ 1,657 kcal。
+            /// 日曜は LP の見本の3食にする。手順の絵の場面（1月19日（月）の朝）は、昨日の食事と返事（`replyLines`）を写すため
             static let weekdayMeals: [[Meal]] = [
                 dailyMeals + [snack],
-                [
-                    breakfast, lunch,
-                    Meal(hour: 19, minute: 0, text: "夜はカレーとぎょうざ", dishes: [.curry, .gyoza]),
-                ],
+                [breakfast, lunch, curryAndGyoza],
                 [Meal(hour: 7, minute: 30, text: "朝はお茶漬け", dishes: [.ochazuke]), lunch, dinner],
-                dailyMeals + [snack],
+                [breakfast, lunch, snack, curryAndGyoza],
                 [
                     breakfast, lunch,
                     Meal(
@@ -233,23 +234,17 @@
                 ],
                 // 飲み会の次の日は朝を抜いた
                 [lunch, dinner],
-                [
-                    breakfast, lunch, snack,
-                    Meal(hour: 19, minute: 0, text: "夜はカレーとぎょうざ", dishes: [.curry, .gyoza]),
-                ],
+                dailyMeals,
             ]
 
-            static let snack = Meal(hour: 15, minute: 0, text: "おやつにチョコ", dishes: [.chocolate])
-
-            /// 見直しの済んだ週は曜日ごとの食事（`weekdayMeals`）、今の週（1月19日から）は LP の見本の3食
-            func plannedMeals(of day: Day, at dayIndex: Int) -> [Meal] {
-                // 日は YYYY-MM-DD の文字列なので、文字の順が日の順になる。1月5日（`dayIndex` が 0）は月曜
-                day.calendarDay < Self.currentWeekStartsOn
-                    ? Self.weekdayMeals[dayIndex % 7] : Self.dailyMeals
+            /// 見直しの済んだ週は曜日ごとの食事（`weekdayMeals`）、今の週（最後の見直しの日から）は LP の見本の3食。
+            /// 1月5日（`dayIndex` が 0）は月曜
+            func plannedMeals(of sampleDay: Day, at dayIndex: Int) -> [Meal] {
+                guard let currentWeek = Self.weeks.last,
+                    day(sampleDay.calendarDay) < day(currentWeek.effectiveOn)
+                else { return Self.dailyMeals }
+                return Self.weekdayMeals[dayIndex % 7]
             }
-
-            /// 最後の見直しの日（`weeks` の最後の `effectiveOn`）
-            static let currentWeekStartsOn = "2026-01-19"
 
             /// その日の食事を、送った文章と、食事と読み分けて推定を終えた食事にする
             func meals(of day: Day, at dayIndex: Int) -> [SyncChange] {
@@ -284,7 +279,7 @@
                 }
             }
 
-            /// 返事に並べる行。昨日の3食（`dailyMeals`）について書く
+            /// 返事に並べる行。昨日の3食について書く。返事を撮る場面の昨日（1月18日（日）と1月20日（火））は、どちらも LP の見本の3食（`dailyMeals`）
             static let replyLines = [
                 "- 朝のおにぎりは炭水化物が中心です",
                 "- 昼の親子丼でたんぱく質がとれています",
