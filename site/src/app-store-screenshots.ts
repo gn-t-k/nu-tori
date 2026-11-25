@@ -64,4 +64,6 @@ type RawScreenName =
   | "goal-proposals"
   | "day-summary"
   | "week-food"
-  | "weight-trend";
+  | "weight-trend"
+  | "daily-guide"
+  | "photo-meal";

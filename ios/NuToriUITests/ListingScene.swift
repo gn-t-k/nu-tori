@@ -27,6 +27,10 @@ enum ListingScene: String, CaseIterable {
     case weekFood = "week-food"
     /// 今日の体重の画面。毎朝の体重の点と、体重の傾向の線（考え方のページの `weight-trend`）
     case weightTrend = "weight-trend"
+    /// 目標の画面の「今の1日の目安」のカード。1日の目安の kcal と P・F・C、推定消費カロリーと目安の階段のグラフ（考え方のページの `calorie-balance`）
+    case dailyGuide = "daily-guide"
+    /// 撮ったカレーライスの写真から推定した食事の画面。写真と、料理と kcal・P・F・C（考え方のページの `calorie-balance`）
+    case photoMeal = "photo-meal"
 
     /// 場面の記録と時計で開く。記録は、アプリの UI テストの差し替えの見本の人（`UITestLaunch.listingSampleScenario(_:)`）。
     /// アプリの時計は、撮る画面の状態の表示（9:41）とそろえ、タイムゾーンは日本に固める。
@@ -38,7 +42,7 @@ enum ListingScene: String, CaseIterable {
         case .stepWeigh:
             // 今朝の体重がまだ無く、体重の知らせの時刻（8:00）を過ぎた朝
             open(api: "listing-sample-before-weighing")
-        case .weeklyReview, .daySummary, .weekFood, .weightTrend:
+        case .weeklyReview, .daySummary, .weekFood, .weightTrend, .dailyGuide:
             open(api: "listing-sample")
         case .goalProposals:
             // 見本の人が目標を立てた月曜の朝。目標はまだ無い
@@ -49,7 +53,7 @@ enum ListingScene: String, CaseIterable {
             // 写真は LP の見本と同じ Wikimedia Commons の CC0（Ocdp）のおにぎりで、nu-tori の利用者の食事ではない。
             // 出どころは site/src/pages/landing-a/example-photo-meals.ts。リポジトリに2つ置かないよう、LP の写真をそのまま読む
             open(api: "listing-sample", photo: "onigiri")
-        case .photoEstimated, .dish:
+        case .photoEstimated, .dish, .photoMeal:
             // 写真は LP の「撮るだけ」の節と昼ごはんの日の見本のカレーライス（出どころは stepPhoto と同じ）。推定の結果も LP の見本と同じ料理・材料・量
             open(api: "listing-sample-photo-estimated", photo: "curry")
         case .textMeal:
@@ -112,6 +116,17 @@ enum ListingScene: String, CaseIterable {
             return Self.openLastWeeksFood(app)
         case .weightTrend:
             return Self.openTodaysWeightScreen(app)
+        case .dailyGuide:
+            return Self.openDailyGuideCard(app)
+        case .photoMeal:
+            guard Self.pickPhoto(app, until: "カレーライス") else { return false }
+            Self.todaysPhotoMealCard(app).tap()
+            guard app.navigationBars["食事"].waitForExistence(timeout: 5),
+                app.mealDish(named: "カレーライス").waitForExistence(timeout: 5)
+            else { return false }
+            // プッシュで潜る動きと写真を描き終えるまで少し待つ
+            Thread.sleep(forTimeInterval: 1)
+            return true
         case .textMeal:
             guard Self.waitForTodaysWeight(app), app.composerField.waitForExistence(timeout: 5)
             else { return false }
@@ -136,7 +151,9 @@ enum ListingScene: String, CaseIterable {
         case .textMeal: 8
         case .stepWeigh, .photoEstimated: 5
         case .stepPhoto, .stepGuide: 2
-        case .dish, .weeklyReview, .goalProposals, .daySummary, .weekFood, .weightTrend: 0
+        case .dish, .weeklyReview, .goalProposals, .daySummary, .weekFood, .weightTrend,
+            .dailyGuide, .photoMeal:
+            0
         }
     }
 
@@ -233,22 +250,45 @@ enum ListingScene: String, CaseIterable {
         ).firstMatch
         guard lastWeek.waitForExistence(timeout: 5) else { return false }
         let heading = app.staticTexts["食べた量"]
-        guard app.scrollUntilExists(heading, maxSwipes: 2), heading.isHittable else {
+        guard pullUp(heading, below: app.navigationBars["週の振り返り"], in: app) else {
             return false
         }
-        // 見出しを、題の帯のすぐ下までゆっくり引き上げる。指を止めてから離すので、勢いで流れず、毎回同じ所に止まる
-        let navigationBar = app.navigationBars["週の振り返り"]
-        guard navigationBar.exists else { return false }
-        let destination = app.coordinate(withNormalizedOffset: .zero).withOffset(
-            CGVector(dx: heading.frame.midX, dy: navigationBar.frame.maxY + 24))
-        heading.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
-            forDuration: 0.1, thenDragTo: destination, withVelocity: .slow,
-            thenHoldForDuration: 0.5)
         // 日ごとの棒と、1日の平均・1日の目安の行が出ている
         let guide = app.staticText(containing: "1日の目安")
         let shown = guide.waitForExistence(timeout: 5) && guide.isHittable
         Thread.sleep(forTimeInterval: 1)
         return shown
+    }
+
+    /// タイムラインの左上の目標の入口から目標の画面を開き、「今の1日の目安」のカードを画面の上に寄せる
+    @MainActor private static func openDailyGuideCard(_ app: XCUIApplication) -> Bool {
+        guard waitForTodaysWeight(app) else { return false }
+        let goalLink = app.buttons["goal-link"]
+        guard goalLink.waitForExistence(timeout: 5) else { return false }
+        goalLink.tap()
+        guard app.navigationBars["目標"].waitForExistence(timeout: 5) else { return false }
+        let heading = app.staticTexts["今の1日の目安"]
+        guard pullUp(heading, below: app.navigationBars["目標"], in: app) else { return false }
+        // 推定消費カロリーと目安の階段のグラフまで出ている
+        let chart = app.descendants(matching: .any)["goal-energy-chart"]
+        let shown = chart.waitForExistence(timeout: 5) && chart.isHittable
+        Thread.sleep(forTimeInterval: 1)
+        return shown
+    }
+
+    /// 見出しを、題の帯のすぐ下までゆっくり引き上げる。指を止めてから離すので、勢いで流れず、毎回同じ所に止まる
+    @MainActor private static func pullUp(
+        _ heading: XCUIElement, below navigationBar: XCUIElement, in app: XCUIApplication
+    ) -> Bool {
+        guard app.scrollUntilExists(heading, maxSwipes: 2), heading.isHittable,
+            navigationBar.exists
+        else { return false }
+        let destination = app.coordinate(withNormalizedOffset: .zero).withOffset(
+            CGVector(dx: heading.frame.midX, dy: navigationBar.frame.maxY + 24))
+        heading.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
+            forDuration: 0.1, thenDragTo: destination, withVelocity: .slow,
+            thenHoldForDuration: 0.5)
+        return true
     }
 
     /// 1日の丸の帯で今日の丸を押し、日のまとめの体重の行から今日の体重の画面を開く
