@@ -12,7 +12,7 @@ export const createLearnPages = (
     outputPath: indexPath,
     title: `${indexLabel} | nu-tori`,
     description:
-      "体重が何で決まり、nu-tori がどう1日の目安を出すのかを、研究で分かっていることから1問ずつ説明します。",
+      "何を食べたらいい？プロテインは要る？と迷う前に。体重が何で決まり、1日にどれだけ食べればいいかを、研究で分かっていることから1問ずつ説明します。",
     ...(listed ? { kind: "public", footerLabel: indexLabel } : { kind: "unindexed" }),
     Content: () => <LearnIndex articles={articles} />,
   },
@@ -26,7 +26,7 @@ export const createLearnPages = (
 ];
 
 const indexPath = "/learn";
-const indexLabel = "nu-tori の考え方";
+const indexLabel = "遠回りしないための、ダイエットの基本";
 
 const articlePath = (article: LearnArticle) => `${indexPath}/${article.slug}`;
 
@@ -62,7 +62,7 @@ const LearnArticlePage = ({
           </li>
         )}
         <li>
-          <a href={indexPath}>{indexLabel}の一覧へ戻る</a>
+          <a href={indexPath}>一覧へ戻る</a>
         </li>
       </ul>
     </nav>
@@ -73,9 +73,8 @@ const LearnIndex = ({ articles }: { articles: readonly LearnArticle[] }) => (
   <>
     <h1>{indexLabel}</h1>
     <p>
-      nu-tori
-      は、何を食べるかより、どれだけ食べるかを見るアプリです。ここでは、研究で分かっていることと、それに基づいて
-      nu-tori がどう作られているかを、1問ずつ説明します。アプリで出会う順に並べています。
+      「何を食べたらいい？」「プロテインは飲んだほうがいい？」と探す前に、知っておくと遠回りしないことがあります。体重は、何を食べるかより、どれだけ食べるかで決まります。ここでは、ダイエットで迷いやすいことを1問ずつ取り上げ、研究で分かっていることと、それに基づいて
+      nu-tori がどう作られているかを説明します。アプリで出会う順に並べています。
     </p>
     <ol>
       {articles.map((article) => (
