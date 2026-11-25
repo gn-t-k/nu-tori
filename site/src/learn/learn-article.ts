@@ -7,6 +7,8 @@ export type LearnArticle = {
   // 世の中の問いの題。<h1> と <title> に使う
   question: string;
   description: string;
+  // 題のすぐ下の導入。状況・困りごと・問い・答えの順に書き、答え（このページの結論）を最初に言い切る
+  Lead: FC;
   Research: FC;
   NuTori: FC;
   Rules: FC;

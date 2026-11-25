@@ -31,7 +31,7 @@ const indexLabel = "遠回りしないための、ダイエットの基本";
 const articlePath = (article: LearnArticle) => `${indexPath}/${article.slug}`;
 
 const LearnArticlePage = ({
-  article: { question, Research, NuTori, Rules, sources, decidedByNuTori },
+  article: { question, Lead, Research, NuTori, Rules, sources, decidedByNuTori },
   next,
 }: {
   article: LearnArticle;
@@ -42,6 +42,7 @@ const LearnArticlePage = ({
       <a href={indexPath}>{indexLabel}</a>
     </p>
     <h1>{question}</h1>
+    <Lead />
     <h2>研究では</h2>
     <Research />
     <h2>nu-tori では</h2>

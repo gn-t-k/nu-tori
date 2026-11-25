@@ -17,7 +17,7 @@
 
 考え方のページ（`/learn` と `/learn/<名前>`）は、モジュール `src/learn/` が一覧と1問ずつのページを作り、ページの一覧には `learnPages` を並べるだけにしてある。
 
-1. `src/learn/articles/<名前>.tsx` に、1問の形 `LearnArticle`（`src/learn/learn-article.ts`）を1つ書く。題（世の中の問い）・説明・「研究では」「nu-tori では」「nu-tori の計算の決まり」の中身・出典・資料に拠らず nu-tori が決めた決まりを置く。本文は一次の出典にあたって自分の言葉で書き、参考のページの文は写さない
+1. `src/learn/articles/<名前>.tsx` に、1問の形 `LearnArticle`（`src/learn/learn-article.ts`）を1つ書く。題（世の中の問い）・説明・題の下の導入・「研究では」「nu-tori では」「nu-tori の計算の決まり」の中身・出典・資料に拠らず nu-tori が決めた決まりを置く。本文は一次の出典にあたって自分の言葉で書き、参考のページの文は写さない
 2. 並び（`src/learn/learn-articles.ts` の `learnArticles`）の、アプリで出会う順の位置に1行足す
 
 節の並び・一覧へ戻るリンク・次のページへのリンク・一覧の末の集めた出典は、`src/learn/create-learn-pages.tsx` が並びから作るので、1問のファイルには書かない。
