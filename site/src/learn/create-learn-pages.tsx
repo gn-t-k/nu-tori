@@ -12,7 +12,7 @@ export const createLearnPages = (
     outputPath: indexPath,
     title: `${indexLabel} | nu-tori`,
     description:
-      "「何を食べればいい？」「プロテインを飲めばいいの？」と考える前に知っておきたい、ダイエットの基本。科学的な根拠にもとづく説明と、nu-tori があなたのダイエットをどう助けるかをまとめました。",
+      "「何を食べればいい？」「プロテインを飲めばいいの？」に自分で答えられるようになる、ダイエットの基本。科学的な根拠にもとづく説明と、nu-tori があなたのダイエットをどう助けるかをまとめました。",
     ...(listed ? { kind: "public", footerLabel: indexLabel } : { kind: "unindexed" }),
     Content: () => <LearnIndex articles={articles} />,
   },
@@ -26,7 +26,7 @@ export const createLearnPages = (
 ];
 
 const indexPath = "/learn";
-const indexLabel = "遠回りしないための、ダイエットの基本";
+const indexLabel = "遠回りしないためのダイエットの基本";
 
 const articlePath = (article: LearnArticle) => `${indexPath}/${article.slug}`;
 
@@ -63,7 +63,7 @@ const LearnArticlePage = ({
           </li>
         )}
         <li>
-          <a href={indexPath}>一覧へ戻る</a>
+          <a href={indexPath}>{indexLabel}</a>
         </li>
       </ul>
     </nav>
@@ -74,7 +74,7 @@ const LearnIndex = ({ articles }: { articles: readonly LearnArticle[] }) => (
   <>
     <h1>{indexLabel}</h1>
     <p>
-      ダイエットを始めようと思うと、「何を食べればいい？」「プロテインを飲めばいいの？」と考えがちです。でも、その前に知っておくと、いま何をすればいいかが自分でわかるようになる基本があります。科学的な根拠にもとづく説明と、nu-tori
+      ダイエットを始めようと思うと、「何を食べればいい？」「プロテインを飲めばいいの？」と考えがちです。どちらも考えてよい問いです。体重が変わる基本を知っておくと、その答えも、ほかのいろいろなダイエット法の意味も、自分で考えてわかるようになります。科学的な根拠にもとづく説明と、nu-tori
       があなたのダイエットをどう助けるかをまとめました。
     </p>
     <ol>
