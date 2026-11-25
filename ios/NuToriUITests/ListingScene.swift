@@ -82,12 +82,8 @@ enum ListingScene: String, CaseIterable {
             // 推定が届くと、カードの名前の場所が料理の名前になる
             return Self.pickPhoto(app, until: "カレーライス")
         case .dish:
-            guard Self.pickPhoto(app, until: "カレーライス") else { return false }
-            Self.todaysPhotoMealCard(app).tap()
-            guard app.navigationBars["食事"].waitForExistence(timeout: 5) else { return false }
-            let curry = app.mealDish(named: "カレーライス")
-            guard curry.waitForExistence(timeout: 5) else { return false }
-            curry.tap()
+            guard Self.openTodaysPhotoMeal(app) else { return false }
+            app.mealDish(named: "カレーライス").tap()
             guard app.navigationBars["カレーライス"].waitForExistence(timeout: 5) else { return false }
             // 材料の量の欄（ごはん・牛肉・じゃがいも…の行）が出てから撮る
             guard app.textFields["dish-ingredient-quantity"].firstMatch.waitForExistence(timeout: 5)
@@ -96,11 +92,7 @@ enum ListingScene: String, CaseIterable {
             Thread.sleep(forTimeInterval: 1)
             return true
         case .weeklyReview:
-            guard Self.waitForTodaysWeight(app) else { return false }
-            let goalLink = app.buttons["goal-link"]
-            guard goalLink.waitForExistence(timeout: 5) else { return false }
-            goalLink.tap()
-            guard app.navigationBars["目標"].waitForExistence(timeout: 5) else { return false }
+            guard Self.openGoalScreen(app) else { return false }
             // 見直した点が3つ（目標を立てたときと、2回の見直し）あるので、1日の目安のカードに推定消費カロリーと目安の階段のグラフが出る
             let ready =
                 app.descendants(matching: .any)["goal-weight-chart"].waitForExistence(timeout: 5)
@@ -119,11 +111,7 @@ enum ListingScene: String, CaseIterable {
         case .dailyGuide:
             return Self.openDailyGuideCard(app)
         case .photoMeal:
-            guard Self.pickPhoto(app, until: "カレーライス") else { return false }
-            Self.todaysPhotoMealCard(app).tap()
-            guard app.navigationBars["食事"].waitForExistence(timeout: 5),
-                app.mealDish(named: "カレーライス").waitForExistence(timeout: 5)
-            else { return false }
+            guard Self.openTodaysPhotoMeal(app) else { return false }
             // プッシュで潜る動きと写真を描き終えるまで少し待つ
             Thread.sleep(forTimeInterval: 1)
             return true
@@ -260,13 +248,26 @@ enum ListingScene: String, CaseIterable {
         return shown
     }
 
-    /// タイムラインの左上の目標の入口から目標の画面を開き、「今の1日の目安」のカードを画面の上に寄せる
-    @MainActor private static func openDailyGuideCard(_ app: XCUIApplication) -> Bool {
+    /// タイムラインの左上の目標の入口から目標の画面を開く
+    @MainActor private static func openGoalScreen(_ app: XCUIApplication) -> Bool {
         guard waitForTodaysWeight(app) else { return false }
         let goalLink = app.buttons["goal-link"]
         guard goalLink.waitForExistence(timeout: 5) else { return false }
         goalLink.tap()
-        guard app.navigationBars["目標"].waitForExistence(timeout: 5) else { return false }
+        return app.navigationBars["目標"].waitForExistence(timeout: 5)
+    }
+
+    /// カレーライスの写真を送り、推定が届いた今日の食事の画面を、カレーライスの料理の行が出るまで開く
+    @MainActor private static func openTodaysPhotoMeal(_ app: XCUIApplication) -> Bool {
+        guard pickPhoto(app, until: "カレーライス") else { return false }
+        todaysPhotoMealCard(app).tap()
+        return app.navigationBars["食事"].waitForExistence(timeout: 5)
+            && app.mealDish(named: "カレーライス").waitForExistence(timeout: 5)
+    }
+
+    /// 目標の画面を開き、「今の1日の目安」のカードを画面の上に寄せる
+    @MainActor private static func openDailyGuideCard(_ app: XCUIApplication) -> Bool {
+        guard openGoalScreen(app) else { return false }
         let heading = app.staticTexts["今の1日の目安"]
         guard pullUp(heading, below: app.navigationBars["目標"], in: app) else { return false }
         // 推定消費カロリーと目安の階段のグラフまで出ている
