@@ -46,7 +46,7 @@ export const calorieBalance: LearnArticle = {
           />
           <p>体重 1 kg の増減は約 7,700 kcal の差にあたるとみなされています。</p>
           <p>
-            差は運動で使う量を増やしても作れます。ただ、運動で作れる差は思ったより小さめです。ジョギングは、安静にしているときの約{" "}
+            運動の量を増やして体重を減らす方法を考えてみましょう。ジョギングは、安静にしているときの約{" "}
             {joggingMets} 倍のカロリーを使う運動ですが、体重 {bodyWeightKg} kg
             の人が30分走って増えるのは約 {joggingKcal} kcal。おにぎりにすると約{" "}
             {onigiriGramsForJogging} g、だいたい1個分です。運動だけで 1 kg
@@ -55,8 +55,10 @@ export const calorieBalance: LearnArticle = {
           </p>
           <Figure name="jogging-and-onigiri" alt="走る人と30分を示す時計が、おにぎり1個と等しい" />
           <p>
-            食事なら、1日に 500 kcal 少なく食べるだけで、2週間ほどで約 7,000 kcal、体重にして 1 kg
-            弱の差になります。体重を減らすことだけを見るなら、食事で差を作るほうがずっと手軽です。
+            食事なら、1日に {dailyDeficitKcal} kcal 少なく食べると、2週間ほどで約 7,000
+            kcal、体重にして 1 kg 弱の差になります。1日 {dailyDeficitKcal} kcal
+            は、おにぎりにすると約 {onigiriGramsForDailyDeficit}{" "}
+            g、2個半ほどです。体重を減らすことだけを見るなら、食事で差を作るほうがずっと手軽です。
           </p>
         </>
       ),
@@ -182,5 +184,10 @@ const roundToNearestFive = (value: number) => Math.round(value / 5) * 5;
 
 // 1 MET を、体重 1 kg・1時間あたり 1 kcal とみなす。安静にしていても使う 1 MET の分を除いた、ジョギングで増える分
 const joggingKcal = roundToNearestFive((joggingMets - 1) * bodyWeightKg * joggingHours);
+const dailyDeficitKcal = 500;
+// 本文の「2個半ほど」は、ジョギングの例の約 115 g を「だいたい1個分」とした数え方に合わせた
+const onigiriGramsForDailyDeficit = roundToNearestFive(
+  (dailyDeficitKcal / onigiriKcalPer100g) * 100,
+);
 const onigiriGramsForJogging = roundToNearestFive((joggingKcal / onigiriKcalPer100g) * 100);
 const joggingSessionsPerKilogram = roundToNearestFive(kilocaloriesPerKilogram / joggingKcal);
