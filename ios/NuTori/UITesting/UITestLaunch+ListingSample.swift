@@ -11,9 +11,9 @@
         /// 例の筋が変わって JSON を書き出し直したら、ここも写し直す。
         ///
         /// 1月5日（月）に、体重の傾向 78.4 kg から 12 週で 74.4 kg へ減らす目標を立て、毎週月曜の 0:05 に見直した。
-        /// 今日（止めた時計の日）より後の記録は置かない。昨日までは毎日、LP の版 a の見本の3食（`ListingSampleDish`）を書いて送った。
-        /// 出し方のページの見本の人は毎日1日の目安ちょうど食べたことにしているが、3食の合計（1,440 kcal）はそれより少ない。
-        /// 食べた量は1日の丸の満ち方と週の振り返りにしか出ず、見本の場面はどちらの数も撮らないので、LP の見本の食事のほうにそろえる。
+        /// 今日（止めた時計の日）より後の記録は置かない。昨日までは毎日、食事を書いて送った（`ListingSample.meals(of:at:)`）。
+        /// 出し方のページの見本の人は毎日1日の目安ちょうど食べたことにしているが、ここの食べた量は日ごとに揺れ、週の平均は1日の目安より少ない。
+        /// 週の振り返りの「食べた量」の棒が、目安を超えた日と控えた日を見せるため（考え方のページの「体重はカロリーの差で決まる」の画面）。
         /// 昨日の 21:00 には「ここまでの食事のフィードバック」を送って返事が届いた。返事の行の数（`listingReplyLineCount`）は、撮る UI テストの場面（`ListingScene`）が選ぶ
         ///
         /// `weighedToday` が false なら、今朝の体重とその日の体重の傾向を置かない（まだ量っていない朝）
@@ -200,23 +200,61 @@
                         version: 1, imported: nil))
             }
 
-            /// 毎日の3食。どれも書いて送った食事（写真の食事は、ほかの端末の写真を取りに行く道が UI テストに無いので置かない）
+            /// 書いて送った食事（写真の食事は、ほかの端末の写真を取りに行く道が UI テストに無いので置かない）
             struct Meal {
                 let hour: Int
                 let minute: Int
                 let text: String
-                let dish: ListingSampleDish
+                let dishes: [ListingSampleDish]
             }
 
-            static let dailyMeals = [
-                Meal(hour: 7, minute: 30, text: "朝はおにぎり", dish: .onigiri),
-                Meal(hour: 12, minute: 30, text: "昼は親子丼", dish: .oyakodon),
-                Meal(hour: 19, minute: 0, text: "夜はカレーライス", dish: .curry),
+            static let breakfast = Meal(hour: 7, minute: 30, text: "朝はおにぎり", dishes: [.onigiri])
+            static let lunch = Meal(hour: 12, minute: 30, text: "昼は親子丼", dishes: [.oyakodon])
+            static let dinner = Meal(hour: 19, minute: 0, text: "夜はカレーライス", dishes: [.curry])
+
+            /// LP の版 a の見本の3食。1,440 kcal
+            static let dailyMeals = [breakfast, lunch, dinner]
+
+            /// 見直しの済んだ週（1月18日まで）の、曜日ごとの食事。月曜から順におよそ 1,715・1,754・1,374・1,715・2,162・1,122・2,029 kcal で、
+            /// 1月12日〜18日の週は1日の目安 1,900 kcal を金曜と日曜に超え、平均は 1,696 kcal
+            static let weekdayMeals: [[Meal]] = [
+                dailyMeals + [snack],
+                [
+                    breakfast, lunch,
+                    Meal(hour: 19, minute: 0, text: "夜はカレーとぎょうざ", dishes: [.curry, .gyoza]),
+                ],
+                [Meal(hour: 7, minute: 30, text: "朝はお茶漬け", dishes: [.ochazuke]), lunch, dinner],
+                dailyMeals + [snack],
+                [
+                    breakfast, lunch,
+                    Meal(
+                        hour: 20, minute: 0, text: "飲み会で唐揚げとぎょうざとポテト、ビール2杯",
+                        dishes: [.karaage, .gyoza, .fries, .beer]),
+                ],
+                // 飲み会の次の日は朝を抜いた
+                [lunch, dinner],
+                [
+                    breakfast, lunch, snack,
+                    Meal(hour: 19, minute: 0, text: "夜はカレーとぎょうざ", dishes: [.curry, .gyoza]),
+                ],
             ]
 
-            /// その日の3食を、送った文章と、食事と読み分けて推定を終えた食事にする
+            static let snack = Meal(hour: 15, minute: 0, text: "おやつにチョコ", dishes: [.chocolate])
+
+            /// 見直しの済んだ週は曜日ごとの食事（`weekdayMeals`）、今の週（1月19日から）は LP の見本の3食
+            func plannedMeals(of day: Day, at dayIndex: Int) -> [Meal] {
+                // 日は YYYY-MM-DD の文字列なので、文字の順が日の順になる。1月5日（`dayIndex` が 0）は月曜
+                day.calendarDay < Self.currentWeekStartsOn
+                    ? Self.weekdayMeals[dayIndex % 7] : Self.dailyMeals
+            }
+
+            /// 最後の見直しの日（`weeks` の最後の `effectiveOn`）
+            static let currentWeekStartsOn = "2026-01-19"
+
+            /// その日の食事を、送った文章と、食事と読み分けて推定を終えた食事にする
             func meals(of day: Day, at dayIndex: Int) -> [SyncChange] {
-                Self.dailyMeals.enumerated().flatMap { mealIndex, meal -> [SyncChange] in
+                plannedMeals(of: day, at: dayIndex).enumerated().flatMap {
+                    mealIndex, meal -> [SyncChange] in
                     let base = dayIndex * 10 + mealIndex
                     let sentTextId = Self.id(0x75, base)
                     let mealId = Self.id(0x76, base)
@@ -238,7 +276,11 @@
                                 entryMethod: .written(sentTextId: sentTextId), photoIds: [])),
                         .mealEstimationStatus(.init(mealId: mealId, status: .estimated)),
                     ]
-                        + meal.dish.changes(mealId: mealId) { Self.id(0x77, base * 10 + $0) }
+                        + meal.dishes.enumerated().flatMap { dishIndex, dish in
+                            dish.changes(mealId: mealId, position: dishIndex) {
+                                Self.id(0x77, base * 1000 + dishIndex * 100 + $0)
+                            }
+                        }
                 }
             }
 

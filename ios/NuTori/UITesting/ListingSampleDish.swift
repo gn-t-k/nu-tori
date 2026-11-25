@@ -77,8 +77,40 @@
                     nutrients: nutrients(2, 0.2, 0, 0.3)),
             ])
 
-        /// 推定を終えた食事の料理と材料。`id` は、0 に料理の、1 からは材料の並びの ID を返す
-        func changes(mealId: UUID, id: (Int) -> UUID) -> [SyncChange] {
+        // ここからは、見本の人の食べた量が日ごとに揺れるように足した料理。LP の見本には無く、量はそれらしい1人前を決めた。
+        // 栄養の値は上と同じ成分表の食品番号の値で、料理を1つの材料で表す
+
+        /// 460.5 kcal
+        static let karaage = single(
+            "鶏の唐揚げ", 1, "皿", "鶏の唐揚げ", grams: 150, "11289",
+            nutrients(307, 20.5, 17.2, 13))
+
+        /// 313.5 kcal
+        static let gyoza = single(
+            "ぎょうざ", 6, "個", "ぎょうざ", grams: 150, "18002", nutrients(209, 5.8, 10, 19.7))
+
+        /// 229 kcal
+        static let fries = single(
+            "フライドポテト", 1, "皿", "フライドポテト", grams: 100, "02020",
+            nutrients(229, 2.3, 10.3, 25))
+
+        /// 273 kcal
+        static let beer = ListingSampleDish(
+            name: "ビール", quantityValue: 2, quantityUnit: "杯",
+            ingredients: [
+                .init(
+                    name: "ビール", quantity: 700, unit: "ml", edibleGramsPerUnit: 1,
+                    source: .foodComposition(foodNumber: "16006"),
+                    nutrients: nutrients(39, 0.2, 0, 0))
+            ])
+
+        /// 275 kcal
+        static let chocolate = single(
+            "チョコレート", 1, "枚", "ミルクチョコレート", grams: 50, "15116",
+            nutrients(550, 5.8, 32.8, 56.5))
+
+        /// 推定を終えた食事の料理と材料。`position` は食事の中の料理の並び。`id` は、0 に料理の、1 からは材料の並びの ID を返す
+        func changes(mealId: UUID, position: Int = 0, id: (Int) -> UUID) -> [SyncChange] {
             let dishId = id(0)
             return [
                 .dish(
@@ -86,7 +118,7 @@
                         id: dishId, mealId: mealId, name: name,
                         quantity: .init(
                             value: quantityValue, unit: quantityUnit, source: .estimated),
-                        positionInMeal: 0, version: 1))
+                        positionInMeal: position, version: 1))
             ]
                 + ingredients.enumerated().map { index, ingredient in
                     .ingredient(
@@ -98,6 +130,16 @@
                             positionInDish: index, nutrientSource: ingredient.source,
                             nutrients: ingredient.nutrients))
                 }
+        }
+
+        private static func single(
+            _ name: String, _ quantityValue: Double, _ quantityUnit: String,
+            _ ingredientName: String, grams: Double, _ foodNumber: String,
+            _ nutrients: [String: Double]
+        ) -> ListingSampleDish {
+            ListingSampleDish(
+                name: name, quantityValue: quantityValue, quantityUnit: quantityUnit,
+                ingredients: [composition(ingredientName, grams: grams, foodNumber, nutrients)])
         }
 
         private static func rice(grams: Double) -> Ingredient {

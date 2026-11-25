@@ -27,7 +27,7 @@ enum ListingScene: String, CaseIterable {
     case weekFood = "week-food"
     /// 今日の体重の画面。毎朝の体重の点と、体重の傾向の線（考え方のページの `weight-trend`）
     case weightTrend = "weight-trend"
-    /// 目標の画面の「今の1日の目安」のカード。1日の目安の kcal と P・F・C、推定消費カロリーと目安の階段のグラフ（考え方のページの `calorie-balance`）
+    /// 目標の画面の「体重の傾向」と「今の1日の目安」のカード。目標の線と体重の傾向の線、1日の目安の kcal と P・F・C、推定消費カロリーと目安の階段のグラフ（考え方のページの `calorie-balance`）
     case dailyGuide = "daily-guide"
     /// 撮ったカレーライスの写真から推定した食事の画面。写真と、料理と kcal・P・F・C（考え方のページの `calorie-balance`）
     case photoMeal = "photo-meal"
@@ -265,14 +265,17 @@ enum ListingScene: String, CaseIterable {
             && app.mealDish(named: "カレーライス").waitForExistence(timeout: 5)
     }
 
-    /// 目標の画面を開き、「今の1日の目安」のカードを画面の上に寄せる
+    /// 目標の画面を開き、「体重の傾向」のカードを画面の上に寄せる。その下の「今の1日の目安」のカードまで1画面に入る
     @MainActor private static func openDailyGuideCard(_ app: XCUIApplication) -> Bool {
         guard openGoalScreen(app) else { return false }
-        let heading = app.staticTexts["今の1日の目安"]
+        let heading = app.staticTexts["体重の傾向"]
         guard pullUp(heading, below: app.navigationBars["目標"], in: app) else { return false }
-        // 推定消費カロリーと目安の階段のグラフまで出ている
-        let chart = app.descendants(matching: .any)["goal-energy-chart"]
-        let shown = chart.waitForExistence(timeout: 5) && chart.isHittable
+        // 目標の線と体重の傾向の線のグラフと、推定消費カロリーと目安の階段のグラフが、どちらも出ている
+        let weightChart = app.descendants(matching: .any)["goal-weight-chart"]
+        let energyChart = app.descendants(matching: .any)["goal-energy-chart"]
+        let shown =
+            weightChart.waitForExistence(timeout: 5) && weightChart.isHittable
+            && energyChart.exists && energyChart.isHittable
         Thread.sleep(forTimeInterval: 1)
         return shown
     }
