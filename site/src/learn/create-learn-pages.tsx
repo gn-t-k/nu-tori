@@ -31,7 +31,7 @@ const indexLabel = "遠回りしないためのダイエットの基本";
 const articlePath = (article: LearnArticle) => `${indexPath}/${article.slug}`;
 
 const LearnArticlePage = ({
-  article: { question, Lead, claims, Rules, sources, decidedByNuTori },
+  article: { question, Lead, claims, sources, decidedByNuTori },
   next,
 }: {
   article: LearnArticle;
@@ -46,8 +46,6 @@ const LearnArticlePage = ({
     {claims.map((claim) => (
       <Claim claim={claim} />
     ))}
-    <h2>nu-tori の計算の決まり</h2>
-    <Rules />
     <h2 id="sources">出典</h2>
     <Sources sources={sources} decidedByNuTori={decidedByNuTori} />
     <p>{medicalDisclaimer}</p>
@@ -69,20 +67,10 @@ const LearnArticlePage = ({
   </>
 );
 
-const Claim = ({ claim: { heading, Research, figure, NuTori } }: { claim: LearnClaim }) => (
+const Claim = ({ claim: { heading, Research, NuTori } }: { claim: LearnClaim }) => (
   <>
     <h2>{heading}</h2>
     <Research />
-    {figure === undefined ? null : (
-      <img
-        class="learn-figure"
-        src={figure.src}
-        alt={figure.alt}
-        width={figure.width}
-        height={figure.height}
-        loading="lazy"
-      />
-    )}
     {NuTori === undefined ? null : (
       <>
         <h3>nu-tori では</h3>
