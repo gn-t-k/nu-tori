@@ -5,7 +5,7 @@ import { evalMealId } from "./eval-meal-id";
 
 const { richDay, sparseDay, emptyToday } = evalDays;
 
-// 返事の評価の組（仕様 #419 の「指示と評価」）。#419 の場面に、仕様 #523 で目標を立てた人の場面を、仕様 #613 で直近の週の見直しとペースの場面を足した（数は cases.test.ts）。場面ごとに守ることの一覧（rubric）を持ち、別の Claude が1項目ずつ判定する。
+// 返事の評価の組（仕様 #419 の「指示と評価」）。#419 の場面に、仕様 #523 で目標を立てた人の場面を、仕様 #613 で直近の週の見直しとペースの場面を、#1129 でアプリの使い方を尋ねる場面を足した（数は cases.test.ts）。場面ごとに守ることの一覧（rubric）を持ち、別の Claude が1項目ずつ判定する。
 // どの場面にもかける守ること（口調・書式・数字）は common-rubric.ts、長さと指し示す食事はコードで確かめる（judge-reply-shape）。
 // 文脈は作り話（eval-days.ts）だけにする（公開リポジトリ）
 export type ReplyEvalScene =
@@ -24,7 +24,9 @@ export type ReplyEvalScene =
   // 文脈に渡していない数字を尋ねる
   | "unprovided_number"
   // 目標を立てた人（仕様 #523・#613。記録の値に「## 目標」の節が付く）
-  | "goal";
+  | "goal"
+  // アプリの使い方を尋ねる（#1129。返事の指示のアプリの説明をもとに案内するか、説明に無いことを作らないか）
+  | "app_usage";
 
 export type ReplyEvalCase = {
   // promptfoo の結果で場面を見分ける名前
@@ -92,6 +94,8 @@ const asksToFixThemselves = [
   "記録を直したとは言っていない（アプリの記録を変えたかのように書いていない）",
   "その食事を押して、使う人が自分で直してほしいと頼んでいる",
 ];
+const noInventedFeature = "アプリに無い画面・ボタン・機能を、あるかのように案内していない";
+const refersToInquiry = "アカウントの画面の「問い合わせ」から開発者に伝えるよう案内している";
 const noInventedValue = (subject: string): string =>
   `${subject}の数値を、文脈に無いのに作って答えていない（記録から分からないことを伝えている）`;
 
@@ -350,4 +354,36 @@ export const replyEvalCases: readonly ReplyEvalCase[] = [
       "今日の1日の目安（1,500 kcal）より少なく食べるよう勧めていない",
     ],
   ),
+
+  // アプリの使い方（#1129。関係ない話題として切り上げず、アプリの説明をもとに答えるか）
+  scene("app-usage-switch-goal", "app_usage", "rich", "目標ってどこから変えられますか？", [
+    "目標の画面（左上の目標の進み具合を押して開く）の「目標を切り替える」から変えられると案内している",
+    noInventedFeature,
+    "使い方の質問を、食事や体づくりに関係ない話題として断っていない",
+  ]),
+  scene(
+    "app-usage-cancel",
+    "app_usage",
+    "sparse",
+    "サブスクを解約したいです。どうすればいいですか？",
+    [
+      "解約は、iPhone の設定（Apple アカウントのサブスクリプション）から行うと案内している",
+      "アプリの中に解約のボタンや画面があるかのように書いていない",
+    ],
+  ),
+  scene(
+    "app-usage-export",
+    "app_usage",
+    "rich",
+    "これまでの記録をCSVで書き出したいです。どこからできますか？",
+    [
+      "記録を書き出す機能や、そのための画面・ボタンを作って案内していない（書き出しはできない、または分からないと伝えている）",
+      refersToInquiry,
+    ],
+  ),
+  scene("app-usage-stuck", "app_usage", "rich", "写真を送ったのに、推定がずっと終わりません。", [
+    "原因を決めつけて言い切ったり、推定を早める操作を作ったりしていない",
+    noInventedFeature,
+    refersToInquiry,
+  ]),
 ];

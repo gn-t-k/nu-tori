@@ -50,6 +50,7 @@ merge の決まりは `docs/agents/git.md` にあり、開発者を待たない�
   - 送り待ちの置き場の形を変えたとき: `docs/agents/ios-mac.md` の「置き場の移行を実機で確かめる」（merge の前に開発者が実機で確かめる）
   - ヘルスケア・カメラ・通知・写真の読み込みに触れた PR を出すとき: `docs/agents/ios-release.md` の「実機の確認」
 - サーバーと iOS の両方
+  - アプリの画面・入口・文言か、ユーザーに見えるふるまいや値（回数・上限・期間・使える機能）を変えたとき: `server/src/reply/durable-object/create-conversation-provider/app-guide.ts` の冒頭のコメント（直したら、上の「LLM の指示を変えたとき」も当たる）
   - 端末とサーバーの両方に置く決めごとを変えるとき: `docs/agents/shared-rules.md`（「今は片側だけの決めごと」の一覧の抜けを見る）と、下の「敵役の試し」
   - 記録の種類を足す、送り待ちのキーを足す・消すとき: `docs/agents/sync.md` の「記録の種類の足し方」と「置き場の約束」
   - 集めるもの、送り先、使い道、残る期間を変えるとき: `docs/agents/privacy.md` の「ポリシーを実装に合わせて保つ」（App Privacy の回答が変わる PR は、マージしたら #861 に表を足す）

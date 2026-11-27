@@ -14,7 +14,7 @@
 
 ## How to get to it (user POV)
 
-- タイムラインの目標を立てる知らせの「始める」（`goal-setup-start`）を押し、向き（`goal-setup-direction-lose` など）、期限（`goal-setup-next`）、目標案（`goal-setup-proposal-standard` など）と進み、「この目標で始める」（`goal-setup-proposal-start`）で決める
+- タイムラインの目標を立てる知らせの「目標を立てる」（`goal-setup-start`。途中で閉じたあとは「続ける」）を押し、向き（`goal-setup-direction-lose` など）、期限（`goal-setup-next`）、目標案（`goal-setup-proposal-standard` など）と進み、「この目標で始める」（`goal-setup-proposal-start`）で決める
 - 逆算できない人は、期限のあとに足りない値のページが出る。身長（`goal-setup-height`）などの行を押すとホイールのシートが出て、「完了」（`goal-setup-wheel-confirm`）で入る
 - 月曜に開き、タイムラインの振り返りのカード（`weekly-review-card`）を押す
 - タイムラインの左上の目標（`goal-link`）を押す。日のまとめの目標の行と、体重の画面の目標からも開く
