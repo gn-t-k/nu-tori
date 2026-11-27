@@ -49,6 +49,7 @@ merge の決まりは `docs/agents/git.md` にあり、開発者を待たない�
   - 見本の場面を足す・変えるとき: `ios/AGENTS.md` の「見本の場面」（値を LP とそろえ、作り物だけにする）
   - 送り待ちの置き場の形を変えたとき: `docs/agents/ios-mac.md` の「置き場の移行を実機で確かめる」（merge の前に開発者が実機で確かめる）
   - ヘルスケア・カメラ・通知・写真の読み込みに触れた PR を出すとき: `docs/agents/ios-release.md` の「実機の確認」
+  - 画面・入口・ユーザーに見える文言を変えたとき: 返事の指示に入れるアプリの説明（`server/src/reply/durable-object/create-conversation-provider/app-guide.ts`）を、同じ PR で最新の版に合わせて直す（会話で使い方を尋ねられたときに、返事が古い入口を案内しないため。#1129）
 - サーバーと iOS の両方
   - 端末とサーバーの両方に置く決めごとを変えるとき: `docs/agents/shared-rules.md`（「今は片側だけの決めごと」の一覧の抜けを見る）と、下の「敵役の試し」
   - 記録の種類を足す、送り待ちのキーを足す・消すとき: `docs/agents/sync.md` の「記録の種類の足し方」と「置き場の約束」

@@ -2,10 +2,10 @@ import { describe, expect, test } from "vitest";
 import { listReferableMealIds } from "../../src/reply/domain/list-referable-meal-ids";
 import { replyEvalCases, type ReplyEvalScene } from "./reply-eval-cases";
 
-// 返事の評価の組（仕様 #419 の「指示と評価」）。場面の種類ごとの数は、仕様 #419 の内訳と、仕様 #523・#613 で足した目標を立てた人の場面
+// 返事の評価の組（仕様 #419 の「指示と評価」）。場面の種類ごとの数は、仕様 #419 の内訳と、仕様 #523・#613 で足した目標を立てた人の場面、#1129 で足したアプリの使い方の場面
 describe("返事の評価の組", () => {
   test("決めた数だけ場面があること", () => {
-    expect(replyEvalCases).toHaveLength(38);
+    expect(replyEvalCases).toHaveLength(42);
   });
 
   test("場面の名前が重ならないこと", () => {
@@ -24,6 +24,7 @@ describe("返事の評価の組", () => {
           "correction",
           "unprovided_number",
           "goal",
+          "app_usage",
         ] as const satisfies readonly ReplyEvalScene[]
       ).map((scene) => [scene, replyEvalCases.filter((c) => c.scene === scene).length]),
     );
@@ -36,6 +37,7 @@ describe("返事の評価の組", () => {
       correction: 5,
       unprovided_number: 5,
       goal: 8,
+      app_usage: 4,
     });
   });
 

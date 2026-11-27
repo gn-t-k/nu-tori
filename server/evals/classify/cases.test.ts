@@ -5,7 +5,7 @@ import cases from "./cases.json";
 describe("読み分けの評価の組", () => {
   describe("組の全体", () => {
     test("決めた数だけあること", () => {
-      expect(cases).toHaveLength(80);
+      expect(cases).toHaveLength(85);
     });
 
     test("文章が重ならないこと", () => {
@@ -122,6 +122,22 @@ describe("読み分けの評価の組", () => {
 
       test("決めた数だけあること", () => {
         expect(boundaryCases).toHaveLength(12);
+      });
+
+      test("正解がすべて会話であること", () => {
+        expect(boundaryCases.every(({ vars }) => vars.expected === "chat")).toBe(true);
+      });
+    });
+
+    // #1129。食べ物の名前や「記録」を含んでも、食べたものを伝えていないので会話
+    describe("アプリの使い方を尋ねるもの", () => {
+      let boundaryCases: typeof cases;
+      beforeEach(() => {
+        boundaryCases = cases.filter(({ vars }) => vars.boundary === "app_usage");
+      });
+
+      test("決めた数だけあること", () => {
+        expect(boundaryCases).toHaveLength(5);
       });
 
       test("正解がすべて会話であること", () => {
