@@ -1,18 +1,6 @@
 [
-  {
-    "vars": {
-      "boundary": "ate",
-      "expected": "meal",
-      "text": "親子丼を食べた"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "ate",
-      "expected": "meal",
-      "text": "さっきカフェラテ飲んだ"
-    }
-  },
+  { "vars": { "boundary": "ate", "expected": "meal", "text": "親子丼を食べた" } },
+  { "vars": { "boundary": "ate", "expected": "meal", "text": "さっきカフェラテ飲んだ" } },
   {
     "vars": {
       "boundary": "ate",
@@ -34,33 +22,11 @@
       "text": "朝ごはん：トースト1枚、目玉焼き、ヨーグルト"
     }
   },
+  { "vars": { "boundary": "ate", "expected": "meal", "text": "今ラーメン食べ終わったところ" } },
+  { "vars": { "boundary": "ate", "expected": "meal", "text": "おやつにチョコを3粒つまんだ" } },
+  { "vars": { "boundary": "ate", "expected": "meal", "text": "夜は鮭の塩焼きと味噌汁とご飯半分" } },
   {
-    "vars": {
-      "boundary": "ate",
-      "expected": "meal",
-      "text": "今ラーメン食べ終わったところ"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "ate",
-      "expected": "meal",
-      "text": "おやつにチョコを3粒つまんだ"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "ate",
-      "expected": "meal",
-      "text": "夜は鮭の塩焼きと味噌汁とご飯半分"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "ate",
-      "expected": "meal",
-      "text": "会社でもらったどら焼き食べちゃった"
-    }
+    "vars": { "boundary": "ate", "expected": "meal", "text": "会社でもらったどら焼き食べちゃった" }
   },
   {
     "vars": {
@@ -69,13 +35,7 @@
       "text": "一昨日のお昼、記録し忘れてたけど天ぷらそばだった"
     }
   },
-  {
-    "vars": {
-      "boundary": "ate",
-      "expected": "meal",
-      "text": "ジム帰りにプロテイン飲んだ"
-    }
-  },
+  { "vars": { "boundary": "ate", "expected": "meal", "text": "ジム帰りにプロテイン飲んだ" } },
   {
     "vars": {
       "boundary": "ate",
@@ -90,27 +50,9 @@
       "text": "朝はパン、昼はうどん、夜はカレーでした"
     }
   },
-  {
-    "vars": {
-      "boundary": "ate",
-      "expected": "meal",
-      "text": "缶チューハイ1本だけ飲んだ"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "ate",
-      "expected": "meal",
-      "text": "牛丼の並、いま食べてる"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "ate",
-      "expected": "meal",
-      "text": "バナナとゆで卵で朝ごはん済ませた"
-    }
-  },
+  { "vars": { "boundary": "ate", "expected": "meal", "text": "缶チューハイ1本だけ飲んだ" } },
+  { "vars": { "boundary": "ate", "expected": "meal", "text": "牛丼の並、いま食べてる" } },
+  { "vars": { "boundary": "ate", "expected": "meal", "text": "バナナとゆで卵で朝ごはん済ませた" } },
   {
     "vars": {
       "boundary": "ate",
@@ -125,6 +67,7 @@
       "text": "先週の土曜のブランチにパンケーキ食べたのを、今さらだけど入れておく"
     }
   },
+
   {
     "vars": {
       "boundary": "ate_with_question",
@@ -195,83 +138,19 @@
       "text": "おでん（大根、たまご、ちくわ）食べたよ。おでんってヘルシーなの？"
     }
   },
-  {
-    "vars": {
-      "boundary": "bare_word",
-      "expected": "meal",
-      "text": "コーヒー"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "bare_word",
-      "expected": "meal",
-      "text": "納豆ごはん"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "bare_word",
-      "expected": "meal",
-      "text": "カップラーメン"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "bare_word",
-      "expected": "meal",
-      "text": "りんご1個"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "bare_word",
-      "expected": "meal",
-      "text": "緑茶"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "bare_word",
-      "expected": "meal",
-      "text": "唐揚げ弁当"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "bare_word",
-      "expected": "meal",
-      "text": "ビール2杯"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "bare_word",
-      "expected": "meal",
-      "text": "みかん"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "bare_word",
-      "expected": "meal",
-      "text": "ミックスナッツひとつかみ"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "bare_word",
-      "expected": "meal",
-      "text": "冷やし中華"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "will_eat",
-      "expected": "chat",
-      "text": "今夜は鍋にする予定"
-    }
-  },
+
+  { "vars": { "boundary": "bare_word", "expected": "meal", "text": "コーヒー" } },
+  { "vars": { "boundary": "bare_word", "expected": "meal", "text": "納豆ごはん" } },
+  { "vars": { "boundary": "bare_word", "expected": "meal", "text": "カップラーメン" } },
+  { "vars": { "boundary": "bare_word", "expected": "meal", "text": "りんご1個" } },
+  { "vars": { "boundary": "bare_word", "expected": "meal", "text": "緑茶" } },
+  { "vars": { "boundary": "bare_word", "expected": "meal", "text": "唐揚げ弁当" } },
+  { "vars": { "boundary": "bare_word", "expected": "meal", "text": "ビール2杯" } },
+  { "vars": { "boundary": "bare_word", "expected": "meal", "text": "みかん" } },
+  { "vars": { "boundary": "bare_word", "expected": "meal", "text": "ミックスナッツひとつかみ" } },
+  { "vars": { "boundary": "bare_word", "expected": "meal", "text": "冷やし中華" } },
+
+  { "vars": { "boundary": "will_eat", "expected": "chat", "text": "今夜は鍋にする予定" } },
   {
     "vars": {
       "boundary": "will_eat",
@@ -287,32 +166,16 @@
     }
   },
   {
-    "vars": {
-      "boundary": "will_eat",
-      "expected": "chat",
-      "text": "週末に焼肉食べ放題に行くつもり"
-    }
+    "vars": { "boundary": "will_eat", "expected": "chat", "text": "週末に焼肉食べ放題に行くつもり" }
   },
   {
-    "vars": {
-      "boundary": "will_eat",
-      "expected": "chat",
-      "text": "夜はパスタを作ろうと思ってる"
-    }
+    "vars": { "boundary": "will_eat", "expected": "chat", "text": "夜はパスタを作ろうと思ってる" }
   },
   {
-    "vars": {
-      "boundary": "will_eat",
-      "expected": "chat",
-      "text": "このあとケーキ食べてもいい？"
-    }
+    "vars": { "boundary": "will_eat", "expected": "chat", "text": "このあとケーキ食べてもいい？" }
   },
   {
-    "vars": {
-      "boundary": "will_eat",
-      "expected": "chat",
-      "text": "明日は友達の結婚式でフルコース"
-    }
+    "vars": { "boundary": "will_eat", "expected": "chat", "text": "明日は友達の結婚式でフルコース" }
   },
   {
     "vars": {
@@ -328,13 +191,8 @@
       "text": "帰りにコンビニでアイス買って食べるつもり"
     }
   },
-  {
-    "vars": {
-      "boundary": "will_eat",
-      "expected": "chat",
-      "text": "今から牛丼屋に入るところ"
-    }
-  },
+  { "vars": { "boundary": "will_eat", "expected": "chat", "text": "今から牛丼屋に入るところ" } },
+
   {
     "vars": {
       "boundary": "correction",
@@ -405,27 +263,10 @@
       "text": "さっきのパスタの記録に、付いてたサラダを足したい"
     }
   },
-  {
-    "vars": {
-      "boundary": "did_not_eat",
-      "expected": "chat",
-      "text": "今日はまだ何も食べてない"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "did_not_eat",
-      "expected": "chat",
-      "text": "朝ごはん抜いた"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "did_not_eat",
-      "expected": "chat",
-      "text": "忙しくてお昼食べ損ねた"
-    }
-  },
+
+  { "vars": { "boundary": "did_not_eat", "expected": "chat", "text": "今日はまだ何も食べてない" } },
+  { "vars": { "boundary": "did_not_eat", "expected": "chat", "text": "朝ごはん抜いた" } },
+  { "vars": { "boundary": "did_not_eat", "expected": "chat", "text": "忙しくてお昼食べ損ねた" } },
   {
     "vars": {
       "boundary": "did_not_eat",
@@ -433,13 +274,7 @@
       "text": "昨日の夜は食欲なくて何も食べなかった"
     }
   },
-  {
-    "vars": {
-      "boundary": "did_not_eat",
-      "expected": "chat",
-      "text": "今日は間食しなかった！"
-    }
-  },
+  { "vars": { "boundary": "did_not_eat", "expected": "chat", "text": "今日は間食しなかった！" } },
   {
     "vars": {
       "boundary": "did_not_eat",
@@ -455,19 +290,9 @@
     }
   },
   {
-    "vars": {
-      "boundary": "did_not_eat",
-      "expected": "chat",
-      "text": "16時間断食中なので朝はなし"
-    }
+    "vars": { "boundary": "did_not_eat", "expected": "chat", "text": "16時間断食中なので朝はなし" }
   },
-  {
-    "vars": {
-      "boundary": "did_not_eat",
-      "expected": "chat",
-      "text": "晩ごはんはスキップした"
-    }
-  },
+  { "vars": { "boundary": "did_not_eat", "expected": "chat", "text": "晩ごはんはスキップした" } },
   {
     "vars": {
       "boundary": "did_not_eat",
@@ -475,6 +300,7 @@
       "text": "胃の調子が悪くて、今日は食べられていません"
     }
   },
+
   {
     "vars": {
       "boundary": "question",
@@ -497,32 +323,12 @@
     }
   },
   {
-    "vars": {
-      "boundary": "question",
-      "expected": "chat",
-      "text": "最近体重が減らなくて悩んでる"
-    }
+    "vars": { "boundary": "question", "expected": "chat", "text": "最近体重が減らなくて悩んでる" }
   },
+  { "vars": { "boundary": "question", "expected": "chat", "text": "今週の食事どうだった？" } },
+  { "vars": { "boundary": "question", "expected": "chat", "text": "ありがとう！" } },
   {
-    "vars": {
-      "boundary": "question",
-      "expected": "chat",
-      "text": "今週の食事どうだった？"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "question",
-      "expected": "chat",
-      "text": "ありがとう！"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "question",
-      "expected": "chat",
-      "text": "外食が多いときのコツを教えて"
-    }
+    "vars": { "boundary": "question", "expected": "chat", "text": "外食が多いときのコツを教えて" }
   },
   {
     "vars": {
@@ -531,20 +337,8 @@
       "text": "夜遅くに食べるのってやっぱりよくない？"
     }
   },
-  {
-    "vars": {
-      "boundary": "question",
-      "expected": "chat",
-      "text": "甘いものがやめられない"
-    }
-  },
-  {
-    "vars": {
-      "boundary": "question",
-      "expected": "chat",
-      "text": "おはよう"
-    }
-  },
+  { "vars": { "boundary": "question", "expected": "chat", "text": "甘いものがやめられない" } },
+  { "vars": { "boundary": "question", "expected": "chat", "text": "おはよう" } },
   {
     "vars": {
       "boundary": "question",
@@ -552,13 +346,7 @@
       "text": "コンビニで買える高たんぱくなものって何？"
     }
   },
-  {
-    "vars": {
-      "boundary": "question",
-      "expected": "chat",
-      "text": "お腹すいた"
-    }
-  },
+  { "vars": { "boundary": "question", "expected": "chat", "text": "お腹すいた" } },
   {
     "vars": {
       "boundary": "app_usage",
@@ -574,19 +362,9 @@
     }
   },
   {
-    "vars": {
-      "boundary": "app_usage",
-      "expected": "chat",
-      "text": "体重はどこから入力しますか？"
-    }
+    "vars": { "boundary": "app_usage", "expected": "chat", "text": "体重はどこから入力しますか？" }
   },
-  {
-    "vars": {
-      "boundary": "app_usage",
-      "expected": "chat",
-      "text": "目標ってどこで変えられる？"
-    }
-  },
+  { "vars": { "boundary": "app_usage", "expected": "chat", "text": "目標ってどこで変えられる？" } },
   {
     "vars": {
       "boundary": "app_usage",
