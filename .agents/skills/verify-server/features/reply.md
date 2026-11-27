@@ -28,9 +28,9 @@ Preconditions:
 - **送る。** `t=$($D uuid)` として、`$D push "$run" reply "[{\"type\":\"create_sent_text\",\"sentText\":{\"id\":\"$t\",\"body\":\"今日はよく歩いたので、少し脚が疲れた\",\"sentAt\":$(date +%s)000,\"timeZone\":\"Asia/Tokyo\"}}]"` を送る。`applied`
 - **見守る。** `$D call "$run" reply GET /v1/sent-texts/$t/reply-stream --timeout 120` を、送ったらすぐに送る（返事ができ終わってからつなぐと、本文が流れずに閉じる）。Server-Sent Events で `reply_started`、`text_delta` が流れ、最後が `replied` で閉じる。食事と読み分けられた文章は `classified_as_meal`、止まれば `reply_halted`、作れなければ `reply_failed` で閉じる
 - **読み分け。** 数秒おきに `$D pull "$run" reply | jq -c --arg t "$t" '[.[] | select(.kind=="sent_text_status" and .record.sentTextId==$t) | .record] | last'` を読む。`classification` が `conversation` になり、`replyStatus` が進む
-- **取りに行く。** 取りに行く応答に、`$t` に応える返事（種類 `ai_utterance`）が届き、本文が見守る要求で流れた分と同じ。`sent_text_status` の `replyStatus` が返事ありに進む
+- **取りに行く。** 取りに行く応答に、`$t` に応える返事（種類 `ai_utterance`）が届き、本文が見守る要求で流れた分と同じ。途中で失敗した試みがあると `text_discarded` のあとに本文が初めから流れ直すので、比べるのは最後の `text_discarded` よりあとの `text_delta` だけ。`sent_text_status` の `replyStatus` が返事ありに進む
 - **食事の文章。** 本文を `server/e2e/meal-text-body.ts` の文面にして送る。`classification` が `meal` になり、`sentTextId` が `$t` の `meal` ができる
-- **会話として送り直す。** 食事になった文章に `$D push "$run" reply "[{\"type\":\"resend_sent_text_as_conversation\",\"sentTextId\":\"$t\"}]"` を送る。`applied` で、その文章の食事が消え、返事が作られる
+- **会話として送り直す。** `classification` が `meal` になってから（読み分けの前に送ると `rejected`（`not_classified_as_meal`）になる）、食事になった文章に `$D push "$run" reply "[{\"type\":\"resend_sent_text_as_conversation\",\"sentTextId\":\"$t\"}]"` を送る。`applied` で、その文章の食事が消え、返事が作られる
 - **送り直す。** `replyStatus` が `failed` か `halted`（`daily_limit` を含む）の文章に `$D push "$run" reply "[{\"type\":\"resend_sent_text\",\"sentTextId\":\"$t\"}]"` を送る。`applied` で、`replyStatus` が `awaiting` に戻り、返事が作られる
 - **止まった文章を送り直す。** `$D sign-in "$run" rexp --as-of "$(date -u -d '-60 days' +%FT%TZ)"` のアカウント（無料体験の終わったアカウント）で、セッションの名前を `rexp` にして「送る」と「見守る」を回す。見守る要求が `reply_halted`（`subscription_expired`）で閉じる。`$D pull "$run" rexp | jq -c --arg t "$t" '[.[] | select(.kind=="sent_text_status" and .record.sentTextId==$t) | {sequence, replyStatus: .record.replyStatus}] | last'` で `sequence` を控えてから、`$D push "$run" rexp "[{\"type\":\"resend_sent_text\",\"sentTextId\":\"$t\"}]"` を送る。`applied` で、同じ読み方の `sequence` が控えより進み、`replyStatus` はまた `halted`（いったん `awaiting` に戻り、また止まった）。鍵が無い回でも同じ
 
