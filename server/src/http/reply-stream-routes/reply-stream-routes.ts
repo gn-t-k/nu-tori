@@ -35,7 +35,6 @@ export const replyStreamRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
   }),
   async (c) => {
     const stream = await getAccountDurableObject(c.env, c.var.accountId).watchReply(
-      c.var.accountId,
       c.req.valid("param").sentTextId,
     );
     if (stream === undefined) {

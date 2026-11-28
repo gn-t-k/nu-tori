@@ -111,11 +111,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       const { result: previewed, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).previewGoalSetup(
-        c.var.accountId,
-        { ...toGoalSetupSituation(situation), direction },
-        c.var.requestedAt,
-      );
+      ).previewGoalSetup({ ...toGoalSetupSituation(situation), direction }, c.var.requestedAt);
       c.set("requestLog", requestLog);
       if (R.isFailure(previewed)) {
         return respondGoalSetupRejected(c, previewed.error);
@@ -163,11 +159,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       const { result: proposed, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).proposeGoals(
-        c.var.accountId,
-        { ...toGoalSetupSituation(situation), plan },
-        c.var.requestedAt,
-      );
+      ).proposeGoals({ ...toGoalSetupSituation(situation), plan }, c.var.requestedAt);
       c.set("requestLog", requestLog);
       if (R.isFailure(proposed)) {
         return respondGoalSetupRejected(c, proposed.error);
@@ -219,7 +211,6 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
         c.env,
         c.var.accountId,
       ).assessCustomTargetWeight(
-        c.var.accountId,
         { ...toGoalSetupSituation(situation), direction, deadlineOn, targetWeightKg },
         c.var.requestedAt,
       );
@@ -258,7 +249,7 @@ export const goalSetupRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Reque
       const { result: decided, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).decideGoal(c.var.accountId, toGoalDecisionRequest(c.req.valid("json")), c.var.requestedAt);
+      ).decideGoal(toGoalDecisionRequest(c.req.valid("json")), c.var.requestedAt);
       c.set("requestLog", requestLog);
       if (R.isFailure(decided)) {
         return respondGoalSetupRejected(c, decided.error);

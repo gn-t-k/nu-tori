@@ -79,7 +79,7 @@ export const sessionRoutes = new OpenAPIHono<{ Bindings: Env }>().openapi(
       session.user.id,
       refreshToken,
     );
-    await getAccountDurableObject(c.env, session.user.id).recordFirstSignIn(session.user.id, {
+    await getAccountDurableObject(c.env, session.user.id).recordFirstSignIn({
       signedInAt: new Date(),
       timeZone,
       isFreeTrialUsedByEarlierAccount: await isFreeTrialUsedByEarlierAccount(

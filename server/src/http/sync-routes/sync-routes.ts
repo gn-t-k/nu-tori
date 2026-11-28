@@ -89,7 +89,7 @@ const routes = new OpenAPIHono<{ Bindings: Env; Variables: RequestLogVariables }
       const { result: pushed, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).pushSyncWrites(c.var.accountId, {
+      ).pushSyncWrites({
         clientState: toSyncClientState(clientState),
         writes: writes.map(toSyncWrite),
         isFinalBatch,
@@ -164,7 +164,7 @@ const routes = new OpenAPIHono<{ Bindings: Env; Variables: RequestLogVariables }
       const { result: pulled, requestLog } = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).pullSyncChanges(c.var.accountId, {
+      ).pullSyncChanges({
         clientState: toSyncClientState(clientState),
         afterSequence,
       });

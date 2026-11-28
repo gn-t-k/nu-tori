@@ -104,7 +104,7 @@ export const appStoreServerNotificationRoutes = new OpenAPIHono<{
     const result = await getAccountDurableObject(
       c.env,
       accountId,
-    ).receiveAppStoreServerNotification(accountId, {
+    ).receiveAppStoreServerNotification({
       notificationUuid: notificationUUID,
       notificationType,
       notificationSubtype: subtype,

@@ -42,7 +42,7 @@ export const termsAgreementRoutes = new OpenAPIHono<{ Bindings: Env }>()
       const requirement = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).findTermsAgreementRequirement(c.var.accountId);
+      ).findTermsAgreementRequirement();
       return c.json(requirement, 200);
     },
   )
@@ -93,7 +93,6 @@ export const termsAgreementRoutes = new OpenAPIHono<{ Bindings: Env }>()
     }),
     async (c) => {
       const agreed = await getAccountDurableObject(c.env, c.var.accountId).agreeToTerms(
-        c.var.accountId,
         c.req.valid("json"),
       );
       if (R.isFailure(agreed)) {

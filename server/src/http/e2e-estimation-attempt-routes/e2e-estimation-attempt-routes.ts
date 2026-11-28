@@ -20,7 +20,7 @@ export const e2eEstimationAttemptRoutes = new Hono<{ Bindings: Env }>().get(
     const conclusion = await getAccountDurableObject(
       c.env,
       c.var.accountId,
-    ).findLastEstimationAttemptConclusionOfMeal(c.var.accountId, mealId.data);
+    ).findLastEstimationAttemptConclusionOfMeal(mealId.data);
     return c.json({
       lastEndedAttempt:
         conclusion === undefined
