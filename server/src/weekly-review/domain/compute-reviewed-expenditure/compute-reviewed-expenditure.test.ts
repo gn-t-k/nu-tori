@@ -3,13 +3,14 @@ import { computeReviewedExpenditure, type ReviewedExpenditureInputs } from "./in
 
 type Reviewed = ReturnType<typeof computeReviewedExpenditure>;
 
-// 前の推定 2,400 kcal、平均 2,200 kcal、食事を記録した日 7 日、実際の変化 −0.4 kg の週。
+// 前の推定 2,400 kcal、平均 2,200 kcal、食事を記録した日 7 日、7 日で実際の変化 −0.4 kg の週。
 // 予測した変化は（2,200 − 2,400）× 7 ÷ 7,700 = −0.1818 kg、ずれは 0.2182 kg で、ρ × ずれ ÷ 7 は 240 kcal
 const inputs = (overrides: Partial<ReviewedExpenditureInputs> = {}): ReviewedExpenditureInputs => ({
   previousExpenditureKcal: 2400,
   averageEnergyIntakeKcal: 2200,
   recordedMealDayCount: 7,
   actualWeightChangeKg: -0.4,
+  weightChangeDayCount: 7,
   previousWeeks: [],
   ...overrides,
 });
@@ -78,6 +79,26 @@ describe("見直した推定消費カロリー", () => {
         gain: reviewed.gain.toFixed(4),
         expenditureKcal: reviewed.expenditureKcal,
       }).toEqual({ gain: "0.1429", expenditureKcal: 2434 });
+    });
+  });
+
+  describe("実際の変化を 9 日で測ったとき", () => {
+    let reviewed: Reviewed;
+    beforeEach(() => {
+      reviewed = computeReviewedExpenditure(inputs({ weightChangeDayCount: 9 }));
+    });
+
+    test("予測した変化を 9 日分で出すこと", () => {
+      // （2,200 − 2,400）× 9 ÷ 7,700 = −0.2338 kg、ずれは 0.1662 kg
+      expect({
+        predicted: reviewed.predictedWeightChangeKg.toFixed(4),
+        deviation: reviewed.deviationKg.toFixed(4),
+      }).toEqual({ predicted: "-0.2338", deviation: "0.1662" });
+    });
+
+    test("ずれを 9 日で割って1日あたりにしてから推定を動かすこと", () => {
+      // 0.25 × 7,700 × 0.1662 ÷ 9 = 35.6 kcal
+      expect(reviewed.expenditureKcal).toBe(2436);
     });
   });
 

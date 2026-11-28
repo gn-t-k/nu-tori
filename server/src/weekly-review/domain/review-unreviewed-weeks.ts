@@ -233,6 +233,7 @@ const computeReviewedOutcome = (
     averageEnergyIntakeKcal: judgement.averageEnergyIntakeKcal,
     recordedMealDayCount: judgement.recordedMealDayCount,
     actualWeightChangeKg: judgement.actualWeightChangeKg,
+    weightChangeDayCount: judgement.weightChangeDayCount,
     previousWeeks: stores.weeklyReview.findDeviationHistory(),
   });
   const dailyGuide = computeReviewedDailyGuide({
