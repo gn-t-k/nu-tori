@@ -13,6 +13,17 @@
 - Cloudflare Web Analytics のビーコンは外枠（`src/site-layout.tsx`）が全ページに置く。サイトのトークンとビーコンの送り先は `src/web-analytics.ts` の1か所にあり、CSP もそこから作る。LP に PostHog・Sentry は入れない
 - セキュリティのヘッダーは `src/security-headers.ts` の1か所に置く。`vite build` がそこから `_headers` を書き出し、Worker も同じ定義を付ける（Worker の応答には `_headers` が効かない）
 
+### 考え方のページを足す
+
+考え方のページ（`/learn` と `/learn/<名前>`）は、モジュール `src/learn/` が一覧と1問ずつのページを作り、ページの一覧には `learnPages` を並べるだけにしてある。
+
+1. `src/learn/articles/<名前>.tsx` に、1問の形 `LearnArticle`（`src/learn/learn-article.ts`）を1つ書く。題（世の中の問い）・説明・題の下の導入・主張ごとの本文（研究で分かっていること、本文の中の図（`LearnFigure`）、「nu-tori では」。nu-tori の計算の決まりは当たる主張の「nu-tori では」に地の文で書く）・出典・資料に拠らず nu-tori が決めた決まりを置く。本文は一次の出典にあたって自分の言葉で書き、参考のページの文は写さない
+2. 並び（`src/learn/learn-articles.ts` の `learnArticles`）の、アプリで出会う順の位置に1行足す
+
+節の並び・一覧へ戻るリンク・次のページへのリンク・一覧の末の集めた出典は、`src/learn/create-learn-pages.tsx` が並びから作るので、1問のファイルには書かない。
+
+- 並びが `learnArticleCountToList`（`src/learn/learn-pages.ts`）の本数にそろうまで、一覧と各ページを隠す（足に出さず、`sitemap.xml` に載せず、`noindex`）。そろえば、足し方の手順のままで自動で出る
+
 ## LP の版を足す・外す
 
 振り分けの Worker が、`wrangler.jsonc` の `LP_VARIANTS` から訪問者ごとに版を等しい確率で選び、Cookie `nu_tori_lp`（版の名前だけ、30日）で覚えて、`/_lp/<版>/` を `/` で返す。`LP_VARIANTS` が空のあいだは仮のページを返す。
@@ -59,6 +70,7 @@
 - 変えたら `scripts/check site` を回す。整形・Lint・型検査のあと、書き出しと Worker の束ねをしてからテストを回す
 - ページのテストの継ぎ目は1つ（`src/worker.test.ts`）。書き出した `dist` と wrangler が束ねた Worker を、`wrangler.jsonc` の設定のまま別の Worker として動かし（`vitest.config.ts`）、`src/testing/fetch-site.ts` の `fetchSite` で要求を投げて、状態・ヘッダー・Cookie・本文に含まれるリンク（ページの中の目印の id を含む）を見る。テストの実行環境の `SELF` は assets の振り分けの前段（`run_worker_first`）を通らないので使わない。ページの部品の単体テストと、Hono の経路を直に叩くテストは書かない
 - LP の版の振り分けは、本番の `LP_VARIANTS` に頼らず、版を a と b にした2つめの Worker（`src/testing/fetch-site-with-landing-variants.ts`）で確かめる。b はテストだけの版で、`vite build --mode test` が本番のページに足して `.wrangler/test-dist` に書き出す（`src/testing/test-site-app.tsx`）。版を選ぶ乱数は、その Worker のテストだけの入口（`src/testing/landing-variants-test-worker.ts`）で決める。版が無いときの仮のページは、版を空にした3つめの Worker（`src/testing/fetch-site-without-landing-variants.ts`）で確かめる
+- 考え方のページの隠すのを外した形は、テストの書き出しを本番の Worker で配る4つめの Worker（`src/testing/fetch-site-with-learn-pages-listed.ts`）で確かめる。隠した形は、本番の書き出しの `fetchSite` で確かめる
 - 合成のコマンドは、Worker の継ぎ目と別に、`screenshots/compose-screenshots.test.ts` と `screenshots/scale-listing-screenshots.test.ts` を Node の vitest（`vitest.screenshots.config.ts`）で回す。決まった大きさの単色の PNG を置いた作り物の生の画面のフォルダと、穴の空いた単色の代わりの枠を渡し、書き出したファイルの名前と枚数、画像の幅・高さと透過の有無（WebP は `testing/read-webp-size.ts`、掲載用の PNG は `testing/read-png-size.ts`）、JSON の幅・高さだけを見る。合成の HTML と CSS の中身は見ない。Chromium は `scripts/check site` が入れる（Linux では、入れる権限があればそのライブラリも）。合成のコマンドの型は、DOM の型を読む `screenshots/tsconfig.json` で見る
 - 掲載情報は、ページの継ぎ目と別に、`src/listing-rule-violations.test.ts` で今の値が決まりに外れないことと、外れたときに決まりの名前が挙がることを見る。文言の正しさは見ない
 - 文言と見た目はテストせず、書き出したページを開いて見る。テストで日本語の文字列を照らすと、`.oxlintrc.json` の `nu-tori/no-wording-in-test` が落とす（`describe`・`test` の名前は除く）

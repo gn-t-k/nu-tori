@@ -13,6 +13,7 @@ export type SitePage = {
 export const canonicalPathOf = (page: SitePage): string | undefined =>
   match(page)
     .with({ kind: "public" }, ({ outputPath }) => outputPath)
+    .with({ kind: "indexed" }, ({ outputPath }) => outputPath)
     .with({ kind: "landing" }, () => "/")
     .with({ kind: "unindexed" }, () => undefined)
     .exhaustive();
@@ -20,6 +21,8 @@ export const canonicalPathOf = (page: SitePage): string | undefined =>
 type SitePageKind =
   // 公開のページ。書き出す先のパスを正規の URL にして、検索に載せ、外枠の足からリンクする
   | { kind: "public"; footerLabel: string }
+  // 検索に載せるが、外枠の足からはリンクしないページ（考え方のページの1問ずつのページ。足には一覧だけを出す）。書き出す先のパスを正規の URL にする
+  | { kind: "indexed" }
   // / に返すページ（仮のページと LP の版）。振り分けの Worker が /_lp/<名前>/ を読んで / で返すので、正規の URL はどれも / にする
   | { kind: "landing" }
   // 検索に載せないページ（404 など）。正規の URL を持たない

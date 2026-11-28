@@ -11,7 +11,7 @@ export const createSiteApp = (pages: readonly SitePage[]): Hono => {
   for (const page of pages) {
     app.get(page.outputPath, (c) =>
       c.html(
-        <SiteLayout page={page}>
+        <SiteLayout page={page} pages={pages}>
           <page.Content />
         </SiteLayout>,
       ),

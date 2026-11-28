@@ -3,11 +3,18 @@ import { raw } from "hono/html";
 import { AppStoreBadgePlacement } from "./app-store-badge-placement";
 import { siteOrigin } from "./site-origin";
 import { canonicalPathOf, type SitePage } from "./site-page";
-import { sitePages } from "./site-pages";
 import { webAnalytics } from "./web-analytics";
 
-// 全ページで共通の外枠（<head>、ヘッダー、足）
-export const SiteLayout = ({ page, children }: { page: SitePage; children: Child }) => {
+// 全ページで共通の外枠（<head>、ヘッダー、足）。足のリンクは、書き出すページの並び（pages）の公開のページから作る
+export const SiteLayout = ({
+  page,
+  pages,
+  children,
+}: {
+  page: SitePage;
+  pages: readonly SitePage[];
+  children: Child;
+}) => {
   const canonicalPath = canonicalPathOf(page);
   return (
     <AppStoreBadgePlacement.Provider value={{ placed: false }}>
@@ -40,7 +47,7 @@ export const SiteLayout = ({ page, children }: { page: SitePage; children: Child
           <footer class="site-footer">
             <nav>
               <ul>
-                {sitePages.flatMap((linked) =>
+                {pages.flatMap((linked) =>
                   linked.kind === "public"
                     ? [
                         <li>

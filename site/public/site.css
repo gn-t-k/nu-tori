@@ -124,6 +124,17 @@ a {
   color: var(--primary);
 }
 
+/* 考え方のページの出典の並び。本文より控えめに、DESIGN.md の footnote の大きさと、地と 4.5:1 に届く副の色にする */
+.learn-sources {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--lp-secondary);
+}
+
+.learn-sources li + li {
+  margin-top: 8px;
+}
+
 /* Apple のバッジの決まり: 高さ 40px、周りに高さの 1/4（10px）の余白。動かさない */
 .app-store-badge {
   display: inline-block;
@@ -969,4 +980,11 @@ body:has(.lp) .site-footer {
   .lp-hero h1 {
     font-size: 30px;
   }
+}
+.learn-figure {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: 12px;
 }

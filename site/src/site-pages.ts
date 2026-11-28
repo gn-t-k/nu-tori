@@ -1,3 +1,4 @@
+import { learnPages } from "./learn/learn-pages";
 import { announcementsPage } from "./pages/announcements-page";
 import { dailyGuidePage } from "./pages/daily-guide-page";
 import { landingAPage } from "./pages/landing-a-page";
@@ -17,6 +18,7 @@ export const sitePages: readonly SitePage[] = [
   termsPage,
   legalPage,
   supportPage,
+  ...learnPages,
   dailyGuidePage,
   announcementsPage,
   notFoundPage,
