@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
+import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogram";
 import { computeReviewedExpenditure, type ReviewedExpenditureInputs } from "./index";
 
 type Reviewed = ReturnType<typeof computeReviewedExpenditure>;
@@ -19,9 +20,16 @@ const inputs = (overrides: Partial<ReviewedExpenditureInputs> = {}): ReviewedExp
 const reviewedWeeks = (count: number, recordedMealDayCount = 7) =>
   Array.from({ length: count }, () => ({ type: "reviewed" as const, recordedMealDayCount }));
 
-// 予測した変化は −0.1818 kg。実際の変化を変えて、観測 − 前の推定（ρ × ずれ ÷ 7）を決める
-const actualChangeForObservationKcal = (observationMinusPreviousKcal: number) =>
-  -0.1818181818 - (observationMinusPreviousKcal * 7) / 7700;
+// inputs() の週で、観測 − 前の推定 が渡した差（kcal）になる実際の変化（kg）。
+// 観測 − 前の推定 =（平均 − 前の推定）− ρ × 実際の変化 ÷ 測った日数 から逆に出す
+const actualWeightChangeForObservationDifference = (observationDifferenceKcal: number): number => {
+  const { averageEnergyIntakeKcal, previousExpenditureKcal, weightChangeDayCount } = inputs();
+  return (
+    ((averageEnergyIntakeKcal - previousExpenditureKcal - observationDifferenceKcal) *
+      weightChangeDayCount) /
+    kilocaloriesPerKilogram
+  );
+};
 
 describe("見直した推定消費カロリー", () => {
   describe("推定の始まりが式で、最初の見直しのとき", () => {
@@ -167,7 +175,7 @@ describe("見直した推定消費カロリー", () => {
       let reviewed: Reviewed;
       beforeEach(() => {
         reviewed = computeReviewedExpenditure(
-          inputs({ actualWeightChangeKg: actualChangeForObservationKcal(-500) }),
+          inputs({ actualWeightChangeKg: actualWeightChangeForObservationDifference(-500) }),
         );
       });
 
@@ -185,7 +193,7 @@ describe("見直した推定消費カロリー", () => {
       let reviewed: Reviewed;
       beforeEach(() => {
         reviewed = computeReviewedExpenditure(
-          inputs({ actualWeightChangeKg: actualChangeForObservationKcal(300) }),
+          inputs({ actualWeightChangeKg: actualWeightChangeForObservationDifference(300) }),
         );
       });
 
@@ -204,7 +212,7 @@ describe("見直した推定消費カロリー", () => {
         reviewed = computeReviewedExpenditure(
           inputs({
             initialExpenditureSource: "back_calculated",
-            actualWeightChangeKg: actualChangeForObservationKcal(-400),
+            actualWeightChangeKg: actualWeightChangeForObservationDifference(-400),
           }),
         );
       });
@@ -218,14 +226,14 @@ describe("見直した推定消費カロリー", () => {
       });
     });
 
-    describe("前の2回の見直しで上限に当たったあとの3回目のとき", () => {
+    describe("前に2回見直したあとの3回目で、観測が前の推定より 1,000 kcal 低いとき", () => {
       let reviewed: Reviewed;
       beforeEach(() => {
-        // 上限で動きを止めても、不確かさは止めないときと同じに縮める（見直した週の並びだけからたどり直す）
+        // 前の見直しで上限に当たったかは渡さない。上限で動きを止めても、不確かさは見直した週の並びだけからたどり直す
         reviewed = computeReviewedExpenditure(
           inputs({
             previousWeeks: reviewedWeeks(2),
-            actualWeightChangeKg: actualChangeForObservationKcal(-1000),
+            actualWeightChangeKg: actualWeightChangeForObservationDifference(-1000),
           }),
         );
       });
@@ -245,7 +253,7 @@ describe("見直した推定消費カロリー", () => {
         reviewed = computeReviewedExpenditure(
           inputs({
             previousWeeks: [{ type: "deferred" }],
-            actualWeightChangeKg: actualChangeForObservationKcal(-500),
+            actualWeightChangeKg: actualWeightChangeForObservationDifference(-500),
           }),
         );
       });

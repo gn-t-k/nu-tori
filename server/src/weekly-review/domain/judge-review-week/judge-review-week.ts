@@ -4,9 +4,10 @@ import type { InitialExpenditureSource } from "../../../expenditure-estimate/dom
 import { computeWeightTrend } from "../../../weight-trend/domain/compute-weight-trend";
 import type { WeeklyReviewDeferralReason } from "../weekly-review";
 import { daysPerWeek } from "../../../domain/days-per-week";
-import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogram";
-import { findRecordedMealDays, minimumMealDays } from "../find-recorded-meal-days";
+import { computeObservedExpenditure } from "../compute-observed-expenditure";
 import { computeReviewWeekRange } from "../compute-review-week-range";
+import { findRecordedMealDays } from "../find-recorded-meal-days";
+import { minimumMealDays } from "../minimum-meal-days";
 
 export type ReviewWeekInputs = {
   // 見直す月曜 M（YYYY-MM-DD）。見直す入力の週は M の前の月〜日
@@ -48,8 +49,7 @@ export const judgeReviewWeek = ({
   dailyWeights,
   recordedEnergyIntakes,
 }: ReviewWeekInputs): ReviewWeekJudgement => {
-  const { weekStart, weekEnd } = computeReviewWeekRange(reviewedMonday);
-  const isInWeek = (calendarDay: string) => weekStart <= calendarDay && calendarDay <= weekEnd;
+  const { weekStart, weekEnd, isInWeek } = computeReviewWeekRange(reviewedMonday);
 
   // 使い始める前の記録から逆算した人は、使い始める前の記録で初期値が確かなので当てない。
   // 使い始めた日が読めない人は、7日未満とみなす元が無いので当てない
@@ -75,17 +75,17 @@ export const judgeReviewWeek = ({
 
   const averageEnergyIntakeKcal =
     mealDays.reduce((sum, { kcal }) => sum + kcal, 0) / mealDays.length;
-  // 記録が意味する消費（記録した日の平均 − 体重の傾向の変化を1日あたりの kcal にしたもの）が推定の始まりの 0.6 倍
-  // （おおよそ基礎代謝の 0.7 倍）に満たない週は、体がそれだけしか使わないことはありえないので、記録の抜けとみなして見送る。
+  // 記録が意味する消費が推定の始まりの 0.6 倍（おおよそ基礎代謝の 0.7 倍）に満たない週は、体がそれだけしか使わないことはありえないので、記録の抜けとみなして見送る。
   // 部分的な記録の日の除外は毎日同じように少なく記録すると効かず、記録した日数の決まりは量を見ないため。
   // 見送りの理由を足すと端末の表示の分かれが増えるので、記録が少ない週として見送る
-  const recordedExpenditureKcal =
-    averageEnergyIntakeKcal -
-    (kilocaloriesPerKilogram * weightChange.actualWeightChangeKg) /
-      weightChange.weightChangeDayCount;
+  const observedExpenditureKcal = computeObservedExpenditure({
+    averageEnergyIntakeKcal,
+    actualWeightChangeKg: weightChange.actualWeightChangeKg,
+    weightChangeDayCount: weightChange.weightChangeDayCount,
+  });
   if (
     initialExpenditureKcal !== undefined &&
-    recordedExpenditureKcal < minimumRecordedExpenditureRatio * initialExpenditureKcal
+    observedExpenditureKcal < minimumObservedExpenditureRatio * initialExpenditureKcal
   ) {
     return { type: "deferred", reason: "few_meal_records" };
   }
@@ -139,4 +139,4 @@ const computeWeightChange = (
 };
 
 // 記録が意味する消費が、推定の始まりのこの割合に満たない週を見送る。出荷後に実データで調整する初期値
-const minimumRecordedExpenditureRatio = 0.6;
+const minimumObservedExpenditureRatio = 0.6;

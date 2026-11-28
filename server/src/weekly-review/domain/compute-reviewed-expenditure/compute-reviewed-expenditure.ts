@@ -6,6 +6,7 @@ import type {
 } from "../../../expenditure-estimate/domain/expenditure-estimate";
 import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
 import { daysPerWeek } from "../../../domain/days-per-week";
+import { computeObservedExpenditure } from "../compute-observed-expenditure";
 
 export type ReviewedExpenditureInputs = {
   // 見直す週に当たっていた推定（最も遅い推定）
@@ -25,7 +26,7 @@ export type ReviewedExpenditureInputs = {
   )[];
 };
 
-// 見直せた週の、新しい推定消費カロリー。推定消費カロリーを1つの状態とみるカルマンフィルタで、前の推定 + ρ × ずれ ÷ 測った日数 を観測として、前の推定から観測へ k の割合だけ動かす。
+// 見直せた週の、新しい推定消費カロリー。推定消費カロリーを1つの状態とみるカルマンフィルタで、記録が意味する消費（computeObservedExpenditure。前の推定 + ρ × ずれ ÷ 測った日数 と同じ値）を観測として、前の推定から観測へ k の割合だけ動かす。
 // 予測は実際の変化と同じ日数で出す。
 // k は推定の不確かさ P から出し、P は推定の始まりから見直した週の並びをたどって毎回出し直す（P を残さないので、表を変えずに今までの見直しにも当てられる）。
 // 1回の動きは上限で止める。始まりのころは k が大きく、記録の抜けや体重のぶれの1週がそのまま大きく乗るため。
@@ -43,7 +44,7 @@ export const computeReviewedExpenditure = ({
   deviationKg: number;
   // 観測のうち推定を動かした割合（カルマンゲイン k）
   gain: number;
-  // 上限で止める前の動き（k × 観測 − 前の推定）が上限を越えたか
+  // 上限で止める前の動き（k ×（観測 − 前の推定））が上限を越えたか
   hitAdjustmentLimit: boolean;
   expenditureKcal: number;
   deviationDirection: ExpenditureDeviationDirection;
@@ -56,7 +57,12 @@ export const computeReviewedExpenditure = ({
     computeVarianceBeforeReview(initialExpenditureSource, previousWeeks),
     recordedMealDayCount,
   );
-  const adjustmentKcal = (gain * kilocaloriesPerKilogram * deviationKg) / weightChangeDayCount;
+  const observedExpenditureKcal = computeObservedExpenditure({
+    averageEnergyIntakeKcal,
+    actualWeightChangeKg,
+    weightChangeDayCount,
+  });
+  const adjustmentKcal = gain * (observedExpenditureKcal - previousExpenditureKcal);
   return {
     predictedWeightChangeKg,
     deviationKg,
