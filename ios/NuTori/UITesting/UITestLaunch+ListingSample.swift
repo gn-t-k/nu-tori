@@ -11,9 +11,9 @@
         /// 例の筋が変わって JSON を書き出し直したら、ここも写し直す。
         ///
         /// 1月5日（月）に、体重の傾向 78.4 kg から 12 週で 74.4 kg へ減らす目標を立て、毎週月曜の 0:05 に見直した。
-        /// 今日（止めた時計の日）より後の記録は置かない。昨日までは毎日、LP の版 a の見本の3食（`ListingSampleDish`）を書いて送った。
-        /// 出し方のページの見本の人は毎日1日の目安ちょうど食べたことにしているが、3食の合計（1,440 kcal）はそれより少ない。
-        /// 食べた量は1日の丸の満ち方と週の振り返りにしか出ず、見本の場面はどちらの数も撮らないので、LP の見本の食事のほうにそろえる。
+        /// 今日（止めた時計の日）より後の記録は置かない。昨日までは毎日、食事を書いて送った（`ListingSample.meals(of:at:)`）。
+        /// 出し方のページの見本の人は毎日1日の目安ちょうど食べたことにしているが、ここの食べた量は日ごとに揺れ、週の平均は1日の目安より少ない。
+        /// 週の振り返りの「食べた量」の棒が、目安を超えた日と控えた日を見せるため（考え方のページの「体重はカロリーの差で決まる」の画面）。
         /// 昨日の 21:00 には「ここまでの食事のフィードバック」を送って返事が届いた。返事の行の数（`listingReplyLineCount`）は、撮る UI テストの場面（`ListingScene`）が選ぶ
         ///
         /// `weighedToday` が false なら、今朝の体重とその日の体重の傾向を置かない（まだ量っていない朝）
@@ -53,15 +53,46 @@
                 answerSentText: estimation.answerSentText)
         }
 
+        /// 見本の人が目標を立てる日（1月5日（月））の朝。目標はまだ無く、7:00 に量った体重だけがある。
+        /// 目標を立てる知らせから減量へ進むと、目標案（ゆるめ・標準・ハード）が届く（考え方のページの「1ヶ月で何キロ減らすのがいい？」の画面）。
+        ///
+        /// 見本の人は推定消費カロリーを記録から逆算できず、身体データから出した（`initial.kcal`）。
+        /// 逆算できない人の流れは足りない値のページで身長・生まれた年・活動量をホイールで選ぶので、撮る場面を短く保つため、下見は逆算できると答えて足りない値のページを飛ばす。
+        /// 目標案の上の行は「推定消費カロリー　2,399 kcal」になり、出どころの違いは画面に出ない
+        func listingSampleBeforeGoalScenario() -> FakeSyncServer.Scenario {
+            let sample = ListingSample(timeZone: clock.timeZone())
+            let day = ListingSample.days[0]
+            let clock = clock
+            return .init(
+                records: [
+                    sample.weight(of: day, at: 0),
+                    .weightTrend(
+                        SyncedWeightTrend(days: [
+                            .init(calendarDay: day.calendarDay, trendKilograms: day.trendKilograms)
+                        ])),
+                ],
+                startedOn: ListingSample.goalStartedOn,
+                goalSetup: FakeSyncServer.GoalSetupAnswers(
+                    preview: GoalSetupPreview(canBackCalculate: true, canOfferLoseProposals: true),
+                    proposals: { ListingSample.goalProposals($0) },
+                    // この場面は「目標体重を自分で決める」を開かない
+                    assessCustomTargetWeight: { _, _ in
+                        .rejected(reason: .paceTooFast, nearestAcceptedTargetWeightKilograms: nil)
+                    },
+                    now: { clock.now() }))
+        }
+
         /// 見本の人の値。出どころは `UITestLaunch.listingSampleScenario()` のコメント
         private struct ListingSample {
             let timeZone: TimeZone
 
-            static let goalStartedOn = "2026-01-05"
+            nonisolated static let goalStartedOn = "2026-01-05"
             /// `person.targetWeightKg`
             static let targetWeightKilograms = 74.4
             /// `initial.startingWeightTrendKg`
-            static let startingWeightTrendKilograms = 78.3804
+            nonisolated static let startingWeightTrendKilograms = 78.3804
+            /// `initial.kcal`。目標を立てたときの推定消費カロリー
+            nonisolated static let initialExpenditureKilocalories = 2399
             /// `person.daysFromStartToDeadline` 日後
             static let deadlineOn = "2026-03-30"
 
@@ -77,7 +108,8 @@
 
             static let weeks = [
                 Week(
-                    effectiveOn: "2026-01-05", expenditureKilocalories: 2399,
+                    effectiveOn: goalStartedOn,
+                    expenditureKilocalories: initialExpenditureKilocalories,
                     guide: (2050, 120, 55, 270), limitHits: [], mainReason: nil),
                 Week(
                     effectiveOn: "2026-01-12", expenditureKilocalories: 2287,
@@ -168,23 +200,56 @@
                         version: 1, imported: nil))
             }
 
-            /// 毎日の3食。どれも書いて送った食事（写真の食事は、ほかの端末の写真を取りに行く道が UI テストに無いので置かない）
+            /// 書いて送った食事（写真の食事は、ほかの端末の写真を取りに行く道が UI テストに無いので置かない）
             struct Meal {
                 let hour: Int
                 let minute: Int
                 let text: String
-                let dish: ListingSampleDish
+                let dishes: [ListingSampleDish]
             }
 
-            static let dailyMeals = [
-                Meal(hour: 7, minute: 30, text: "朝はおにぎり", dish: .onigiri),
-                Meal(hour: 12, minute: 30, text: "昼は親子丼", dish: .oyakodon),
-                Meal(hour: 19, minute: 0, text: "夜はカレーライス", dish: .curry),
+            static let breakfast = Meal(hour: 7, minute: 30, text: "朝はおにぎり", dishes: [.onigiri])
+            static let lunch = Meal(hour: 12, minute: 30, text: "昼は親子丼", dishes: [.oyakodon])
+            static let dinner = Meal(hour: 19, minute: 0, text: "夜はカレーライス", dishes: [.curry])
+            static let snack = Meal(hour: 15, minute: 0, text: "おやつにチョコ", dishes: [.chocolate])
+            static let curryAndGyoza = Meal(
+                hour: 19, minute: 0, text: "夜はカレーとぎょうざ", dishes: [.curry, .gyoza])
+
+            /// LP の版 a の見本の3食。1,440 kcal
+            static let dailyMeals = [breakfast, lunch, dinner]
+
+            /// 見直しの済んだ週（1月18日まで）の、曜日ごとの食事。月曜から順におよそ 1,715・1,754・1,374・2,029・2,162・1,122・1,440 kcal。
+            /// 1月12日〜18日の週は、1日の目安 1,900 kcal を木曜と金曜に超え、平均はおよそ 1,657 kcal。
+            /// 日曜は LP の見本の3食にする。手順の絵の場面（1月19日（月）の朝）は、昨日の食事と返事（`replyLines`）を写すため
+            static let weekdayMeals: [[Meal]] = [
+                dailyMeals + [snack],
+                [breakfast, lunch, curryAndGyoza],
+                [Meal(hour: 7, minute: 30, text: "朝はお茶漬け", dishes: [.ochazuke]), lunch, dinner],
+                [breakfast, lunch, snack, curryAndGyoza],
+                [
+                    breakfast, lunch,
+                    Meal(
+                        hour: 20, minute: 0, text: "飲み会で唐揚げとぎょうざとポテト、ビール2杯",
+                        dishes: [.karaage, .gyoza, .fries, .beer]),
+                ],
+                // 飲み会の次の日は朝を抜いた
+                [lunch, dinner],
+                dailyMeals,
             ]
 
-            /// その日の3食を、送った文章と、食事と読み分けて推定を終えた食事にする
+            /// 見直しの済んだ週は曜日ごとの食事（`weekdayMeals`）、今の週（最後の見直しの日から）は LP の見本の3食。
+            /// 1月5日（`dayIndex` が 0）は月曜
+            func plannedMeals(of sampleDay: Day, at dayIndex: Int) -> [Meal] {
+                guard let currentWeek = Self.weeks.last,
+                    day(sampleDay.calendarDay) < day(currentWeek.effectiveOn)
+                else { return Self.dailyMeals }
+                return Self.weekdayMeals[dayIndex % 7]
+            }
+
+            /// その日の食事を、送った文章と、食事と読み分けて推定を終えた食事にする
             func meals(of day: Day, at dayIndex: Int) -> [SyncChange] {
-                Self.dailyMeals.enumerated().flatMap { mealIndex, meal -> [SyncChange] in
+                plannedMeals(of: day, at: dayIndex).enumerated().flatMap {
+                    mealIndex, meal -> [SyncChange] in
                     let base = dayIndex * 10 + mealIndex
                     let sentTextId = Self.id(0x75, base)
                     let mealId = Self.id(0x76, base)
@@ -206,11 +271,15 @@
                                 entryMethod: .written(sentTextId: sentTextId), photoIds: [])),
                         .mealEstimationStatus(.init(mealId: mealId, status: .estimated)),
                     ]
-                        + meal.dish.changes(mealId: mealId) { Self.id(0x77, base * 10 + $0) }
+                        + meal.dishes.enumerated().flatMap { dishIndex, dish in
+                            dish.changes(mealId: mealId, position: dishIndex) {
+                                Self.id(0x77, base * 1000 + dishIndex * 100 + $0)
+                            }
+                        }
                 }
             }
 
-            /// 返事に並べる行。昨日の3食（`dailyMeals`）について書く
+            /// 返事に並べる行。昨日の3食について書く。返事を撮る場面の昨日（1月18日（日）と1月20日（火））は、どちらも LP の見本の3食（`dailyMeals`）
             static let replyLines = [
                 "- 朝のおにぎりは炭水化物が中心です",
                 "- 昼の親子丼でたんぱく質がとれています",
@@ -263,6 +332,51 @@
                     preconditionFailure("\(text) の \(hour):\(minute) を作れない")
                 }
                 return date
+            }
+
+            /// 目標を立てる日の目標案。期限は期限のページの初めの値（3か月後の 4月5日。開始の日から両端を含めて 91 日）で、見本の人が実際に選んだ期限（12 週）とは違う。
+            /// 減量の案だけを返す。値（推定消費カロリーとの差は 50 kcal 単位）は、サーバーの `computeGoalProposals`・`computeAcceptedTargetWeightRange` に、推定消費カロリー 2,399 kcal（`initial.kcal`）と開始の日の体重の傾向（`initial.startingWeightTrendKg`）と 91 日を渡して出した。
+            /// 期限を変えても同じ値を返す（この場面は期限を変えない）
+            nonisolated static func goalProposals(_ requested: GoalProposalsPlan) -> GoalProposals {
+                let plan: GoalProposals.Plan
+                switch requested {
+                case .weightChange(.lose, let deadlineOn):
+                    plan = .weightChange(
+                        .init(
+                            direction: .lose, deadlineOn: deadlineOn,
+                            proposals: [
+                                offered(.gentle, 75.9, (2200, 120, 60, 295), difference: -200),
+                                offered(.standard, 73.3, (1950, 115, 55, 250), difference: -450),
+                                offered(.hard, 70.8, (1750, 115, 50, 210), difference: -650),
+                            ],
+                            acceptedTargetWeightRange: .init(
+                                minimumKilograms: 70.8, maximumKilograms: 78.3,
+                                fastestEndReason: .paceTooFast)))
+                case .weightChange(.gain, _), .maintain:
+                    // 場面（`ListingScene.goalProposals`）は減量だけを押す
+                    preconditionFailure("見本の人の目標を立てる場面は、減量だけを開く")
+                }
+                return GoalProposals(
+                    startedOn: goalStartedOn,
+                    expenditureKilocalories: initialExpenditureKilocalories,
+                    expenditureSource: .backCalculated,
+                    startingWeightTrendKilograms: startingWeightTrendKilograms,
+                    lastWeightRecordedOn: goalStartedOn, plan: plan)
+            }
+
+            nonisolated private static func offered(
+                _ pace: GoalProposals.Pace, _ kilograms: Double,
+                _ guide: (energy: Int, protein: Int, fat: Int, carbohydrate: Int),
+                difference: Int
+            ) -> GoalProposals.Proposal {
+                .offered(
+                    .init(
+                        pace: pace, targetWeightKilograms: kilograms,
+                        dailyGuide: DailyGuidePlan(
+                            energyKilocalories: guide.energy, proteinGrams: guide.protein,
+                            fatGrams: guide.fat, carbohydrateGrams: guide.carbohydrate),
+                        difficulty: pace,
+                        dailyGuideDifferenceKilocalories: difference))
             }
 
             private static let goalId = id(0x70, 0)

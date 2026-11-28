@@ -822,7 +822,7 @@ prepare_ui_test_keyboard() {
     warm_up_keyboard_daemon
 }
 
-# 掲載情報と LP の手順の絵に使う生の画面を、見本の場面ごとに撮り、ios/.build/listing-screens/<場面>.png に書き出す。
+# 掲載情報、LP の手順の絵、考え方のページに使う生の画面を、見本の場面ごとに撮り、ios/.build/listing-screens/<場面>.png に書き出す。
 # ふつうの UI テストの回に入れないのは、撮るのは画面を変えたあとに手で始めるもので、毎回の UI テストの時間を延ばさないため。場面の一覧は ios/NuToriUITests/ListingScene.swift
 check_ios_screenshots() {
     if ! command -v xcodebuild > /dev/null; then

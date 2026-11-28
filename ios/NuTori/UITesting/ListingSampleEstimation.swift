@@ -15,9 +15,13 @@
             switch self {
             case .waitsForCorrection: { _ in [] }
             case .estimatesPhoto:
-                { mealId in ListingSampleDish.curry.changes(mealId: mealId) { _ in UUID() } }
+                { mealId in
+                    ListingSampleDish.curry.changes(mealId: mealId, position: 0) { _ in UUID() }
+                }
             case .estimatesText:
-                { mealId in ListingSampleDish.ochazuke.changes(mealId: mealId) { _ in UUID() } }
+                { mealId in
+                    ListingSampleDish.ochazuke.changes(mealId: mealId, position: 0) { _ in UUID() }
+                }
             }
         }
 

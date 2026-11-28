@@ -97,6 +97,8 @@
                 return listingSampleScenario(.estimatesText)
             case .listingSampleBeforeWeighing:
                 return listingSampleScenario(.waitsForCorrection, weighedToday: false)
+            case .listingSampleBeforeGoal:
+                return listingSampleBeforeGoalScenario()
             case .accountDeletionRateLimited:
                 return .init(records: [], startedOn: today, accountDeletion: .rateLimited)
             }
