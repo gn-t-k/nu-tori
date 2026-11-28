@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // `ios/` を変えた PR が main に入ったとき、そのときのアプリの版のマイルストーン（iOS <版>）を PR に付ける。.github/workflows/version-milestone.yml が呼ぶ
 // 版を付ける時機の決まりは docs/agents/issue-tracker.md の「版のマイルストーン」
-// することは、今の PR とマイルストーンの状態から決める。回し直しても、途中で止まった回のあとでも、同じ形に落ち着く
+// 付ける先は、回したときでなく、PR が main に入ったときの版と時刻から決める。あとから回しても、途中で止まった回のあとでも、同じ形に落ち着く
 // 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
 "use strict";
 
@@ -11,7 +11,7 @@ const { readMarketingVersion } = require("./check-app-version");
 
 const repository = process.env.GITHUB_REPOSITORY ?? "gn-t-k/nu-tori";
 const PROJECT = "ios/NuTori.xcodeproj/project.pbxproj";
-// 審査に出した版（閉じたマイルストーン）の番号のまま main に入った PR を、次の版の番号が決まるまで置く
+// 審査に出した版（閉じたマイルストーン）の番号のまま、出したあとに main に入った PR を、次の版の番号が決まるまで置く
 const PENDING_TITLE = "iOS 次の版";
 const milestoneTitle = (version) => `iOS ${version}`;
 
@@ -32,18 +32,40 @@ const main = () => {
     console.log(`何もしない: #${number}（${skipped}）`);
     return;
   }
-  // main の先でなく、この PR が入ったコミットの版を読む。あとから回し直しても同じ版になる
-  const version = readMarketingVersion(
-    github([`repos/${repository}/contents/${PROJECT}?ref=${pull.merge_commit_sha}`, "-H", "Accept: application/vnd.github.raw"]),
-  );
-  const action = plan(version, listMilestones());
-  console.log(`#${number} に ${action.title} を付ける${action.movesPending ? `。${PENDING_TITLE} にあるものも移す` : ""}`);
-  if (dryRun) return;
-
-  const target = ensureOpenMilestone(action.title);
-  setMilestone(number, target);
-  if (action.movesPending) movePending(target);
+  // この PR が入ったコミットの版と、main の今の版
+  const version = versionAt(pull.merge_commit_sha);
+  const action = plan({ version, mergedAt: pull.merged_at, mainVersion: versionAt("main"), milestones: listMilestones() });
+  const title = milestoneTitle(version);
+  switch (action.kind) {
+    case "currentVersion": {
+      console.log(`#${number} に ${title} を付ける。${PENDING_TITLE} にあるものも移す`);
+      if (dryRun) return;
+      const target = ensureOpenMilestone(title);
+      setMilestone(number, target);
+      movePending(target);
+      return;
+    }
+    case "pending": {
+      console.log(`#${number} を ${PENDING_TITLE} に置く（${title} を審査に出したあとに入った）`);
+      if (dryRun) return;
+      setMilestone(number, ensureOpenMilestone(PENDING_TITLE));
+      return;
+    }
+    case "pastVersion": {
+      console.log(`#${number} に ${title} を付ける（入ったときの版。マイルストーンは開かない）`);
+      if (dryRun) return;
+      setMilestone(number, ensureMilestone(title, "closed").number);
+      return;
+    }
+    case "undecided":
+      throw new ExpectedFailure(
+        `#${number} は ${title} を審査に出したあとに入り、main の版はもう先へ進んでいる。入った版を決められないので、手で付ける`,
+      );
+  }
 };
+
+const versionAt = (ref) =>
+  readMarketingVersion(github([`repos/${repository}/contents/${PROJECT}?ref=${ref}`, "-H", "Accept: application/vnd.github.raw"]));
 
 // 版を付けない理由。付けるなら null
 const reasonToSkip = (pull, paths) => {
@@ -54,35 +76,51 @@ const reasonToSkip = (pull, paths) => {
   return null;
 };
 
-// Xcode Cloud がビルドを作るのと同じ、ios/ の下の変更。文書だけの変更ではビルドが変わらない
+// ios/ の下の変更。文書（*.md）だけの変更では、出るアプリが変わらないので除く
 const changesApp = (paths) => paths.some((path) => path.startsWith("ios/") && !path.endsWith(".md"));
 
-// 今の版のマイルストーンが閉じていたら、その版は審査に出したあと。この PR はその版に入らないので、次の版の番号が決まるまで PENDING_TITLE に置く。
-// 開いているか、まだ無ければ、今の版に付け、PENDING_TITLE に置いたものもその版へ移す
-const plan = (version, milestones) => {
-  const current = milestones.find(({ title }) => title === milestoneTitle(version));
-  if (current?.state === "closed") return { title: PENDING_TITLE, movesPending: false };
-  return { title: milestoneTitle(version), movesPending: true };
+// PR をどのマイルストーンに付けるか。版のマイルストーンは、審査に出したら閉じる（docs/agents/ios-release.md の「審査に出す」）ので、閉じた時刻を出した時刻として読む
+// - currentVersion: 入った版が main の今の版で、まだ審査に出していない。その版に付け、PENDING_TITLE に置いたものもその版へ移す
+// - pending: 入った版を審査に出したあとに入った。その版には入らないので、次の版の番号が決まるまで PENDING_TITLE に置く
+// - pastVersion: 入った版を審査に出す前か、main の版が先へ進む前に入った PR を、あとから回した。その版に付け、マイルストーンは開かず、PENDING_TITLE も動かさない
+// - undecided: 入った版を審査に出したあとに入り、main の版がもう先へ進んでいる。PENDING_TITLE を移す回は過ぎていて、どの版に入ったかを決められない
+const plan = ({ version, mergedAt, mainVersion, milestones }) => {
+  const milestone = milestones.find(({ title }) => title === milestoneTitle(version));
+  const submittedAt = milestone?.state === "closed" ? milestone.closed_at : null;
+  if (submittedAt && Date.parse(mergedAt) < Date.parse(submittedAt)) return { kind: "pastVersion" };
+  if (version !== mainVersion) return { kind: submittedAt ? "undecided" : "pastVersion" };
+  return { kind: submittedAt ? "pending" : "currentVersion" };
 };
 
 const listMilestones = () =>
   lines(
-    github(["--paginate", `repos/${repository}/milestones?state=all&per_page=100`, "--jq", ".[] | {number, title, state}"]),
+    github([
+      "--paginate",
+      `repos/${repository}/milestones?state=all&per_page=100`,
+      "--jq",
+      ".[] | {number, title, state, closed_at}",
+    ]),
   ).map(parseJson);
 
-// 無ければ作り、閉じていれば開く。同時に走った回が先に作っていたら、作る呼び出しが落ちるので、読み直してそれを使う
-const ensureOpenMilestone = (title) => {
+// 無ければ、渡した状態で作る。同時に走った回が先に作っていたら、作る呼び出しが落ちるので、読み直してそれを使う
+const ensureMilestone = (title, stateIfMissing) => {
   const find = () => listMilestones().find((milestone) => milestone.title === title);
   let milestone = find();
   if (!milestone) {
     console.log(`作る: ${title}`);
     try {
-      milestone = parseJson(github(["--method", "POST", `repos/${repository}/milestones`], { title }));
+      milestone = parseJson(github(["--method", "POST", `repos/${repository}/milestones`], { title, state: stateIfMissing }));
     } catch (error) {
       milestone = find();
       if (!milestone) throw error;
     }
   }
+  return milestone;
+};
+
+// 無ければ作り、閉じていれば開く
+const ensureOpenMilestone = (title) => {
+  const milestone = ensureMilestone(title, "open");
   if (milestone.state === "closed") {
     console.log(`開く: ${title}`);
     github(["--method", "PATCH", `repos/${repository}/milestones/${milestone.number}`], { state: "open" });

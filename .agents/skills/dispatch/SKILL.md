@@ -30,14 +30,14 @@ PR と Issue が名指し合っているもの（依存の PR の落ちた Issue
 上から順に見て、最初に当たった行き先にする。
 
 1. **動いている**：動いているセッションが結びついている
-2. **止まっている**：`blocked_by` が 0 でない、本文の `Blocked by:` に開いている Issue がある、`waiting` ラベルがある（日付か外の出来事を待つ。`docs/agents/issue-tracker.md` の「作業を先送りする」）、担当者がいる（`/wayfinder` の着手宣言）、本文が別の Issue の結論を待つと書いている、本文が始める日を書いていてまだその日でない、子のチケットで進む（`wayfinder:map`、子のチケットを持つ仕様）
+2. **止まっている**：`blocked_by` が 0 でない、本文の `Blocked by:` に開いている Issue がある、`waiting` ラベルがあり、本文に書いてある待つこと（日付か外の出来事。`docs/agents/issue-tracker.md` の「作業を先送りする」）がまだ起きていない（起きていたら `waiting` を外して下の行き先へ進み、起きたか分からなければ止まっているに入れる）、担当者がいる（`/wayfinder` の着手宣言）、本文が別の Issue の結論を待つと書いている、本文が始める日を書いていてまだその日でない、子のチケットで進む（`wayfinder:map`、子のチケットを持つ仕様）
 3. **PR**：セッションが結びついていない PR
    - CI が動いている、または `mergeable_state` が決まっていない → 「止まっている」（CI を待つ）
    - CI が赤か衝突がある → その PR の先頭のブランチで「立ち上げる」。Issue に結びつかない PR のプロンプトは `PR #<番号> を merge できる状態にする`
    - `.agents/skills/steward/SKILL.md` の「UI テストの結果」がそろっていない → steward の形のプロンプトで「Mac に渡す」
    - PR の本文の `## merge の条件` のフェーズが `フェーズ1` か `フェーズ2` で、`.agents/skills/steward/SKILL.md` の「merge の条件の節」がそろっていない → その PR の先頭のブランチで「立ち上げる」。プロンプトは `PR #<番号> を引き継ぎ、docs/agents/review.md の「<フェーズ>」の条件をそろえて merge する`（Issue に結びつく PR でも、プロンプトはこの1行にする）。フェーズ2の PR で、欠けているのが `verify-ios` の結果のとき（`docs/agents/review.md` の「フェーズ2」の条件 7）は、同じプロンプトで「Mac に渡す」。steward のその節が開発者の判断を待つとする PR は、立ち上げずに「止まっている」にする
    - 残り → 「merge できる」として報告する
-4. **人の作業**：`ready-for-human`・`needs-info`・`wontfix` のどれかが付いた Issue と、triage のラベルも `wayfinder:*` のラベルも付いていない Issue
+4. **人の作業**：`ready-for-human`・`needs-info`・`wontfix` のどれかが付いた Issue と、状態のラベル（`docs/agents/triage-labels.md` の「状態」）も `wayfinder:*` のラベルも付いていない Issue
 5. **Mac に渡す**：`mac` ラベルがある、または立ち上げるセッション自身がシミュレーター・Xcode で作業する（本文の受け入れ条件が Mac で回すことを求めているなど）。`/triage` のように決めるだけのセッションは、題材が iOS の画面でもクラウドで立ち上げる
 6. **立ち上げる**：残りの `ready-for-agent`、`needs-triage`、マップの子（`wayfinder:*`）
 

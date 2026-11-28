@@ -42,7 +42,7 @@ flowchart TD
 
 本番で依存の更新が壊れたら、その依存の PR を revert する。依存だけを上げた PR の revert は、roll forward の決まりの例外（`server/AGENTS.md` の「デプロイ」）。浅い確認を抜けた壊れ方には、Sentry の新しいエラーの通知で気づく。
 
-1. 上げ直す Issue を立てる。ラベルは `ready-for-agent`。本文には、何が壊れたか、下の2で足す行、「調査から始める（壊れた原因を調べ、直った版を待つか、こちらのコードを直すかを決める）」を書く
+1. 上げ直す Issue を立てる。ラベルは `ready-for-agent` と `dependencies`。本文には、何が壊れたか、下の2で足す行、「調査から始める（壊れた原因を調べ、直った版を待つか、こちらのコードを直すかを決める）」を書く
 2. 依存の PR の merge コミットを revert する PR を出す。同じ PR で、戻した依存と版を、また来ないように一覧に足し、行に1の Issue へのリンクを `# 上げ直す: <Issue の URL>` のコメントで添える
    - npm と GitHub Actions: `.github/dependabot.yml` のその ecosystem の `ignore` に、`dependency-name` と `versions` で足す
    - Swift Package: `.github/swift-package-ignore` に `<依存の名前> <版>` で足す（書き方はファイルの先頭）

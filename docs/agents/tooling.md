@@ -175,7 +175,7 @@ flowchart LR
 
 ## 本番の知らせを Issue にする
 
-`.github/workflows/production-alerts.yml` が毎時 17 分に `scripts/production-alerts sentry` を回し、本番（`environment:production`）の Sentry の、新しい・急に増えた・再発した課題を、`needs-triage` の Issue にしてロックする。エージェントは `/triage` で拾い、中身は `scripts/sentry` で読む。調べた経緯は `docs/research/alerts-to-issues.md`。
+`.github/workflows/production-alerts.yml` が毎時 17 分に `scripts/production-alerts sentry` を回し、本番（`environment:production`）の Sentry の、新しい・急に増えた・再発した課題を、`needs-triage` と `bug` の Issue にしてロックする。エージェントは `/triage` で拾い、中身は `scripts/sentry` で読む。調べた経緯は `docs/research/alerts-to-issues.md`。
 
 - Issue の題は `Sentry <短い ID>: <例外の型> in <関数>`。本文に載せるのは、短い ID・状態・型・関数・版・OS・件数と利用者の数・最初と最後の発生・Sentry の URL だけで、スクリプトはこれらの欄だけを Sentry から取る。例外のメッセージ（Sentry の課題の題）は取らない
 - 本文の印 `<!-- sentry-issue: <短い ID> -->` で同じ課題の Issue を探し、`<!-- sentry-state: <状態> -->` で最後に知らせた状態を覚える。状態が変わったら、開いた Issue にはコメントを足し、閉じた Issue しか無ければ前の Issue を指して新しく作る。状態が同じなら何もしないので、Issue を閉じたあとに直す前の版から起き続けても立て直さない。ワークフローが作った開いた Issue のロックが抜けていたら、次の回でロックする。印は、ワークフローと、リポジトリの持ち主・メンバー・コラボレーターが書いたものだけを信じる
@@ -219,7 +219,7 @@ flowchart LR
 - GitHub Actions の秘密の値は、main からだけ使える Environment に置く（ADR-0010）
 - ジョブと、そこから呼ぶスクリプトを足す・直すときは、pstack の `principle-make-operations-idempotent` を読む
 - 依存の PR をマージし、落ちた PR の Issue を扱う `dependency-pr.yml` と、Swift Package を上げる `update-swift-packages.yml` は、`GITHUB_TOKEN` でなく、このリポジトリ用の GitHub App のトークン（`actions/create-github-app-token`）で GitHub を操作する。`GITHUB_TOKEN` で出した PR やマージは、ほかのワークフロー（check、deploy、`ios-ui-test.yml`）を起動しないため。App の Client ID は変数 `DEPENDENCY_APP_CLIENT_ID`、秘密鍵は秘密の値 `DEPENDENCY_APP_PRIVATE_KEY` として、main からだけ使える Environment `dependency-updates` に置く。依存の PR の扱い方は `docs/agents/dependencies.md`
-- 開発用の環境で主な流れを確かめるジョブ（`deploy.yml` の `main-flow-on-development`）は、開発用の Worker のデプロイのあとに、`server/e2e/cli/run-main-flow.ts` が本物の API を通す。必須のチェックにせず、本番のデプロイは待たない。main で落ちたら、ワークフローが `needs-triage` の Issue を立て、緑に戻ったら閉じる。使う秘密の値 `E2E_SIGN_IN_SECRET` は、開発用の Environment の GitHub Actions の秘密の値と、開発用の Worker の秘密の値（`wrangler secret put E2E_SIGN_IN_SECRET`）に、同じ値を置く。本番の Environment にも本番の Worker にも置かない（守り方は `docs/agents/server-e2e.md`）
+- 開発用の環境で主な流れを確かめるジョブ（`deploy.yml` の `main-flow-on-development`）は、開発用の Worker のデプロイのあとに、`server/e2e/cli/run-main-flow.ts` が本物の API を通す。必須のチェックにせず、本番のデプロイは待たない。main で落ちたら、ワークフローが `needs-triage` と `bug` の Issue を立て、緑に戻ったら閉じる。使う秘密の値 `E2E_SIGN_IN_SECRET` は、開発用の Environment の GitHub Actions の秘密の値と、開発用の Worker の秘密の値（`wrangler secret put E2E_SIGN_IN_SECRET`）に、同じ値を置く。本番の Environment にも本番の Worker にも置かない（守り方は `docs/agents/server-e2e.md`）
 - iOS のアプリは、PR ではビルド（UI テストのビルドを含む）までを確かめ、UI テストは main への push と、手で始めたときだけ回す。PR は Mac の結果で merge する（手順は `ios/AGENTS.md` の「確かめる」）。main で落ちたら、ワークフローが落ちたテストごとに Issue を立て（題と本文に、テストの名前と失敗の要約を書く。テストの前に止まった回は、ワークフローの名前の Issue を1つ）、緑に戻ったら閉じる。その Issue は次の PR より先に直す。見本の場面の生の画面を撮る回（`scripts/check ios-screenshots`）は、同じ `ios-ui-test.yml` を `target` の入力で手で始めたときだけ回り、Issue を立てない（回し方は `docs/agents/ios-release.md` の「スクリーンショット」）
 
   **Why:** PR の回は merge の判断に使われず、落ちるのも PR のせいでない揺れだった。CI でしか出ない落ち方（競り合い、Mac と CI の Xcode の版のずれ）は、main の回で気づける。手で始める回は、Mac が閉じている日の PR が UI テストの結果無しで merge されないために残す（経緯は [#478](https://github.com/gn-t-k/nu-tori/issues/478) の解決コメント）

@@ -77,42 +77,115 @@ describe("PR に版を付けるか", () => {
 });
 
 describe("どのマイルストーンに付けるか", () => {
-  describe("今の版のマイルストーンが開いているとき", () => {
+  describe("入った版をまだ審査に出していないとき", () => {
     let result;
     before(() => {
-      result = plan("1.2.1", [
-        { number: 1, title: "iOS 1.2.1", state: "open" },
-        { number: 2, title: "iOS 1.3.0", state: "open" },
-      ]);
+      result = plan({
+        version: "1.2.1",
+        mergedAt: "2026-11-28T04:59:21Z",
+        mainVersion: "1.2.1",
+        milestones: [
+          { number: 1, title: "iOS 1.2.1", state: "open", closed_at: null },
+          { number: 2, title: "iOS 1.3.0", state: "open", closed_at: null },
+        ],
+      });
     });
 
-    it("今の版に付け、次の版に置いたものも移すこと", () => {
-      assert.deepEqual(result, { title: "iOS 1.2.1", movesPending: true });
+    it("その版に付け、次の版に置いたものも移すこと", () => {
+      assert.deepEqual(result, { kind: "currentVersion" });
     });
   });
 
-  describe("今の版のマイルストーンがまだ無いとき", () => {
+  describe("入った版のマイルストーンがまだ無いとき", () => {
     let result;
     before(() => {
-      result = plan("1.2.2", [{ number: 1, title: "iOS 1.2.1", state: "closed" }]);
+      result = plan({
+        version: "1.2.2",
+        mergedAt: "2026-12-03T01:00:00Z",
+        mainVersion: "1.2.2",
+        milestones: [
+          { number: 1, title: "iOS 1.2.1", state: "closed", closed_at: "2026-12-01T00:00:00Z" },
+        ],
+      });
     });
 
-    it("今の版に付け、次の版に置いたものも移すこと", () => {
-      assert.deepEqual(result, { title: "iOS 1.2.2", movesPending: true });
+    it("その版に付け、次の版に置いたものも移すこと", () => {
+      assert.deepEqual(result, { kind: "currentVersion" });
     });
   });
 
-  describe("今の版のマイルストーンが閉じているとき", () => {
+  describe("入った版を審査に出したあとに入ったとき", () => {
     let result;
     before(() => {
-      result = plan("1.2.1", [
-        { number: 1, title: "iOS 1.2.1", state: "closed" },
-        { number: 2, title: "iOS 1.3.0", state: "open" },
-      ]);
+      result = plan({
+        version: "1.2.1",
+        mergedAt: "2026-12-02T00:00:00Z",
+        mainVersion: "1.2.1",
+        milestones: [
+          { number: 1, title: "iOS 1.2.1", state: "closed", closed_at: "2026-12-01T00:00:00Z" },
+          { number: 2, title: "iOS 1.3.0", state: "open", closed_at: null },
+        ],
+      });
     });
 
     it("次の版に置くこと", () => {
-      assert.deepEqual(result, { title: "iOS 次の版", movesPending: false });
+      assert.deepEqual(result, { kind: "pending" });
+    });
+  });
+
+  describe("審査に出す前に入った PR を、出したあとに回したとき", () => {
+    let result;
+    before(() => {
+      result = plan({
+        version: "1.2.1",
+        mergedAt: "2026-11-28T04:59:21Z",
+        mainVersion: "1.2.1",
+        milestones: [
+          { number: 1, title: "iOS 1.2.1", state: "closed", closed_at: "2026-12-01T00:00:00Z" },
+        ],
+      });
+    });
+
+    it("入ったときの版に付け、次の版に置いたものは動かさないこと", () => {
+      assert.deepEqual(result, { kind: "pastVersion" });
+    });
+  });
+
+  describe("マイルストーンの無い前の版のころに入った PR を、main の版が進んでから回したとき", () => {
+    let result;
+    before(() => {
+      result = plan({
+        version: "1.2.0",
+        mergedAt: "2026-11-20T00:00:00Z",
+        mainVersion: "1.2.1",
+        milestones: [
+          { number: 1, title: "iOS 1.2.1", state: "open", closed_at: null },
+          { number: 4, title: "iOS 次の版", state: "open", closed_at: null },
+        ],
+      });
+    });
+
+    it("入ったときの版に付け、次の版に置いたものは動かさないこと", () => {
+      assert.deepEqual(result, { kind: "pastVersion" });
+    });
+  });
+
+  describe("審査に出したあとに入った PR を、main の版が進んでから回したとき", () => {
+    let result;
+    before(() => {
+      result = plan({
+        version: "1.2.1",
+        mergedAt: "2026-12-02T00:00:00Z",
+        mainVersion: "1.2.2",
+        milestones: [
+          { number: 1, title: "iOS 1.2.1", state: "closed", closed_at: "2026-12-01T00:00:00Z" },
+          { number: 3, title: "iOS 1.2.2", state: "open", closed_at: null },
+        ],
+      });
+    });
+
+    it("どの版に入ったかを決めないこと", () => {
+      assert.deepEqual(result, { kind: "undecided" });
     });
   });
 });
