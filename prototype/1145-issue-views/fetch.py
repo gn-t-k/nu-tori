@@ -1,6 +1,9 @@
 """試作用。開いている Issue と、その親子・依存・版を読み、index.html のデータを書き換える。
 
-使い方: python3 prototype/1145-issue-views/fetch.py
+使い方: python3 prototype/1145-issue-views/fetch.py [--active <Issue の番号> ...]
+
+--active には、動いているセッションが結びついた Issue の番号を渡す。セッションの一覧は GitHub からは読めず、
+Claude のセッションが list_sessions で読んで、名前の先頭の「#<番号>」で結びつける（.agents/skills/dispatch/SKILL.md）。
 """
 
 import datetime
@@ -8,6 +11,7 @@ import json
 import pathlib
 import re
 import subprocess
+import sys
 
 R = "repos/gn-t-k/nu-tori"
 HERE = pathlib.Path(__file__).parent
@@ -55,7 +59,19 @@ for n in [n for n, i in issues.items() if i["blocked_by_open"] and i["state"] ==
     deps = api(f"{R}/issues/{n}/dependencies/blocked_by?per_page=100")
     issues[n]["blocked_by"] = [d["number"] for d in deps if d["state"] == "open"]
 
-data = {"fetched": today.isoformat(), "issues": sorted(issues.values(), key=lambda i: i["n"])}
+# 開いている PR と、その PR が閉じる Issue
+out = subprocess.run(
+    ["gh", "api", "graphql", "-f", "query={repository(owner:\"gn-t-k\",name:\"nu-tori\"){pullRequests(states:OPEN,first:50)"
+     "{nodes{number title isDraft closingIssuesReferences(first:5){nodes{number}}}}}}"],
+    capture_output=True, text=True, check=True,
+)
+prs = [
+    {"n": p["number"], "title": p["title"], "draft": p["isDraft"], "closes": [c["number"] for c in p["closingIssuesReferences"]["nodes"]]}
+    for p in json.loads(out.stdout)["data"]["repository"]["pullRequests"]["nodes"]
+]
+active = [int(n) for n in sys.argv[sys.argv.index("--active") + 1:]] if "--active" in sys.argv else []
+
+data = {"fetched": today.isoformat(), "active": active, "prs": prs, "issues": sorted(issues.values(), key=lambda i: i["n"])}
 page = HERE / "index.html"
 page.write_text(
     re.sub(
