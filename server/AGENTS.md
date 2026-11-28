@@ -21,10 +21,10 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
 - Durable Object のクラスは `instrumentDurableObjectWithSentry` で包み、Worker と同じ Sentry の設定（`src/observability/create-sentry-options.ts`）を渡す。包まないと、アラームの例外が Sentry に届かない
 - ドメイン層は、実行基盤の型や API に触れない。ドメイン層が要る置き場と外への呼び出し（記録の置き場、写真の控え、LLM の提供元など）は、ドメイン層が型を定め、基盤に固有の層（Durable Object、D1・R2・LLM の提供元・Apple の API への入出力）がそれを実装する
 - 1人の記録を読み書きするドメインの処理は、その人の Durable Object の中で動かす。入口（受け口の Worker からの要求と、アラーム）ごとの処理は、アカウントの口（`src/account/domain/account-requests.ts` の `accountRequests`）に関数を1つずつ置く。関数は、ドメイン層が型を定めたストア（`AccountStores` のうち要るもの）と要求と今の時刻（要るときだけ）を受け、結果と、起きた利用状況の出来事（`AccountResponse`）を返す。アラームの時刻は返さない（下の「Durable Object のクラス」）。見直しを起こす要求は、要求ごとのログに足す値（`LoggedAccountResponse` の `requestLog`）も返す。出来事を作るところ（口、流れ、種類）は利用状況の設定を読まない
-- Durable Object のクラスは、`setUser` でアカウント ID を付ける、ストアを組んで口を呼ぶ、アラームを張り直す、返った出来事を送る、だけをする薄い層にする。受け口からの要求のあとは、記録を変えたかによらず、`respondRearmingAlarm` がいつも仕事の並びから次の時刻を出し直して張る（無ければ外す）。要求ごとに張るかを選ばない（選ぶと、時刻を動かす記録を書いた要求で張り忘れる。#778）。例外は、表ごと消す記録の削除（Durable Object が渡す `eraseRecords` が表と一緒にアラームも外す）と、アラーム自身（口が出した時刻に張る）。送るかどうか（利用状況の設定）は、どの入口の出来事も通る送る前の1か所（`armAlarmAndSendUsageEvents` が呼ぶ `selectSendableUsageEvents`）で、口が答えを出し終えた直後の設定で決める。出来事を送る道をほかに作らない。`alarm()` も同じ形にし、ログと Sentry への報告だけを足す。入口を足すときは、口に関数を足してから、Durable Object に同じ形のメソッドを足す
+- Durable Object のクラスは、名前（`ctx.id.name`）からアカウント ID を得て Sentry に付ける（`identifyAccount`）、ストアを組んで口を呼ぶ、アラームを張り直す、返った出来事を送る、だけをする薄い層にする。受け口からの要求のあとは、記録を変えたかによらず、`respondRearmingAlarm` がいつも仕事の並びから次の時刻を出し直して張る（無ければ外す）。要求ごとに張るかを選ばない（選ぶと、時刻を動かす記録を書いた要求で張り忘れる。#778）。例外は、表ごと消す記録の削除（Durable Object が渡す `eraseRecords` が表と一緒にアラームも外す）と、アラーム自身（口が出した時刻に張る）。送るかどうか（利用状況の設定）は、どの入口の出来事も通る送る前の1か所（`armAlarmAndSendUsageEvents` が呼ぶ `selectSendableUsageEvents`）で、口が答えを出し終えた直後の設定で決める。出来事を送る道をほかに作らない。`alarm()` も同じ形にし、ログと Sentry への報告だけを足す。入口を足すときは、口に関数を足してから、Durable Object に同じ形のメソッドを足す
 - HTTP の受け口は、記録を読み書きする要求なら、セッションを確かめ、回数の歯止めをかけてから、その人の Durable Object を呼ぶだけにする。まだセッションのないサインインと Apple のサーバー間通知は、受け口の Worker の認証で受ける。アカウントの削除は、受け口の Worker でドメイン層を呼ぶ。Durable Object の中身を消すときも、その Durable Object の入口を呼んで行う
 - 要求の本文の大きさの上限は、受け口の入口（`src/http/limit-request-body/`）でかけ、超えたら 413 で断る。入口でかけるので、経路を足すと既定の上限がかかる。それより大きい本文を受ける経路を足すときは、入口に上限を足す。写真は写真の口が自分の上限を持つ。同期の書き込みの量の上限は `docs/agents/sync.md` の「量の上限」
-- 受け口は、Durable Object を呼ぶたびにアカウント ID を渡す。Durable Object の中では、その呼び出しの Sentry の報告に user の ID として付ける
+- 受け口は、アカウント ID を名前にして Durable Object を引き（`getAccountDurableObject`）、メソッドの引数にはアカウント ID を渡さない（#1077。理由は `identifyAccount` のコメント）
 - 受け口のスキーマは要求の形だけを確かめる。受け付ける値の範囲はドメイン層で確かめる
 - 想定した失敗（`docs/agents/languages/typescript.md` の「失敗の扱い」）を状態コードに直すのは受け口で行う
 - 失敗した段（R2、LLM の提供元の呼び出しなど）は、例外の `stage` の欄に持たせる。受け口の要求ごとのログ（`src/http/observe-request.ts`）が、例外の名前と一緒に出す
@@ -80,7 +80,7 @@ nu-tori のサーバー。TypeScript で書き、Cloudflare で動かす（ADR-0
   - アラームで動かす仕事は、「進める」と「次に動く時刻」を対にした値（`src/domain/alarm-job.ts`）にして、1つの並び（`src/domain/account-alarm-jobs.ts`）に置く。アラームで動かすものを足すときは、この並びに足す。アラームは並びの順に進め、エラーは並びで先の仕事のものを報告する
   - アラーム1回分（仕事を順に進め、次に張る時刻と報告するエラーを決める）は `src/domain/run-account-alarm.ts` が、要求のあとに張るいちばん早い時刻は `src/domain/compute-next-alarm-at.ts` が、どちらもこの並びから出す。前者はアカウントの口が、後者は Durable Object の `respondRearmingAlarm` が呼ぶ。Durable Object の `alarm()` は、口から返った時刻に張り、Sentry・PostHog・ログに出し、エラーを投げるだけにする
   - 仕事が `left_to_alarm_retry` を返したアラームは、その仕事の時刻を除いたいちばん早い時刻に張り直す（過ぎた時刻に張り直さず、Cloudflare のアラームのやり直しに任せる）。写真の控えを R2 から消す仕事が、消せなかったときに返す
-  - アラームの中のアカウント ID は `ctx.id.name`（`idFromName` で付けた名前）から得る。テストの実行環境でも、張ったアラームはひとりでに動くので、アラームの結果を確かめるテストは `runDurableObjectAlarm` で動かしたうえで `vi.waitFor` で待つ
+  - アラームの中のアカウント ID も `ctx.id.name` から得る（上の「層」）。テストの実行環境でも、張ったアラームはひとりでに動くので、アラームの結果を確かめるテストは `runDurableObjectAlarm` で動かしたうえで `vi.waitFor` で待つ
 - 記録に対しては、全員をまたぐ SQL は書けない。全員をまたぐ分析は、記録を書くときに分析用の出来事を PostHog に送って行う
 
 ## テスト

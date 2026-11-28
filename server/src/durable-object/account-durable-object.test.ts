@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/durable-sqlite";
 import { type DurableObject, env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import { mockAccountRequestsOk } from "../account/domain/account-requests.mock";
-import { generateRecordId } from "../domain/record-id";
+import { generateRecordId, type RecordId } from "../domain/record-id";
 import { useFakeClock } from "../estimation/http/testing/use-fake-clock";
 import type { SyncClientState } from "../domain/sync-client-state";
 import { enableUsageEventSending } from "../http/sync-routes/testing/enable-usage-event-sending";
@@ -19,30 +19,57 @@ import { getAccountDurableObject } from "./get-account-durable-object";
 import { durableObjectFactory } from "./testing/durable-object-factory";
 
 describe("アカウントの Durable Object", () => {
-  describe("使い始めた日を決める呼び出しに、受け口がアカウント ID を渡したとき", () => {
+  // アカウント ID は引数で受けず、受け口が引いた名前から得る（#1077）
+  describe("アカウント ID の名前で得た Durable Object が要求を受けたとき", () => {
     let accountId: string;
-    let signIn: {
-      signedInAt: Date;
-      timeZone: string | undefined;
-      isFreeTrialUsedByEarlierAccount: boolean;
-      agreedTermsVersion: undefined;
-    };
     let setUserSpy: ReturnType<typeof mockSetUserOk>;
     beforeEach(() => {
       accountId = generateRecordId();
-      signIn = {
-        signedInAt: new Date(),
-        timeZone: undefined,
-        isFreeTrialUsedByEarlierAccount: false,
-        agreedTermsVersion: undefined,
-      };
       setUserSpy = mockSetUserOk();
+      mockAccountRequestsOk();
     });
 
-    test("Sentry の user の ID に付けること", async () => {
-      await getAccountDurableObject(env, accountId).recordFirstSignIn(accountId, signIn);
-      expect(setUserSpy).toHaveBeenCalledWith({ id: accountId });
+    for (const { name, call } of Object.values(allRequestCalls)) {
+      test(`${name}で、名前のアカウント ID を Sentry の user の ID に付けること`, async () => {
+        await call(accountId);
+        expect(setUserSpy).toHaveBeenCalledWith({ id: accountId });
+      });
+    }
+  });
+
+  describe("アカウント ID の名前で得た Durable Object が写真を受け取ったとき", () => {
+    let accountId: string;
+    let photoId: RecordId;
+    beforeEach(() => {
+      accountId = generateRecordId();
+      photoId = generateRecordId();
     });
+
+    test("名前のアカウント ID の置き場に置くこと", async () => {
+      await getAccountDurableObject(env, accountId).receiveMealPhoto({
+        photoId,
+        photo: new ArrayBuffer(1),
+      });
+      expect(await env.PHOTOS.head(`${accountId}/meal-photos/${photoId}`)).not.toBeNull();
+    });
+  });
+
+  describe("名前の無い Durable Object が要求を受けたとき", () => {
+    let stub: DurableObjectStub<AccountDurableObject>;
+    beforeEach(() => {
+      mockAccountRequestsOk();
+      stub = env.ACCOUNT.get(env.ACCOUNT.newUniqueId());
+    });
+
+    for (const { name, call } of Object.values(allRequestCalls)) {
+      test(`${name}を例外にすること`, async () => {
+        await expect(
+          runInDurableObject(stub, async (instance) => {
+            await call(instance);
+          }),
+        ).rejects.toThrow("アカウント ID が読めない");
+      });
+    }
   });
 
   describe("東京で 2030-01-01 に最初のサインインを書いたとき", () => {
@@ -95,20 +122,6 @@ describe("アカウントの Durable Object", () => {
           expect(await readAlarm(accountId)).toBe(Date.parse("2030-01-30T15:00:00Z"));
         });
       }
-    });
-  });
-
-  describe("記録を消す呼び出しに、受け口がアカウント ID を渡したとき", () => {
-    let accountId: string;
-    let setUserSpy: ReturnType<typeof mockSetUserOk>;
-    beforeEach(() => {
-      accountId = generateRecordId();
-      setUserSpy = mockSetUserOk();
-    });
-
-    test("Sentry の user の ID に付けること", async () => {
-      await getAccountDurableObject(env, accountId).deleteRecords(accountId);
-      expect(setUserSpy).toHaveBeenCalledWith({ id: accountId });
     });
   });
 
@@ -267,7 +280,7 @@ describe("アカウントの Durable Object", () => {
           await callPushSyncWrites(accountId);
           order = [];
           const deleting = getAccountDurableObject(env, accountId)
-            .deleteRecords(accountId)
+            .deleteRecords()
             .then(() => order.push("deleteRecords が返った"));
           await new Promise((resolve) => setTimeout(resolve, 50));
           order.push("PostHog が答えた");
@@ -390,8 +403,19 @@ const goalSetupSituation = {
   bodyData: undefined,
 };
 
-const callRecordFirstSignIn = (accountId: string) =>
-  getAccountDurableObject(env, accountId).recordFirstSignIn(accountId, {
+// 受け口から呼ぶ入口の名前
+type RequestName = Exclude<keyof AccountDurableObject, keyof DurableObject>;
+
+type AccountIdOrInstance = string | Pick<AccountDurableObject, RequestName>;
+
+// アカウント ID なら、その名前で得る。名前の無い Durable Object を試すときは、その実体を渡す
+const stubOf = (target: AccountIdOrInstance) =>
+  typeof target === "string" ? getAccountDurableObject(env, target) : target;
+
+const callDeleteRecords = (target: AccountIdOrInstance) => stubOf(target).deleteRecords();
+
+const callRecordFirstSignIn = (target: AccountIdOrInstance) =>
+  stubOf(target).recordFirstSignIn({
     signedInAt: new Date(),
     timeZone: "Asia/Tokyo",
     isFreeTrialUsedByEarlierAccount: false,
@@ -409,49 +433,42 @@ const armStaleAlarm = (accountId: string) =>
     state.storage.setAlarm(Date.parse("2030-01-02T00:00:00Z")),
   );
 
-const callPushSyncWrites = (accountId: string) =>
-  getAccountDurableObject(env, accountId).pushSyncWrites(accountId, {
+const callPushSyncWrites = (target: AccountIdOrInstance) =>
+  stubOf(target).pushSyncWrites({
     clientState,
     writes: [],
     isFinalBatch: true,
   });
 
-const callPullSyncChanges = (accountId: string) =>
-  getAccountDurableObject(env, accountId).pullSyncChanges(accountId, {
+const callPullSyncChanges = (target: AccountIdOrInstance) =>
+  stubOf(target).pullSyncChanges({
     clientState,
     afterSequence: 0,
   });
 
-const callReceiveMealPhoto = (accountId: string) =>
-  getAccountDurableObject(env, accountId).receiveMealPhoto(accountId, {
+const callReceiveMealPhoto = (target: AccountIdOrInstance) =>
+  stubOf(target).receiveMealPhoto({
     photoId: generateRecordId(),
     photo: new ArrayBuffer(0),
   });
 
-const callPreviewGoalSetup = (accountId: string) =>
-  getAccountDurableObject(env, accountId).previewGoalSetup(
-    accountId,
-    { ...goalSetupSituation, direction: "maintain" },
-    new Date(),
-  );
+const callPreviewGoalSetup = (target: AccountIdOrInstance) =>
+  stubOf(target).previewGoalSetup({ ...goalSetupSituation, direction: "maintain" }, new Date());
 
-const callProposeGoals = (accountId: string) =>
-  getAccountDurableObject(env, accountId).proposeGoals(
-    accountId,
+const callProposeGoals = (target: AccountIdOrInstance) =>
+  stubOf(target).proposeGoals(
     { ...goalSetupSituation, plan: { direction: "maintain" } },
     new Date(),
   );
 
-const callAssessCustomTargetWeight = (accountId: string) =>
-  getAccountDurableObject(env, accountId).assessCustomTargetWeight(
-    accountId,
+const callAssessCustomTargetWeight = (target: AccountIdOrInstance) =>
+  stubOf(target).assessCustomTargetWeight(
     { ...goalSetupSituation, direction: "lose", deadlineOn: "2026-12-31", targetWeightKg: 60 },
     new Date(),
   );
 
-const callDecideGoal = (accountId: string) =>
-  getAccountDurableObject(env, accountId).decideGoal(
-    accountId,
+const callDecideGoal = (target: AccountIdOrInstance) =>
+  stubOf(target).decideGoal(
     {
       ...goalSetupSituation,
       requestId: generateRecordId(),
@@ -473,23 +490,20 @@ const runAlarm = async (accountId: string) => {
   await runDurableObjectAlarm(stub);
 };
 
-const callReadMealPhoto = (accountId: string) =>
-  getAccountDurableObject(env, accountId).readMealPhoto(accountId, generateRecordId());
+const callReadMealPhoto = (target: AccountIdOrInstance) =>
+  stubOf(target).readMealPhoto(generateRecordId());
 
-const callFindLastEstimationAttemptConclusionOfMeal = (accountId: string) =>
-  getAccountDurableObject(env, accountId).findLastEstimationAttemptConclusionOfMeal(
-    accountId,
-    generateRecordId(),
-  );
+const callFindLastEstimationAttemptConclusionOfMeal = (target: AccountIdOrInstance) =>
+  stubOf(target).findLastEstimationAttemptConclusionOfMeal(generateRecordId());
 
-const callWatchReply = (accountId: string) =>
-  getAccountDurableObject(env, accountId).watchReply(accountId, generateRecordId());
+const callWatchReply = (target: AccountIdOrInstance) =>
+  stubOf(target).watchReply(generateRecordId());
 
-const callFindTermsAgreementRequirement = (accountId: string) =>
-  getAccountDurableObject(env, accountId).findTermsAgreementRequirement(accountId);
+const callFindTermsAgreementRequirement = (target: AccountIdOrInstance) =>
+  stubOf(target).findTermsAgreementRequirement();
 
-const callAgreeToTerms = (accountId: string) =>
-  getAccountDurableObject(env, accountId).agreeToTerms(accountId, {
+const callAgreeToTerms = (target: AccountIdOrInstance) =>
+  stubOf(target).agreeToTerms({
     requestId: generateRecordId(),
     termsVersion: "unknown",
   });
@@ -507,15 +521,15 @@ const transaction = {
   revokedAt: undefined,
 } as const;
 
-const callReportSubscriptionTransaction = (accountId: string) =>
-  getAccountDurableObject(env, accountId).reportSubscriptionTransaction(accountId, {
+const callReportSubscriptionTransaction = (target: AccountIdOrInstance) =>
+  stubOf(target).reportSubscriptionTransaction({
     requestId: generateRecordId(),
     trigger: "purchase",
     transaction,
   });
 
-const callReceiveAppStoreServerNotification = (accountId: string) =>
-  getAccountDurableObject(env, accountId).receiveAppStoreServerNotification(accountId, {
+const callReceiveAppStoreServerNotification = (target: AccountIdOrInstance) =>
+  stubOf(target).receiveAppStoreServerNotification({
     notificationUuid: generateRecordId(),
     notificationType: "DID_RENEW",
     notificationSubtype: undefined,
@@ -555,6 +569,15 @@ const requestCalls = {
     call: callReceiveAppStoreServerNotification,
   },
 } satisfies Record<
-  Exclude<keyof AccountDurableObject, keyof DurableObject | "recordFirstSignIn" | "deleteRecords">,
-  { name: string; call: (accountId: string) => Promise<unknown> }
+  Exclude<RequestName, "recordFirstSignIn" | "deleteRecords">,
+  { name: string; call: (target: AccountIdOrInstance) => Promise<unknown> }
+>;
+
+const allRequestCalls = {
+  ...requestCalls,
+  recordFirstSignIn: { name: "最初のサインインを書く要求", call: callRecordFirstSignIn },
+  deleteRecords: { name: "記録を消す要求", call: callDeleteRecords },
+} satisfies Record<
+  RequestName,
+  { name: string; call: (target: AccountIdOrInstance) => Promise<unknown> }
 >;

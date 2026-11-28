@@ -156,7 +156,7 @@ export const subscriptionRoutes = new OpenAPIHono<{
       const records = await getAccountDurableObject(
         c.env,
         c.var.accountId,
-      ).reportSubscriptionTransaction(c.var.accountId, { requestId, trigger, transaction });
+      ).reportSubscriptionTransaction({ requestId, trigger, transaction });
       return c.json(
         {
           result: routed,

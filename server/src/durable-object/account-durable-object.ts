@@ -31,7 +31,7 @@ import { createRecordKindStores } from "./create-record-kind-stores";
 import { createLedgerStore } from "./create-ledger-store";
 import { durableObjectMigrations } from "./durable-object-migrations";
 
-// 受け口は呼ぶたびに accountId を渡す。Sentry の報告に user の ID として付けるため。
+// アカウント ID は引数で受けず、受け口が idFromName で付けた名前から得る（identifyAccount）。
 // 要求ごとの処理はアカウントの口（accountRequests）が持ち、ここではストアを組んで渡し、要求のあとにアラームを張り直し、出来事を利用状況の設定で絞って送る
 export const AccountDurableObject = instrumentDurableObjectWithSentry(
   createSentryOptions,
@@ -47,10 +47,9 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     }
 
     async recordFirstSignIn(
-      accountId: string,
       signIn: Parameters<typeof accountRequests.recordFirstSignIn>[1],
     ): Promise<void> {
-      setUser({ id: accountId });
+      const accountId = this.identifyAccount();
       return this.respondRearmingAlarm(
         accountId,
         await this.createRecordKindStores(accountId),
@@ -65,11 +64,12 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    async pushSyncWrites(
-      accountId: string,
-      request: { clientState: SyncClientState; writes: SyncWrite[]; isFinalBatch: boolean },
-    ) {
-      setUser({ id: accountId });
+    async pushSyncWrites(request: {
+      clientState: SyncClientState;
+      writes: SyncWrite[];
+      isFinalBatch: boolean;
+    }) {
+      const accountId = this.identifyAccount();
       const stores = await this.createSyncStores(accountId);
       return this.respondWithRequestLog(
         accountId,
@@ -78,11 +78,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    async pullSyncChanges(
-      accountId: string,
-      request: { clientState: SyncClientState; afterSequence: number },
-    ) {
-      setUser({ id: accountId });
+    async pullSyncChanges(request: { clientState: SyncClientState; afterSequence: number }) {
+      const accountId = this.identifyAccount();
       const stores = await this.createSyncStores(accountId);
       return this.respondWithRequestLog(
         accountId,
@@ -92,8 +89,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     }
 
     // 失敗は受け口に返す。受け口は、数の上限なら 429、受け取れなかったなら 500 にし、要求ごとのログに失敗した段を出す
-    async receiveMealPhoto(accountId: string, request: { photoId: RecordId; photo: ArrayBuffer }) {
-      setUser({ id: accountId });
+    async receiveMealPhoto(request: { photoId: RecordId; photo: ArrayBuffer }) {
+      const accountId = this.identifyAccount();
       const records = await this.createRecordKindStores(accountId);
       return this.respondRearmingAlarm(
         accountId,
@@ -110,8 +107,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    async readMealPhoto(accountId: string, photoId: RecordId): Promise<ArrayBuffer | undefined> {
-      setUser({ id: accountId });
+    async readMealPhoto(photoId: RecordId): Promise<ArrayBuffer | undefined> {
+      const accountId = this.identifyAccount();
       const records = await this.createRecordKindStores(accountId);
       return this.respondRearmingAlarm(
         accountId,
@@ -126,8 +123,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    async findLastEstimationAttemptConclusionOfMeal(accountId: string, mealId: RecordId) {
-      setUser({ id: accountId });
+    async findLastEstimationAttemptConclusionOfMeal(mealId: RecordId) {
+      const accountId = this.identifyAccount();
       const records = await this.createRecordKindStores(accountId);
       return this.respondRearmingAlarm(
         accountId,
@@ -137,11 +134,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     }
 
     // 送った文章の見守る要求。文章が無ければ undefined
-    async watchReply(
-      accountId: string,
-      sentTextId: RecordId,
-    ): Promise<ReadableStream<Uint8Array> | undefined> {
-      setUser({ id: accountId });
+    async watchReply(sentTextId: RecordId): Promise<ReadableStream<Uint8Array> | undefined> {
+      const accountId = this.identifyAccount();
       const records = await this.createRecordKindStores(accountId);
       return this.respondRearmingAlarm(
         accountId,
@@ -158,11 +152,10 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     // 目標の設定の、その場で答える要求。どの要求も、要求に載った身体データと摂取エネルギーを残さない。
     // 時刻は受け口が渡す（確かめのジョブが、開発用の環境で過去の時刻に差し替えるため。resolve-requested-at.ts）
     async previewGoalSetup(
-      accountId: string,
       request: Parameters<typeof accountRequests.previewGoalSetup>[1],
       now: Date,
     ) {
-      setUser({ id: accountId });
+      const accountId = this.identifyAccount();
       const stores = await this.createRecordStores(accountId);
       return this.respondWithRequestLog(
         accountId,
@@ -171,12 +164,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    async proposeGoals(
-      accountId: string,
-      request: Parameters<typeof accountRequests.proposeGoals>[1],
-      now: Date,
-    ) {
-      setUser({ id: accountId });
+    async proposeGoals(request: Parameters<typeof accountRequests.proposeGoals>[1], now: Date) {
+      const accountId = this.identifyAccount();
       const stores = await this.createRecordStores(accountId);
       return this.respondWithRequestLog(
         accountId,
@@ -186,11 +175,10 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     }
 
     async assessCustomTargetWeight(
-      accountId: string,
       request: Parameters<typeof accountRequests.assessCustomTargetWeight>[1],
       now: Date,
     ) {
-      setUser({ id: accountId });
+      const accountId = this.identifyAccount();
       const stores = await this.createRecordStores(accountId);
       return this.respondWithRequestLog(
         accountId,
@@ -200,12 +188,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
     }
 
     // 目標を決める。決めたら、目標・1日の目安・推定消費カロリーの記録を、応答と同期の両方に出す
-    async decideGoal(
-      accountId: string,
-      request: Parameters<typeof accountRequests.decideGoal>[1],
-      now: Date,
-    ) {
-      setUser({ id: accountId });
+    async decideGoal(request: Parameters<typeof accountRequests.decideGoal>[1], now: Date) {
+      const accountId = this.identifyAccount();
       const stores = await this.createRecordStores(accountId);
       return this.respondWithRequestLog(
         accountId,
@@ -214,8 +198,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    async findTermsAgreementRequirement(accountId: string) {
-      setUser({ id: accountId });
+    async findTermsAgreementRequirement() {
+      const accountId = this.identifyAccount();
       return this.respondRearmingAlarm(
         accountId,
         await this.createRecordKindStores(accountId),
@@ -225,11 +209,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    async agreeToTerms(
-      accountId: string,
-      request: Parameters<typeof accountRequests.agreeToTerms>[1],
-    ) {
-      setUser({ id: accountId });
+    async agreeToTerms(request: Parameters<typeof accountRequests.agreeToTerms>[1]) {
+      const accountId = this.identifyAccount();
       return this.respondRearmingAlarm(
         accountId,
         await this.createRecordKindStores(accountId),
@@ -243,10 +224,9 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     // 端末からの取引の知らせ。案内は受け口が D1 で決めてから呼ぶ
     async reportSubscriptionTransaction(
-      accountId: string,
       report: Parameters<typeof accountRequests.reportSubscriptionTransaction>[1],
     ) {
-      setUser({ id: accountId });
+      const accountId = this.identifyAccount();
       const stores = await this.createRecordStores(accountId);
       return this.respondRearmingAlarm(
         accountId,
@@ -264,10 +244,9 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
 
     // App Store のサーバー通知。案内は受け口が D1 で決めてから呼ぶ
     async receiveAppStoreServerNotification(
-      accountId: string,
       notification: Parameters<typeof accountRequests.receiveAppStoreServerNotification>[1],
     ) {
-      setUser({ id: accountId });
+      const accountId = this.identifyAccount();
       const stores = await this.createRecordStores(accountId);
       return this.respondRearmingAlarm(
         accountId,
@@ -283,8 +262,8 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       );
     }
 
-    async deleteRecords(accountId: string): Promise<void> {
-      setUser({ id: accountId });
+    async deleteRecords(): Promise<void> {
+      const accountId = this.identifyAccount();
       // 消したあとは表も無く、張り直す仕事も無い。アラームは、下の eraseRecords が表と一緒に外す
       await this.armAlarmAndSendUsageEvents(
         accountId,
@@ -300,14 +279,9 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       await Promise.all(this.pendingUsageEventSends);
     }
 
-    // アラームには受け口が無いので、アカウント ID は idFromName で付けた名前から得る。
     // 受け口の要求ごとのログと同じ形で、呼び出しごとにログを出す
     override async alarm(): Promise<void> {
-      const accountId = this.ctx.id.name;
-      if (accountId === undefined) {
-        throw new Error("アラームの中でアカウント ID が読めない");
-      }
-      setUser({ id: accountId });
+      const accountId = this.identifyAccount();
       const startedAt = Date.now();
       const response = await accountRequests.runAlarm({
         writeRecordChanges: createRecordChangeWriter(this.ctx.storage),
@@ -342,6 +316,17 @@ export const AccountDurableObject = instrumentDurableObjectWithSentry(
       if (ran.error !== undefined) {
         throw ran.error;
       }
+    }
+
+    // 受け口は名前（アカウント ID）でこの Durable Object を引く。アカウント ID を引数で受けると、引いた名前と違う ID を渡したとき、記録はこの人の DB に入るのに、写真はほかの人の置き場に読み書きされうる（#1077）。
+    // Sentry の user の ID もここで付ける
+    private identifyAccount(): string {
+      const accountId = this.ctx.id.name;
+      if (accountId === undefined) {
+        throw new Error("アカウント ID が読めない（名前で得ていない Durable Object）");
+      }
+      setUser({ id: accountId });
+      return accountId;
     }
 
     private async createSyncStores(accountId: string) {

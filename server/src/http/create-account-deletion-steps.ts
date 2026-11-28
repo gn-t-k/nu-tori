@@ -24,7 +24,7 @@ export const createAccountDeletionSteps = (
       await appleRefreshTokens.delete(accountId);
     },
     deleteRecords: async (accountId: string) => {
-      await getAccountDurableObject(env, accountId).deleteRecords(accountId);
+      await getAccountDurableObject(env, accountId).deleteRecords();
     },
     deleteMealPhotoFiles: async (accountId: string) => {
       await deleteMealPhotoFilesOfAccount(env.PHOTOS, accountId);

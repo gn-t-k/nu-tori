@@ -64,10 +64,10 @@ export const mealPhotoRoutes = new OpenAPIHono<{ Bindings: Env }>()
       if (!startsWithJpegMarker(photo)) {
         return c.body(null, 415);
       }
-      const received = await getAccountDurableObject(c.env, c.var.accountId).receiveMealPhoto(
-        c.var.accountId,
-        { photoId: c.req.valid("param").photoId, photo },
-      );
+      const received = await getAccountDurableObject(c.env, c.var.accountId).receiveMealPhoto({
+        photoId: c.req.valid("param").photoId,
+        photo,
+      });
       if (R.isSuccess(received)) {
         return c.body(null, 204);
       }
@@ -103,7 +103,6 @@ export const mealPhotoRoutes = new OpenAPIHono<{ Bindings: Env }>()
     }),
     async (c) => {
       const photo = await getAccountDurableObject(c.env, c.var.accountId).readMealPhoto(
-        c.var.accountId,
         c.req.valid("param").photoId,
       );
       if (photo === undefined) {
