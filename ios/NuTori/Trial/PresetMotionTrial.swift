@@ -1,13 +1,10 @@
 import SwiftUI
 
 /// 試作（#1133）: 入力欄のプリセットの行の出入りの動きの案。TestFlight の版で、入力欄の上の右端の切り替えから選ぶ。
-/// 決めたら、決めた案だけを `TimelineComposer` に残し、このファイルを消す
+/// 決めたら、決めた案だけを `TimelineComposer` に残し、このファイルを消す（「今のまま」に決めたら、`TimelineComposer` のバーの `.clipped()` も外す）
 enum PresetMotionTrial: String, CaseIterable, Identifiable {
     case still
     case fade
-    case fadeInOnly
-    case sink
-    case shrink
 
     static let storageKey = "trial.presetMotion"
 
@@ -17,28 +14,14 @@ enum PresetMotionTrial: String, CaseIterable, Identifiable {
         switch self {
         case .still: "今のまま"
         case .fade: "薄れながら詰まる"
-        case .fadeInOnly: "出るときだけ薄れ"
-        case .sink: "沈みながら薄れる"
-        case .shrink: "縮みながら薄れる"
         }
     }
 
     /// 行が出入りするときの動き。nil なら動かさない。長さは入力欄の丸と「送る」と同じ（DESIGN.md の Motion）
-    func animation(showing: Bool) -> Animation? {
+    var animation: Animation? {
         switch self {
         case .still: nil
-        case .fadeInOnly: showing ? .smooth(duration: 0.2) : nil
-        case .fade, .sink, .shrink: .smooth(duration: 0.2)
-        }
-    }
-
-    /// 「視差効果を減らす」では薄れだけにする
-    func transition(reduceMotion: Bool) -> AnyTransition {
-        switch self {
-        case .still, .fade, .fadeInOnly: .opacity
-        case .sink: reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 8))
-        case .shrink:
-            reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.95, anchor: .bottom))
+        case .fade: .smooth(duration: 0.2)
         }
     }
 }
