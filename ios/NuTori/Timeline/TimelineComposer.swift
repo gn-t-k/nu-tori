@@ -102,7 +102,8 @@ struct TimelineComposer: View {
     }
 
     @State private var draft: TextDraft
-    @AppStorage(PresetMotionTrial.storageKey) private var presetMotionTrial: PresetMotionTrial = .still
+    @AppStorage(PresetMotionTrial.storageKey) private var presetMotionTrial: PresetMotionTrial =
+        .still
     @State private var showsTrialSwitch = false
     @FocusState private var fieldFocused: Bool
 

@@ -55,11 +55,16 @@ struct PresetMotionTrialSwitch: View {
                 }
             }
         } label: {
+            // DESIGN.md の標準の余白と押せる範囲 44 に従わない。TestFlight でだけ出す試作の切り替えで、入力欄の高さを変えずに置くため。
+            // 押せる範囲は、並べる高さを変えずに上下へ 12 ずつ広げて 44 にする
             Text("試作: \(selection.title)")
                 .font(.caption2)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(.regularMaterial, in: Capsule())
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+                .padding(.vertical, -12)
         }
     }
 }

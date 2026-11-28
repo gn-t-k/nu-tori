@@ -64,7 +64,7 @@ flowchart LR
 
 審査に出すたびに、主な流れを実機で通し直さない（アカウントを作り直すことを含む）。主な流れは機能ごとに UI テストとサーバーのテストで確かめ、Apple の部品（ヘルスケア、カメラ、通知、StoreKit、Sign in with Apple）とのつなぎ目は、下の「実機の確認」の時機の実機のチケットで確かめてある。審査に出す前に、エージェントが次を確かめ、出すビルドの番号と結果を出す作業の Issue に書く。
 
-- 出すビルドのコミットの `ios/NuTori/Trial/` に、`TrialBuild.swift` のほかのファイル（試作）が残っていない（`docs/agents/decisions.md` の「アプリの見た目と動きを実機で比べる試作」）
+- 出すビルドのコミットの `ios/NuTori/Trial/` に、`TrialBuild.swift` のほかのファイル（試作）が残っていない。コミットは、出すビルドを組んだ Xcode Cloud の回（`docs/agents/tooling.md` の「App Store Connect を読む」の `buildRuns`）の `sourceCommit` で引き、`git ls-tree --name-only <コミット> ios/NuTori/Trial/` で見る（`docs/agents/decisions.md` の「アプリの見た目と動きを実機で比べる試作」）
 - 出すビルドが TestFlight の内部テストに配られている（`docs/agents/tooling.md` の「App Store Connect を読む」の、TestFlight に配られたか）
 - main の `deploy.yml` の最後の回が success で、出すビルドの番号が main の `server/wrangler.jsonc` の本番の `MINIMUM_APP_BUILD` 以上
 - `/v1/apps/<app>` の `subscriptionStatusUrl` と `subscriptionStatusUrlForSandbox` が、本番の routes（`server/wrangler.jsonc`）と通知の経路（`server/src/http/app-store-server-notification-routes/`）から組んだ URL を指し、`subscriptionStatusUrlVersion` と `subscriptionStatusUrlVersionForSandbox` が `V2`
