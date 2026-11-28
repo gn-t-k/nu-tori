@@ -38,14 +38,14 @@ flowchart LR
 - ブランチは、Mac では `prototype/<Issue の番号>-<題>`、クラウドでは試作のセッションに割り当てられた `claude/...` にする。クラウドでは、同じセッションで実装の PR を出さない。PR を merge するとそのセッションのブランチが消え、試作も消えるため
 - `docs/ui-design/`（凍結済み）、`site/`・`ios/`・`server/` の下、Claude Docs には置かない。アプリやページの部品を使う試作も、`prototype/<Issue の番号>-<題>/` から相対パスで読む。`/prototype` スキルの置き場（`.agents/skills/prototype/SKILL.md` の "close to where it will actually be used"、`UI.md` の sub-shape A・B）より、この置き場を優先する
 - 作った HTML は Artifact（claude.ai の非公開のページ）にも載せ、そのリンクと、ブランチとパスを Issue のコメントに書く。開発者が iPad の Claude アプリで開いて見比べるため。正本はブランチのファイルで、直したら同じページに載せ直す
-- 試作を探すときは、Issue のコメントにあるブランチとパスから読む
+- ブランチに置いた試作を探すときは、Issue のコメントにあるブランチとパスから読む。実機で比べる試作の探し方は、下の「アプリの見た目と動きを実機で比べる試作」
 - この決まりより前の `prototype/0001-*` のブランチの `0001` は、Issue の番号ではなく `docs/ui-design/0001-first-release` の番号で、試作は `docs/ui-design/0001-first-release/` や `prototype/` の下にある
 
 **Why:** 置き場が `docs/ui-design/`・`site/` の下・ブランチ・Claude Docs にばらけ、試作を探して grep とブランチの探索を約8回した。凍結済みの `docs/ui-design/` に試作を置いたこともあった（#744、#796）
 
 ### アプリの見た目と動きを実機で比べる試作
 
-アプリの見た目と動きのうち、実機で触らないと決められないもの（打ちながら見る動き、指で動かすもの）の試作は、上の置き場の例外にして、main の `ios/` に入れ、TestFlight の版で比べる。`/prototype` スキルの、試作を main の外のブランチに残す決まり（`SKILL.md` の 6、`UI.md` の終わり）より、この節を優先する。
+アプリの見た目と動きのうち、実機で触らないと決められないもの（打ちながら見る動き、指で動かすもの）の試作は、上の置き場の例外にして、main の `ios/` に入れ、TestFlight の版で比べる。`/prototype` スキルの、試作を main の外のブランチに残す決まり（`SKILL.md` の「Rules that apply to both」の 6、`UI.md` の「6. Capture the answer and clean up」）より、この節を優先する。
 
 - 案は本番の画面の中に入れ、切り替えで選べるようにする。試作ごとに、案と切り替えを `ios/NuTori/Trial/` の1つのファイルに置き、画面のコードからはそこを読むだけにする
 - 切り替えは TestFlight の版でだけ出す。出すかは `ios/NuTori/Trial/TrialBuild.swift` で決め、このファイルは試作が無いあいだも残す。App Store の版とデバッグビルドでは出さず、今の見た目のまま動く

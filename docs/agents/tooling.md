@@ -85,7 +85,7 @@ Xcode Cloud のビルドの成否は、GitHub の check run（app は `xcode-clo
 App Store Connect の画面は英語で出るので、文書・Issue・開発者への案内では、画面の名前（メニュー、欄、ボタン、選択肢）を英語のまま書く。説明が要るときは、英語の名前に日本語を添える。日本語に訳すと、開発者が英語に戻してページ内を検索する手間がかかる（#718）。
 
 - 読む（`<app>` はアプリの ID `6816842705`。`--all` で次のページをたどる。出力はファイルかパイプで渡し、`echo "$変数"` で受け渡さない。zsh の `echo` は `\n` を改行に変えて JSON を壊す）
-  - Xcode Cloud: `/v1/ciProducts?filter[app]=<app>`、`/v1/ciProducts/<id>/buildRuns?sort=-number&limit=5`、`/v1/ciBuildRuns/<id>/actions`、`/v1/ciBuildActions/<id>/issues`
+  - Xcode Cloud: `/v1/ciProducts?filter[app]=<app>`、`/v1/ciProducts/<id>/buildRuns?sort=-number&limit=5`、`/v1/ciBuildRuns/<id>/builds`（その回が組んだビルドと番号）、`/v1/ciBuildRuns/<id>/actions`、`/v1/ciBuildActions/<id>/issues`
   - TestFlight に配られたか: `/v1/builds?filter[app]=<app>&sort=-uploadedDate&limit=5&include=buildBetaDetail,betaGroups`（`processingState` が `VALID`、`buildBetaDetail` の `internalBuildState` が `IN_BETA_TESTING`）
   - フィードバック: `/v1/apps/<app>/betaFeedbackCrashSubmissions`、`/v1/betaFeedbackCrashSubmissions/<id>/crashLog`、`/v1/apps/<app>/betaFeedbackScreenshotSubmissions`
 - 読んだフィードバックのメール・名前・コメント・スクリーンショット・クラッシュのログの全文・期限つきの URL は、公開の Issue・PR・コメントに貼らない。貼るのは、ビルド番号、状態、関数名、版・OS・機種、件数まで
