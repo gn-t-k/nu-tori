@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 試作（#1133）: 入力欄のプリセットの行の出入りの動きの案。TestFlight の版で、入力欄の上の右端の切り替えから選ぶ。
-/// 決めたら、決めた案だけを `TimelineComposer` に残し、このファイルを消す
+/// 決めたら、決めた案だけを `TimelineComposer` に残し、このファイルを消す（「今のまま」に決めたら、`TimelineComposer` のバーの `.clipped()` も外す）
 enum PresetMotionTrial: String, CaseIterable, Identifiable {
     case still
     case fade
