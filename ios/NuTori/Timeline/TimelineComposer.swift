@@ -57,6 +57,7 @@ struct TimelineComposer: View {
                     subscriptionChip
                 } else if draft.showsPresets {
                     presets
+                        .transition(presetMotionTrial.transition(reduceMotion: reduceMotion))
                 }
                 Group {
                     if dynamicTypeSize.isAccessibilitySize {
@@ -92,9 +93,19 @@ struct TimelineComposer: View {
             .padding(.vertical, 8)
             .background(.bar)
         }
+        .overlay(alignment: .topTrailing) {
+            if showsTrialSwitch {
+                PresetMotionTrialSwitch(selection: $presetMotionTrial)
+                    .alignmentGuide(.top) { $0[.bottom] + 4 }
+                    .padding(.trailing)
+            }
+        }
+        .task { showsTrialSwitch = await TrialBuild.showsSwitches() }
     }
 
     @State private var draft: TextDraft
+    @AppStorage(PresetMotionTrial.storageKey) private var presetMotionTrial: PresetMotionTrial = .still
+    @State private var showsTrialSwitch = false
     @FocusState private var fieldFocused: Bool
 
     /// 書いているあいだ（欄を選んでいるか、文字がある）は、「体重」を隠して書く欄を広げる。「撮る」「写真」は残す
@@ -149,7 +160,7 @@ struct TimelineComposer: View {
             HStack(spacing: 12) {
                 ForEach(TextPreset.allCases, id: \.self) { preset in
                     Button {
-                        draft.insert(preset)
+                        updateDraft { $0.insert(preset) }
                         fieldFocused = true
                         onPresetTapped(preset)
                     } label: {
@@ -201,14 +212,18 @@ struct TimelineComposer: View {
     /// 1行から始まり5行まで伸びる。「送る」は文字を入れたときだけ欄の右端に出し、送れないあいだは押せなくする
     private var field: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            TextField("書く", text: $draft.text, axis: .vertical)
-                .font(.body)
-                .lineLimit(1...5)
-                .focused($fieldFocused)
-                // 1行の欄の高さを composer-field の 36 にする（Body の1行に上下 7 を足す）。標準の余白では 36 にならない
-                .padding(.vertical, 7)
-                .disabled(requiresSubscription)
-                .accessibilityIdentifier("composer-field")
+            TextField(
+                "書く",
+                text: Binding(get: { draft.text }, set: { text in updateDraft { $0.text = text } }),
+                axis: .vertical
+            )
+            .font(.body)
+            .lineLimit(1...5)
+            .focused($fieldFocused)
+            // 1行の欄の高さを composer-field の 36 にする（Body の1行に上下 7 を足す）。標準の余白では 36 にならない
+            .padding(.vertical, 7)
+            .disabled(requiresSubscription)
+            .accessibilityIdentifier("composer-field")
             if !draft.text.isEmpty {
                 Button(action: send) {
                     Image(systemName: "arrow.up")
@@ -299,7 +314,21 @@ struct TimelineComposer: View {
     /// 知られた回避策の「最後の1文字を消してから空にする」は、1文字の文でその場で空になり、残る
     private func clearField() {
         draft.text = " "
-        Task { draft = TextDraft.empty }
+        Task { updateDraft { $0 = TextDraft.empty } }
+    }
+
+    /// プリセットの行が出入りするときは、試作（#1133）で選んだ動きで替える。
+    /// タイムラインの下の余白も同じ動きで変わるよう、行に `.animation` を付けず、替えるところで包む
+    private func updateDraft(_ change: (inout TextDraft) -> Void) {
+        var next = draft
+        change(&next)
+        guard next.showsPresets != draft.showsPresets,
+            let animation = presetMotionTrial.animation(showing: next.showsPresets)
+        else {
+            draft = next
+            return
+        }
+        withAnimation(animation) { draft = next }
     }
 
     private var weightScaleIcon: some View {
@@ -344,7 +373,7 @@ private struct CircleButtonLabel<Icon: View>: View {
 }
 
 /// 「体重」の丸と「送る」の出入りと、書く欄の幅の替わり目。1日に何度も触るので、気づかない程度の短さにする（DESIGN.md の Motion）。
-/// プリセットの行の出入りは動かさないよう、丸と書く欄の並びにだけ付ける
+/// プリセットの行には付けず、丸と書く欄の並びにだけ付ける（行の出入りは `updateDraft`）
 private struct ButtonsMotion: ViewModifier {
     let writing: Bool
     let hasText: Bool
