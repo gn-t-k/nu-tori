@@ -1,0 +1,219 @@
+<!doctype html>
+<!--
+  試作（#1145）。本番のコードではない。
+  問い: 進み具合・優先順位・版の中身を「ひと目で」見る1枚は、どの形か。
+  3案を ?variant=A|B|C で切り替える。データは fetch.py が GitHub の Issue から読んで下に書き込む。
+-->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>試作: Issue の1枚の絵（#1145）</title>
+<style>
+:root {
+  --bg: #f6f5f1; --card: #fff; --ink: #1f2328; --sub: #6b7280; --line: #e2e0d8;
+  --human: #d1422f; --triage: #c98a00; --agent: #2f8f4e; --wait: #5b7fa6; --blocked: #9aa0a6; --done: #b9b4c7;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #17181a; --card: #222427; --ink: #e8e6e1; --sub: #9aa0a6; --line: #34373b; --done: #5c586b; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px 16px 96px; background: var(--bg); color: var(--ink);
+  font: 14px/1.5 -apple-system, "Hiragino Sans", system-ui, sans-serif; }
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1 { font-size: 18px; margin: 0 0 2px; }
+h2 { font-size: 14px; margin: 0 0 8px; }
+h3 { font-size: 12px; margin: 12px 0 4px; color: var(--sub); font-weight: 600; }
+.lead { color: var(--sub); margin: 0 0 14px; font-size: 13px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 14px; font-size: 12px; color: var(--sub); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; flex: none; }
+.s-human { background: var(--human); } .s-triage { background: var(--triage); } .s-agent { background: var(--agent); }
+.s-wait { background: var(--wait); } .s-blocked { background: var(--blocked); } .s-done { background: var(--done); }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.row { display: flex; align-items: baseline; gap: 6px; padding: 3px 0; }
+.row .dot { transform: translateY(-1px); }
+.row .t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.b-card { overflow-wrap: anywhere; }
+.num { color: var(--sub); font-variant-numeric: tabular-nums; font-size: 12px; }
+.tag { font-size: 11px; padding: 0 6px; border: 1px solid var(--line); border-radius: 999px; color: var(--sub); white-space: nowrap; }
+.tag.ver { border-color: var(--wait); color: var(--wait); }
+.note { font-size: 12px; color: var(--sub); }
+.done-t { color: var(--sub); text-decoration: line-through; }
+.bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; display: flex; margin: 6px 0; }
+.bar i { display: block; height: 100%; }
+.sq { display: inline-flex; gap: 2px; flex-wrap: wrap; vertical-align: middle; }
+.sq i { width: 9px; height: 9px; border-radius: 2px; display: block; }
+.sample { border-style: dashed; }
+.sample-mark { font-size: 11px; color: var(--triage); border: 1px dashed var(--triage); border-radius: 4px; padding: 0 4px; }
+.ord { width: 20px; color: var(--sub); font-variant-numeric: tabular-nums; text-align: right; flex: none; }
+
+/* A: 版で見る */
+.a-track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.a-head { font-weight: 700; font-size: 15px; }
+.a-arrow { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 12px; color: var(--sub); }
+.a-arrow span { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+.a-free { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+
+/* B: 種類で見る */
+.b-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.b-card { border-left: 4px solid var(--line); padding: 6px 8px; margin: 6px 0; background: var(--bg); border-radius: 6px; }
+.b-card .t { display: block; }
+
+/* C: 番で見る */
+.c-wrap { max-width: 720px; margin: 0 auto; display: grid; gap: 12px; }
+.c-sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.c-sum .box { text-align: center; padding: 8px 4px; }
+.c-sum b { display: block; font-size: 22px; line-height: 1.2; }
+.c-sec { border-left: 4px solid var(--line); }
+details summary { cursor: pointer; color: var(--sub); font-size: 12px; margin-top: 6px; }
+
+@media (max-width: 860px) {
+  .a-track, .a-free, .b-grid { grid-template-columns: 1fr; }
+}
+
+/* 切り替えの帯（評価する絵の一部ではない） */
+.switch { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px;
+  background: #111; color: #fff; border-radius: 999px; padding: 6px 8px; box-shadow: 0 6px 24px rgba(0,0,0,.35); font-size: 13px; z-index: 10; }
+.switch button { background: #333; color: #fff; border: 0; border-radius: 999px; width: 32px; height: 32px; font-size: 16px; cursor: pointer; }
+.switch span { padding: 0 12px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="switch"><button id="prev" aria-label="前の案">←</button><span id="label"></span><button id="next" aria-label="次の案">→</button></div>
+
+<script>window.DATA = /*DATA*/{"fetched": "2026-11-28", "issues": [{"n": 325, "title": "アプリ全体の動きを決める", "state": "open", "labels": ["enhancement", "ready-for-human"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 519, "title": "栄養成分表示が写った食事を、表示の値で記録する", "state": "closed", "labels": ["enhancement", "ready-for-human"], "milestone": null, "closed": "2026-11-27", "pr": false, "subs_total": 1, "subs_done": 1, "blocked_by_open": 0}, {"n": 520, "title": "バーコードから市販品の栄養を引く", "state": "open", "labels": ["enhancement", "ready-for-human"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 521, "title": "推定が外れたあとに、栄養を直す・材料を足す", "state": "open", "labels": ["enhancement", "ready-for-human"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 546, "title": "いつもの料理を選んで、同じ料理で食事を記録する", "state": "open", "labels": ["enhancement", "ready-for-human"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 575, "title": "LLM の評価の鍵を、Mac とリモートのセッションで取る道を決める", "state": "closed", "labels": ["enhancement", "ready-for-human"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 591, "title": "お金の数字を追えるようにする", "state": "open", "labels": ["ready-for-human", "harness"], "milestone": null, "closed": null, "pr": false, "subs_total": 4, "subs_done": 3, "blocked_by_open": 0}, {"n": 612, "title": "App Store のキーワードの人気度を見て、キーワード欄を直す", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-27", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 661, "title": "LP を出す（`LP_VARIANTS` を `[\"a\"]` にする）", "state": "open", "labels": ["ready-for-human", "growth", "waiting"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 706, "title": "開発者の作業: nu-tori のサービスのアカウントのメールを gn-t-k@nu-tori.app に移す", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-19", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 711, "title": "評価と開発用のサーバーの Anthropic のワークスペースを分けるかを決める", "state": "closed", "labels": ["enhancement", "ready-for-human"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 735, "title": "事業の運用に AI エージェントを置く", "state": "closed", "labels": ["enhancement", "ready-for-human", "harness"], "milestone": null, "closed": "2026-11-28", "pr": false, "subs_total": 9, "subs_done": 9, "blocked_by_open": 0}, {"n": 736, "title": "プライバシーポリシーに、問い合わせの整理に Anthropic を使うことを書く", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-10-25", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 735}, {"n": 737, "title": "クラウドのセッションから Google Drive を読み書きできるか確かめる", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-06", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 735}, {"n": 738, "title": "見つけてもらう役（SEO・ASO・AIO）の依頼書とスキルを作り、週1回の予定のタスクで動かす", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-08", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 735}, {"n": 739, "title": "毎月の費用を書き出し、Drive に赤字を付けるシートを作る", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-06", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 735}, {"n": 740, "title": "月1回の振り返りの記録の型を作る", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-08", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 735}, {"n": 741, "title": "狙う客の本人への聞き取りの質問を下書きする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-06", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 735}, {"n": 742, "title": "狙う客の本人に聞き取りをする", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 735}, {"n": 748, "title": "iOS: 折りたためる iPhone Duo（開いた状態）で画面が崩れないか確かめる", "state": "closed", "labels": ["bug", "ready-for-human"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 758, "title": "調査: Anthropic と Cloudflare の利用額を読む API", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-10-27", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 591}, {"n": 759, "title": "人: お金の数字を読む鍵を作って置く", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-10-31", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 591}, {"n": 760, "title": "固定費と予算のダッシュボードと、月1回の定期のタスク", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-02", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 591}, {"n": 761, "title": "ダッシュボードにサブスクリプションの数字を足す", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 591}, {"n": 766, "title": "公開のあと、カスタムプロダクトページとプロダクトページの最適化を始める", "state": "open", "labels": ["ready-for-agent", "growth"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 771, "title": "体重の画面・目標の画面・日のまとめに載せる情報を整理し直す", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-21", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 773, "title": "開発者の作業: 11月中旬に DMARC の報告を見て、p=quarantine に上げるかを決める", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-19", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 910, "title": "流入の数字を、クラウドのエージェントが読めるようにする", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-27", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 735}, {"n": 911, "title": "PR ごとに、プライバシーポリシーと利用規約とのずれを照らす", "state": "closed", "labels": ["enhancement", "ready-for-agent"], "milestone": null, "closed": "2026-11-07", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 735}, {"n": 921, "title": "告知の見た目を試作で見比べる", "state": "open", "labels": ["enhancement", "wayfinder:prototype"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 922, "title": "告知の届け方・出し方と、止めたアカウントの断り方を決める", "state": "open", "labels": ["enhancement", "wayfinder:grilling"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 1, "blocked_by": [921]}, {"n": 969, "title": "時の経過で起きる知らせを、Mac で作った場面のアカウントでデバッグビルドに入って確かめられるようにする", "state": "closed", "labels": ["enhancement", "ready-for-agent"], "milestone": null, "closed": "2026-11-19", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 974, "title": "無料体験中にアカウントを削除するとき、無料体験の残りが戻らないことを確かめの文で伝える", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 977, "title": "仕様: 体重記録の直しを、記録を上書きせず書き足す形にする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-19", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 980, "title": "レビューの仕組みを棚卸しし、無駄なく漏れのない形に整理し直す", "state": "closed", "labels": ["enhancement", "ready-for-agent"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 19, "subs_done": 19, "blocked_by_open": 0}, {"n": 988, "title": "レビューと検査の一覧を1つの文書に置き、何にかかるかの正本にする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 989, "title": "仕様の照合を PR のゲートに並べる", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 990, "title": "UI テストの証拠を、先頭のコミットでの全件の回1つにする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 991, "title": "エージェントが読む文書の照合を1つにまとめる", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 992, "title": "漏れている観点を、今いる役に読ませる", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 993, "title": "TypeScript の決まりのうち機械で見分けられるものを検査に寄せ、好みの文書から消す", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 994, "title": "Swift の決まりのうち機械で見分けられるものを検査に寄せ、好みの文書から消す", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 995, "title": "検査にできそうな残りの決まりを、検査にするか見送るか振り分ける", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 996, "title": "照合の1周の費用を測り、一覧に書く", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 997, "title": "ワークフローを変えたときに検査が走るようにする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 998, "title": "人: CI の必須チェックに scripts と ios-version を足す", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 999, "title": "interrogate を過去の PR で試し、置くかの勧めを出す", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 1000, "title": "振る舞いを変えない PR（1段目）を、エージェントが merge できるようにする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 1001, "title": "振る舞いを変えないリファクタ（フェーズ2）を、エージェントが merge できるようにするかを決める", "state": "closed", "labels": ["enhancement", "ready-for-human"], "milestone": null, "closed": "2026-11-20", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1002, "title": "端末とサーバーをつないで動かす確かめを、PR の前に置けるかを決める", "state": "closed", "labels": ["enhancement", "ready-for-human", "mac"], "milestone": null, "closed": "2026-11-12", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 1005, "title": "TypeScript の残りの決まり（パラメータ化テスト、.otherwise()、instanceof、mock の名前）を検査にする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 1006, "title": "Swift の抑止のコメントに理由を添える決まりを検査にする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 1007, "title": "実装役に任された決まりのうち、2か所をそろえる・写すものを検査にする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-11", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 1011, "title": "`interrogate` を PR のゲートに置くかを決める", "state": "closed", "labels": ["enhancement", "ready-for-agent"], "milestone": null, "closed": "2026-11-12", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 1022, "title": "料理の量の直しが受け付けられなかったとき、比例で変えた材料の量が端末に戻らない", "state": "closed", "labels": ["bug", "ready-for-agent"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1027, "title": "Sentry NU-TORI-IOS-7: App Hang Non Fully Blocked in SwiftDataKeyedRecordCache.all", "state": "closed", "labels": ["bug", "ready-for-agent", "mac"], "milestone": null, "closed": "2026-11-15", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1030, "title": "API の境目にかかる変更に、シミュレーターのアプリを手元のサーバーにつなぐ確かめを置く", "state": "closed", "labels": ["enhancement", "ready-for-agent", "mac"], "milestone": null, "closed": "2026-11-13", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 980}, {"n": 1031, "title": "サブスクリプションの販売レポートが「Invalid vendor number」で読めず、scripts/finance app-store が止まる", "state": "closed", "labels": ["needs-triage"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1033, "title": "#1029 の入った版での最初の本物の購入で、通知だけでアカウントに結びつくことを確かめる", "state": "open", "labels": ["bug", "ready-for-agent", "waiting"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1035, "title": "LP と App Store の掲載情報で、栄養成分表示でも撮れると伝える", "state": "closed", "labels": ["enhancement", "ready-for-agent"], "milestone": null, "closed": "2026-11-27", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1036, "title": "仕様: 栄養成分表示が写った食事を、表示の値で記録する", "state": "closed", "labels": ["enhancement", "ready-for-agent"], "milestone": null, "closed": "2026-11-27", "pr": false, "subs_total": 7, "subs_done": 7, "blocked_by_open": 0, "parent": 519}, {"n": 1037, "title": "表示の読み取りの評価を手で回せるようにする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-15", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1036}, {"n": 1038, "title": "基準の g が見積もりの栄養成分表示は、ありえない濃さの確かめを外す", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-15", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1036}, {"n": 1039, "title": "評価のケースの写真を撮って inbox に上げる", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1036}, {"n": 1040, "title": "① の指示を変え、栄養成分表示が写った料理を表示の値で記録する", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1036}, {"n": 1041, "title": "料理の画面の材料の行に「表示」の印を出す", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-15", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1036}, {"n": 1042, "title": "料理の画面の「表示」の印をシミュレーターで確かめる", "state": "closed", "labels": ["ready-for-agent", "mac"], "milestone": null, "closed": "2026-11-17", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1036}, {"n": 1043, "title": "表示の写った市販品を TestFlight の版で撮って確かめる", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-19", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1036}, {"n": 1045, "title": "取り消した通信（URLError.cancelled）を、対処した失敗として Sentry に送っている", "state": "closed", "labels": ["bug", "ready-for-agent"], "milestone": null, "closed": "2026-11-15", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1046, "title": "対処した失敗の報告が種類を問わず1つの Sentry 課題にまとまり、新しい種類の失敗に気づけない", "state": "closed", "labels": ["bug", "ready-for-agent"], "milestone": null, "closed": "2026-11-15", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1048, "title": "利用状況の出来事を、応答を返したあとに送る", "state": "closed", "labels": ["enhancement", "ready-for-agent"], "milestone": null, "closed": "2026-11-15", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1049, "title": "server/AGENTS.md の基盤の出口の書き方を、置き場の口が同期であることに合わせる", "state": "closed", "labels": ["ready-for-agent", "harness"], "milestone": null, "closed": "2026-11-15", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1062, "title": "送った時刻が Date の上限の文章が食事と読み分けられると、文章の食事を書けずアラームが落ちる", "state": "closed", "labels": ["needs-triage"], "milestone": null, "closed": "2026-11-18", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1074, "title": "タイムラインの知らせから App Store の評価をお願いする", "state": "open", "labels": ["enhancement", "needs-triage"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1076, "title": "週ごとの見直しを書く場所を、ADR-0012（アラーム）と今のコード（要求の中で追いつく）のどちらに揃えるか調べる", "state": "open", "labels": ["needs-triage", "harness"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1077, "title": "Durable Object のメソッドが引数の accountId を自分の名前と照らさずに使っている影響を調べる", "state": "closed", "labels": ["needs-triage", "harness"], "milestone": null, "closed": "2026-11-28", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1078, "title": "Cloudflare がエージェント向けに用意している文書の読み方を調べ、リポジトリに取り込む", "state": "open", "labels": ["needs-triage", "harness"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1083, "title": "1.1.1 を審査に出す", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-22", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1087, "title": "足りない値のページで、範囲の外の理由が出ず、テンキーが「次へ」と欄を隠す", "state": "closed", "labels": ["bug", "ready-for-agent"], "milestone": null, "closed": "2026-11-22", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1090, "title": "材料がすべて栄養成分表示の料理で、名前の欄の注記が「推定し直します」のまま", "state": "open", "labels": ["bug", "needs-triage"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1092, "title": "栄養とボディメイクの基本を学べる入門のページを置き、前提知識がなくても使いこなせるか確かめる", "state": "open", "labels": ["ready-for-human", "growth"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1094, "title": "Sentry NU-TORI-IOS-8: 型の無い課題", "state": "open", "labels": ["bug", "needs-triage"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1098, "title": "Swift Package の posthog-ios に新しい major の版 4 が出た", "state": "open", "labels": ["dependencies", "needs-triage"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1104, "title": "考え方のページの題に使う語の人気を調べる", "state": "closed", "labels": ["enhancement", "ready-for-agent"], "milestone": null, "closed": "2026-11-23", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1105, "title": "考え方のページを出したあと、Search Console を見て題と説明文を直す", "state": "open", "labels": ["ready-for-agent", "growth"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 1, "blocked_by": [1092]}, {"n": 1106, "title": "考え方のページに「大事な順」と「続けるコツ」の章を足す", "state": "open", "labels": ["enhancement", "needs-triage"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 1, "blocked_by": [1092]}, {"n": 1108, "title": "1.2.0 を審査に出す", "state": "closed", "labels": ["ready-for-human"], "milestone": null, "closed": "2026-11-24", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1110, "title": "仕様: 考え方のページを置き、アプリのヘッダーと知らせのカードから開く", "state": "open", "labels": ["enhancement", "ready-for-agent"], "milestone": "iOS 1.3.0", "closed": null, "pr": false, "subs_total": 16, "subs_done": 2, "blocked_by_open": 0}, {"n": 1111, "title": "site: 考え方のページの骨組みと一覧、「摂取カロリーと消費カロリーで、体重はどう決まる？」の1本", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-28", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1110}, {"n": 1112, "title": "site: 考え方のページ「1ヶ月で何キロ減らすのがいい？」", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1110}, {"n": 1113, "title": "site: 考え方のページ「PFCバランスとは？タンパク質は1日何グラム？」", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1110}, {"n": 1114, "title": "site: 考え方のページ「体重が減らない？毎日の上下より傾向を見る」", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1110}, {"n": 1115, "title": "site: 考え方のページ「1日の消費カロリーは計算できる？基礎代謝からの推定と、体重での直し方」", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1110}, {"n": 1116, "title": "site: 考え方のページ「停滞期はなぜ起きる？体重が減ると消費カロリーも減る」", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1110}, {"n": 1117, "title": "site: 出し方のページをやめ、/daily-guide を考え方のページの一覧へ転送する", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 5, "parent": 1110, "blocked_by": [1112, 1113, 1114, 1115, 1116]}, {"n": 1118, "title": "iOS: 撮る UI テストに、考え方のページの生の画面を足す", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-28", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1110}, {"n": 1119, "title": "site: 合成のコマンドで考え方のページの絵を書き出し、ページに載せる", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1110}, {"n": 1120, "title": "Mac: 考え方のページの生の画面を撮って合成し、絵をコミットする", "state": "open", "labels": ["ready-for-agent", "mac"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 6, "parent": 1110, "blocked_by": [1112, 1113, 1114, 1115, 1116, 1119]}, {"n": 1121, "title": "iOS: タイムラインのヘッダーのボタンから考え方のページの一覧を開き、開いた入口を送る", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0, "parent": 1110}, {"n": 1122, "title": "iOS: 「目標を立てる」の知らせのカードの一行から考え方のページの一覧を開く", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 1, "parent": 1110, "blocked_by": [1121]}, {"n": 1123, "title": "iOS: 目標の画面と出典の画面のリンクを考え方のページへ付け替える", "state": "open", "labels": ["ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 2, "parent": 1110, "blocked_by": [1117, 1121]}, {"n": 1124, "title": "Mac: シミュレーターで考え方のページの入口と付け替えたリンクを確かめる", "state": "open", "labels": ["ready-for-agent", "mac"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 3, "parent": 1110, "blocked_by": [1121, 1122, 1123]}, {"n": 1125, "title": "実機: TestFlight の版で考え方のページの入口を確かめる", "state": "open", "labels": ["ready-for-human"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 1, "parent": 1110, "blocked_by": [1110]}, {"n": 1126, "title": "人: 考え方のページに変えた掲載情報の説明文を App Store Connect に入れ直す", "state": "open", "labels": ["ready-for-human"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 1, "parent": 1110, "blocked_by": [1117]}, {"n": 1129, "title": "返事で、アプリの使い方を尋ねる発言に答えられるようにする", "state": "closed", "labels": ["ready-for-agent"], "milestone": null, "closed": "2026-11-27", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1131, "title": "Sentry NU-TORI-IOS-9: 型の無い課題", "state": "open", "labels": ["bug", "needs-triage"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1133, "title": "入力欄のプリセットの出入りの動きを、TestFlight で見比べて決める", "state": "closed", "labels": ["ready-for-human"], "milestone": "iOS 1.2.1", "closed": "2026-11-28", "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1134, "title": "入力欄のプリセットの出入りの動きを TestFlight で見比べられるようにし、実機で比べる試作を main に入れる決まりを足す", "state": "closed", "labels": [], "milestone": "iOS 1.2.1", "closed": "2026-11-28", "pr": true, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1135, "title": "プリセットの出入りの試作を2案に絞り、薄れる行がタイムラインの上に浮かないようにする", "state": "closed", "labels": [], "milestone": "iOS 1.2.1", "closed": "2026-11-28", "pr": true, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1136, "title": "プリセットの行の出入りを、薄れながら入力欄とタイムラインを詰める動きにし、試作を片づける", "state": "closed", "labels": [], "milestone": "iOS 1.2.1", "closed": "2026-11-28", "pr": true, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1137, "title": "skill を更新", "state": "open", "labels": [], "milestone": null, "closed": null, "pr": true, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1138, "title": "pstack を 0.15.48 に更新", "state": "open", "labels": [], "milestone": null, "closed": null, "pr": true, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1139, "title": "DESIGN.md の Motion から場面ごとの動かし方を外し、使い回す形だけを残す", "state": "open", "labels": [], "milestone": null, "closed": null, "pr": true, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1141, "title": "main の ios-ui-test が落ちている: ChooseMissingValuesWithWheelsUITests/test_生まれた年のホイールの端が選べる年の両端で回した年が入ること()", "state": "open", "labels": ["bug", "ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1142, "title": "main の ios-ui-test が落ちている: CopyAndSelectUtteranceUITests/test_返事と吹き出しを長押ししてテキストを選択を選ぶとその場で全体が選ばれ余白を押すと戻ること()", "state": "open", "labels": ["bug", "ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1143, "title": "main の ios-ui-test が落ちている: OpenWrittenMealFromCardUITests/test_右向きの矢印を押すと食事の画面へ潜ること()", "state": "open", "labels": ["bug", "ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1144, "title": "main の ios-ui-test が落ちている: OpenWrittenMealFromCardUITests/test_右端の余白を押すと食事の画面へ潜ること()", "state": "open", "labels": ["bug", "ready-for-agent"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1145, "title": "進み具合・優先順位・版の中身を、ひと目で見られるようにする", "state": "open", "labels": ["ready-for-human", "harness"], "milestone": null, "closed": null, "pr": false, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}, {"n": 1146, "title": "週の見直しの体重の変化を、最後に体重を記録した日どうしで測り、週の継ぎ目で変化が落ちないようにする", "state": "open", "labels": [], "milestone": null, "closed": null, "pr": true, "subs_total": 0, "subs_done": 0, "blocked_by_open": 0}]}/*END*/;</script>
+<script>
+const all = DATA.issues, by = new Map(all.map(i => [i.n, i]));
+const has = (i, l) => i.labels.includes(l);
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const KINDS = [['enhancement', '機能'], ['growth', '集客'], ['bug', '不具合'], ['harness', '仕組み'], ['dependencies', '依存']];
+const kind = i => { for (let x = i; x; x = by.get(x.parent)) for (const [l, name] of KINDS) if (has(x, l)) return name; return '種類なし'; };
+const version = i => { for (let x = i; x; x = by.get(x.parent)) if (x.milestone) return x.milestone; return null; };
+const STATES = { human: 'あなたの番', triage: '振り分け待ち', agent: 'エージェントが進められる', wait: '日付や外の出来事を待つ', blocked: '前の Issue が終わるのを待つ', done: '済み' };
+const ORDER = Object.keys(STATES);
+const state = i => i.state === 'closed' ? 'done'
+  : has(i, 'waiting') ? 'wait'
+  : (i.blocked_by || []).length ? 'blocked'
+  : ['ready-for-human', 'wayfinder:grilling', 'wayfinder:prototype'].some(l => has(i, l)) ? 'human'
+  : has(i, 'ready-for-agent') ? 'agent' : 'triage';
+const humanVerb = i => has(i, 'wayfinder:grilling') ? '決める' : has(i, 'wayfinder:prototype') ? '見比べる' : null;
+
+const issues = all.filter(i => !i.pr);
+const open = issues.filter(i => i.state === 'open');
+const tops = open.filter(i => !i.parent).sort((a, b) => ORDER.indexOf(state(a)) - ORDER.indexOf(state(b)) || a.n - b.n);
+const kids = p => issues.filter(i => i.parent === p.n);
+const recent = issues.filter(i => i.state === 'closed' && !i.parent && !i.milestone).sort((a, b) => b.closed.localeCompare(a.closed));
+
+const link = i => `<a href="https://github.com/gn-t-k/nu-tori/${i.pr ? 'pull' : 'issues'}/${i.n}" target="_blank" rel="noopener"><span class="num">#${i.n}</span> <span class="${i.state === 'closed' ? 'done-t' : ''}">${esc(i.title)}</span></a>`;
+const dot = s => `<span class="dot s-${s}" title="${STATES[s]}"></span>`;
+const row = (i, extra = '', under = '') => `<div class="row">${dot(state(i))}<span class="t">${link(i)}${under ? '<br>' + under : ''}</span>${extra}</div>`;
+const blockedNote = i => (i.blocked_by || []).length ? `<span class="note">← ${i.blocked_by.map(n => '#' + n).join(' ')}</span>` : '';
+const squares = p => `<span class="sq">${kids(p).sort((a, b) => ORDER.indexOf(state(b)) - ORDER.indexOf(state(a))).map(k => `<i class="s-${state(k)}" title="#${k.n} ${esc(k.title)}"></i>`).join('')}</span>`;
+const progress = p => { const ks = kids(p); return `<div class="bar">${['done', 'agent', 'human', 'blocked', 'wait', 'triage'].map(s => `<i class="s-${s}" style="width:${100 * ks.filter(k => state(k) === s).length / ks.length}%"></i>`).join('')}</div>`; };
+const legend = () => `<div class="legend">${ORDER.map(s => `<span>${dot(s)}${STATES[s]}</span>`).join('')}</div>`;
+
+/* ---------- A: 版で見る ---------- */
+function VariantA() {
+  const inVer = v => all.filter(i => i.milestone === v);
+  const v121 = inVer('iOS 1.2.1');
+  const spec = by.get(1110), ks = kids(spec);
+  const group = (title, list) => list.length ? `<h3>${title}（${list.length}）</h3>${list.map(k => row(k, '', blockedNote(k))).join('')}` : '';
+  const free = tops.filter(i => !version(i));
+  const later = free.filter(i => kind(i) === '機能').sort((a, b) => a.n - b.n);
+  const bugs = free.filter(i => kind(i) === '不具合');
+  const rest = k => free.filter(i => kind(i) === k);
+  return `
+  <h1>A　版で見る</h1>
+  <p class="lead">左から右へ、出る順。「どの変更がどの版に入るか」と「今の版がどこまで進んだか」が主役。</p>
+  ${legend()}
+  <div class="a-arrow"><span>1.2.0 審査に出した（11/24）</span>→<span>1.2.1 小さく刻む</span>→<span>1.3.0 考え方のページ</span>→<span>その先</span></div>
+  <div class="a-track">
+    <div class="box"><div class="a-head">iOS 1.2.1</div><p class="note">main に入った変更。審査にはまだ出していない。</p>
+      ${v121.map(i => `<div class="row">${dot('done')}<span class="t">${link(i)}</span><span class="tag">${i.pr ? 'PR' : 'Issue'}</span></div>`).join('')}
+      <h3>これから入れたい小さな変更</h3><p class="note">まだ1件も版に付いていない。</p></div>
+    <div class="box"><div class="a-head">iOS 1.3.0</div>${row(spec)}
+      ${progress(spec)}<p class="note">${ks.filter(k => state(k) === 'done').length} / ${ks.length} 済み</p>
+      ${group('今すぐ進められる', ks.filter(k => state(k) === 'agent'))}
+      ${group('前が終わるのを待つ', ks.filter(k => state(k) === 'blocked' && !has(k, 'ready-for-human')))}
+      ${group('最後にあなたがやる', ks.filter(k => has(k, 'ready-for-human') && k.state === 'open'))}
+      <details><summary>済み（${ks.filter(k => state(k) === 'done').length}）</summary>${ks.filter(k => state(k) === 'done').map(k => row(k)).join('')}</details></div>
+    <div class="box"><div class="a-head">その先（版は未定）</div>
+      <h3>機能の候補（${later.length}）　<span class="sample-mark">順は仮。今は Issue のどこにも無い</span></h3>
+      ${later.map((i, n) => `<div class="row"><span class="ord">${n + 1}</span>${dot(state(i))}<span class="t">${link(i)}</span>${blockedNote(i)}</div>`).join('')}
+      <h3>不具合（${bugs.length}）　版が付いていない</h3>${bugs.map(i => row(i)).join('')}</div>
+  </div>
+  <h2 style="margin-top:18px">版を待たずに出るもの（サーバー・ページ・仕組み）</h2>
+  <div class="a-free">${['集客', '仕組み', '依存'].map(k => `<div class="box"><h2>${k}（${rest(k).length}）</h2>${rest(k).map(i => row(i, i.subs_total ? `<span class="note">${i.subs_done}/${i.subs_total}</span>` : blockedNote(i))).join('')}</div>`).join('')}</div>`;
+}
+
+/* ---------- B: 種類で見る ---------- */
+function VariantB() {
+  const cols = [['機能'], ['集客'], ['不具合'], ['仕組み', '依存']];
+  const card = i => `<div class="b-card" style="border-left-color:var(--${state(i)})"><span class="t">${link(i)}</span>
+    <span class="note">${STATES[state(i)]}${humanVerb(i) ? '（' + humanVerb(i) + '）' : ''} ${blockedNote(i)}</span>
+    ${version(i) ? `<span class="tag ver">${version(i)}</span>` : ''}
+    ${i.subs_total ? `<div>${squares(i)} <span class="note">${i.subs_done}/${i.subs_total}</span></div>` : ''}</div>`;
+  const count = s => open.filter(i => state(i) === s).length;
+  return `
+  <h1>B　種類で見る（全体の地図）</h1>
+  <p class="lead">開いている親の Issue を全部、種類ごとに1画面に並べる。色が状態、四角が子の Issue。「全体がどうなっているか」が主役。</p>
+  <div class="legend">${ORDER.filter(s => s !== 'done').map(s => `<span>${dot(s)}${STATES[s]} ${count(s)}</span>`).join('')}<span class="note">（子も数える）</span></div>
+  <div class="b-grid">${cols.map(ks => { const list = tops.filter(i => ks.includes(kind(i))); return `<div class="box"><h2>${ks.join('・')}（${list.length}）</h2>
+    ${ks[0] === '集客' ? `<div class="box sample" style="padding:8px;margin-bottom:8px"><span class="sample-mark">見本。中身は架空</span>
+      <h3>いま測っている</h3><div class="row">${dot('wait')}<span class="t">掲載情報の1行目を変えた</span><span class="note">読む日 12/12</span></div>
+      <h3>答えが出た</h3><div class="row">${dot('done')}<span class="t">LP の見出しを変えた</span><span class="note">効かなかった</span></div>
+      <p class="note">本物の判断と数字は公開の側に書けないので、ここに出すなら置き場を分ける。</p></div>` : ''}
+    ${list.map(card).join('')}</div>`; }).join('')}</div>
+  <details class="box" style="margin-top:12px"><summary>この2週間に閉じた親の Issue（${recent.length}）</summary>${recent.map(i => row(i, `<span class="tag">${kind(i)}</span><span class="note">${i.closed.slice(5)}</span>`)).join('')}</details>`;
+}
+
+/* ---------- C: 番で見る ---------- */
+function VariantC() {
+  const tags = i => `<span class="tag">${kind(i)}</span>${version(i) ? `<span class="tag ver">${version(i)}</span>` : ''}`;
+  const of = s => open.filter(i => state(i) === s && !(s === 'agent' && kids(i).some(k => k.state === 'open')));
+  const human = of('human'), promised = human.filter(version), verbs = human.filter(i => !version(i) && humanVerb(i)), backlog = human.filter(i => !version(i) && !humanVerb(i));
+  const agent = of('agent'), wait = of('wait'), blocked = of('blocked'), triage = of('triage');
+  const sec = (s, title, note, body) => `<div class="box c-sec" style="border-left-color:var(--${s})"><h2>${title}</h2>${note ? `<p class="note">${note}</p>` : ''}${body}</div>`;
+  const list = (l, extra = () => '') => l.length ? l.map(i => row(i, tags(i) + extra(i))).join('') : '<p class="note">なし</p>';
+  const byParent = l => { const g = new Map(); l.forEach(i => { const k = i.parent || 0; g.set(k, [...(g.get(k) || []), i]); });
+    return [...g].map(([p, ks]) => p ? `<h3>${link(by.get(p))} の子（${ks.length}）</h3>${ks.map(i => row(i)).join('')}` : `<h3>単独（${ks.length}）</h3>${list(ks)}`).join(''); };
+  return `<div class="c-wrap">
+  <div><h1>C　番で見る（今日の1枚）</h1>
+  <p class="lead">上から順に、誰の番か。「今日なにをするか・何が止まっているか」が主役。スマホの幅で読める。</p></div>
+  <div class="c-sum">
+    <div class="box"><b style="color:var(--human)">${promised.length + verbs.length}</b>あなたの番</div>
+    <div class="box"><b style="color:var(--triage)">${triage.length}</b>振り分け待ち</div>
+    <div class="box"><b style="color:var(--agent)">${agent.length}</b>進められる</div>
+    <div class="box"><b style="color:var(--wait)">${wait.length + blocked.length}</b>待ち</div></div>
+  ${sec('human', 'あなたの番', '', `<h3>決める・見比べる</h3>${list(verbs, i => `<span class="note">${humanVerb(i)}</span>`)}<h3>版に入っているもの</h3>${list(promised)}
+    <details><summary>まだ始めていない候補（${backlog.length}）。あなたが仕様を決めるところから</summary>${list(backlog)}</details>`)}
+  ${sec('triage', '振り分け待ち', '種類と、誰が拾うかを決める。', list(triage))}
+  ${sec('agent', 'エージェントが今すぐ進められる', '', byParent(agent))}
+  ${sec('wait', '待っている', '', `<h3>日付や外の出来事</h3>${list(wait)}<h3>前の Issue が終わるのを待つ（${blocked.length}）</h3>${blocked.map(i => row(i, blockedNote(i))).join('')}`)}
+  <details class="box"><summary>この2週間に閉じた親の Issue（${recent.length}）</summary>${recent.map(i => row(i, `<span class="tag">${kind(i)}</span><span class="note">${i.closed.slice(5)}</span>`)).join('')}</details>
+  </div>`;
+}
+
+/* ---------- 切り替え ---------- */
+const VARIANTS = { A: ['版で見る', VariantA], B: ['種類で見る', VariantB], C: ['番で見る', VariantC] };
+const keys = Object.keys(VARIANTS);
+let current = new URLSearchParams(location.search).get('variant');
+if (!VARIANTS[current]) current = 'A';
+function show(k) {
+  current = k;
+  document.getElementById('app').innerHTML = VARIANTS[k][1]() + `<p class="note" style="margin-top:16px">試作（#1145）。${DATA.fetched} に GitHub の Issue から読んだ。</p>`;
+  document.getElementById('label').textContent = `${k}（${VARIANTS[k][0]}）`;
+  try { history.replaceState(null, '', '?variant=' + k); } catch { /* file:// や埋め込みでは URL を変えられないことがある */ }
+  scrollTo(0, 0);
+}
+const step = d => show(keys[(keys.indexOf(current) + d + keys.length) % keys.length]);
+document.getElementById('prev').onclick = () => step(-1);
+document.getElementById('next').onclick = () => step(1);
+addEventListener('keydown', e => { if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1); });
+show(current);
+</script>
+</body>
+</html>
