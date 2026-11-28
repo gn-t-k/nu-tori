@@ -48,6 +48,11 @@ struct TimelineComposer: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            if showsTrialSwitch {
+                PresetMotionTrialSwitch(selection: $presetMotionTrial)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.horizontal)
+            }
             if showsCameraNotice {
                 cameraNotice
                     .padding(.horizontal)
@@ -92,13 +97,6 @@ struct TimelineComposer: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
             .background(.bar)
-        }
-        .overlay(alignment: .topTrailing) {
-            if showsTrialSwitch {
-                PresetMotionTrialSwitch(selection: $presetMotionTrial)
-                    .alignmentGuide(.top) { $0[.bottom] + 4 }
-                    .padding(.trailing)
-            }
         }
         .task { showsTrialSwitch = await TrialBuild.showsSwitches() }
     }

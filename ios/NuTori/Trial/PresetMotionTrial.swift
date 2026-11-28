@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 試作（#1133）: 入力欄のプリセットの行の出入りの動きの案。TestFlight の版で、入力欄の右上の切り替えから選ぶ。
+/// 試作（#1133）: 入力欄のプリセットの行の出入りの動きの案。TestFlight の版で、入力欄の上の右端の切り替えから選ぶ。
 /// 決めたら、決めた案だけを `TimelineComposer` に残し、このファイルを消す
 enum PresetMotionTrial: String, CaseIterable, Identifiable {
     case still
@@ -43,7 +43,7 @@ enum PresetMotionTrial: String, CaseIterable, Identifiable {
     }
 }
 
-/// 入力欄の右上に浮かべる、案の切り替え
+/// 入力欄の上の右端に置く、案の切り替え
 struct PresetMotionTrialSwitch: View {
     @Binding var selection: PresetMotionTrial
 
