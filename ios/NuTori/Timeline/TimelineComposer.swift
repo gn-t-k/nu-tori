@@ -62,7 +62,7 @@ struct TimelineComposer: View {
                     subscriptionChip
                 } else if draft.showsPresets {
                     presets
-                        .transition(presetMotionTrial.transition(reduceMotion: reduceMotion))
+                        .transition(.opacity)
                 }
                 Group {
                     if dynamicTypeSize.isAccessibilitySize {
@@ -96,6 +96,9 @@ struct TimelineComposer: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
+            // 抜けるプリセットの行は、バーが縮んだあとも元の位置で薄れるので、バーの外（タイムラインの上）に描かないよう切る。
+            // 背景より前で切り、背景は下の安全域まで伸ばす
+            .clipped()
             .background(.bar)
         }
         .task { showsTrialSwitch = await TrialBuild.showsSwitches() }
@@ -322,7 +325,7 @@ struct TimelineComposer: View {
         var next = draft
         change(&next)
         guard next.showsPresets != draft.showsPresets,
-            let animation = presetMotionTrial.animation(showing: next.showsPresets)
+            let animation = presetMotionTrial.animation
         else {
             draft = next
             return
