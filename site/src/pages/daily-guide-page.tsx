@@ -21,9 +21,11 @@ export const dailyGuidePage: SitePage = {
 };
 
 const { kcal, kg, monthDay, dayOfMonth } = formatExampleValue;
+const toRoundedPercent = (ratio: number) => Math.round(ratio * 100);
 const {
   person,
   initial,
+  reviews,
   exampleReview,
   lastReview,
   firstDay,
@@ -93,15 +95,15 @@ const DailyGuideContent = () => (
       に分かるのは、Aさんが食べた量と、体重の動きだけです。
     </p>
     <p>
-      2週目（{monthDay(exampleReview.weekFirstDay)}〜{dayOfMonth(exampleReview.weekLastDay)}
+      1週目（{monthDay(exampleReview.weekFirstDay)}〜{dayOfMonth(exampleReview.weekLastDay)}
       日）に、Aさんが食べた量の平均は {kcal(exampleReview.averageEnergyIntakeKcal)} kcal
       で、その週の推定消費カロリーは {kcal(exampleReview.previousExpenditureKcal)} kcal
       でした。nu-tori はこの差から、Aさんの体重の傾向（毎朝の体重をならした値。3 で説明します）が{" "}
-      {kg(exampleReview.predictedWeightChangeKg, 2)} kg 減ると予想しました。実際の体重の傾向は{" "}
-      {kg(exampleReview.actualWeightChangeKg, 2)} kg しか減らず、予想とのずれは{" "}
-      {kg(exampleReview.deviationKg, 2)} kg でした。
+      {kg(exampleReview.predictedWeightChangeKg, 2)} kg
+      減ると予想しました。実際の体重の傾向は、減らずに {kg(exampleReview.actualWeightChangeKg, 2)}{" "}
+      kg 増え、予想とのずれは {kg(exampleReview.deviationKg, 2)} kg でした。
     </p>
-    <ReviewFigure caption="Aさんの2週目です。点線が nu-tori の予想、実線が実際の体重の傾向です。" />
+    <ReviewFigure caption="Aさんの1週目です。点線が nu-tori の予想、実線が実際の体重の傾向です。" />
     <p>nu-tori は、このずれから、推定消費カロリーを次のように直しました。</p>
     <ReviewEquation />
     <p>
@@ -161,9 +163,16 @@ const DailyGuideContent = () => (
     <h3>nu-tori は、推定消費カロリーを、ずれの一部ずつ直します</h3>
     <p>
       nu-tori
-      は、1週のずれの分を、一度に全部は推定消費カロリーに反映しません。食事を記録した日が多い週ほど、また同じ向きのずれが続いた週ほど、大きく直します。たとえば、Aさんの2週目のずれは、1日あたりにすると約{" "}
-      {kcal(exampleReview.deviationKcalPerDay)} kcal でした。nu-tori は、そのうち半分の約{" "}
-      {kcal(exampleReview.adjustedKcal)} kcal だけ、推定消費カロリーを下げました。
+      は、1週のずれの分を、一度に全部は推定消費カロリーに反映しません。使い始めは推定がまだ確かでないので大きく直し、見直しを重ねて推定が確かになるほど、小さく直します。食事を記録した日が少ない週も、小さく直します。たとえば、Aさんの1週目のずれは、1日あたりにすると約{" "}
+      {kcal(exampleReview.deviationKcalPerDay)} kcal でした。nu-tori は、そのうち{" "}
+      {toRoundedPercent(exampleReview.gain)}% の約 {kcal(exampleReview.adjustedKcal)} kcal
+      を推定消費カロリーから下げるところを、下の1回の上限の 250 kcal
+      で止めました。4週目の見直しでは、直す割合は {toRoundedPercent(lastReview.gain)}%
+      まで小さくなりました。
+    </p>
+    <p>
+      nu-tori は、1回の見直しで推定消費カロリーを 250 kcal
+      より大きく動かしません。使い始めは直す割合が大きいので、記録の抜けや体重のぶれがあった1週の分が、そのまま大きく乗らないようにするためです。
     </p>
     <h3>nu-tori は、1日の目安を1週に 150 kcal までしか変えません</h3>
     <p>
@@ -175,7 +184,7 @@ const DailyGuideContent = () => (
     <h3>nu-tori は、記録が少ない週の見直しを見送ります</h3>
     <p>
       nu-tori は、体重の記録が無い週と、食事を記録した日が 4
-      日に満たない週の見直しを見送り、推定消費カロリーと1日の目安を前の週のままにします。
+      日に満たない週の見直しを見送り、推定消費カロリーと1日の目安を前の週のままにします。食べた量と体重の動きから見て、体が使ったカロリーがありえないほど少なくなる週も、食事の記録が抜けているとみなして見送ります。
     </p>
 
     <h2>計算の決まり</h2>
@@ -286,15 +295,24 @@ const DailyGuideContent = () => (
       </li>
       <li>
         nu-tori
-        は、その予想を実際の体重の傾向の変化と比べ、ずれの一部だけ推定消費カロリーを動かします。動かす割合は、0.25
-        に「その週に食事を記録した日の数 ÷ 7」と「同じ向きのずれが続いた週の数 ＋
-        1」を掛けた値で、0.75 を上限にします
+        は、その予想を実際の体重の傾向の変化と比べ、ずれの一部だけ推定消費カロリーを動かします。動かす割合は、推定消費カロリーがどれだけ確かかと、1週の比べ方がどれだけぶれるかから決めます（カルマンフィルタという計算の方法です）。推定が確かでないほど、比べ方のぶれが小さいほど、大きく動かします
       </li>
+      <li>
+        nu-tori は、最初の推定のぶれを、式で出したときは 400
+        kcal、使い始める前の記録から逆算したときは 200 kcal とみなします。体が使うカロリーは1週に 40
+        kcal
+        ほど変わりうるとみなして、毎週ぶれを少し大きくし、見直すたびに小さくします。見送った週は、ぶれを大きくするだけです
+      </li>
+      <li>
+        nu-tori は、1週の比べ方のぶれを、食事を7日とも記録した週で 200 kcal
+        とみなし、記録した日が少ない週ほど大きくみなします
+      </li>
+      <li>nu-tori は、1回の見直しで推定消費カロリーを動かす量を、250 kcal までにします</li>
       <li>nu-tori は、新しい推定消費カロリーで、1日の目安を出し直します</li>
     </ol>
     <p>
-      たとえば、Aさんの2週目は、Aさんが食事を7日とも記録し、推定が高すぎる向きのずれが2週続いたので、動かす割合は
-      0.25 × 7 ÷ 7 × 2 ＝ {exampleReview.gain} でした。
+      たとえば、Aさんは最初の推定を式で出し、食事を毎週7日とも記録したので、動かす割合は1週目から順に{" "}
+      {reviews.map(({ gain }) => `${toRoundedPercent(gain)}%`).join("、")} でした。
     </p>
     <h3>nu-tori は、記録が少ない週の見直しを見送ります</h3>
     <p>
@@ -310,6 +328,11 @@ const DailyGuideContent = () => (
         その週に、体重の記録が無い（初めての体重の記録が、その週の月曜の1回だけのときも含みます）
       </li>
       <li>その週に、食事を記録した日が 4 日に満たない（1食だけ記録した日などは数えません）</li>
+      <li>
+        その週に食べた量の平均から、体重の傾向の変化を1日あたりの kcal
+        にした分を引いた値（体が使ったカロリーにあたります）が、最初の推定消費カロリーの 0.6
+        倍に満たない。基礎代謝をおおきく下回り、体がそれだけしか使わないことはないので、食事の記録が抜けているとみなします
+      </li>
     </ul>
 
     {/* アプリの「1日の目安の出典」（ios/NuTori/DailyGuide/DailyGuideCitationScreen.swift）と同じ出典を同じ並びで挙げ、「nu-tori が決めたもの」も同じ項目にする（#900） */}
@@ -406,7 +429,14 @@ const DailyGuideContent = () => (
     </p>
     <ul>
       <li>毎週の見直しで、1日の目安を前の週から変える幅（150 kcal）</li>
-      <li>毎週の見直しで、推定消費カロリーを直す割合（上限 0.75）</li>
+      <li>
+        毎週の見直しで、推定消費カロリーを直す割合（最初の推定のぶれ・1週に体が使うカロリーが変わる大きさ・1週の比べ方のぶれ）
+      </li>
+      <li>毎週の見直しで、推定消費カロリーを1回に動かす幅（250 kcal）</li>
+      <li>
+        食べた量と体重の変化から出した消費がこれより少ないと、記録が抜けているとみなして見直しを見送る下限（最初の推定消費カロリーの
+        0.6 倍）
+      </li>
       <li>毎朝の体重のならし方</li>
       <li>逆算と見直しに要る記録の日数（14 日・4 日など）</li>
       <li>体重を保つ目標で保つ幅（±0.7 kg）と、戻す速さ（1週間に 0.15%）</li>

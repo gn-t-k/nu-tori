@@ -23,7 +23,8 @@ import { daysFrom } from "../testing/days-from";
 
 // 見直せる週を受け口から書く。どの週も、毎日 70 kg で体重が変わらず、食事を7日とも 2,200 kcal 記録した週にする。
 // 維持の目標（70 kg）に、推定 2,400 kcal と1日の目安 2,400 kcal が当たっている。
-// 最初の週は、予測した変化が（2,200 − 2,400）× 7 ÷ 7,700 = −0.18 kg、実際の変化が 0 kg で、新しい推定は 2,400 − 0.25 × 7,700 × 0.18 ÷ 7 = 2,350 kcal。維持の1日の目安も 2,350 kcal になる
+// 最初の週は、予測した変化が（2,200 − 2,400）× 7 ÷ 7,700 = −0.18 kg、実際の変化が 0 kg で、観測 − 前の推定は −200 kcal。
+// 推定の始まりが逆算なので k は 0.5098 で、新しい推定は 2,400 − 0.5098 × 200 = 2,298 kcal。維持の1日の目安は 2,300 kcal になる
 describe("見直せる週を書く要求", () => {
   let accountId: string;
   let sessionToken: string;
@@ -95,7 +96,7 @@ describe("見直せる週を書く要求", () => {
       expect(await readReviewedEstimates()).toEqual([
         {
           effective_on: firstMonday,
-          expenditure_kcal: 2350,
+          expenditure_kcal: 2298,
           estimated_at: Date.now(),
           deviation_direction: "negative",
           reviewed_at: Date.now(),
@@ -108,10 +109,10 @@ describe("見直せる週を書く要求", () => {
         {
           goal_id: goalId,
           effective_on: firstMonday,
-          energy_kcal: 2350,
+          energy_kcal: 2300,
           protein_g: 110,
           fat_g: 65,
-          carbohydrate_g: 330,
+          carbohydrate_g: 320,
           main_reason: "expenditure_change",
         },
       ]);
@@ -136,7 +137,7 @@ describe("見直せる週を書く要求", () => {
     let decision: { status: string };
     beforeEach(async () => {
       await recordFirstWeek();
-      // 見直しのあとの推定 2,350 kcal と、その月曜の体重の傾向 70 kg で出した値を見せていた
+      // 見直しのあとの推定 2,298 kcal と、その月曜の体重の傾向 70 kg で出した値を見せていた
       decision = await (
         await postGoalSetup(sessionToken, "decisions", {
           requestId: generateRecordId(),
@@ -144,7 +145,7 @@ describe("見直せる週を書く要求", () => {
           choice: { type: "maintain" },
           shown: {
             targetWeightKg: 70,
-            dailyGuide: { energyKcal: 2350, proteinG: 110, fatG: 65, carbohydrateG: 330 },
+            dailyGuide: { energyKcal: 2300, proteinG: 110, fatG: 65, carbohydrateG: 320 },
           },
           rejectedCustomTargetWeightCount: 0,
         })
@@ -176,8 +177,8 @@ describe("見直せる週を書く要求", () => {
     });
 
     test("古い順に見直し、前の週の推定から続けて、見直した時刻がそろうこと", async () => {
-      // 2つめの週は、予測した変化が（2,200 − 2,350）× 7 ÷ 7,700 = −0.136 kg で、同じ向きが続いて k は 0.5。
-      // 新しい推定は 2,350 − 0.5 × 7,700 × 0.136 ÷ 7 = 2,275 kcal
+      // 2つめの週は、予測した変化が（2,200 − 2,298）× 7 ÷ 7,700 = −0.089 kg で、観測 − 前の推定は −98 kcal。
+      // 1つめの週で推定の不確かさが減って k は 0.3548 になり、新しい推定は 2,298 − 0.3548 × 98 = 2,263 kcal
       expect(
         (await readReviewedEstimates()).map(({ effective_on, expenditure_kcal, reviewed_at }) => ({
           effective_on,
@@ -185,8 +186,8 @@ describe("見直せる週を書く要求", () => {
           reviewed_at,
         })),
       ).toEqual([
-        { effective_on: firstMonday, expenditure_kcal: 2350, reviewed_at: Date.now() },
-        { effective_on: addDays(firstMonday, 7), expenditure_kcal: 2275, reviewed_at: Date.now() },
+        { effective_on: firstMonday, expenditure_kcal: 2298, reviewed_at: Date.now() },
+        { effective_on: addDays(firstMonday, 7), expenditure_kcal: 2263, reviewed_at: Date.now() },
       ]);
     });
 
@@ -197,8 +198,8 @@ describe("見直せる週を書く要求", () => {
           energy_kcal,
         })),
       ).toEqual([
-        { effective_on: firstMonday, energy_kcal: 2350 },
-        { effective_on: addDays(firstMonday, 7), energy_kcal: 2300 },
+        { effective_on: firstMonday, energy_kcal: 2300 },
+        { effective_on: addDays(firstMonday, 7), energy_kcal: 2250 },
       ]);
     });
   });

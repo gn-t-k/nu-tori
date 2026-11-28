@@ -1,10 +1,13 @@
 import { addDays } from "../../../domain/add-days";
 import { countDaysBetween } from "../../../domain/count-days-between";
-import { excludePartiallyRecordedDays } from "../../../expenditure-estimate/domain/exclude-partially-recorded-days";
 import type { InitialExpenditureSource } from "../../../expenditure-estimate/domain/expenditure-estimate";
 import { computeWeightTrend } from "../../../weight-trend/domain/compute-weight-trend";
 import type { WeeklyReviewDeferralReason } from "../weekly-review";
 import { daysPerWeek } from "../../../domain/days-per-week";
+import { computeObservedExpenditure } from "../compute-observed-expenditure";
+import { computeReviewWeekRange } from "../compute-review-week-range";
+import { findRecordedMealDays } from "../find-recorded-meal-days";
+import { minimumMealDays } from "../minimum-meal-days";
 
 export type ReviewWeekInputs = {
   // 見直す月曜 M（YYYY-MM-DD）。見直す入力の週は M の前の月〜日
@@ -13,6 +16,8 @@ export type ReviewWeekInputs = {
   startedUsingOn: string | undefined;
   // 推定の始まりの出どころ。推定の始まりが読めなければ undefined（逆算ではないとみなす）
   initialExpenditureSource: InitialExpenditureSource | undefined;
+  // 推定の始まりの推定消費カロリー（kcal）。読めなければ undefined（量では見送らない）
+  initialExpenditureKcal: number | undefined;
   // 日の代表値を日の順に
   dailyWeights: readonly { calendarDay: string; weightKg: number }[];
   // nu-tori の記録から出した、日ごとの食べた量。M より前の 28 日を含む
@@ -40,12 +45,11 @@ export const judgeReviewWeek = ({
   reviewedMonday,
   startedUsingOn,
   initialExpenditureSource,
+  initialExpenditureKcal,
   dailyWeights,
   recordedEnergyIntakes,
 }: ReviewWeekInputs): ReviewWeekJudgement => {
-  const weekStart = addDays(reviewedMonday, -daysPerWeek);
-  const weekEnd = addDays(reviewedMonday, -1);
-  const isInWeek = (calendarDay: string) => weekStart <= calendarDay && calendarDay <= weekEnd;
+  const { weekStart, weekEnd, isInWeek } = computeReviewWeekRange(reviewedMonday);
 
   // 使い始める前の記録から逆算した人は、使い始める前の記録で初期値が確かなので当てない。
   // 使い始めた日が読めない人は、7日未満とみなす元が無いので当てない
@@ -64,19 +68,31 @@ export const judgeReviewWeek = ({
     return { type: "deferred", reason: "no_weight" };
   }
 
-  const windowStart = addDays(reviewedMonday, -partialDayWindowDays);
-  const mealDays = excludePartiallyRecordedDays(
-    recordedEnergyIntakes.filter(
-      ({ calendarDay }) => windowStart <= calendarDay && calendarDay <= weekEnd,
-    ),
-  ).filter(({ calendarDay }) => isInWeek(calendarDay));
+  const mealDays = findRecordedMealDays(reviewedMonday, recordedEnergyIntakes);
   if (mealDays.length < minimumMealDays) {
+    return { type: "deferred", reason: "few_meal_records" };
+  }
+
+  const averageEnergyIntakeKcal =
+    mealDays.reduce((sum, { kcal }) => sum + kcal, 0) / mealDays.length;
+  // 記録が意味する消費が推定の始まりの minimumObservedExpenditureRatio 倍に満たない週は、体がそれだけしか使わないことはありえないので、記録の抜けとみなして見送る。
+  // 部分的な記録の日の除外は毎日同じように少なく記録すると効かず、記録した日数の決まりは量を見ないため。
+  // 見送りの理由を足すと端末の表示の分かれが増えるので、記録が少ない週として見送る
+  const observedExpenditureKcal = computeObservedExpenditure({
+    averageEnergyIntakeKcal,
+    actualWeightChangeKg: weightChange.actualWeightChangeKg,
+    weightChangeDayCount: weightChange.weightChangeDayCount,
+  });
+  if (
+    initialExpenditureKcal !== undefined &&
+    observedExpenditureKcal < minimumObservedExpenditureRatio * initialExpenditureKcal
+  ) {
     return { type: "deferred", reason: "few_meal_records" };
   }
 
   return {
     type: "reviewable",
-    averageEnergyIntakeKcal: mealDays.reduce((sum, { kcal }) => sum + kcal, 0) / mealDays.length,
+    averageEnergyIntakeKcal,
     recordedMealDayCount: mealDays.length,
     ...weightChange,
   };
@@ -122,7 +138,5 @@ const computeWeightChange = (
       };
 };
 
-// 部分的な記録の日を決める中央値を出す日数（M より前）
-const partialDayWindowDays = 28;
-
-const minimumMealDays = 4;
+// 記録が意味する消費が、推定の始まりのこの割合に満たない週を見送る。0.6 倍はおおよそ基礎代謝の 0.7 倍。出荷後に実データで調整する初期値
+const minimumObservedExpenditureRatio = 0.6;

@@ -21,7 +21,9 @@ import { readDailyWeights } from "../../weight-trend/domain/read-daily-weights";
 import { computeNextDayStart } from "../../estimation/domain/compute-next-day-start";
 import { computeReviewedExpenditure } from "./compute-reviewed-expenditure";
 import { findUnreviewedWeekMondays } from "./find-unreviewed-week-mondays";
+import { countReviewedWeekMealDays } from "./count-reviewed-week-meal-days";
 import { judgeReviewWeek, type ReviewWeekJudgement } from "./judge-review-week";
+import type { InitialExpenditureSource } from "../../expenditure-estimate/domain/expenditure-estimate";
 import { type WeeklyReviewToWrite, writeWeeklyReview } from "./write-weekly-review";
 
 export type WeeklyReviewStores = Pick<
@@ -75,10 +77,13 @@ export const reviewUnreviewedWeeks = (
   // 推定の始まりは最初の目標を決めたときに書き、見直しはそのあとにだけあるので、どの見直しも推定の始まりのあと
   const previousReviewCount = stores.weeklyReview.countReviews();
   const dailyWeights = readDailyWeights(stores.weightRecord);
-  // 最初の月曜の前の 28 日より広く読む。食事の日は食事の時差で決まるので、1日の余裕を足す
+  // 推定の不確かさをたどり直すのに前に見直せた週の食事を記録した日数も数えるので、最も古い見直しから読む。
+  // 見直していない月曜は最も遅い見直しより後なので、見直しがあれば最も古い見直しが最初の月曜より前になる
+  const firstReadMonday = stores.weeklyReview.findReviewHistory().at(0)?.effectiveOn ?? firstMonday;
+  // 最初に読む月曜の前の 28 日より広く読む。食事の日は食事の時差で決まるので、1日の余裕を足す
   const recordedEnergyIntakes = readRecordedEnergyIntakes(
     stores,
-    new Date(Date.parse(`${addDays(firstMonday, -28)}T00:00:00Z`) - millisecondsPerDay),
+    new Date(Date.parse(`${addDays(firstReadMonday, -28)}T00:00:00Z`) - millisecondsPerDay),
   );
   const startedUsingOn = stores.firstSignIn.findStartedOn();
   const weightTrend = computeWeightTrend(dailyWeights);
@@ -95,6 +100,7 @@ export const reviewUnreviewedWeeks = (
           reviewedMonday,
           startedUsingOn,
           initialExpenditureSource,
+          initialExpenditureKcal: initialEstimate?.expenditureKcal,
           dailyWeights,
           recordedEnergyIntakes,
         });
@@ -116,10 +122,10 @@ export const reviewUnreviewedWeeks = (
       throw new Error("見直す週に当たっていた推定が無い");
     }
     // 前の週に書いた推定と1日の目安を読むので、計算も1週ずつ run の中で行う
-    const outcome = writeRecordChanges(({ addChange }) => {
-      const written: WeeklyReviewToWrite["outcome"] =
+    const result = writeRecordChanges(({ addChange }): ReviewResult => {
+      const computed: ReviewResult =
         judgement.type === "deferred"
-          ? { type: "deferred", reason: judgement.reason, goalId: reviewedGoalId }
+          ? { outcome: { type: "deferred", reason: judgement.reason, goalId: reviewedGoalId } }
           : computeReviewedOutcome(stores, {
               currentGoal,
               reviewedGoalId,
@@ -137,18 +143,22 @@ export const reviewUnreviewedWeeks = (
                     },
               reviewedMonday,
               judgement,
+              initialExpenditureSource,
+              recordedEnergyIntakes,
             });
       writeWeeklyReview(stores, addChange, {
         effectiveOn: reviewedMonday,
         reviewedAt: now,
         timeZone,
         postDeadlineMaintenance,
-        outcome: written,
+        outcome: computed.outcome,
       });
-      return written;
+      return computed;
     });
     const expenditureKcal =
-      outcome.type === "reviewed" ? outcome.expenditure.expenditureKcal : previousExpenditureKcal;
+      result.outcome.type === "reviewed"
+        ? result.outcome.expenditure.expenditureKcal
+        : previousExpenditureKcal;
     const reviewNumber = previousReviewCount + index + 1;
     const movedToMaintenance: UsageEvent[] =
       postDeadlineMaintenance === undefined || currentGoal.weightChange === undefined
@@ -170,26 +180,44 @@ export const reviewUnreviewedWeeks = (
           : undefined,
       reviewedWeekCount: mondays.length,
     };
-    const weeklyReview = match(outcome)
-      .with({ type: "deferred" }, ({ reason }): UsageEvent => ({
+    const weeklyReview = match(result)
+      .with({ outcome: { type: "deferred" } }, ({ outcome: { reason } }): UsageEvent => ({
         name: "weekly_review",
         ...reported,
         outcome: "deferred",
         deferralReason: reason,
       }))
-      .with({ type: "reviewed" }, ({ dailyGuide }): UsageEvent => ({
-        name: "weekly_review",
-        ...reported,
-        outcome: "reviewed",
-        limitHits: dailyGuide.limitHits,
-        mainReason: dailyGuide.mainReason,
-        expenditureChangeKcal: expenditureKcal - previousExpenditureKcal,
-      }))
+      .with(
+        { outcome: { type: "reviewed" } },
+        ({ outcome: { dailyGuide }, measures }): UsageEvent => ({
+          name: "weekly_review",
+          ...reported,
+          outcome: "reviewed",
+          limitHits: dailyGuide.limitHits,
+          mainReason: dailyGuide.mainReason,
+          expenditureChangeKcal: expenditureKcal - previousExpenditureKcal,
+          ...measures,
+        }),
+      )
       .exhaustive();
     return [weeklyReview, ...movedToMaintenance];
   });
   return { reviewedWeekCount: mondays.length, usageEvents };
 };
+
+// 1週の見直しの、書く結果と、見直せた週なら出荷後に推定の更新を調整するのに PostHog に送る値
+type ReviewResult =
+  | { outcome: Extract<WeeklyReviewToWrite["outcome"], { type: "deferred" }> }
+  | {
+      outcome: Extract<WeeklyReviewToWrite["outcome"], { type: "reviewed" }>;
+      measures: {
+        deviationKg: number;
+        gain: number;
+        recordedMealDayCount: number;
+        weightChangeDayCount: number;
+        hitAdjustmentLimit: boolean;
+      };
+    };
 
 // 推定の始まりから 4 週後と 8 週後の見直しで、推定が初期値からどれだけ動いたかを見る
 const reviewNumbersComparedWithInitial: readonly number[] = [4, 8];
@@ -203,14 +231,18 @@ const computeReviewedOutcome = (
     requiredPaceGoal,
     reviewedMonday,
     judgement,
+    initialExpenditureSource,
+    recordedEnergyIntakes,
   }: {
     currentGoal: Goal;
     reviewedGoalId: RecordId;
     requiredPaceGoal: RequiredPaceGoal;
     reviewedMonday: string;
     judgement: Extract<ReviewWeekJudgement, { type: "reviewable" }>;
+    initialExpenditureSource: InitialExpenditureSource | undefined;
+    recordedEnergyIntakes: readonly { calendarDay: string; kcal: number }[];
   },
-): Extract<WeeklyReviewToWrite["outcome"], { type: "reviewed" }> => {
+): Extract<ReviewResult, { measures: unknown }> => {
   const previousEstimate = stores.expenditureEstimate.findCurrent();
   // 今の目標を決めるたびに1日の目安を書くので、目標の開始の日から当てる1日の目安がある
   const previousDailyGuide = stores.dailyGuide.findLatestOfGoalBefore(
@@ -234,7 +266,16 @@ const computeReviewedOutcome = (
     recordedMealDayCount: judgement.recordedMealDayCount,
     actualWeightChangeKg: judgement.actualWeightChangeKg,
     weightChangeDayCount: judgement.weightChangeDayCount,
-    previousWeeks: stores.weeklyReview.findDeviationHistory(),
+    initialExpenditureSource,
+    previousWeeks: stores.weeklyReview.findReviewHistory().map(({ effectiveOn, type }) =>
+      match(type)
+        .with("deferred", () => ({ type: "deferred" as const }))
+        .with("reviewed", () => ({
+          type: "reviewed" as const,
+          recordedMealDayCount: countReviewedWeekMealDays(effectiveOn, recordedEnergyIntakes),
+        }))
+        .exhaustive(),
+    ),
   });
   const dailyGuide = computeReviewedDailyGuide({
     expenditureKcal: expenditure.expenditureKcal,
@@ -245,11 +286,23 @@ const computeReviewedOutcome = (
     goal: requiredPaceGoal,
   });
   return {
-    type: "reviewed",
-    expenditure: {
-      expenditureKcal: expenditure.expenditureKcal,
-      deviationDirection: expenditure.deviationDirection,
+    outcome: {
+      type: "reviewed",
+      expenditure: {
+        expenditureKcal: expenditure.expenditureKcal,
+        deviationDirection: expenditure.deviationDirection,
+      },
+      dailyGuide: { ...dailyGuide, goalId: reviewedGoalId },
     },
-    dailyGuide: { ...dailyGuide, goalId: reviewedGoalId },
+    // 小数は 3 桁に丸めて送る
+    measures: {
+      deviationKg: roundToThousandths(expenditure.deviationKg),
+      gain: roundToThousandths(expenditure.gain),
+      recordedMealDayCount: judgement.recordedMealDayCount,
+      weightChangeDayCount: judgement.weightChangeDayCount,
+      hitAdjustmentLimit: expenditure.hitAdjustmentLimit,
+    },
   };
 };
+
+const roundToThousandths = (value: number): number => Math.round(value * 1000) / 1000;

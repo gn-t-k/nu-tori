@@ -156,7 +156,7 @@ export type UsageEvent =
       limitHits: DailyGuideLimitType[];
     }
   | ({
-      // 週の見直し（見送りを含む）を書いたとき（週ごと）。出荷後に k と見送る条件を調整するのに見る。
+      // 週の見直し（見送りを含む）を書いたとき（週ごと）。出荷後に推定の更新の係数と見送る条件を調整するのに見る。
       // 体重・kcal の値は含めず、推定消費カロリーは差だけを送る
       name: "weekly_review";
       initialExpenditureSource: InitialExpenditureSource | undefined;
@@ -173,6 +173,16 @@ export type UsageEvent =
           mainReason: DailyGuideMainReason;
           // 見直した推定 − 前の推定（kcal）
           expenditureChangeKcal: number;
+          // 予測した体重の傾向の変化 − 実際の変化（kg、3 桁に丸める）
+          deviationKg: number;
+          // 観測のうち推定を動かした割合（カルマンゲイン、3 桁に丸める）
+          gain: number;
+          // 見直した週に食事を記録した日数
+          recordedMealDayCount: number;
+          // 実際の変化を測った日数
+          weightChangeDayCount: number;
+          // 推定の動きが1回の上限に当たったか
+          hitAdjustmentLimit: boolean;
         }
     ))
   | {

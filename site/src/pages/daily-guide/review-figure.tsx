@@ -8,7 +8,8 @@ const { kg, shortMonthDay, signedKg } = formatExampleValue;
 // 例の週に、nu-tori が予想した体重の傾向の動き（点線）と、実際の体重の傾向（実線）のずれ
 export const ReviewFigure = ({ caption }: { caption: string }) => {
   const review = dailyGuideExample.exampleReview;
-  const { days } = dailyGuideExample;
+  // 1週目の前の日曜は使い始める前の日なので、その日も並べる
+  const days = [...dailyGuideExample.priorDays, ...dailyGuideExample.days];
   // 見直した週の前の日曜から、見直した週の日曜まで
   const weekEndIndex = days.findIndex((day) => day.calendarDay === review.weekLastDay);
   const segment = days.slice(weekEndIndex - 7, weekEndIndex + 1);
