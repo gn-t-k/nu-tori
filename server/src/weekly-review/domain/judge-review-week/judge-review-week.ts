@@ -75,7 +75,7 @@ export const judgeReviewWeek = ({
 
   const averageEnergyIntakeKcal =
     mealDays.reduce((sum, { kcal }) => sum + kcal, 0) / mealDays.length;
-  // 記録が意味する消費が推定の始まりの 0.6 倍（おおよそ基礎代謝の 0.7 倍）に満たない週は、体がそれだけしか使わないことはありえないので、記録の抜けとみなして見送る。
+  // 記録が意味する消費が推定の始まりの minimumObservedExpenditureRatio 倍に満たない週は、体がそれだけしか使わないことはありえないので、記録の抜けとみなして見送る。
   // 部分的な記録の日の除外は毎日同じように少なく記録すると効かず、記録した日数の決まりは量を見ないため。
   // 見送りの理由を足すと端末の表示の分かれが増えるので、記録が少ない週として見送る
   const observedExpenditureKcal = computeObservedExpenditure({
@@ -138,5 +138,5 @@ const computeWeightChange = (
       };
 };
 
-// 記録が意味する消費が、推定の始まりのこの割合に満たない週を見送る。出荷後に実データで調整する初期値
+// 記録が意味する消費が、推定の始まりのこの割合に満たない週を見送る。0.6 倍はおおよそ基礎代謝の 0.7 倍。出荷後に実データで調整する初期値
 const minimumObservedExpenditureRatio = 0.6;
