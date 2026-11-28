@@ -27,7 +27,7 @@ import { daysFrom } from "../testing/days-from";
 
 // 週の見直しで PostHog に送る出来事を、受け口から確かめる。
 // 維持の目標（70 kg）に、逆算した推定 2,400 kcal と1日の目安 2,400 kcal が当たっている。
-// 最初の月曜の入力の週は、毎日 70 kg で、食事を7日とも 2,200 kcal 記録したので、新しい推定は 2,350 kcal になる。
+// 最初の月曜の入力の週は、毎日 70 kg で、食事を7日とも 2,200 kcal 記録したので、ずれは −0.1818 kg、k は 0.5098（推定の始まりが逆算の最初の見直し）で、新しい推定は 2,298 kcal、1日の目安は 2,300 kcal になる。
 // そのあとの週は体重も食事も記録しない
 describe("週の見直しの出来事", () => {
   let accountId: string;
@@ -84,7 +84,7 @@ describe("週の見直しの出来事", () => {
       await pullSyncChanges(sessionToken);
     });
 
-    test("見直せたことと、主な理由、当たった上限と下限、推定消費カロリーの差、推定の始まりの出どころを送ること", () => {
+    test("見直せたことと、主な理由、当たった上限と下限、推定消費カロリーの差、ずれ・k・記録した日数・測った日数、推定の始まりの出どころを送ること", () => {
       expect(readWeeklyReviewEvents()).toEqual([
         {
           event: "weekly_review",
@@ -93,7 +93,11 @@ describe("週の見直しの出来事", () => {
             deferred: false,
             limit_hits: [],
             main_reason: "expenditure_change",
-            expenditure_change_kcal: -50,
+            expenditure_change_kcal: -102,
+            deviation_kg: -0.182,
+            gain: 0.51,
+            recorded_meal_day_count: 7,
+            weight_change_day_count: 7,
             initial_expenditure_source: "back_calculated",
             reviewed_week_count: 1,
             $geoip_disable: true,
@@ -103,9 +107,9 @@ describe("週の見直しの出来事", () => {
     });
 
     test("体重と kcal の値を含めないこと", () => {
-      // 体重（70）、推定（2400・2350）、1日の目安（2400・2350）と P・F・C（110・65・345・330）、食事（2200）
+      // 体重（70）、推定（2400・2298）、1日の目安（2400・2300）と P・F・C（110・65・345・320）、食事（2200）
       expect(JSON.stringify(readWeeklyReviewEvents())).not.toMatch(
-        /[:,[]"?(?:70|2400|2350|110|65|345|330|2200)"?[,}\]]/u,
+        /[:,[]"?(?:70|2400|2298|2300|110|65|345|320|2200)"?[,}\]]/u,
       );
     });
 
@@ -150,7 +154,7 @@ describe("週の見直しの出来事", () => {
         readWeeklyReviewEvents().map(
           ({ properties }) => properties["expenditure_change_from_initial_kcal"],
         ),
-      ).toEqual([undefined, undefined, undefined, -50, undefined, undefined, undefined, -50]);
+      ).toEqual([undefined, undefined, undefined, -102, undefined, undefined, undefined, -102]);
     });
   });
 });

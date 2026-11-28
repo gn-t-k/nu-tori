@@ -1,5 +1,8 @@
 import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogram";
-import type { ExpenditureDeviationDirection } from "../../../expenditure-estimate/domain/expenditure-estimate";
+import type {
+  ExpenditureDeviationDirection,
+  InitialExpenditureSource,
+} from "../../../expenditure-estimate/domain/expenditure-estimate";
 import { floatingPointTolerance } from "../../../domain/floating-point-tolerance";
 import { daysPerWeek } from "../../../domain/days-per-week";
 
@@ -12,26 +15,30 @@ export type ReviewedExpenditureInputs = {
   // 見直す週の実際の体重の傾向の変化と、それを測った日数（judgeReviewWeek が出す）
   actualWeightChangeKg: number;
   weightChangeDayCount: number;
-  // 前に見直した週（見送りを含む）。新しい週から順に
+  // 推定の始まりの出どころ。読めなければ undefined（式とみなす）
+  initialExpenditureSource: InitialExpenditureSource | undefined;
+  // 前に見直した週（見送りを含む）。古い週から順に。見直せた週は、その週に食事を記録した日数を添える
   previousWeeks: readonly (
     | { type: "deferred" }
-    | { type: "reviewed"; deviationDirection: ExpenditureDeviationDirection }
+    | { type: "reviewed"; recordedMealDayCount: number }
   )[];
 };
 
-// 見直せた週の、新しい推定消費カロリー。予測した変化と実際の変化のずれの分だけ、前の推定を動かす。
-// 予測は実際の変化と同じ日数で出し、ずれはその日数で割って1日あたりにする
+// 見直せた週の、新しい推定消費カロリー。推定消費カロリーを1つの状態とみるカルマンフィルタで、前の推定 + ρ × ずれ ÷ 測った日数 を観測として、前の推定から観測へ k の割合だけ動かす。
+// 予測は実際の変化と同じ日数で出す。
+// k は推定の不確かさ P から出し、P は推定の始まりから見直した週の並びをたどって毎回出し直す（P を残さないので、表を変えずに今までの見直しにも当てられる）
 export const computeReviewedExpenditure = ({
   previousExpenditureKcal,
   averageEnergyIntakeKcal,
   recordedMealDayCount,
   actualWeightChangeKg,
   weightChangeDayCount,
+  initialExpenditureSource,
   previousWeeks,
 }: ReviewedExpenditureInputs): {
   predictedWeightChangeKg: number;
   deviationKg: number;
-  // ずれのうち推定を動かした割合（式の k）
+  // 観測のうち推定を動かした割合（カルマンゲイン k）
   gain: number;
   expenditureKcal: number;
   deviationDirection: ExpenditureDeviationDirection;
@@ -40,12 +47,9 @@ export const computeReviewedExpenditure = ({
     ((averageEnergyIntakeKcal - previousExpenditureKcal) * weightChangeDayCount) /
     kilocaloriesPerKilogram;
   const deviationKg = predictedWeightChangeKg - actualWeightChangeKg;
-  const deviationDirection = toDeviationDirection(deviationKg);
-  const gain = Math.min(
-    baseGain *
-      (recordedMealDayCount / daysPerWeek) *
-      (1 + countContinuedWeeks(deviationDirection, previousWeeks)),
-    maximumGain,
+  const gain = computeGain(
+    computeVarianceBeforeReview(initialExpenditureSource, previousWeeks),
+    recordedMealDayCount,
   );
   return {
     predictedWeightChangeKg,
@@ -55,9 +59,31 @@ export const computeReviewedExpenditure = ({
       previousExpenditureKcal +
         (gain * kilocaloriesPerKilogram * deviationKg) / weightChangeDayCount,
     ),
-    deviationDirection,
+    deviationDirection: toDeviationDirection(deviationKg),
   };
 };
+
+// 見直す週の、観測を当てる前の推定の分散（P⁻、kcal²）。
+// 週ごとに本当の消費の動きの分だけ増やし、見直せた週はその週の k で減らす。見送った週は観測が無いので増やすだけにする
+const computeVarianceBeforeReview = (
+  initialExpenditureSource: InitialExpenditureSource | undefined,
+  previousWeeks: ReviewedExpenditureInputs["previousWeeks"],
+): number =>
+  previousWeeks.reduce(
+    (variance, week) => {
+      const predicted = variance + weeklyProcessNoiseKcal ** 2;
+      return week.type === "deferred"
+        ? predicted
+        : predicted * (1 - computeGain(predicted, week.recordedMealDayCount));
+    },
+    initialUncertaintyKcal(initialExpenditureSource) ** 2,
+  ) +
+  weeklyProcessNoiseKcal ** 2;
+
+// 観測のぶれは、食事を記録した日が少ないほど大きいとみなす（7 日の週の R² × 7 ÷ 記録した日数）
+const computeGain = (varianceBeforeReview: number, recordedMealDayCount: number): number =>
+  varianceBeforeReview /
+  (varianceBeforeReview + (observationNoiseKcal ** 2 * daysPerWeek) / recordedMealDayCount);
 
 // 浮動小数の誤差で、等しい値の引き算を正か負にしない
 const toDeviationDirection = (deviationKg: number): ExpenditureDeviationDirection => {
@@ -67,22 +93,10 @@ const toDeviationDirection = (deviationKg: number): ExpenditureDeviationDirectio
   return deviationKg > 0 ? "positive" : "negative";
 };
 
-// 続いた週の数。前に見直せた週と同じ向きなら1つ増やし、向きが変わるかずれが 0 の週で 0 に戻す。
-// 見送った週は数を変えないので飛ばす。数は残さず、見直すたびに向きの並びから数え直す
-const countContinuedWeeks = (
-  deviationDirection: ExpenditureDeviationDirection,
-  previousWeeks: ReviewedExpenditureInputs["previousWeeks"],
-): number => {
-  if (deviationDirection === "zero") {
-    return 0;
-  }
-  const reviewedDirections = previousWeeks.flatMap((week) =>
-    week.type === "reviewed" ? [week.deviationDirection] : [],
-  );
-  const changedAt = reviewedDirections.findIndex((direction) => direction !== deviationDirection);
-  return changedAt === -1 ? reviewedDirections.length : changedAt;
-};
+// 推定の始まりの不確かさ（P₀ の標準偏差）。使い始める前の記録から逆算した推定は、式より確か
+const initialUncertaintyKcal = (source: InitialExpenditureSource | undefined): number =>
+  source === "back_calculated" ? 200 : 400;
 
-// 割合（式の k）の係数と上限。出荷後に調整する初期値
-const baseGain = 0.25;
-const maximumGain = 0.75;
+// 本当の消費が1週で動く大きさ（Q）と、7 日記録した週の観測のぶれ（R）。どれも試算で選んだ、出荷後に実データで調整する初期値
+const weeklyProcessNoiseKcal = 40;
+const observationNoiseKcal = 200;

@@ -1,4 +1,4 @@
-import { count, desc, eq, lte, type SQL } from "drizzle-orm";
+import { asc, count, desc, eq, lte, type SQL } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { dailyGuideTables } from "../../daily-guide/durable-object/daily-guide-tables";
 import type { RecordId } from "../../domain/record-id";
@@ -64,21 +64,23 @@ export const createWeeklyReviewStore = (db: DrizzleSqliteDODatabase): WeeklyRevi
     findLatestEffectiveOnOrBefore: (calendarDay) =>
       findLatestWhere(lte(weeklyReviews.effectiveOn, calendarDay)),
     countReviews: () => db.select({ count: count() }).from(weeklyReviews).get()?.count ?? 0,
-    findDeviationHistory: () =>
+    findReviewHistory: () =>
       db
-        .select({ deviationDirection: reviewedExpenditureEstimates.deviationDirection })
+        .select({
+          effectiveOn: weeklyReviews.effectiveOn,
+          expenditureEstimateId: reviewedExpenditureEstimates.expenditureEstimateId,
+        })
         .from(weeklyReviews)
         .leftJoin(
           reviewedExpenditureEstimates,
           eq(reviewedExpenditureEstimates.weeklyReviewId, weeklyReviews.id),
         )
-        .orderBy(desc(weeklyReviews.effectiveOn))
+        .orderBy(asc(weeklyReviews.effectiveOn))
         .all()
-        .map(({ deviationDirection }) =>
-          deviationDirection === null
-            ? { type: "deferred" as const }
-            : { type: "reviewed" as const, deviationDirection },
-        ),
+        .map(({ effectiveOn, expenditureEstimateId }) => ({
+          effectiveOn,
+          type: expenditureEstimateId === null ? ("deferred" as const) : ("reviewed" as const),
+        })),
     insert: (review) => {
       db.insert(weeklyReviews).values(review).run();
     },

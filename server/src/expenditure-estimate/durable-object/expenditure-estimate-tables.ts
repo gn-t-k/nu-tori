@@ -22,7 +22,7 @@ const initialExpenditureEstimates = sqliteTable("initial_expenditure_estimates",
   source: text("source", { enum: initialExpenditureSources }).notNull(),
 });
 
-// 週の見直しが書いた推定（#613）。1つの見直しに1行。ずれの向きは次の見直しで続いた週の数を数えるのに使う
+// 週の見直しが書いた推定（#613）。1つの見直しに1行。ずれの向きは書き残すだけで、推定の更新には使わない
 const reviewedExpenditureEstimates = sqliteTable(
   "reviewed_expenditure_estimates",
   {

@@ -4,19 +4,23 @@ import { computeReviewedExpenditure, type ReviewedExpenditureInputs } from "./in
 type Reviewed = ReturnType<typeof computeReviewedExpenditure>;
 
 // 前の推定 2,400 kcal、平均 2,200 kcal、食事を記録した日 7 日、7 日で実際の変化 −0.4 kg の週。
-// 予測した変化は（2,200 − 2,400）× 7 ÷ 7,700 = −0.1818 kg、ずれは 0.2182 kg で、ρ × ずれ ÷ 7 は 240 kcal
+// 予測した変化は（2,200 − 2,400）× 7 ÷ 7,700 = −0.1818 kg、ずれは 0.2182 kg で、観測 − 前の推定（ρ × ずれ ÷ 7）は 240 kcal
 const inputs = (overrides: Partial<ReviewedExpenditureInputs> = {}): ReviewedExpenditureInputs => ({
   previousExpenditureKcal: 2400,
   averageEnergyIntakeKcal: 2200,
   recordedMealDayCount: 7,
   actualWeightChangeKg: -0.4,
   weightChangeDayCount: 7,
+  initialExpenditureSource: "formula",
   previousWeeks: [],
   ...overrides,
 });
 
+const reviewedWeeks = (count: number, recordedMealDayCount = 7) =>
+  Array.from({ length: count }, () => ({ type: "reviewed" as const, recordedMealDayCount }));
+
 describe("見直した推定消費カロリー", () => {
-  describe("最初の見直しで、予測より体重が減ったとき", () => {
+  describe("推定の始まりが式で、最初の見直しのとき", () => {
     let reviewed: Reviewed;
     beforeEach(() => {
       reviewed = computeReviewedExpenditure(inputs());
@@ -29,24 +33,131 @@ describe("見直した推定消費カロリー", () => {
       }).toEqual({ predicted: "-0.1818", deviation: "0.2182" });
     });
 
-    test("続いた週の数を 0 にして k を 0.25 にし、推定を 60 kcal 上げて、ずれの向きを正にすること", () => {
+    test("始まりの不確かさ 400 kcal から k を出し、推定を上げて、ずれの向きを正にすること", () => {
+      // P⁻ = 400² + 40² = 161,600、k = 161,600 ÷（161,600 + 200²）= 0.8016、240 × k = 192.4 kcal
       expect({
-        gain: reviewed.gain,
+        gain: reviewed.gain.toFixed(4),
         expenditureKcal: reviewed.expenditureKcal,
         deviationDirection: reviewed.deviationDirection,
-      }).toEqual({ gain: 0.25, expenditureKcal: 2460, deviationDirection: "positive" });
+      }).toEqual({ gain: "0.8016", expenditureKcal: 2592, deviationDirection: "positive" });
+    });
+  });
+
+  describe("推定の始まりが逆算で、最初の見直しのとき", () => {
+    let reviewed: Reviewed;
+    beforeEach(() => {
+      reviewed = computeReviewedExpenditure(
+        inputs({ initialExpenditureSource: "back_calculated" }),
+      );
+    });
+
+    test("始まりの不確かさを 200 kcal にして、式より小さい k にすること", () => {
+      // P⁻ = 200² + 40² = 41,600、k = 41,600 ÷ 81,600 = 0.5098
+      expect(reviewed.gain.toFixed(4)).toBe("0.5098");
+    });
+  });
+
+  describe("推定の始まりが読めないとき", () => {
+    let reviewed: Reviewed;
+    beforeEach(() => {
+      reviewed = computeReviewedExpenditure(inputs({ initialExpenditureSource: undefined }));
+    });
+
+    test("式とみなすこと", () => {
+      expect(reviewed.gain.toFixed(4)).toBe("0.8016");
+    });
+  });
+
+  describe("見直しを重ねたとき", () => {
+    let gains: string[];
+    beforeEach(() => {
+      gains = [0, 1, 2, 4, 7, 20].map((count) =>
+        computeReviewedExpenditure(inputs({ previousWeeks: reviewedWeeks(count) })).gain.toFixed(4),
+      );
+    });
+
+    test("k が回数とともに小さくなり、本当の消費の動き（Q）と観測のぶれ（R）で決まる値に落ち着くこと", () => {
+      expect(gains).toEqual(["0.8016", "0.4570", "0.3320", "0.2373", "0.1965", "0.1811"]);
+    });
+  });
+
+  describe("食事を記録した日が4日のとき", () => {
+    let reviewed: Reviewed;
+    beforeEach(() => {
+      reviewed = computeReviewedExpenditure(
+        inputs({ recordedMealDayCount: 4, previousWeeks: reviewedWeeks(4) }),
+      );
+    });
+
+    test("観測のぶれを 7 ÷ 4 倍とみなし、7日のときより小さい k にすること", () => {
+      // 7日の週なら 0.2373
+      expect(reviewed.gain.toFixed(4)).toBe("0.1510");
+    });
+  });
+
+  describe("前の週を見送ったとき", () => {
+    let afterDeferral: Reviewed;
+    let withoutDeferral: Reviewed;
+    beforeEach(() => {
+      afterDeferral = computeReviewedExpenditure(
+        inputs({ previousWeeks: [...reviewedWeeks(4), { type: "deferred" }] }),
+      );
+      withoutDeferral = computeReviewedExpenditure(inputs({ previousWeeks: reviewedWeeks(4) }));
+    });
+
+    test("見送った週の分だけ不確かさが増え、k が大きくなること", () => {
+      expect({
+        afterDeferral: afterDeferral.gain.toFixed(4),
+        withoutDeferral: withoutDeferral.gain.toFixed(4),
+      }).toEqual({ afterDeferral: "0.2599", withoutDeferral: "0.2373" });
+    });
+  });
+
+  describe("前に見直せた週の食事を記録した日が少なかったとき", () => {
+    let fewMealDays: Reviewed;
+    let fullMealDays: Reviewed;
+    beforeEach(() => {
+      fewMealDays = computeReviewedExpenditure(inputs({ previousWeeks: reviewedWeeks(1, 4) }));
+      fullMealDays = computeReviewedExpenditure(inputs({ previousWeeks: reviewedWeeks(1) }));
+    });
+
+    test("その週で不確かさがあまり減らず、次の週の k が大きいこと", () => {
+      expect(fewMealDays.gain).toBeGreaterThan(fullMealDays.gain);
+    });
+  });
+
+  describe("どの見直しでも", () => {
+    let movedRatios: number[];
+    beforeEach(() => {
+      // 観測 − 前の推定は 240 kcal。動かした量 ÷ 240 が k
+      movedRatios = [0, 1, 4, 20].flatMap((count) =>
+        [4, 7].map(
+          (recordedMealDayCount) =>
+            (computeReviewedExpenditure(
+              inputs({ recordedMealDayCount, previousWeeks: reviewedWeeks(count) }),
+            ).expenditureKcal -
+              2400) /
+            240,
+        ),
+      );
+    });
+
+    test("前の推定と観測のあいだに収まり、観測を越えて動かさないこと", () => {
+      expect(movedRatios.every((ratio) => ratio > 0 && ratio < 1)).toBe(true);
     });
   });
 
   describe("予測より体重が減らなかったとき", () => {
     let reviewed: Reviewed;
     beforeEach(() => {
-      // 予測した変化 −0.1818 kg、実際の変化 0 kg で、ずれは −0.1818 kg。0.25 × 7,700 × ずれ ÷ 7 = −50 kcal
-      reviewed = computeReviewedExpenditure(inputs({ actualWeightChangeKg: 0 }));
+      // 予測した変化 −0.1818 kg、実際の変化 0 kg で、ずれは −0.1818 kg。観測 − 前の推定は −200 kcal、× 0.2373 = −47.5 kcal
+      reviewed = computeReviewedExpenditure(
+        inputs({ actualWeightChangeKg: 0, previousWeeks: reviewedWeeks(4) }),
+      );
     });
 
     test("推定を下げ、ずれの向きを負にすること", () => {
-      expect(reviewed).toMatchObject({ expenditureKcal: 2350, deviationDirection: "negative" });
+      expect(reviewed).toMatchObject({ expenditureKcal: 2353, deviationDirection: "negative" });
     });
   });
 
@@ -54,11 +165,7 @@ describe("見直した推定消費カロリー", () => {
     let reviewed: Reviewed;
     beforeEach(() => {
       reviewed = computeReviewedExpenditure(
-        inputs({
-          averageEnergyIntakeKcal: 2400,
-          actualWeightChangeKg: 0,
-          previousWeeks: [{ type: "reviewed", deviationDirection: "zero" }],
-        }),
+        inputs({ averageEnergyIntakeKcal: 2400, actualWeightChangeKg: 0 }),
       );
     });
 
@@ -67,25 +174,12 @@ describe("見直した推定消費カロリー", () => {
     });
   });
 
-  describe("食事を記録した日が4日のとき", () => {
-    let reviewed: Reviewed;
-    beforeEach(() => {
-      reviewed = computeReviewedExpenditure(inputs({ recordedMealDayCount: 4 }));
-    });
-
-    test("k を 0.25 × 4 / 7 にすること", () => {
-      // 240 kcal × 4 / 7 = 137.1 kcal × 0.25 = 34.3 kcal
-      expect({
-        gain: reviewed.gain.toFixed(4),
-        expenditureKcal: reviewed.expenditureKcal,
-      }).toEqual({ gain: "0.1429", expenditureKcal: 2434 });
-    });
-  });
-
   describe("実際の変化を 9 日で測ったとき", () => {
     let reviewed: Reviewed;
     beforeEach(() => {
-      reviewed = computeReviewedExpenditure(inputs({ weightChangeDayCount: 9 }));
+      reviewed = computeReviewedExpenditure(
+        inputs({ weightChangeDayCount: 9, previousWeeks: reviewedWeeks(4) }),
+      );
     });
 
     test("予測した変化を 9 日分で出すこと", () => {
@@ -97,97 +191,8 @@ describe("見直した推定消費カロリー", () => {
     });
 
     test("ずれを 9 日で割って1日あたりにしてから推定を動かすこと", () => {
-      // 0.25 × 7,700 × 0.1662 ÷ 9 = 35.6 kcal
-      expect(reviewed.expenditureKcal).toBe(2436);
-    });
-  });
-
-  describe("続いた週の数", () => {
-    describe("前に見直せた週が同じ向きのとき", () => {
-      let reviewed: Reviewed;
-      beforeEach(() => {
-        reviewed = computeReviewedExpenditure(
-          inputs({ previousWeeks: [{ type: "reviewed", deviationDirection: "positive" }] }),
-        );
-      });
-
-      test("1つ増やして k を 0.5 にすること", () => {
-        expect(reviewed.expenditureKcal).toBe(2520);
-      });
-    });
-
-    describe("前の週を見送り、その前に見直せた週が同じ向きのとき", () => {
-      let reviewed: Reviewed;
-      beforeEach(() => {
-        reviewed = computeReviewedExpenditure(
-          inputs({
-            previousWeeks: [
-              { type: "deferred" },
-              { type: "reviewed", deviationDirection: "positive" },
-            ],
-          }),
-        );
-      });
-
-      test("見送った週を飛ばして数えること", () => {
-        expect(reviewed.expenditureKcal).toBe(2520);
-      });
-    });
-
-    describe("前に見直せた週と向きが変わったとき", () => {
-      let reviewed: Reviewed;
-      beforeEach(() => {
-        reviewed = computeReviewedExpenditure(
-          inputs({
-            previousWeeks: [
-              { type: "reviewed", deviationDirection: "negative" },
-              { type: "reviewed", deviationDirection: "positive" },
-            ],
-          }),
-        );
-      });
-
-      test("0 に戻すこと", () => {
-        expect(reviewed.expenditureKcal).toBe(2460);
-      });
-    });
-
-    describe("前に見直せた週のずれが 0 のとき", () => {
-      let reviewed: Reviewed;
-      beforeEach(() => {
-        reviewed = computeReviewedExpenditure(
-          inputs({
-            previousWeeks: [
-              { type: "reviewed", deviationDirection: "zero" },
-              { type: "reviewed", deviationDirection: "positive" },
-            ],
-          }),
-        );
-      });
-
-      test("0 に戻すこと", () => {
-        expect(reviewed.expenditureKcal).toBe(2460);
-      });
-    });
-
-    describe("同じ向きの週が3つ続いたとき", () => {
-      let reviewed: Reviewed;
-      beforeEach(() => {
-        reviewed = computeReviewedExpenditure(
-          inputs({
-            previousWeeks: [
-              { type: "reviewed", deviationDirection: "positive" },
-              { type: "reviewed", deviationDirection: "positive" },
-              { type: "reviewed", deviationDirection: "positive" },
-            ],
-          }),
-        );
-      });
-
-      test("k を上限の 0.75 で止めること", () => {
-        // 続いた週の数は 3 で、0.25 ×（1 + 3）= 1.0 になるところを 0.75 で止める
-        expect(reviewed).toMatchObject({ gain: 0.75, expenditureKcal: 2580 });
-      });
+      // 7,700 × 0.1662 ÷ 9 = 142.2 kcal、× 0.2373 = 33.7 kcal
+      expect(reviewed.expenditureKcal).toBe(2434);
     });
   });
 });

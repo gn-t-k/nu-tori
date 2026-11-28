@@ -23,23 +23,31 @@ export const dailyGuideExample = (() => {
     throw new Error("出し方のページの例に、本文が使う日か週が無い");
   }
 
-  // 本文は、この例の筋（2週目に推定が高すぎる向きのずれが2週続き、ずれの半分を動かす、など）を文で書いている。
+  // 本文は、この例の筋（1週目に体重の傾向が予想に反して増え、推定が高すぎる向きのずれになる、直す割合が週ごとに小さくなる、など）を文で書いている。
   // サーバーの決まりが変わって筋が変わったら、書き出しで気づけるように止め、本文を書き直す
   const assumptions = [
     ["見直しが4週ある", example.reviews.length === 4],
-    ["2週目は食事を7日とも記録した", secondReview.recordedMealDayCount === 7],
     [
-      "1週目と2週目は推定が高すぎる向きのずれ",
-      firstReview.deviationKg < 0 && secondReview.deviationKg < 0,
+      "食事を毎週7日とも記録した",
+      example.reviews.every(({ recordedMealDayCount }) => recordedMealDayCount === 7),
     ],
     [
-      "1週目と2週目だけ、1週の変化の幅で止まる",
+      "1週目は体重の傾向が増え、推定が高すぎる向きのずれ",
+      firstReview.actualWeightChangeKg > 0 && firstReview.deviationKg < 0,
+    ],
+    [
+      "1週目から3週目だけ、1週の変化の幅で止まる",
       firstReview.limitHits.includes("weekly_change") &&
         secondReview.limitHits.includes("weekly_change") &&
-        thirdReview.limitHits.length === 0 &&
+        thirdReview.limitHits.includes("weekly_change") &&
         fourthReview.limitHits.length === 0,
     ],
-    ["2週目は、ずれの半分を動かした", secondReview.gain === 0.5],
+    [
+      "直す割合が週ごとに小さくなる",
+      example.reviews.every(
+        ({ gain }, index) => index === 0 || gain < (example.reviews[index - 1]?.gain ?? 0),
+      ),
+    ],
     ["4週目のあと、2年分を4週ごとに並べる", plateauAfterTwoYears.week - plateauStart.week === 104],
   ] as const;
   const broken = assumptions.filter(([, holds]) => !holds).map(([assumption]) => assumption);
@@ -49,8 +57,8 @@ export const dailyGuideExample = (() => {
 
   return {
     ...example,
-    // 本文と図の例に使う週。2週目は、推定が高すぎる向きのずれが2週続いた週
-    exampleReview: secondReview,
+    // 本文と図の例に使う週。1週目は、ずれがいちばん大きく、直す割合もいちばん大きい週
+    exampleReview: firstReview,
     lastReview: fourthReview,
     firstDay,
     lastDay,

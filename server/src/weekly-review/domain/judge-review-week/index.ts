@@ -1,4 +1,5 @@
 export {
+  countReviewedWeekMealDays,
   judgeReviewWeek,
   type ReviewWeekInputs,
   type ReviewWeekJudgement,

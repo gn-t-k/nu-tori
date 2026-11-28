@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { judgeReviewWeek, type ReviewWeekInputs, type ReviewWeekJudgement } from "./index";
+import {
+  countReviewedWeekMealDays,
+  judgeReviewWeek,
+  type ReviewWeekInputs,
+  type ReviewWeekJudgement,
+} from "./index";
 import { daysFrom } from "../../testing/days-from";
 import { computeWeightTrend } from "../../../weight-trend/domain/compute-weight-trend";
 import { countDaysBetween } from "../../../domain/count-days-between";
@@ -404,6 +409,30 @@ describe("見直す週の判定", () => {
       test("体重が無いだけを残すこと", () => {
         expect(judged).toEqual({ type: "deferred", reason: "no_weight" });
       });
+    });
+  });
+});
+
+describe("前に見直せた週の食事を記録した日数", () => {
+  describe("その週に食事を記録した日が5日あるとき", () => {
+    let counted: number;
+    beforeEach(() => {
+      counted = countReviewedWeekMealDays(reviewedMonday, intakesOn(daysFrom("2026-10-12", 5)));
+    });
+
+    test("5日と数えること", () => {
+      expect(counted).toBe(5);
+    });
+  });
+
+  describe("見直したあとに食事を消して、その週に食事を記録した日が2日になったとき", () => {
+    let counted: number;
+    beforeEach(() => {
+      counted = countReviewedWeekMealDays(reviewedMonday, intakesOn(daysFrom("2026-10-12", 2)));
+    });
+
+    test("見送らない最小の4日と数えること", () => {
+      expect(counted).toBe(4);
     });
   });
 });

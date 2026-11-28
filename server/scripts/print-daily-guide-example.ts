@@ -115,6 +115,7 @@ for (let week = 0; week < weeks; week++) {
     recordedMealDayCount: judgement.recordedMealDayCount,
     actualWeightChangeKg: judgement.actualWeightChangeKg,
     weightChangeDayCount: judgement.weightChangeDayCount,
+    initialExpenditureSource: initial.value.source,
     previousWeeks,
   });
   const guide = computeReviewedDailyGuide({
@@ -140,13 +141,13 @@ for (let week = 0; week < weeks; week++) {
     actualWeightChangeKg: round(judgement.actualWeightChangeKg, 4),
     deviationKg: round(reviewed.deviationKg, 4),
     deviationKcalPerDay: round(Math.abs(deviationKcalPerDay), 1),
-    gain: reviewed.gain,
+    gain: round(reviewed.gain, 4),
     adjustedKcal: round(Math.abs(deviationKcalPerDay) * reviewed.gain, 1),
     expenditureKcal: reviewed.expenditureKcal,
     guideKcal: guide.energyKcal,
     limitHits: guide.limitHits,
   });
-  previousWeeks.unshift({ type: "reviewed", deviationDirection: reviewed.deviationDirection });
+  previousWeeks.push({ type: "reviewed", recordedMealDayCount: judgement.recordedMealDayCount });
   expenditureKcal = reviewed.expenditureKcal;
   guideKcal = guide.energyKcal;
 }
