@@ -1,0 +1,48 @@
+# ios/ を変えた PR が main に入ったら、そのときのアプリの版のマイルストーン（iOS <版>）を PR に付ける
+# 付ける決まりは docs/agents/issue-tracker.md の「版のマイルストーン」。どのマイルストーンに付けるかは scripts/version-milestone
+name: version-milestone
+
+on:
+  # base の文脈で動くので、フォークからの PR でもマイルストーンを書ける。PR のコードは checkout しない
+  pull_request_target:
+    types: [closed]
+    branches: [main]
+  # 付かなかった PR に、あとから付ける
+  workflow_dispatch:
+    inputs:
+      number:
+        description: PR の番号
+        required: true
+
+permissions: {}
+
+# shell を指定しない run は bash -e で動き、パイプの前の失敗が消える。bash を指すと -o pipefail が付く（scripts/workflow-pipefail が見る）
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  milestone:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    # 通った回は 1 分かからない。止まった回を既定の 6 時間残さない
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # マイルストーンを作る・開く・閉じる
+      issues: write
+      # PR にマイルストーンを付ける
+      pull-requests: write
+    steps:
+      # スクリプトは main のものを使う。版は、スクリプトが PR の入ったコミットから読む
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: server/.node-version
+      - run: scripts/version-milestone "$NUMBER"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.pull_request.number || inputs.number }}

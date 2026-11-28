@@ -217,7 +217,7 @@ jobs:
           PR がマージされるか閉じられると、ワークフローがこの Issue を閉じる。
           BODY
           )"
-          gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$PREFIX$TITLE_KEY（$pr_title）" -f body="$body" -f "labels[]=ready-for-agent" > /dev/null
+          gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$PREFIX$TITLE_KEY（$pr_title）" -f body="$body" -f "labels[]=ready-for-agent" -f "labels[]=dependencies" > /dev/null
 
   # PR がマージされるか閉じられたら、落ちた PR の Issue に、そのことをコメントして閉じる。
   # 依存の PR の作者はボットなので、人の PR では動かさない。Environment は main からだけ使えるので、main に向けた PR に限る

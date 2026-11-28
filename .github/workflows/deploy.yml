@@ -132,6 +132,6 @@ jobs:
             'main の main-flow-on-development（開発用の環境で、本物の API を通して主な流れを確かめるジョブ）が落ちた。落ちた段は回のログに出る。' \
             "$RUN_URL" \
             'main で main-flow-on-development が緑に戻ると、ワークフローがこの Issue を閉じる。')"
-          number="$(gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$TITLE" -f body="$body" -f "labels[]=needs-triage" --jq .number)"
+          number="$(gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$TITLE" -f body="$body" -f "labels[]=needs-triage" -f "labels[]=bug" --jq .number)"
           # GITHUB_TOKEN で立てた Issue は lock-conversations.yml を起こさないので、ここでロックする
           gh api --method PUT "repos/$GITHUB_REPOSITORY/issues/$number/lock" > /dev/null
