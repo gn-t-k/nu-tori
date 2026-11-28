@@ -48,11 +48,6 @@ struct TimelineComposer: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            if showsTrialSwitch {
-                PresetMotionTrialSwitch(selection: $presetMotionTrial)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.horizontal)
-            }
             if showsCameraNotice {
                 cameraNotice
                     .padding(.horizontal)
@@ -96,18 +91,14 @@ struct TimelineComposer: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-            // 試作（#1133）の「薄れながら詰まる」で、抜けるプリセットの行はバーが縮んだあとも元の位置で薄れるので、バーの外（タイムラインの上）に描かないよう切る。
-            // 背景より前で切り、背景は下の安全域まで伸ばす。「今のまま」に決めたら外す
+            // 抜けるプリセットの行はバーが縮んだあとも元の位置で薄れるので、バーの外（タイムラインの上）に描かないよう切る。
+            // 背景より前で切り、背景は下の安全域まで伸ばす
             .clipped()
             .background(.bar)
         }
-        .task { showsTrialSwitch = await TrialBuild.showsSwitches() }
     }
 
     @State private var draft: TextDraft
-    @AppStorage(PresetMotionTrial.storageKey) private var presetMotionTrial: PresetMotionTrial =
-        .still
-    @State private var showsTrialSwitch = false
     @FocusState private var fieldFocused: Bool
 
     /// 書いているあいだ（欄を選んでいるか、文字がある）は、「体重」を隠して書く欄を広げる。「撮る」「写真」は残す
@@ -319,19 +310,16 @@ struct TimelineComposer: View {
         Task { updateDraft { $0 = TextDraft.empty } }
     }
 
-    /// プリセットの行が出入りするときは、試作（#1133）で選んだ動きで替える。
+    /// プリセットの行が出入りするときは、行を薄れさせ、行のぶんバーを詰める。
     /// タイムラインの下の余白も同じ動きで変わるよう、行に `.animation` を付けず、替えるところで包む
     private func updateDraft(_ change: (inout TextDraft) -> Void) {
         var next = draft
         change(&next)
-        // 切り替えを出さない版（App Store の版）では、TestFlight で選んで残った案があっても動かさない
-        guard next.showsPresets != draft.showsPresets, showsTrialSwitch,
-            let animation = presetMotionTrial.animation
-        else {
+        guard next.showsPresets != draft.showsPresets else {
             draft = next
             return
         }
-        withAnimation(animation) { draft = next }
+        withAnimation(composerMotion) { draft = next }
     }
 
     private var weightScaleIcon: some View {
@@ -375,7 +363,10 @@ private struct CircleButtonLabel<Icon: View>: View {
     }
 }
 
-/// 「体重」の丸と「送る」の出入りと、書く欄の幅の替わり目。1日に何度も触るので、気づかない程度の短さにする（DESIGN.md の Motion）。
+/// 入力欄の中の動き（丸と「送る」の出入り、書く欄の幅、プリセットの行の出入り）。1日に何度も触るので、気づかない程度の短さにそろえる（DESIGN.md の Motion）
+private let composerMotion: Animation = .smooth(duration: 0.2)
+
+/// 「体重」の丸と「送る」の出入りと、書く欄の幅の替わり目。
 /// プリセットの行には付けず、丸と書く欄の並びにだけ付ける（行の出入りは `updateDraft`）
 private struct ButtonsMotion: ViewModifier {
     let writing: Bool
@@ -383,7 +374,7 @@ private struct ButtonsMotion: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .animation(.smooth(duration: 0.2), value: writing)
-            .animation(.smooth(duration: 0.2), value: hasText)
+            .animation(composerMotion, value: writing)
+            .animation(composerMotion, value: hasText)
     }
 }
