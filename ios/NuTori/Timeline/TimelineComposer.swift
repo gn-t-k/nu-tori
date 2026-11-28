@@ -319,7 +319,7 @@ struct TimelineComposer: View {
             draft = next
             return
         }
-        withAnimation(.smooth(duration: 0.2)) { draft = next }
+        withAnimation(composerMotion) { draft = next }
     }
 
     private var weightScaleIcon: some View {
@@ -363,7 +363,10 @@ private struct CircleButtonLabel<Icon: View>: View {
     }
 }
 
-/// 「体重」の丸と「送る」の出入りと、書く欄の幅の替わり目。1日に何度も触るので、気づかない程度の短さにする（DESIGN.md の Motion）。
+/// 入力欄の中の動き（丸と「送る」の出入り、書く欄の幅、プリセットの行の出入り）。1日に何度も触るので、気づかない程度の短さにそろえる（DESIGN.md の Motion）
+private let composerMotion: Animation = .smooth(duration: 0.2)
+
+/// 「体重」の丸と「送る」の出入りと、書く欄の幅の替わり目。
 /// プリセットの行には付けず、丸と書く欄の並びにだけ付ける（行の出入りは `updateDraft`）
 private struct ButtonsMotion: ViewModifier {
     let writing: Bool
@@ -371,7 +374,7 @@ private struct ButtonsMotion: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .animation(.smooth(duration: 0.2), value: writing)
-            .animation(.smooth(duration: 0.2), value: hasText)
+            .animation(composerMotion, value: writing)
+            .animation(composerMotion, value: hasText)
     }
 }
