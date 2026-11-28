@@ -21,11 +21,8 @@ import { readDailyWeights } from "../../weight-trend/domain/read-daily-weights";
 import { computeNextDayStart } from "../../estimation/domain/compute-next-day-start";
 import { computeReviewedExpenditure } from "./compute-reviewed-expenditure";
 import { findUnreviewedWeekMondays } from "./find-unreviewed-week-mondays";
-import {
-  countReviewedWeekMealDays,
-  judgeReviewWeek,
-  type ReviewWeekJudgement,
-} from "./judge-review-week";
+import { countReviewedWeekMealDays } from "./count-reviewed-week-meal-days";
+import { judgeReviewWeek, type ReviewWeekJudgement } from "./judge-review-week";
 import type { InitialExpenditureSource } from "../../expenditure-estimate/domain/expenditure-estimate";
 import { type WeeklyReviewToWrite, writeWeeklyReview } from "./write-weekly-review";
 
@@ -80,17 +77,13 @@ export const reviewUnreviewedWeeks = (
   // 推定の始まりは最初の目標を決めたときに書き、見直しはそのあとにだけあるので、どの見直しも推定の始まりのあと
   const previousReviewCount = stores.weeklyReview.countReviews();
   const dailyWeights = readDailyWeights(stores.weightRecord);
-  // 推定の不確かさをたどり直すのに前に見直せた週の食事を記録した日数も数えるので、最も古い見直しから読む
-  const firstReadMonday = [stores.weeklyReview.findReviewHistory().at(0)?.effectiveOn, firstMonday]
-    .filter((monday) => monday !== undefined)
-    .toSorted()
-    .at(0);
-  // 最初の月曜の前の 28 日より広く読む。食事の日は食事の時差で決まるので、1日の余裕を足す
+  // 推定の不確かさをたどり直すのに前に見直せた週の食事を記録した日数も数えるので、最も古い見直しから読む。
+  // 見直していない月曜は最も遅い見直しより後なので、見直しがあれば最も古い見直しが最初の月曜より前になる
+  const firstReadMonday = stores.weeklyReview.findReviewHistory().at(0)?.effectiveOn ?? firstMonday;
+  // 最初に読む月曜の前の 28 日より広く読む。食事の日は食事の時差で決まるので、1日の余裕を足す
   const recordedEnergyIntakes = readRecordedEnergyIntakes(
     stores,
-    new Date(
-      Date.parse(`${addDays(firstReadMonday ?? firstMonday, -28)}T00:00:00Z`) - millisecondsPerDay,
-    ),
+    new Date(Date.parse(`${addDays(firstReadMonday, -28)}T00:00:00Z`) - millisecondsPerDay),
   );
   const startedUsingOn = stores.firstSignIn.findStartedOn();
   const weightTrend = computeWeightTrend(dailyWeights);
@@ -273,12 +266,13 @@ const computeReviewedOutcome = (
     weightChangeDayCount: judgement.weightChangeDayCount,
     initialExpenditureSource,
     previousWeeks: stores.weeklyReview.findReviewHistory().map(({ effectiveOn, type }) =>
-      type === "deferred"
-        ? { type }
-        : {
-            type,
-            recordedMealDayCount: countReviewedWeekMealDays(effectiveOn, recordedEnergyIntakes),
-          },
+      match(type)
+        .with("deferred", () => ({ type: "deferred" as const }))
+        .with("reviewed", () => ({
+          type: "reviewed" as const,
+          recordedMealDayCount: countReviewedWeekMealDays(effectiveOn, recordedEnergyIntakes),
+        }))
+        .exhaustive(),
     ),
   });
   const dailyGuide = computeReviewedDailyGuide({

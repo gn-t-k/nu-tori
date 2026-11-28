@@ -1,10 +1,11 @@
 import { addDays } from "../../../domain/add-days";
 import { countDaysBetween } from "../../../domain/count-days-between";
-import { excludePartiallyRecordedDays } from "../../../expenditure-estimate/domain/exclude-partially-recorded-days";
 import type { InitialExpenditureSource } from "../../../expenditure-estimate/domain/expenditure-estimate";
 import { computeWeightTrend } from "../../../weight-trend/domain/compute-weight-trend";
 import type { WeeklyReviewDeferralReason } from "../weekly-review";
 import { daysPerWeek } from "../../../domain/days-per-week";
+import { findRecordedMealDays, minimumMealDays } from "../find-recorded-meal-days";
+import { computeReviewWeekRange } from "../compute-review-week-range";
 
 export type ReviewWeekInputs = {
   // 見直す月曜 M（YYYY-MM-DD）。見直す入力の週は M の前の月〜日
@@ -43,8 +44,7 @@ export const judgeReviewWeek = ({
   dailyWeights,
   recordedEnergyIntakes,
 }: ReviewWeekInputs): ReviewWeekJudgement => {
-  const weekStart = addDays(reviewedMonday, -daysPerWeek);
-  const weekEnd = addDays(reviewedMonday, -1);
+  const { weekStart, weekEnd } = computeReviewWeekRange(reviewedMonday);
   const isInWeek = (calendarDay: string) => weekStart <= calendarDay && calendarDay <= weekEnd;
 
   // 使い始める前の記録から逆算した人は、使い始める前の記録で初期値が確かなので当てない。
@@ -76,29 +76,6 @@ export const judgeReviewWeek = ({
     ...weightChange,
   };
 };
-
-// 見直す週の、食事を記録した日（部分的な記録の日を外す）
-const findRecordedMealDays = (
-  reviewedMonday: string,
-  recordedEnergyIntakes: ReviewWeekInputs["recordedEnergyIntakes"],
-): ReviewWeekInputs["recordedEnergyIntakes"] => {
-  const weekStart = addDays(reviewedMonday, -daysPerWeek);
-  const weekEnd = addDays(reviewedMonday, -1);
-  const windowStart = addDays(reviewedMonday, -partialDayWindowDays);
-  return excludePartiallyRecordedDays(
-    recordedEnergyIntakes.filter(
-      ({ calendarDay }) => windowStart <= calendarDay && calendarDay <= weekEnd,
-    ),
-  ).filter(({ calendarDay }) => weekStart <= calendarDay && calendarDay <= weekEnd);
-};
-
-// 前に見直せた週の、食事を記録した日数（推定の不確かさをたどり直すのに使う）。今の記録で数え直す。
-// 見直したあとに食事を消して少なくなっても、見直せた週は見送らない日数があったので、見送らない最小の日数を下限にする
-export const countReviewedWeekMealDays = (
-  reviewedMonday: string,
-  recordedEnergyIntakes: ReviewWeekInputs["recordedEnergyIntakes"],
-): number =>
-  Math.max(findRecordedMealDays(reviewedMonday, recordedEnergyIntakes).length, minimumMealDays);
 
 // 実際の変化は、始まりと終わりをどちらも「その日曜までで最後に体重を記録した日」の体重の傾向で測る。
 // 体重の傾向は最後の体重記録の日で終わり、記録の無い日の値は次の記録が来て決まる。
@@ -139,8 +116,3 @@ const computeWeightChange = (
         sundayWeightTrendKg: sundayTrend.trendKg,
       };
 };
-
-// 部分的な記録の日を決める中央値を出す日数（M より前）
-const partialDayWindowDays = 28;
-
-const minimumMealDays = 4;

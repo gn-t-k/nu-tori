@@ -68,16 +68,37 @@ describe("見直した推定消費カロリー", () => {
     });
   });
 
-  describe("見直しを重ねたとき", () => {
-    let gains: string[];
+  describe("前に1週見直したとき", () => {
+    let reviewed: Reviewed;
     beforeEach(() => {
-      gains = [0, 1, 2, 4, 7, 20].map((count) =>
-        computeReviewedExpenditure(inputs({ previousWeeks: reviewedWeeks(count) })).gain.toFixed(4),
-      );
+      reviewed = computeReviewedExpenditure(inputs({ previousWeeks: reviewedWeeks(1) }));
     });
 
-    test("k が回数とともに小さくなり、本当の消費の動き（Q）と観測のぶれ（R）で決まる値に落ち着くこと", () => {
-      expect(gains).toEqual(["0.8016", "0.4570", "0.3320", "0.2373", "0.1965", "0.1811"]);
+    test("最初の見直しで不確かさが減った分、k を小さくすること", () => {
+      // 最初の見直しの後の P = 161,600 × (1 − 0.8016) = 32,063、P⁻ = 32,063 + 40² = 33,663、k = 33,663 ÷ 73,663
+      expect(reviewed.gain.toFixed(4)).toBe("0.4570");
+    });
+  });
+
+  describe("前に4週見直したとき", () => {
+    let reviewed: Reviewed;
+    beforeEach(() => {
+      reviewed = computeReviewedExpenditure(inputs({ previousWeeks: reviewedWeeks(4) }));
+    });
+
+    test("k をさらに小さくすること", () => {
+      expect(reviewed.gain.toFixed(4)).toBe("0.2373");
+    });
+  });
+
+  describe("前に20週見直したとき", () => {
+    let reviewed: Reviewed;
+    beforeEach(() => {
+      reviewed = computeReviewedExpenditure(inputs({ previousWeeks: reviewedWeeks(20) }));
+    });
+
+    test("k を、本当の消費の動き（Q）と観測のぶれ（R）で決まる値に落ち着かせること", () => {
+      expect(reviewed.gain.toFixed(4)).toBe("0.1811");
     });
   });
 
@@ -126,24 +147,14 @@ describe("見直した推定消費カロリー", () => {
     });
   });
 
-  describe("どの見直しでも", () => {
-    let movedRatios: number[];
+  describe("k がいちばん大きい、推定の始まりが式の最初の見直しのとき", () => {
+    let reviewed: Reviewed;
     beforeEach(() => {
-      // 観測 − 前の推定は 240 kcal。動かした量 ÷ 240 が k
-      movedRatios = [0, 1, 4, 20].flatMap((count) =>
-        [4, 7].map(
-          (recordedMealDayCount) =>
-            (computeReviewedExpenditure(
-              inputs({ recordedMealDayCount, previousWeeks: reviewedWeeks(count) }),
-            ).expenditureKcal -
-              2400) /
-            240,
-        ),
-      );
+      reviewed = computeReviewedExpenditure(inputs());
     });
 
-    test("前の推定と観測のあいだに収まり、観測を越えて動かさないこと", () => {
-      expect(movedRatios.every((ratio) => ratio > 0 && ratio < 1)).toBe(true);
+    test("前の推定と観測（2,400 + 240 kcal）のあいだに収め、観測を越えて動かさないこと", () => {
+      expect(reviewed.expenditureKcal > 2400 && reviewed.expenditureKcal < 2640).toBe(true);
     });
   });
 

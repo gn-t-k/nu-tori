@@ -21,8 +21,7 @@ export const dailyGuidePage: SitePage = {
 };
 
 const { kcal, kg, monthDay, dayOfMonth } = formatExampleValue;
-// 0.8016 → 80
-const percent = (ratio: number) => Math.round(ratio * 100);
+const toRoundedPercent = (ratio: number) => Math.round(ratio * 100);
 const {
   person,
   initial,
@@ -166,9 +165,9 @@ const DailyGuideContent = () => (
       nu-tori
       は、1週のずれの分を、一度に全部は推定消費カロリーに反映しません。使い始めは推定がまだ確かでないので大きく直し、見直しを重ねて推定が確かになるほど、小さく直します。食事を記録した日が少ない週も、小さく直します。たとえば、Aさんの1週目のずれは、1日あたりにすると約{" "}
       {kcal(exampleReview.deviationKcalPerDay)} kcal でした。nu-tori は、そのうち{" "}
-      {percent(exampleReview.gain)}% の約 {kcal(exampleReview.adjustedKcal)} kcal
-      を推定消費カロリーから下げました。4週目の見直しでは、直す割合は {percent(lastReview.gain)}%
-      まで小さくなりました。
+      {toRoundedPercent(exampleReview.gain)}% の約 {kcal(exampleReview.adjustedKcal)} kcal
+      を推定消費カロリーから下げました。4週目の見直しでは、直す割合は{" "}
+      {toRoundedPercent(lastReview.gain)}% まで小さくなりました。
     </p>
     <h3>nu-tori は、1日の目安を1週に 150 kcal までしか変えません</h3>
     <p>
@@ -307,7 +306,7 @@ const DailyGuideContent = () => (
     </ol>
     <p>
       たとえば、Aさんは最初の推定を式で出し、食事を毎週7日とも記録したので、動かす割合は1週目から順に{" "}
-      {reviews.map(({ gain }) => `${percent(gain)}%`).join("、")} でした。
+      {reviews.map(({ gain }) => `${toRoundedPercent(gain)}%`).join("、")} でした。
     </p>
     <h3>nu-tori は、記録が少ない週の見直しを見送ります</h3>
     <p>

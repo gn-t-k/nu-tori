@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogram";
 import type {
   ExpenditureDeviationDirection,
@@ -72,9 +73,14 @@ const computeVarianceBeforeReview = (
   previousWeeks.reduce(
     (variance, week) => {
       const predicted = variance + weeklyProcessNoiseKcal ** 2;
-      return week.type === "deferred"
-        ? predicted
-        : predicted * (1 - computeGain(predicted, week.recordedMealDayCount));
+      return match(week)
+        .with({ type: "deferred" }, () => predicted)
+        .with(
+          { type: "reviewed" },
+          ({ recordedMealDayCount }) =>
+            predicted * (1 - computeGain(predicted, recordedMealDayCount)),
+        )
+        .exhaustive();
     },
     initialUncertaintyKcal(initialExpenditureSource) ** 2,
   ) +
@@ -95,7 +101,10 @@ const toDeviationDirection = (deviationKg: number): ExpenditureDeviationDirectio
 
 // 推定の始まりの不確かさ（P₀ の標準偏差）。使い始める前の記録から逆算した推定は、式より確か
 const initialUncertaintyKcal = (source: InitialExpenditureSource | undefined): number =>
-  source === "back_calculated" ? 200 : 400;
+  match(source)
+    .with("back_calculated", () => 200)
+    .with("formula", undefined, () => 400)
+    .exhaustive();
 
 // 本当の消費が1週で動く大きさ（Q）と、7 日記録した週の観測のぶれ（R）。どれも試算で選んだ、出荷後に実データで調整する初期値
 const weeklyProcessNoiseKcal = 40;
