@@ -14,7 +14,7 @@
 
 ## How to get to it (user POV)
 
-- タイムラインの目標を立てる知らせの「始める」（`goal-setup-start`）を押し、向き（`goal-setup-direction-lose` など）、期限（`goal-setup-next`）、目標案（`goal-setup-proposal-standard` など）と進み、「この目標で始める」（`goal-setup-proposal-start`）で決める
+- タイムラインの目標を立てる知らせの「目標を立てる」（`goal-setup-start`。途中で閉じたあとは「続ける」）を押し、向き（`goal-setup-direction-lose` など）、期限（`goal-setup-next`）、目標案（`goal-setup-proposal-standard` など）と進み、「この目標で始める」（`goal-setup-proposal-start`）で決める
 - 逆算できない人は、期限のあとに足りない値のページが出る。身長（`goal-setup-height`）などの行を押すとホイールのシートが出て、「完了」（`goal-setup-wheel-confirm`）で入る
 - 月曜に開き、タイムラインの振り返りのカード（`weekly-review-card`）を押す
 - タイムラインの左上の目標（`goal-link`）を押す。日のまとめの目標の行と、体重の画面の目標からも開く
@@ -30,7 +30,7 @@ Preconditions:
 - **維持を選ぶ。** 同じクラスの `test_知らせから維持を選ぶと保つ体重と1日の目安の値の行が出ること`。「72.0 kg を保つ」と「1日の目安」2,250 kcal の行が出る
 - **足りない値をホイールで選ぶ。** `$S/ui-test.sh ChooseMissingValuesWithWheelsUITests`。身長・今の体重・生まれた年の行を押すと 170 cm・65.0 kg（整数 65 と小数 .0）・1990年の位置でホイールのシートが出て、「完了」で行の右に値が出て閉じる。性別と活動量も選ぶと「次へ」で目標案に進み、テンキーは出ない。生まれた年のホイールの端は、止めた時計の年から年齢の範囲（`shared/accepted-ranges.json`）を引いた年で、端まで回した年が入る。「キャンセル」で閉じると、行の右は「入力する」のまま
 - **週の振り返りと目標の画面。** `$S/ui-test.sh OpenWeeklyReviewAndGoalFromMondayTimelineUITests` の `test_振り返りのカードから週の振り返りを開き戻って左上から目標の画面を開くこと`。振り返りのカード（9月28日〜10月4日）と変更の知らせが出て、カードから週の振り返り（P・F・C の平均の「C 炭水化物」まで）が開き、戻って左上から目標の画面（今のカード、推移のグラフ、週の振り返りへの入口）が開く
-- **目標の画面へのほかの入口。** `$S/ui-test.sh OpenGoalFromDaySummaryAndWeightScreenUITests` の `test_日のまとめの目標の行から目標の画面を開き次の目標を選ぶで目標の設定を広げること` と `test_体重の画面の目標から目標の画面を開き戻ると体重の画面に戻ること`。目標を達成した月曜に、日のまとめの目標の行から目標の画面が開く。タイムラインに戻って日のまとめを開き直し、「次の目標を選ぶ」（`day-summary-next-goal`）を押すと、タイムラインに目標の設定のカード（`goal-setup-flow`）が広がる。体重の画面の「目標 70.1 kg ›」から開いた目標の画面は、戻ると体重の画面に戻る
+- **目標の画面へのほかの入口。** `$S/ui-test.sh OpenGoalFromDaySummaryAndWeightScreenUITests` の `test_日のまとめの目標の行から目標の画面を開き次の目標を選ぶで目標の設定を広げること` と `test_体重の画面の目標から目標の画面を開き戻ると体重の画面に戻ること`。目標を達成した月曜に、日のまとめの目標の行から目標の画面が開く。タイムラインに戻って日のまとめを開き直し、「次の目標を選ぶ」（`day-summary-next-goal`）を押すと、タイムラインに目標の設定のカード（`goal-setup-flow`）が広がる。体重の画面の目標の行（`weight-goal-link`）から開いた目標の画面は、戻ると体重の画面に戻る
 - **目標を切り替える。** `$S/ui-test.sh SwitchGoalOnGoalScreenUITests`。目標の設定のカード（`goal-setup-flow`）が目標の画面に広がり、タイムラインには描かれず、目標の画面を開き直すと広げたまま
 - **手で見るとき。** 目標を決める流れは `$S/launch.sh "$run" signed-in goal-setup`、足りない値のページは `$S/launch.sh "$run" signed-in goal-setup-missing-values`、週の振り返りと目標の画面は `$S/launch.sh "$run" signed-in weekly-review UI_TEST_NOW=2026-10-05T09:00`
 

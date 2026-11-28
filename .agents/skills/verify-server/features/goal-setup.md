@@ -22,7 +22,7 @@
 
 Preconditions:
 
-- `$D sign-in "$run" goal` で作ったアカウントに、7日と1分前の体重記録を送ってある（体重記録の「手で記録する」の `measuredAt` を `$(date -d '-7 days -1 minute' +%s)000` にする）
+- `$D sign-in "$run" goal` で作ったアカウントに、7日と1分前の体重記録を送ってある（体重記録の「手で記録する」の、セッションの名前を `goal` に、`measuredAt` を `$(date -d '-7 days -1 minute' +%s)000` にする）
 - `asof=$(date -u -d '-7 days' +%FT%TZ)`、`body='{"sex":"female","heightCentimeters":160,"ageYears":35,"activity":{"type":"level","level":"standing"}}'`、`P() { $D call "$run" goal POST /v1/goal-setup/$1 --as-of "$asof" --json "$2"; }`
 
 - **下見。** `P preview '{"timeZone":"Asia/Tokyo","direction":"lose"}'` を送る。`{"canBackCalculate":false}`（食べた量の記録が無い）

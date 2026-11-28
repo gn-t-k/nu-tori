@@ -346,5 +346,30 @@
       "text": "コンビニで買える高たんぱくなものって何？"
     }
   },
-  { "vars": { "boundary": "question", "expected": "chat", "text": "お腹すいた" } }
+  { "vars": { "boundary": "question", "expected": "chat", "text": "お腹すいた" } },
+  {
+    "vars": {
+      "boundary": "app_usage",
+      "expected": "chat",
+      "text": "朝ごはんってどうやって記録するの？"
+    }
+  },
+  {
+    "vars": {
+      "boundary": "app_usage",
+      "expected": "chat",
+      "text": "写真がなくてもラーメンを記録できますか？"
+    }
+  },
+  {
+    "vars": { "boundary": "app_usage", "expected": "chat", "text": "体重はどこから入力しますか？" }
+  },
+  { "vars": { "boundary": "app_usage", "expected": "chat", "text": "目標ってどこで変えられる？" } },
+  {
+    "vars": {
+      "boundary": "app_usage",
+      "expected": "chat",
+      "text": "食事の記録を消したいんだけど、どうすればいい？"
+    }
+  }
 ]
