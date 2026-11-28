@@ -100,6 +100,7 @@ export const reviewUnreviewedWeeks = (
           reviewedMonday,
           startedUsingOn,
           initialExpenditureSource,
+          initialExpenditureKcal: initialEstimate?.expenditureKcal,
           dailyWeights,
           recordedEnergyIntakes,
         });
@@ -214,6 +215,7 @@ type ReviewResult =
         gain: number;
         recordedMealDayCount: number;
         weightChangeDayCount: number;
+        hitAdjustmentLimit: boolean;
       };
     };
 
@@ -298,6 +300,7 @@ const computeReviewedOutcome = (
       gain: roundToThousandths(expenditure.gain),
       recordedMealDayCount: judgement.recordedMealDayCount,
       weightChangeDayCount: judgement.weightChangeDayCount,
+      hitAdjustmentLimit: expenditure.hitAdjustmentLimit,
     },
   };
 };

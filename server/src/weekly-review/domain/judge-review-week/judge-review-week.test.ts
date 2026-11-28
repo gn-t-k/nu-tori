@@ -18,6 +18,7 @@ const reviewableInputs = (): ReviewWeekInputs => ({
   reviewedMonday,
   startedUsingOn: "2026-09-21",
   initialExpenditureSource: "formula",
+  initialExpenditureKcal: 2000,
   dailyWeights: weightsOn(daysFrom("2026-10-05", 14)),
   recordedEnergyIntakes: intakesOn(daysFrom("2026-10-12", 7)),
 });
@@ -288,6 +289,69 @@ describe("見直す週の判定", () => {
           averageEnergyIntakeKcal: 2000,
           recordedMealDayCount: 4,
         });
+      });
+    });
+
+    // 体重は毎日 70 kg で変わらないので、記録が意味する消費（観測）は、記録した日の平均そのもの
+    describe("記録が意味する消費が、推定の始まり 2,000 kcal の 0.6 倍に満たないとき", () => {
+      let judged: ReviewWeekJudgement;
+      beforeEach(() => {
+        judged = judgeReviewWeek({
+          ...reviewableInputs(),
+          recordedEnergyIntakes: intakesOn(daysFrom("2026-10-12", 7), 1199),
+        });
+      });
+
+      test("記録の抜けとみなし、食事の記録が少ないで見送ること", () => {
+        expect(judged).toEqual({ type: "deferred", reason: "few_meal_records" });
+      });
+    });
+
+    describe("記録が意味する消費が、推定の始まりのちょうど 0.6 倍のとき", () => {
+      let judged: ReviewWeekJudgement;
+      beforeEach(() => {
+        judged = judgeReviewWeek({
+          ...reviewableInputs(),
+          recordedEnergyIntakes: intakesOn(daysFrom("2026-10-12", 7), 1200),
+        });
+      });
+
+      test("見送らないこと", () => {
+        expect(judged).toMatchObject({ type: "reviewable", averageEnergyIntakeKcal: 1200 });
+      });
+    });
+
+    describe("体重が減った分、記録が意味する消費が記録した量より多く、0.6 倍以上になるとき", () => {
+      let judged: ReviewWeekJudgement;
+      beforeEach(() => {
+        // 入力の週に 70 kg から 69 kg へ下がる。記録した 1,000 kcal に、体重の傾向が減った分を足すと 0.6 倍を超える
+        judged = judgeReviewWeek({
+          ...reviewableInputs(),
+          dailyWeights: [
+            ...weightsOn(daysFrom("2026-10-05", 7)),
+            ...daysFrom("2026-10-12", 7).map((calendarDay) => ({ calendarDay, weightKg: 69 })),
+          ],
+          recordedEnergyIntakes: intakesOn(daysFrom("2026-10-12", 7), 1000),
+        });
+      });
+
+      test("見送らないこと", () => {
+        expect(judged).toMatchObject({ type: "reviewable", averageEnergyIntakeKcal: 1000 });
+      });
+    });
+
+    describe("推定の始まりが読めず、記録した量が少ないとき", () => {
+      let judged: ReviewWeekJudgement;
+      beforeEach(() => {
+        judged = judgeReviewWeek({
+          ...reviewableInputs(),
+          initialExpenditureKcal: undefined,
+          recordedEnergyIntakes: intakesOn(daysFrom("2026-10-12", 7), 1000),
+        });
+      });
+
+      test("比べる元が無いので、量では見送らないこと", () => {
+        expect(judged).toMatchObject({ type: "reviewable", averageEnergyIntakeKcal: 1000 });
       });
     });
 

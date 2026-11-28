@@ -19,6 +19,10 @@ const inputs = (overrides: Partial<ReviewedExpenditureInputs> = {}): ReviewedExp
 const reviewedWeeks = (count: number, recordedMealDayCount = 7) =>
   Array.from({ length: count }, () => ({ type: "reviewed" as const, recordedMealDayCount }));
 
+// 予測した変化は −0.1818 kg。実際の変化を変えて、観測 − 前の推定（ρ × ずれ ÷ 7）を決める
+const actualChangeForObservationKcal = (observationMinusPreviousKcal: number) =>
+  -0.1818181818 - (observationMinusPreviousKcal * 7) / 7700;
+
 describe("見直した推定消費カロリー", () => {
   describe("推定の始まりが式で、最初の見直しのとき", () => {
     let reviewed: Reviewed;
@@ -155,6 +159,104 @@ describe("見直した推定消費カロリー", () => {
 
     test("前の推定と観測（2,400 + 240 kcal）のあいだに収め、観測を越えて動かさないこと", () => {
       expect(reviewed.expenditureKcal > 2400 && reviewed.expenditureKcal < 2640).toBe(true);
+    });
+  });
+
+  describe("1回の動きの上限について", () => {
+    describe("推定の始まりが式の最初の見直しで、観測が前の推定より 500 kcal 低いとき", () => {
+      let reviewed: Reviewed;
+      beforeEach(() => {
+        reviewed = computeReviewedExpenditure(
+          inputs({ actualWeightChangeKg: actualChangeForObservationKcal(-500) }),
+        );
+      });
+
+      test("k は 0.8016 のままで、動きを −250 kcal で止め、上限に当たったとすること", () => {
+        // −500 × 0.8016 = −400.8 kcal を −250 kcal にする
+        expect({
+          gain: reviewed.gain.toFixed(4),
+          expenditureKcal: reviewed.expenditureKcal,
+          hitAdjustmentLimit: reviewed.hitAdjustmentLimit,
+        }).toEqual({ gain: "0.8016", expenditureKcal: 2150, hitAdjustmentLimit: true });
+      });
+    });
+
+    describe("推定の始まりが式の最初の見直しで、観測が前の推定より 300 kcal 高いとき", () => {
+      let reviewed: Reviewed;
+      beforeEach(() => {
+        reviewed = computeReviewedExpenditure(
+          inputs({ actualWeightChangeKg: actualChangeForObservationKcal(300) }),
+        );
+      });
+
+      test("上限に当たらず、約 +240 kcal 動かすこと", () => {
+        // 300 × 0.8016 = 240.5 kcal
+        expect({
+          expenditureKcal: reviewed.expenditureKcal,
+          hitAdjustmentLimit: reviewed.hitAdjustmentLimit,
+        }).toEqual({ expenditureKcal: 2640, hitAdjustmentLimit: false });
+      });
+    });
+
+    describe("推定の始まりが逆算の最初の見直しで、観測が前の推定より 400 kcal 低いとき", () => {
+      let reviewed: Reviewed;
+      beforeEach(() => {
+        reviewed = computeReviewedExpenditure(
+          inputs({
+            initialExpenditureSource: "back_calculated",
+            actualWeightChangeKg: actualChangeForObservationKcal(-400),
+          }),
+        );
+      });
+
+      test("上限に当たらず、約 −200 kcal 動かすこと", () => {
+        // −400 × 0.5098 = −203.9 kcal
+        expect({
+          expenditureKcal: reviewed.expenditureKcal,
+          hitAdjustmentLimit: reviewed.hitAdjustmentLimit,
+        }).toEqual({ expenditureKcal: 2196, hitAdjustmentLimit: false });
+      });
+    });
+
+    describe("前の2回の見直しで上限に当たったあとの3回目のとき", () => {
+      let reviewed: Reviewed;
+      beforeEach(() => {
+        // 上限で動きを止めても、不確かさは止めないときと同じに縮める（見直した週の並びだけからたどり直す）
+        reviewed = computeReviewedExpenditure(
+          inputs({
+            previousWeeks: reviewedWeeks(2),
+            actualWeightChangeKg: actualChangeForObservationKcal(-1000),
+          }),
+        );
+      });
+
+      test("k を 0.3320 まで小さくし、動きを −250 kcal で止めること", () => {
+        // −1,000 × 0.3320 = −332 kcal を −250 kcal にする
+        expect({
+          gain: reviewed.gain.toFixed(4),
+          expenditureKcal: reviewed.expenditureKcal,
+        }).toEqual({ gain: "0.3320", expenditureKcal: 2150 });
+      });
+    });
+
+    describe("推定の始まりが式で、最初の週を見送った次の見直しのとき", () => {
+      let reviewed: Reviewed;
+      beforeEach(() => {
+        reviewed = computeReviewedExpenditure(
+          inputs({
+            previousWeeks: [{ type: "deferred" }],
+            actualWeightChangeKg: actualChangeForObservationKcal(-500),
+          }),
+        );
+      });
+
+      test("見送った分 k が大きくなっても、動きは −250 kcal までにすること", () => {
+        // P⁻ = 400² + 2 × 40² = 163,200、k = 163,200 ÷ 203,200 = 0.8031
+        expect({
+          gain: reviewed.gain.toFixed(4),
+          expenditureKcal: reviewed.expenditureKcal,
+        }).toEqual({ gain: "0.8031", expenditureKcal: 2150 });
+      });
     });
   });
 

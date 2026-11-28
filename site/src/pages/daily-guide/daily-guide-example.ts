@@ -36,11 +36,18 @@ export const dailyGuideExample = (() => {
       firstReview.actualWeightChangeKg > 0 && firstReview.deviationKg < 0,
     ],
     [
-      "1週目から3週目だけ、1週の変化の幅で止まる",
+      "1週目と2週目だけ、1週の変化の幅で止まる",
       firstReview.limitHits.includes("weekly_change") &&
         secondReview.limitHits.includes("weekly_change") &&
-        thirdReview.limitHits.includes("weekly_change") &&
+        thirdReview.limitHits.length === 0 &&
         fourthReview.limitHits.length === 0,
+    ],
+    [
+      "1週目だけ、推定消費カロリーの動きが1回の上限で止まる",
+      firstReview.hitAdjustmentLimit &&
+        !secondReview.hitAdjustmentLimit &&
+        !thirdReview.hitAdjustmentLimit &&
+        !fourthReview.hitAdjustmentLimit,
     ],
     [
       "直す割合が週ごとに小さくなる",

@@ -98,6 +98,7 @@ for (let week = 0; week < weeks; week++) {
     reviewedMonday,
     startedUsingOn: startedOn,
     initialExpenditureSource: initial.value.source,
+    initialExpenditureKcal: initial.value.kcal,
     dailyWeights: [
       ...priorWeights,
       ...days.map(({ calendarDay, weightKg }) => ({ calendarDay, weightKg })),
@@ -143,6 +144,7 @@ for (let week = 0; week < weeks; week++) {
     deviationKcalPerDay: round(Math.abs(deviationKcalPerDay), 1),
     gain: round(reviewed.gain, 4),
     adjustedKcal: round(Math.abs(deviationKcalPerDay) * reviewed.gain, 1),
+    hitAdjustmentLimit: reviewed.hitAdjustmentLimit,
     expenditureKcal: reviewed.expenditureKcal,
     guideKcal: guide.energyKcal,
     limitHits: guide.limitHits,

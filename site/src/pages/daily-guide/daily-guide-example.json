@@ -227,37 +227,37 @@
       "calendarDay": "2026-01-27",
       "weightKg": 77.7,
       "trendKg": 78.0455,
-      "trueExpenditureKcal": 2130.6
+      "trueExpenditureKcal": 2130.8
     },
     {
       "calendarDay": "2026-01-28",
       "weightKg": 77.3,
       "trendKg": 77.9709,
-      "trueExpenditureKcal": 2128.4
+      "trueExpenditureKcal": 2128.8
     },
     {
       "calendarDay": "2026-01-29",
       "weightKg": 77.4,
       "trendKg": 77.9138,
-      "trueExpenditureKcal": 2127.3
+      "trueExpenditureKcal": 2127.8
     },
     {
       "calendarDay": "2026-01-30",
       "weightKg": 77.2,
       "trendKg": 77.8424,
-      "trueExpenditureKcal": 2124.9
+      "trueExpenditureKcal": 2125.6
     },
     {
       "calendarDay": "2026-01-31",
       "weightKg": 77.1,
       "trendKg": 77.7682,
-      "trueExpenditureKcal": 2123.3
+      "trueExpenditureKcal": 2124.2
     },
     {
       "calendarDay": "2026-02-01",
       "weightKg": 76.9,
       "trendKg": 77.6814,
-      "trueExpenditureKcal": 2120.6
+      "trueExpenditureKcal": 2121.6
     }
   ],
   "reviews": [
@@ -273,7 +273,8 @@
       "deviationKcalPerDay": 447.1,
       "gain": 0.8016,
       "adjustedKcal": 358.4,
-      "expenditureKcal": 2041,
+      "hitAdjustmentLimit": true,
+      "expenditureKcal": 2149,
       "guideKcal": 1900,
       "limitHits": [
         "weekly_change"
@@ -282,16 +283,17 @@
     {
       "weekFirstDay": "2026-01-12",
       "weekLastDay": "2026-01-18",
-      "previousExpenditureKcal": 2041,
+      "previousExpenditureKcal": 2149,
       "averageEnergyIntakeKcal": 1900,
       "recordedMealDayCount": 7,
-      "predictedWeightChangeKg": -0.1282,
+      "predictedWeightChangeKg": -0.2264,
       "actualWeightChangeKg": -0.1104,
-      "deviationKg": -0.0178,
-      "deviationKcalPerDay": 19.6,
+      "deviationKg": -0.116,
+      "deviationKcalPerDay": 127.6,
       "gain": 0.457,
-      "adjustedKcal": 8.9,
-      "expenditureKcal": 2032,
+      "adjustedKcal": 58.3,
+      "hitAdjustmentLimit": false,
+      "expenditureKcal": 2091,
       "guideKcal": 1750,
       "limitHits": [
         "weekly_change"
@@ -300,146 +302,146 @@
     {
       "weekFirstDay": "2026-01-19",
       "weekLastDay": "2026-01-25",
-      "previousExpenditureKcal": 2032,
+      "previousExpenditureKcal": 2091,
       "averageEnergyIntakeKcal": 1750,
       "recordedMealDayCount": 7,
-      "predictedWeightChangeKg": -0.2564,
+      "predictedWeightChangeKg": -0.31,
       "actualWeightChangeKg": -0.2771,
-      "deviationKg": 0.0208,
-      "deviationKcalPerDay": 22.8,
+      "deviationKg": -0.0329,
+      "deviationKcalPerDay": 36.2,
       "gain": 0.332,
-      "adjustedKcal": 7.6,
-      "expenditureKcal": 2040,
-      "guideKcal": 1600,
-      "limitHits": [
-        "weekly_change"
-      ]
+      "adjustedKcal": 12,
+      "hitAdjustmentLimit": false,
+      "expenditureKcal": 2079,
+      "guideKcal": 1650,
+      "limitHits": []
     },
     {
       "weekFirstDay": "2026-01-26",
       "weekLastDay": "2026-02-01",
-      "previousExpenditureKcal": 2040,
-      "averageEnergyIntakeKcal": 1600,
+      "previousExpenditureKcal": 2079,
+      "averageEnergyIntakeKcal": 1650,
       "recordedMealDayCount": 7,
-      "predictedWeightChangeKg": -0.4,
+      "predictedWeightChangeKg": -0.39,
       "actualWeightChangeKg": -0.4007,
-      "deviationKg": 0.0007,
-      "deviationKcalPerDay": 0.7,
+      "deviationKg": 0.0107,
+      "deviationKcalPerDay": 11.7,
       "gain": 0.2711,
-      "adjustedKcal": 0.2,
-      "expenditureKcal": 2040,
-      "guideKcal": 1600,
+      "adjustedKcal": 3.2,
+      "hitAdjustmentLimit": false,
+      "expenditureKcal": 2082,
+      "guideKcal": 1650,
       "limitHits": []
     }
   ],
   "plateau": [
     {
       "week": 4,
-      "trueWeightKg": 77.2555
+      "trueWeightKg": 77.3005
     },
     {
       "week": 8,
-      "trueWeightKg": 75.4546
+      "trueWeightKg": 75.6688
     },
     {
       "week": 12,
-      "trueWeightKg": 73.8224
+      "trueWeightKg": 74.19
     },
     {
       "week": 16,
-      "trueWeightKg": 72.343
+      "trueWeightKg": 72.8497
     },
     {
       "week": 20,
-      "trueWeightKg": 71.0023
+      "trueWeightKg": 71.6349
     },
     {
       "week": 24,
-      "trueWeightKg": 69.7871
+      "trueWeightKg": 70.5339
     },
     {
       "week": 28,
-      "trueWeightKg": 68.6857
+      "trueWeightKg": 69.5361
     },
     {
       "week": 32,
-      "trueWeightKg": 67.6875
+      "trueWeightKg": 68.6317
     },
     {
       "week": 36,
-      "trueWeightKg": 66.7829
+      "trueWeightKg": 67.8121
     },
     {
       "week": 40,
-      "trueWeightKg": 65.9629
+      "trueWeightKg": 67.0692
     },
     {
       "week": 44,
-      "trueWeightKg": 65.2198
+      "trueWeightKg": 66.3959
     },
     {
       "week": 48,
-      "trueWeightKg": 64.5463
+      "trueWeightKg": 65.7857
     },
     {
       "week": 52,
-      "trueWeightKg": 63.9359
+      "trueWeightKg": 65.2326
     },
     {
       "week": 56,
-      "trueWeightKg": 63.3826
+      "trueWeightKg": 64.7314
     },
     {
       "week": 60,
-      "trueWeightKg": 62.8812
+      "trueWeightKg": 64.2771
     },
     {
       "week": 64,
-      "trueWeightKg": 62.4267
+      "trueWeightKg": 63.8653
     },
     {
       "week": 68,
-      "trueWeightKg": 62.0148
+      "trueWeightKg": 63.4922
     },
     {
       "week": 72,
-      "trueWeightKg": 61.6415
+      "trueWeightKg": 63.1539
     },
     {
       "week": 76,
-      "trueWeightKg": 61.3032
+      "trueWeightKg": 62.8474
     },
     {
       "week": 80,
-      "trueWeightKg": 60.9966
+      "trueWeightKg": 62.5696
     },
     {
       "week": 84,
-      "trueWeightKg": 60.7186
+      "trueWeightKg": 62.3178
     },
     {
       "week": 88,
-      "trueWeightKg": 60.4667
+      "trueWeightKg": 62.0896
     },
     {
       "week": 92,
-      "trueWeightKg": 60.2385
+      "trueWeightKg": 61.8827
     },
     {
       "week": 96,
-      "trueWeightKg": 60.0316
+      "trueWeightKg": 61.6953
     },
     {
       "week": 100,
-      "trueWeightKg": 59.844
+      "trueWeightKg": 61.5254
     },
     {
       "week": 104,
-      "trueWeightKg": 59.6741
+      "trueWeightKg": 61.3714
     },
     {
       "week": 108,
-      "trueWeightKg": 59.52
+      "trueWeightKg": 61.2318
     }
   ]
 }

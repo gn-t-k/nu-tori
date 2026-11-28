@@ -181,6 +181,8 @@ export type UsageEvent =
           recordedMealDayCount: number;
           // 実際の変化を測った日数
           weightChangeDayCount: number;
+          // 推定の動きが1回の上限に当たったか
+          hitAdjustmentLimit: boolean;
         }
     ))
   | {

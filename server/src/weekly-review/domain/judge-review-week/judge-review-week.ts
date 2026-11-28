@@ -4,6 +4,7 @@ import type { InitialExpenditureSource } from "../../../expenditure-estimate/dom
 import { computeWeightTrend } from "../../../weight-trend/domain/compute-weight-trend";
 import type { WeeklyReviewDeferralReason } from "../weekly-review";
 import { daysPerWeek } from "../../../domain/days-per-week";
+import { kilocaloriesPerKilogram } from "../../../domain/kilocalories-per-kilogram";
 import { findRecordedMealDays, minimumMealDays } from "../find-recorded-meal-days";
 import { computeReviewWeekRange } from "../compute-review-week-range";
 
@@ -14,6 +15,8 @@ export type ReviewWeekInputs = {
   startedUsingOn: string | undefined;
   // 推定の始まりの出どころ。推定の始まりが読めなければ undefined（逆算ではないとみなす）
   initialExpenditureSource: InitialExpenditureSource | undefined;
+  // 推定の始まりの推定消費カロリー（kcal）。読めなければ undefined（量では見送らない）
+  initialExpenditureKcal: number | undefined;
   // 日の代表値を日の順に
   dailyWeights: readonly { calendarDay: string; weightKg: number }[];
   // nu-tori の記録から出した、日ごとの食べた量。M より前の 28 日を含む
@@ -41,6 +44,7 @@ export const judgeReviewWeek = ({
   reviewedMonday,
   startedUsingOn,
   initialExpenditureSource,
+  initialExpenditureKcal,
   dailyWeights,
   recordedEnergyIntakes,
 }: ReviewWeekInputs): ReviewWeekJudgement => {
@@ -69,9 +73,26 @@ export const judgeReviewWeek = ({
     return { type: "deferred", reason: "few_meal_records" };
   }
 
+  const averageEnergyIntakeKcal =
+    mealDays.reduce((sum, { kcal }) => sum + kcal, 0) / mealDays.length;
+  // 記録が意味する消費（記録した日の平均 − 体重の傾向の変化を1日あたりの kcal にしたもの）が推定の始まりの 0.6 倍
+  // （おおよそ基礎代謝の 0.7 倍）に満たない週は、体がそれだけしか使わないことはありえないので、記録の抜けとみなして見送る。
+  // 部分的な記録の日の除外は毎日同じように少なく記録すると効かず、記録した日数の決まりは量を見ないため。
+  // 見送りの理由を足すと端末の表示の分かれが増えるので、記録が少ない週として見送る
+  const recordedExpenditureKcal =
+    averageEnergyIntakeKcal -
+    (kilocaloriesPerKilogram * weightChange.actualWeightChangeKg) /
+      weightChange.weightChangeDayCount;
+  if (
+    initialExpenditureKcal !== undefined &&
+    recordedExpenditureKcal < minimumRecordedExpenditureRatio * initialExpenditureKcal
+  ) {
+    return { type: "deferred", reason: "few_meal_records" };
+  }
+
   return {
     type: "reviewable",
-    averageEnergyIntakeKcal: mealDays.reduce((sum, { kcal }) => sum + kcal, 0) / mealDays.length,
+    averageEnergyIntakeKcal,
     recordedMealDayCount: mealDays.length,
     ...weightChange,
   };
@@ -116,3 +137,6 @@ const computeWeightChange = (
         sundayWeightTrendKg: sundayTrend.trendKg,
       };
 };
+
+// 記録が意味する消費が、推定の始まりのこの割合に満たない週を見送る。出荷後に実データで調整する初期値
+const minimumRecordedExpenditureRatio = 0.6;

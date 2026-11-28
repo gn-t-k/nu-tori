@@ -27,7 +27,9 @@ export type ReviewedExpenditureInputs = {
 
 // 見直せた週の、新しい推定消費カロリー。推定消費カロリーを1つの状態とみるカルマンフィルタで、前の推定 + ρ × ずれ ÷ 測った日数 を観測として、前の推定から観測へ k の割合だけ動かす。
 // 予測は実際の変化と同じ日数で出す。
-// k は推定の不確かさ P から出し、P は推定の始まりから見直した週の並びをたどって毎回出し直す（P を残さないので、表を変えずに今までの見直しにも当てられる）
+// k は推定の不確かさ P から出し、P は推定の始まりから見直した週の並びをたどって毎回出し直す（P を残さないので、表を変えずに今までの見直しにも当てられる）。
+// 1回の動きは上限で止める。始まりのころは k が大きく、記録の抜けや体重のぶれの1週がそのまま大きく乗るため。
+// 止めても P は止めないときと同じに縮める（見直した週の並びだけからたどり直す形を保つ。k は Q で 0.18 ほどより下がらないので、止めた分はあとの週で戻せる）
 export const computeReviewedExpenditure = ({
   previousExpenditureKcal,
   averageEnergyIntakeKcal,
@@ -41,6 +43,8 @@ export const computeReviewedExpenditure = ({
   deviationKg: number;
   // 観測のうち推定を動かした割合（カルマンゲイン k）
   gain: number;
+  // 上限で止める前の動き（k × 観測 − 前の推定）が上限を越えたか
+  hitAdjustmentLimit: boolean;
   expenditureKcal: number;
   deviationDirection: ExpenditureDeviationDirection;
 } => {
@@ -52,13 +56,15 @@ export const computeReviewedExpenditure = ({
     computeVarianceBeforeReview(initialExpenditureSource, previousWeeks),
     recordedMealDayCount,
   );
+  const adjustmentKcal = (gain * kilocaloriesPerKilogram * deviationKg) / weightChangeDayCount;
   return {
     predictedWeightChangeKg,
     deviationKg,
     gain,
+    hitAdjustmentLimit: Math.abs(adjustmentKcal) > maximumAdjustmentKcal,
     expenditureKcal: Math.round(
       previousExpenditureKcal +
-        (gain * kilocaloriesPerKilogram * deviationKg) / weightChangeDayCount,
+        Math.min(Math.max(adjustmentKcal, -maximumAdjustmentKcal), maximumAdjustmentKcal),
     ),
     deviationDirection: toDeviationDirection(deviationKg),
   };
@@ -109,3 +115,6 @@ const initialUncertaintyKcal = (source: InitialExpenditureSource | undefined): n
 // 本当の消費が1週で動く大きさ（Q）と、7 日記録した週の観測のぶれ（R）。どれも試算で選んだ、出荷後に実データで調整する初期値
 const weeklyProcessNoiseKcal = 40;
 const observationNoiseKcal = 200;
+
+// 1回の見直しで推定を動かす上限。試算で、記録が正しい人の式で始めた最初の見直しの動きの 80% 点のあたり。出荷後に実データで調整する初期値
+const maximumAdjustmentKcal = 250;

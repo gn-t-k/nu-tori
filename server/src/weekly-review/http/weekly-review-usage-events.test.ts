@@ -84,7 +84,7 @@ describe("週の見直しの出来事", () => {
       await pullSyncChanges(sessionToken);
     });
 
-    test("見直せたことと、主な理由、当たった上限と下限、推定消費カロリーの差、ずれ・k・記録した日数・測った日数、推定の始まりの出どころを送ること", () => {
+    test("見直せたことと、主な理由、当たった上限と下限、推定消費カロリーの差、ずれ・k・記録した日数・測った日数・上限に当たったか、推定の始まりの出どころを送ること", () => {
       expect(readWeeklyReviewEvents()).toEqual([
         {
           event: "weekly_review",
@@ -98,6 +98,7 @@ describe("週の見直しの出来事", () => {
             gain: 0.51,
             recorded_meal_day_count: 7,
             weight_change_day_count: 7,
+            hit_adjustment_limit: false,
             initial_expenditure_source: "back_calculated",
             reviewed_week_count: 1,
             $geoip_disable: true,
@@ -121,6 +122,20 @@ describe("週の見直しの出来事", () => {
       test("同じ週を2回見直さず、2回めの要求では送らないこと", () => {
         expect(readWeeklyReviewEvents()).toHaveLength(1);
       });
+    });
+  });
+
+  describe("入力の週の食事をそれぞれ 1,000 kcal 多く記録して、見直せる週の月曜に取りに行ったとき", () => {
+    beforeEach(async () => {
+      // 食べた量は 3,200 kcal で、観測 − 前の推定は +800 kcal、× 0.5098 = +408 kcal が上限の 250 kcal を越える
+      await recordMealEnergies(accountId, daysFrom(addDays(firstMonday, -7), 7), 1000);
+      await pullSyncChanges(sessionToken);
+    });
+
+    test("推定の動きが上限に当たったことを送ること", () => {
+      expect(readWeeklyReviewEvents()).toMatchObject([
+        { properties: { expenditure_change_kcal: 250, hit_adjustment_limit: true } },
+      ]);
     });
   });
 
