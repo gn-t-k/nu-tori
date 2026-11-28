@@ -145,13 +145,6 @@ export const calorieBalance: LearnArticle = {
       linkLabel: "doi:10.1093/ajcn/6.5.542",
     },
     {
-      claim: "この値は、長く続けると体の消費するカロリーが変わってずれること",
-      citation:
-        "Hall KD. What is the required energy deficit per unit weight loss? Int J Obes. 2008;32(3):573-576.",
-      url: "https://doi.org/10.1038/sj.ijo.0803720",
-      linkLabel: "doi:10.1038/sj.ijo.0803720",
-    },
-    {
       claim: "体重が、消費カロリーより多く食べた分と少なく食べた分の積み重ねで変わること",
       citation:
         "Hall KD, Sacks G, Chandramohan D, et al. Quantification of the effect of energy imbalance on bodyweight. Lancet. 2011;378(9793):826-837.",
