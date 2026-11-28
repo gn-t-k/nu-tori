@@ -310,7 +310,7 @@ struct TimelineComposer: View {
         Task { updateDraft { $0 = TextDraft.empty } }
     }
 
-    /// プリセットの行が出入りするときは、行を薄れさせ、行のぶんバーを詰める（DESIGN.md の Motion）。
+    /// プリセットの行が出入りするときは、行を薄れさせ、行のぶんバーを詰める。
     /// タイムラインの下の余白も同じ動きで変わるよう、行に `.animation` を付けず、替えるところで包む
     private func updateDraft(_ change: (inout TextDraft) -> Void) {
         var next = draft
