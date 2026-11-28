@@ -6,7 +6,7 @@
 
 下の手順は、クラウドのセッションでも通る `gh api` の REST で書いてある。Mac のセッションでは `gh issue ...`・`gh pr ...` を使ってもよい。クラウドのセッションでの GitHub の扱い（REST に回るもの、添付できないこと、書いたあとの読み直し、サブ Issue と依存関係の API）は `docs/agents/git.md` の「クラウドのセッションで GitHub を操作する」。
 
-- **Issueを作る**：本文をファイルに書き、`jq -n --rawfile b <ファイル> '{title:"...", body:$b, labels:["..."]}' | gh api repos/gn-t-k/nu-tori/issues -X POST --input -`
+- **Issueを作る**：本文をファイルに書き、`jq -n --rawfile b <ファイル> '{title:"...", body:$b, labels:["..."]}' | gh api repos/gn-t-k/nu-tori/issues -X POST --input -`。親の無い Issue には、種類のラベルも付ける（`docs/agents/triage-labels.md` の「種類」）
 - **Issueを親のサブ Issue にする**：`gh api repos/gn-t-k/nu-tori/issues/<親>/sub_issues -X POST -F sub_issue_id=<子の DB ID>`。DB ID は `gh api repos/gn-t-k/nu-tori/issues/<子> --jq .id` で取る（`#番号` や `node_id` ではない）。サブ Issue が使えない場合は、子の本文の先頭に `Part of #<親>` と書く
 - **本文の長さ**：Issue の本文とコメントは 65,536 文字まで（バイトではなく文字）。仕様のような長い本文は、投稿の前に `python3 -c 'import sys; print(len(open(sys.argv[1], encoding="utf-8").read()))' <ファイル>` で数え、6 万文字を超えたら、ほかの節と重なる図や付録をコメントに分ける
 - **Issueを読む**：`gh api repos/gn-t-k/nu-tori/issues/<番号>`（ラベルは `.labels[].name`）と、コメントは `gh api repos/gn-t-k/nu-tori/issues/<番号>/comments`
@@ -61,7 +61,21 @@ GitHub Issueを作る。
 
 今はできず、何かが起きてから行う作業（「App Store に出たら人気度を見る」など）は、解決コメントや本文の1行で済ませず、その作業の Issue を作る。起きるのを待つ出来事の Issue をブロック元にして依存を張り（上の「wayfinderの操作」の「ブロック関係」）、人が行う作業なら `ready-for-human`、エージェントが行う作業なら `ready-for-agent` を付ける。先送りを決めた解決コメントからは、作った Issue を指す。
 
+待つ相手を Issue にできないもの（日付、審査の結果、外の出来事）を待っていて、今は誰もすることがない Issue には、状態のラベルに重ねて `waiting` を付け、何をいつまで待つかを本文に書く。待っていたことが起きたら `waiting` を外す。待つ相手が Issue なら、`waiting` を付けずにブロック元にする。
+
 **Why:** 「[App Store のキーワードの人気度を見る](https://github.com/gn-t-k/nu-tori/issues/595)」で、出てから見る手順を仕様に入れるとだけ解決コメントに書き、開発者に「その時期に気づける？」と直された。ブロックされた Issue にすると、ブロック元が閉じたときに着手できるものとして見える（#612）
+
+## 版のマイルストーン
+
+iOS の版に何が入るかは、マイルストーン `iOS <版の番号>`（`iOS 1.3.0`）で束ねる。版に入るのは、審査に出す時点で main に入っているものなので、版を付ける時機を変更の大きさで分ける。
+
+- 何本もの PR にまたがるもの: 仕様を作るとき（`/to-spec`）に、仕様の Issue に版を付ける。サブ Issue は親の版を引き継ぐので付けない。先に出す版が残っているあいだは、その仕様の `ios/` を変えるチケットを main に入れない。先に出す版を出し終えたと決める Issue を作り、そのチケットのブロック元にする（#1147 が例）
+- 1本の PR で済むもの: 前もって付けない。`ios/` を変えた PR が main に入ると、`version-milestone.yml` がそのときの版を PR に付ける。サーバーと `site/` だけの PR は、main に入ると出るので版が付かない
+- 次の版に必ず入れたい不具合: 振り分けるとき（`/triage`）に、次の版を Issue に付ける
+
+付けるのは `gh api repos/gn-t-k/nu-tori/issues/<番号> -X PATCH -F milestone=<マイルストーンの番号>`。番号は `gh api 'repos/gn-t-k/nu-tori/milestones?state=all'` で引き、無ければ `gh api repos/gn-t-k/nu-tori/milestones -f title='iOS <版の番号>'` で作る。マイルストーンを閉じる時機は `docs/agents/ios-release.md` の「審査に出す」。
+
+**Why:** 版に何が入ったかを、審査に出すときに `ios/` を変えた PR から後で組み立てていた。大きいものの `ios/` の変更が先に main に入ると、main から先の版を出せなくなる（#1145）
 
 ## 仕様をチケットに切る前に
 

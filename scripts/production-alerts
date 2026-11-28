@@ -101,7 +101,7 @@ const alertAndResolve = (dryRun) => {
       github(["--method", "POST", `repos/${repository}/issues`], {
         title,
         body: issueBody(alert, readReleaseAndOs(alert.shortId), previous),
-        labels: ["needs-triage"],
+        labels: ["needs-triage", "bug"],
       }),
       "gh api",
     );

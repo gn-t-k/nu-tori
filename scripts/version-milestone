@@ -1,0 +1,149 @@
+#!/usr/bin/env node
+// `ios/` を変えた PR が main に入ったとき、そのときのアプリの版のマイルストーン（iOS <版>）を PR に付ける。.github/workflows/version-milestone.yml が呼ぶ
+// 版を付ける時機の決まりは docs/agents/issue-tracker.md の「版のマイルストーン」
+// することは、今の PR とマイルストーンの状態から決める。回し直しても、途中で止まった回のあとでも、同じ形に落ち着く
+// 拡張子の無いファイルは Node が CommonJS として読むので、import と top-level await を使わない
+"use strict";
+
+const { execFileSync } = require("node:child_process");
+const { ExpectedFailure } = require("./expected-failure.js");
+const { readMarketingVersion } = require("./check-app-version");
+
+const repository = process.env.GITHUB_REPOSITORY ?? "gn-t-k/nu-tori";
+const PROJECT = "ios/NuTori.xcodeproj/project.pbxproj";
+// 審査に出した版（閉じたマイルストーン）の番号のまま main に入った PR を、次の版の番号が決まるまで置く
+const PENDING_TITLE = "iOS 次の版";
+const milestoneTitle = (version) => `iOS ${version}`;
+
+const usage =
+  "使い方: scripts/version-milestone <PR の番号> [--dry-run]（--dry-run は GitHub に書かず、することだけを出す）";
+
+const main = () => {
+  const args = process.argv.slice(2);
+  const dryRun = args.includes("--dry-run");
+  const operands = args.filter((arg) => arg !== "--dry-run");
+  if (operands.length !== 1 || !/^[1-9][0-9]*$/.test(operands[0])) throw new ExpectedFailure(usage);
+  const [number] = operands;
+
+  const pull = parseJson(github([`repos/${repository}/pulls/${number}`]));
+  const paths = lines(github(["--paginate", `repos/${repository}/pulls/${number}/files?per_page=100`, "--jq", ".[].filename"]));
+  const skipped = reasonToSkip(pull, paths);
+  if (skipped) {
+    console.log(`何もしない: #${number}（${skipped}）`);
+    return;
+  }
+  // main の先でなく、この PR が入ったコミットの版を読む。あとから回し直しても同じ版になる
+  const version = readMarketingVersion(
+    github([`repos/${repository}/contents/${PROJECT}?ref=${pull.merge_commit_sha}`, "-H", "Accept: application/vnd.github.raw"]),
+  );
+  const action = plan(version, listMilestones());
+  console.log(`#${number} に ${action.title} を付ける${action.movesPending ? `。${PENDING_TITLE} にあるものも移す` : ""}`);
+  if (dryRun) return;
+
+  const target = ensureOpenMilestone(action.title);
+  setMilestone(number, target);
+  if (action.movesPending) movePending(target);
+};
+
+// 版を付けない理由。付けるなら null
+const reasonToSkip = (pull, paths) => {
+  if (!pull.merged_at || pull.base.ref !== "main") return "main に入った PR でない";
+  // 人が付けた版は付け替えない
+  if (pull.milestone) return `すでに ${pull.milestone.title} が付いている`;
+  if (!changesApp(paths)) return "ios/ を変えていない";
+  return null;
+};
+
+// Xcode Cloud がビルドを作るのと同じ、ios/ の下の変更。文書だけの変更ではビルドが変わらない
+const changesApp = (paths) => paths.some((path) => path.startsWith("ios/") && !path.endsWith(".md"));
+
+// 今の版のマイルストーンが閉じていたら、その版は審査に出したあと。この PR はその版に入らないので、次の版の番号が決まるまで PENDING_TITLE に置く。
+// 開いているか、まだ無ければ、今の版に付け、PENDING_TITLE に置いたものもその版へ移す
+const plan = (version, milestones) => {
+  const current = milestones.find(({ title }) => title === milestoneTitle(version));
+  if (current?.state === "closed") return { title: PENDING_TITLE, movesPending: false };
+  return { title: milestoneTitle(version), movesPending: true };
+};
+
+const listMilestones = () =>
+  lines(
+    github(["--paginate", `repos/${repository}/milestones?state=all&per_page=100`, "--jq", ".[] | {number, title, state}"]),
+  ).map(parseJson);
+
+// 無ければ作り、閉じていれば開く。同時に走った回が先に作っていたら、作る呼び出しが落ちるので、読み直してそれを使う
+const ensureOpenMilestone = (title) => {
+  const find = () => listMilestones().find((milestone) => milestone.title === title);
+  let milestone = find();
+  if (!milestone) {
+    console.log(`作る: ${title}`);
+    try {
+      milestone = parseJson(github(["--method", "POST", `repos/${repository}/milestones`], { title }));
+    } catch (error) {
+      milestone = find();
+      if (!milestone) throw error;
+    }
+  }
+  if (milestone.state === "closed") {
+    console.log(`開く: ${title}`);
+    github(["--method", "PATCH", `repos/${repository}/milestones/${milestone.number}`], { state: "open" });
+  }
+  return milestone.number;
+};
+
+const setMilestone = (number, milestone) => {
+  // PR のマイルストーンも、Issue の口で付ける
+  github(["--method", "PATCH", `repos/${repository}/issues/${number}`], { milestone });
+};
+
+// PENDING_TITLE に置いたものを、番号の決まった版へ移し、空になった PENDING_TITLE を閉じる。途中で止まっても、残りは次の回が移す
+const movePending = (target) => {
+  const pending = listMilestones().find(({ title }) => title === PENDING_TITLE);
+  if (!pending) return;
+  const numbers = lines(
+    github(["--paginate", `repos/${repository}/issues?milestone=${pending.number}&state=all&per_page=100`, "--jq", ".[].number"]),
+  );
+  for (const number of numbers) {
+    console.log(`移す: #${number}`);
+    setMilestone(number, target);
+  }
+  if (pending.state === "open") {
+    github(["--method", "PATCH", `repos/${repository}/milestones/${pending.number}`], { state: "closed" });
+  }
+};
+
+const lines = (text) => text.split("\n").filter(Boolean);
+
+// 読んだ出力の断片が、公開の Actions のログに SyntaxError の文として出ないよう、文だけで失敗する
+const parseJson = (text) => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new ExpectedFailure("gh api の出力が JSON でない");
+  }
+};
+
+// 本文は標準入力の JSON で渡す。-f で渡すと、数（マイルストーンの番号）が文字列になるため
+const github = (args, body) => {
+  try {
+    return execFileSync("gh", ["api", ...args, ...(body ? ["--input", "-"] : [])], {
+      input: body && JSON.stringify(body),
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ["pipe", "pipe", "inherit"],
+    });
+  } catch (error) {
+    throw new ExpectedFailure(`gh api ${args.join(" ")} が ${error.status ?? error.code} で失敗した`);
+  }
+};
+
+module.exports = { reasonToSkip, plan };
+
+// テストが require したときは、コマンドとしては動かない
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error instanceof ExpectedFailure ? error.message : error);
+    process.exitCode = 1;
+  }
+}

@@ -163,7 +163,7 @@ jobs:
               'main の ios-ui-test（パッケージのテスト、アプリのビルド、UI テスト）が落ちた。次の PR より先に直す。' \
               "$RUN_URL" "$REPORT" "$details" \
               'main で ios-ui-test が緑に戻ると、ワークフローがこの Issue を閉じる。')"
-            number="$(gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$title" -f body="$body" -f "labels[]=ready-for-agent" --jq .number)"
+            number="$(gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$title" -f body="$body" -f "labels[]=ready-for-agent" -f "labels[]=bug" --jq .number)"
             # GITHUB_TOKEN で立てた Issue は lock-conversations.yml を起こさないので、ここでロックする
             gh api --method PUT "repos/$GITHUB_REPOSITORY/issues/$number/lock" > /dev/null
           }

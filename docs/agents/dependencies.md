@@ -31,7 +31,7 @@ flowchart TD
 
 ## 落ちた PR の Issue
 
-依存の PR の check が落ちると（時間切れや起動の失敗も含む。取り消されたときは除く）、`dependency-pr.yml` が PR ごとに Issue を1つ立てる（ラベルは `ready-for-agent`）。題は `依存の PR #<番号> の check が落ちている（<PR の題>）` で、セキュリティの更新なら先頭に `[セキュリティ]` が付く。`[セキュリティ]` の Issue は、ほかより先に拾う。同じ PR がまた落ちると、開いている Issue に落ちた回のリンクがコメントで足される。PR がマージされるか閉じられると、Issue は閉じる。
+依存の PR の check が落ちると（時間切れや起動の失敗も含む。取り消されたときは除く）、`dependency-pr.yml` が PR ごとに Issue を1つ立てる（ラベルは `ready-for-agent` と `dependencies`）。題は `依存の PR #<番号> の check が落ちている（<PR の題>）` で、セキュリティの更新なら先頭に `[セキュリティ]` が付く。`[セキュリティ]` の Issue は、ほかより先に拾う。同じ PR がまた落ちると、開いている Issue に落ちた回のリンクがコメントで足される。PR がマージされるか閉じられると、Issue は閉じる。
 
 - Issue の本文の PR と落ちた回から読み始める。直すのは、PR のブランチで始めたセッションにする（`docs/agents/git.md`）
 - 直したコミットを足して check が通れば、patch/minor ならワークフローがマージする。major は落ちたときも Issue が立つが、直したあとのマージは人がする
@@ -53,7 +53,7 @@ flowchart TD
 
 ## Swift Package の major の Issue
 
-`update-swift-packages.yml` は、新しい major を上げずに、題 `Swift Package の <依存の名前> に新しい major の版 <major の番号> が出た` の Issue で知らせる（ラベルは `needs-triage`）。同じ題の Issue は、閉じていても立て直されないので、上げないと決めたら閉じてよい。次の major が出たら題が変わり、また立つ。
+`update-swift-packages.yml` は、新しい major を上げずに、題 `Swift Package の <依存の名前> に新しい major の版 <major の番号> が出た` の Issue で知らせる（ラベルは `needs-triage` と `dependencies`）。同じ題の Issue は、閉じていても立て直されないので、上げないと決めたら閉じてよい。次の major が出たら題が変わり、また立つ。
 
 上げるときは、変更履歴で API の変わったところを確かめ、手で上げる。
 

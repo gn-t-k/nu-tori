@@ -4,11 +4,11 @@
 
 ### Issue管理
 
-Issueはこのリポジトリ（gn-t-k/nu-tori）のGitHub Issuesで管理する。Issue を作る・読む・探す・閉じるとき、`/research` の調べものを終えるとき、作業を先送りするときは、`docs/agents/issue-tracker.md` を読む。
+Issueはこのリポジトリ（gn-t-k/nu-tori）のGitHub Issuesで管理する。Issue を作る・読む・探す・閉じるとき、`/research` の調べものを終えるとき、作業を先送りするとき、Issue に iOS の版を付けるときは、`docs/agents/issue-tracker.md` を読む。
 
 ### triageラベル
 
-標準の5ラベル（`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`）を使う。詳細は `docs/agents/triage-labels.md` を参照。
+状態の5ラベル（`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`）と、種類のラベルを使う。詳細は `docs/agents/triage-labels.md` を参照。
 
 ### ドメインドキュメント
 
