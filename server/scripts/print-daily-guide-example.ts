@@ -105,7 +105,7 @@ for (let week = 0; week < weeks; week++) {
     recordedEnergyIntakes: days.map(({ calendarDay, kcal }) => ({ calendarDay, kcal })),
   });
   if (judgement.type !== "reviewable") throw new Error(JSON.stringify(judgement));
-  // 出し方のページの式は「÷ 7 日」と書くので、毎日量り、変化を7日で測る筋にしておく
+  // 例の式（site/src/pages/daily-guide/review-equation.tsx）はずれを「÷ 7 日」で1日あたりにすると書くので、毎日量り、変化を7日で測る筋にしておく
   if (judgement.weightChangeDayCount !== daysPerWeek) {
     throw new Error(`変化を ${judgement.weightChangeDayCount} 日で測った`);
   }
@@ -128,7 +128,8 @@ for (let week = 0; week < weeks; week++) {
       daysToDeadline: countDaysBetween(reviewedMonday, deadline) + 1,
     },
   });
-  const deviationKcalPerDay = (kilocaloriesPerKilogram * reviewed.deviationKg) / daysPerWeek;
+  const deviationKcalPerDay =
+    (kilocaloriesPerKilogram * reviewed.deviationKg) / judgement.weightChangeDayCount;
   reviews.push({
     weekFirstDay: addDays(reviewedMonday, -daysPerWeek),
     weekLastDay: addDays(reviewedMonday, -1),

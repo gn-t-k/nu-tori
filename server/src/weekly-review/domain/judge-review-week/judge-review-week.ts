@@ -108,8 +108,8 @@ const computeWeightChange = (
   const weekLastWeighedOn = lastWeighedOn(weekEnd);
   const end = weekLastWeighedOn === undefined ? undefined : trendOn(weekLastWeighedOn);
   // 1日の目安の元は、測り方と別に、日曜の時点でいちばん新しい体重の傾向にする
-  const sunday = trend.findLast(({ calendarDay }) => calendarDay <= weekEnd);
-  if (start === undefined || end === undefined || sunday === undefined) {
+  const sundayTrend = trend.findLast(({ calendarDay }) => calendarDay <= weekEnd);
+  if (start === undefined || end === undefined || sundayTrend === undefined) {
     return undefined;
   }
   const weightChangeDayCount = countDaysBetween(start.calendarDay, end.calendarDay);
@@ -118,7 +118,7 @@ const computeWeightChange = (
     : {
         actualWeightChangeKg: end.trendKg - start.trendKg,
         weightChangeDayCount,
-        sundayWeightTrendKg: sunday.trendKg,
+        sundayWeightTrendKg: sundayTrend.trendKg,
       };
 };
 

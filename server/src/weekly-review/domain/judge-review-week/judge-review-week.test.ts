@@ -22,9 +22,13 @@ const reviewableInputs = (): ReviewWeekInputs => ({
   recordedEnergyIntakes: intakesOn(daysFrom("2026-10-12", 7)),
 });
 
-const trendKgOn = (dailyWeights: ReviewWeekInputs["dailyWeights"], calendarDay: string): number =>
-  computeWeightTrend(dailyWeights).find((point) => point.calendarDay === calendarDay)?.trendKg ??
-  Number.NaN;
+const trendKgOn = (dailyWeights: ReviewWeekInputs["dailyWeights"], calendarDay: string): number => {
+  const point = computeWeightTrend(dailyWeights).find((p) => p.calendarDay === calendarDay);
+  if (point === undefined) {
+    throw new Error(`${calendarDay} の体重の傾向が無い`);
+  }
+  return point.trendKg;
+};
 
 // 続けて見直す2週の体重。前の週（2026-10-05〜11）は毎日、続く2週は月・水・金だけ量り、1日に 0.1 kg ずつ減る
 const irregularWeights = () =>
@@ -195,22 +199,17 @@ describe("見直す週の判定", () => {
     });
 
     describe("前の週に体重記録が無いとき", () => {
+      let dailyWeights: ReviewWeekInputs["dailyWeights"];
       let judged: ReviewWeekJudgement;
       beforeEach(() => {
-        judged = judgeReviewWeek({
-          ...reviewableInputs(),
-          dailyWeights: [
-            ...weightsOn(daysFrom("2026-09-28", 7)),
-            ...daysFrom("2026-10-12", 7).map((calendarDay) => ({ calendarDay, weightKg: 69 })),
-          ],
-        });
-      });
-
-      test("その前の日曜の体重の傾向（補った値）から、7 日で測ること", () => {
-        const dailyWeights = [
+        dailyWeights = [
           ...weightsOn(daysFrom("2026-09-28", 7)),
           ...daysFrom("2026-10-12", 7).map((calendarDay) => ({ calendarDay, weightKg: 69 })),
         ];
+        judged = judgeReviewWeek({ ...reviewableInputs(), dailyWeights });
+      });
+
+      test("その前の日曜の体重の傾向（補った値）から、7 日で測ること", () => {
         expect(judged).toMatchObject({
           type: "reviewable",
           actualWeightChangeKg:
