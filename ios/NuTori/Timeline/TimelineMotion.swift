@@ -1,7 +1,7 @@
 import NuToriCore
 import SwiftUI
 
-/// DESIGN.md の Motion の、タイムラインに記録が出入りする動き（#325）。
+/// DESIGN.md の Motion の「出入り」の、タイムラインに記録が出入りする動き（#325）。
 /// 記録は同期を通って `@Query` から届き、書いた側で `withAnimation` に包めないので、出入りの替わり目（`Key`）が変わったときに中身ごと動かす
 enum TimelineMotion {
     static let animation: Animation = .smooth(duration: 0.35)

@@ -312,7 +312,7 @@ struct TimelineScreen: View {
                                     .frame(maxWidth: .infinity, alignment: .trailing)
                                     .padding(.top, 8)
                                     .accessibilityIdentifier("picked-photos-loading")
-                                    // 食事のカードと入れ替わるよう、薄れて抜ける（DESIGN.md の Motion）
+                                    // 食事のカードと入れ替わるよう、薄れて抜ける
                                     .transition(.opacity)
                             }
                             restartGoalSetupCard

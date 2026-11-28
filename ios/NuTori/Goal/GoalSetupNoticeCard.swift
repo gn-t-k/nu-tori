@@ -68,7 +68,7 @@ struct GoalSetupNoticeCard: View {
         return flow.expandedPage == nil ? .closed : .expanded
     }
 
-    /// 目標が決まったときだけ、少し弾ませる。数か月に1回の気持ちが動く場面なので、弾みはここにだけ使う（DESIGN.md の Motion）
+    /// DESIGN.md の Motion の「弾ませない」に従わず、目標が決まったときだけ少し弾ませる。数か月に1回の気持ちが動く場面なので、弾みはここにだけ使う
     private func animation(to form: Form) -> Animation {
         if reduceMotion { return .easeInOut }
         return form == .decided ? .spring(duration: 0.4, bounce: 0.15) : .default
