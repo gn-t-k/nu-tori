@@ -42,3 +42,15 @@ flowchart LR
 - この決まりより前の `prototype/0001-*` のブランチの `0001` は、Issue の番号ではなく `docs/ui-design/0001-first-release` の番号で、試作は `docs/ui-design/0001-first-release/` や `prototype/` の下にある
 
 **Why:** 置き場が `docs/ui-design/`・`site/` の下・ブランチ・Claude Docs にばらけ、試作を探して grep とブランチの探索を約8回した。凍結済みの `docs/ui-design/` に試作を置いたこともあった（#744、#796）
+
+### アプリの見た目と動きを実機で比べる試作
+
+アプリの見た目と動きのうち、実機で触らないと決められないもの（打ちながら見る動き、指で動かすもの）の試作は、上の置き場の例外にして、main の `ios/` に入れ、TestFlight の版で比べる。
+
+- 案は本番の画面の中に入れ、切り替えで選べるようにする。試作ごとに、案と切り替えを `ios/NuTori/Trial/` の1つのファイルに置き、画面のコードからはそこを読むだけにする
+- 切り替えは TestFlight の版でだけ出す。出すかは `ios/NuTori/Trial/TrialBuild.swift` で決め、このファイルは試作が無いあいだも残す。App Store の版とデバッグビルドでは出さず、今の見た目のまま動く
+- 試作を入れる PR は、比べる問いの Issue に結びつける。Issue には、案と、TestFlight のどこで切り替えるかを書く
+- 決めたら、決めた案だけを本番のコードに残し、切り替えと没の案を消す PR を出す。Issue の解決コメントに、判定と何を決めたかを書く。一次資料は、試作を入れた PR とその Issue にする
+- `ios/NuTori/Trial/` に `TrialBuild.swift` のほかのファイルが残っているあいだは、App Store に出さない（`docs/agents/ios-release.md` の「出すビルドを確かめる」）
+
+**Why:** デバッグビルドは Mac につないだ iPhone にしか入らず、開発者が出先で試作を触れなかった。TestFlight に届くのは main のコードだけなので、試作を main に入れる。TestFlight の版と App Store の版は同じビルドで、試作が残ったまま出すと、隠れた切り替えが審査に出る（App Store Review Guidelines 2.3.1）ため、出す前に片づける（#1133）
