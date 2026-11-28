@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { judgeReviewWeek, type ReviewWeekInputs, type ReviewWeekJudgement } from "./index";
 import { daysFrom } from "../../testing/days-from";
+import { computeWeightTrend } from "../../../weight-trend/domain/compute-weight-trend";
+import { countDaysBetween } from "../../../domain/count-days-between";
 
 // 見直す月曜は 2026-10-19。見直す入力の週は 2026-10-12（月）〜 2026-10-18（日）、その前の日曜は 2026-10-11
 const reviewedMonday = "2026-10-19";
@@ -20,6 +22,56 @@ const reviewableInputs = (): ReviewWeekInputs => ({
   recordedEnergyIntakes: intakesOn(daysFrom("2026-10-12", 7)),
 });
 
+const trendKgOn = (dailyWeights: ReviewWeekInputs["dailyWeights"], calendarDay: string): number =>
+  computeWeightTrend(dailyWeights).find((point) => point.calendarDay === calendarDay)?.trendKg ??
+  Number.NaN;
+
+// 続けて見直す2週の体重。前の週（2026-10-05〜11）は毎日、続く2週は月・水・金だけ量り、1日に 0.1 kg ずつ減る
+const irregularWeights = () =>
+  [
+    ...daysFrom("2026-10-05", 7),
+    "2026-10-12",
+    "2026-10-14",
+    "2026-10-16",
+    "2026-10-19",
+    "2026-10-21",
+    "2026-10-23",
+  ].map((calendarDay) => ({
+    calendarDay,
+    weightKg: 70 - 0.1 * countDaysBetween("2026-10-05", calendarDay),
+  }));
+
+// 2026-10-19 と 2026-10-26 の見直しを続けて判定し、実際の変化と測った日数の和を返す。1回目の見直しは firstReviewSeesUntil までの体重記録を見る
+const judgeTwoWeeks = (firstReviewSeesUntil: string) => {
+  const first = judgeReviewWeek({
+    ...reviewableInputs(),
+    dailyWeights: irregularWeights().filter(
+      ({ calendarDay }) => calendarDay <= firstReviewSeesUntil,
+    ),
+  });
+  const second = judgeReviewWeek({
+    ...reviewableInputs(),
+    reviewedMonday: "2026-10-26",
+    dailyWeights: irregularWeights(),
+    recordedEnergyIntakes: intakesOn(daysFrom("2026-10-19", 7)),
+  });
+  if (first.type !== "reviewable" || second.type !== "reviewable") {
+    throw new Error("見直せる週のはず");
+  }
+  return {
+    actualWeightChangeKg: (first.actualWeightChangeKg + second.actualWeightChangeKg).toFixed(6),
+    weightChangeDayCount: first.weightChangeDayCount + second.weightChangeDayCount,
+  };
+};
+
+// 前の週の日曜（最後に量った日）から、後の週の金曜（最後に量った日）までの通しの変化
+const wholeChangeOfTwoWeeks = () => ({
+  actualWeightChangeKg: (
+    trendKgOn(irregularWeights(), "2026-10-23") - trendKgOn(irregularWeights(), "2026-10-11")
+  ).toFixed(6),
+  weightChangeDayCount: 12,
+});
+
 describe("見直す週の判定", () => {
   describe("記録がそろった週のとき", () => {
     let judged: ReviewWeekJudgement;
@@ -33,6 +85,7 @@ describe("見直す週の判定", () => {
         averageEnergyIntakeKcal: 2000,
         recordedMealDayCount: 7,
         actualWeightChangeKg: 0,
+        weightChangeDayCount: 7,
         sundayWeightTrendKg: 70,
       });
     });
@@ -118,8 +171,52 @@ describe("見直す週の判定", () => {
         });
       });
 
-      test("その前の日曜の代わりに月曜の体重の傾向を使い、見送らないこと", () => {
-        expect(judged).toMatchObject({ type: "reviewable", actualWeightChangeKg: 0 });
+      test("その前の日曜の代わりに月曜の体重の傾向を使い、月曜から日曜の 6 日で測ること", () => {
+        expect(judged).toMatchObject({
+          type: "reviewable",
+          actualWeightChangeKg: 0,
+          weightChangeDayCount: 6,
+        });
+      });
+    });
+
+    describe("初めての体重記録が入力の週の月曜の1日だけのとき", () => {
+      let judged: ReviewWeekJudgement;
+      beforeEach(() => {
+        judged = judgeReviewWeek({
+          ...reviewableInputs(),
+          dailyWeights: [{ calendarDay: "2026-10-12", weightKg: 70 }],
+        });
+      });
+
+      test("変化を測る日が無いので、体重が無いで見送ること", () => {
+        expect(judged).toEqual({ type: "deferred", reason: "no_weight" });
+      });
+    });
+
+    describe("前の週に体重記録が無いとき", () => {
+      let judged: ReviewWeekJudgement;
+      beforeEach(() => {
+        judged = judgeReviewWeek({
+          ...reviewableInputs(),
+          dailyWeights: [
+            ...weightsOn(daysFrom("2026-09-28", 7)),
+            ...daysFrom("2026-10-12", 7).map((calendarDay) => ({ calendarDay, weightKg: 69 })),
+          ],
+        });
+      });
+
+      test("その前の日曜の体重の傾向（補った値）から、7 日で測ること", () => {
+        const dailyWeights = [
+          ...weightsOn(daysFrom("2026-09-28", 7)),
+          ...daysFrom("2026-10-12", 7).map((calendarDay) => ({ calendarDay, weightKg: 69 })),
+        ];
+        expect(judged).toMatchObject({
+          type: "reviewable",
+          actualWeightChangeKg:
+            trendKgOn(dailyWeights, "2026-10-18") - trendKgOn(dailyWeights, "2026-10-11"),
+          weightChangeDayCount: 7,
+        });
       });
     });
 
@@ -134,6 +231,30 @@ describe("見直す週の判定", () => {
 
       test("体重が無いで見送ること", () => {
         expect(judged).toEqual({ type: "deferred", reason: "no_weight" });
+      });
+    });
+  });
+
+  describe("続けて見直した2週の体重の変化", () => {
+    describe("1回目の見直しの時点で、その週の金曜より後の体重が無いとき", () => {
+      let summed: ReturnType<typeof judgeTwoWeeks>;
+      beforeEach(() => {
+        summed = judgeTwoWeeks("2026-10-18");
+      });
+
+      test("2週の変化の和が、通しの変化と等しく、落ちる日が無いこと", () => {
+        expect(summed).toEqual(wholeChangeOfTwoWeeks());
+      });
+    });
+
+    describe("1回目の見直しの時点で、見直す月曜の体重があるとき", () => {
+      let summed: ReturnType<typeof judgeTwoWeeks>;
+      beforeEach(() => {
+        summed = judgeTwoWeeks("2026-10-19");
+      });
+
+      test("2週の変化の和が、通しの変化と等しく、落ちる日が無いこと", () => {
+        expect(summed).toEqual(wholeChangeOfTwoWeeks());
       });
     });
   });

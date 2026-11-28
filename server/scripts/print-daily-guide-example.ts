@@ -105,11 +105,16 @@ for (let week = 0; week < weeks; week++) {
     recordedEnergyIntakes: days.map(({ calendarDay, kcal }) => ({ calendarDay, kcal })),
   });
   if (judgement.type !== "reviewable") throw new Error(JSON.stringify(judgement));
+  // 出し方のページの式は「÷ 7 日」と書くので、毎日量り、変化を7日で測る筋にしておく
+  if (judgement.weightChangeDayCount !== daysPerWeek) {
+    throw new Error(`変化を ${judgement.weightChangeDayCount} 日で測った`);
+  }
   const reviewed = computeReviewedExpenditure({
     previousExpenditureKcal: expenditureKcal,
     averageEnergyIntakeKcal: judgement.averageEnergyIntakeKcal,
     recordedMealDayCount: judgement.recordedMealDayCount,
     actualWeightChangeKg: judgement.actualWeightChangeKg,
+    weightChangeDayCount: judgement.weightChangeDayCount,
     previousWeeks,
   });
   const guide = computeReviewedDailyGuide({

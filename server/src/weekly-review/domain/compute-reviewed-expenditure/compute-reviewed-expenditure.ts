@@ -9,8 +9,9 @@ export type ReviewedExpenditureInputs = {
   // 見直す週の、食事を記録した日の食べた量の平均
   averageEnergyIntakeKcal: number;
   recordedMealDayCount: number;
-  // M の前の日曜の体重の傾向 − その前の日曜の体重の傾向
+  // 見直す週の実際の体重の傾向の変化と、それを測った日数（judgeReviewWeek が出す）
   actualWeightChangeKg: number;
+  weightChangeDayCount: number;
   // 前に見直した週（見送りを含む）。新しい週から順に
   previousWeeks: readonly (
     | { type: "deferred" }
@@ -18,12 +19,14 @@ export type ReviewedExpenditureInputs = {
   )[];
 };
 
-// 見直せた週の、新しい推定消費カロリー。予測した変化と実際の変化のずれの分だけ、前の推定を動かす
+// 見直せた週の、新しい推定消費カロリー。予測した変化と実際の変化のずれの分だけ、前の推定を動かす。
+// 予測は実際の変化と同じ日数で出し、ずれはその日数で割って1日あたりにする
 export const computeReviewedExpenditure = ({
   previousExpenditureKcal,
   averageEnergyIntakeKcal,
   recordedMealDayCount,
   actualWeightChangeKg,
+  weightChangeDayCount,
   previousWeeks,
 }: ReviewedExpenditureInputs): {
   predictedWeightChangeKg: number;
@@ -34,7 +37,8 @@ export const computeReviewedExpenditure = ({
   deviationDirection: ExpenditureDeviationDirection;
 } => {
   const predictedWeightChangeKg =
-    ((averageEnergyIntakeKcal - previousExpenditureKcal) * daysPerWeek) / kilocaloriesPerKilogram;
+    ((averageEnergyIntakeKcal - previousExpenditureKcal) * weightChangeDayCount) /
+    kilocaloriesPerKilogram;
   const deviationKg = predictedWeightChangeKg - actualWeightChangeKg;
   const deviationDirection = toDeviationDirection(deviationKg);
   const gain = Math.min(
@@ -48,7 +52,8 @@ export const computeReviewedExpenditure = ({
     deviationKg,
     gain,
     expenditureKcal: Math.round(
-      previousExpenditureKcal + (gain * kilocaloriesPerKilogram * deviationKg) / daysPerWeek,
+      previousExpenditureKcal +
+        (gain * kilocaloriesPerKilogram * deviationKg) / weightChangeDayCount,
     ),
     deviationDirection,
   };

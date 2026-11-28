@@ -27,8 +27,10 @@ export type ReviewWeekJudgement =
       // 部分的な記録の日を外した、食事を記録した日の食べた量の平均
       averageEnergyIntakeKcal: number;
       recordedMealDayCount: number;
-      // M の前の日曜の体重の傾向 − その前の日曜（無ければ入力の週の月曜）の体重の傾向
+      // 実際の変化。終わりの日の体重の傾向 − 始まりの日の体重の傾向（日は computeWeightChange）
       actualWeightChangeKg: number;
+      // 実際の変化を測った日数（始まりの日から終わりの日まで）。7 日とは限らない
+      weightChangeDayCount: number;
       // M の前の日曜の体重の傾向。1日の目安の必要な速さを出す元
       sundayWeightTrendKg: number;
     };
@@ -80,21 +82,44 @@ export const judgeReviewWeek = ({
   };
 };
 
-// 体重の傾向は最後の体重記録の日で終わるので、日曜の値はその日以前で最も新しい値を使う。
-// その前の日曜にまだ傾向が無ければ入力の週の月曜の値を使い、月曜にも無ければ出せない（undefined）
+// 実際の変化は、始まりと終わりをどちらも「その日曜までで最後に体重を記録した日」の体重の傾向で測る。
+// 体重の傾向は最後の体重記録の日で終わり、記録の無い日の値は次の記録が来て決まる。
+// 日曜の値で測ると、見直しの時点で日曜より後の記録があるかで終わりの日が変わり、次の週の始まりとのあいだの変化がどの週にも入らない。
+// 記録のある日の値はあとの記録で変わらないので、前の週の終わりと次の週の始まりが同じ日になる。
+// 前の週に記録が無ければ（前の週は体重が無いで見送った）その前の日曜の値から、それも無ければ入力の週の月曜の値から測る。
+// 始まりが無いか、始まりと終わりが同じ日なら、変化を出せない（undefined）
 const computeWeightChange = (
   dailyWeights: ReviewWeekInputs["dailyWeights"],
   { weekStart, weekEnd }: { weekStart: string; weekEnd: string },
-): { actualWeightChangeKg: number; sundayWeightTrendKg: number } | undefined => {
+):
+  | { actualWeightChangeKg: number; weightChangeDayCount: number; sundayWeightTrendKg: number }
+  | undefined => {
   const trend = computeWeightTrend(dailyWeights);
+  const trendOn = (calendarDay: string) => trend.find((point) => point.calendarDay === calendarDay);
+  const lastWeighedOn = (lastDay: string) =>
+    dailyWeights.findLast(({ calendarDay }) => calendarDay <= lastDay)?.calendarDay;
   const previousSunday = addDays(weekStart, -1);
+  const previousWeekLastWeighedOn = lastWeighedOn(previousSunday);
   const start =
-    trend.findLast(({ calendarDay }) => calendarDay <= previousSunday) ??
-    trend.find(({ calendarDay }) => calendarDay === weekStart);
-  const end = trend.findLast(({ calendarDay }) => calendarDay <= weekEnd);
-  return start === undefined || end === undefined
+    previousWeekLastWeighedOn !== undefined &&
+    addDays(weekStart, -daysPerWeek) <= previousWeekLastWeighedOn
+      ? trendOn(previousWeekLastWeighedOn)
+      : (trendOn(previousSunday) ?? trendOn(weekStart));
+  const weekLastWeighedOn = lastWeighedOn(weekEnd);
+  const end = weekLastWeighedOn === undefined ? undefined : trendOn(weekLastWeighedOn);
+  // 1日の目安の元は、測り方と別に、日曜の時点でいちばん新しい体重の傾向にする
+  const sunday = trend.findLast(({ calendarDay }) => calendarDay <= weekEnd);
+  if (start === undefined || end === undefined || sunday === undefined) {
+    return undefined;
+  }
+  const weightChangeDayCount = countDaysBetween(start.calendarDay, end.calendarDay);
+  return weightChangeDayCount === 0
     ? undefined
-    : { actualWeightChangeKg: end.trendKg - start.trendKg, sundayWeightTrendKg: end.trendKg };
+    : {
+        actualWeightChangeKg: end.trendKg - start.trendKg,
+        weightChangeDayCount,
+        sundayWeightTrendKg: sunday.trendKg,
+      };
 };
 
 // 部分的な記録の日を決める中央値を出す日数（M より前）
